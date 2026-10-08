@@ -1,0 +1,69 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790445579060,
+      "tag": "0000_eminent_professor_monster",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790459806246,
+      "tag": "0001_striped_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790609914499,
+      "tag": "0002_adorable_major_mapleleaf",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790809605908,
+      "tag": "0003_third_phalanx",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790810762078,
+      "tag": "0004_close_legacy_scheduled_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791124411481,
+      "tag": "0005_loud_junta",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791130327232,
+      "tag": "0006_sloppy_silver_centurion",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791311010714,
+      "tag": "0007_quiet_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791413512466,
+      "tag": "0008_intake_per_store",
+      "breakpoints": true
+    }
+  ]
+}

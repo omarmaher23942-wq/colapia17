@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+repomix-output.md
+omar.py
+repomix-output_part_1.md
+repomix-output_part_2.md
+repomix-output_part_3.md
+.env13

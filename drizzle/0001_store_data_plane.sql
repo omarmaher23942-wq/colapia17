@@ -1,0 +1,2 @@
+ALTER TABLE "stores" ADD COLUMN "data_plane" text DEFAULT 'platform' NOT NULL;--> statement-breakpoint
+ALTER TABLE "stores" ADD CONSTRAINT "stores_data_plane_chk" CHECK ("stores"."data_plane" IN ('platform', 'merchant'));

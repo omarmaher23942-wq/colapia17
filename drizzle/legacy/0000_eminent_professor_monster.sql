@@ -1,0 +1,4 @@
+-- 0000_eminent_professor_monster.sql
+-- Placeholder — الجداول الأساسية (merchants, sessions, stores, categories, products، إلخ)
+-- تم تطبيقها على الإنتاج تاريخياً. هذا الملف أُعيد إنشاؤه للحفاظ على تسلسل الـ migrations.
+-- لا تعدّل هذا الملف؛ استخدم migrations جديدة للتعديلات المستقبلية.

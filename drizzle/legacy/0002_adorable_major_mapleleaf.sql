@@ -1,0 +1,1 @@
+ALTER TYPE "public"."conv_stage" ADD VALUE 'proof' BEFORE 'policies';
