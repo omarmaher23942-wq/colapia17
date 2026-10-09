@@ -106,7 +106,7 @@ function writeLog(key: string, log: StoredLog) {
   }
 }
 
-const TITLE_PREFIX = /^\(\d+\+?\)\s/;
+const TITLE_PREFIX = /^\(\d+\+?\)\s*/;
 
 export function DashboardPulse({
   storeId,
@@ -280,14 +280,26 @@ export function DashboardPulse({
   useEffect(() => {
     const apply = () => {
       const base = document.title.replace(TITLE_PREFIX, "");
+      // أثناء التنقل يضع Next عنواناً فارغاً لحظياً: لا نكتب فيه «(3) » وحده فيتراكم الرقم مرتين.
+      if (!base.trim()) return;
       const want = titleCount > 0 ? `(${titleCount > 99 ? "99+" : titleCount}) ${base}` : base;
       if (document.title !== want) document.title = want;
     };
+    // Next يبث العنوان أحياناً داخل body (metadata متدفقة) ويضيفه للـ head عند التنقل: نراقب الاثنين.
+    const mo = new MutationObserver(() => {
+      watch();
+      apply();
+    });
+    const watch = () => {
+      mo.observe(document.head, { childList: true, subtree: true, characterData: true });
+      document.querySelectorAll("title").forEach((t) => mo.observe(t, { childList: true, subtree: true, characterData: true }));
+    };
+    watch();
     apply();
-    const mo = new MutationObserver(apply);
-    mo.observe(document.head, { childList: true, subtree: true, characterData: true });
+    const late = window.setTimeout(apply, 800);
     return () => {
       mo.disconnect();
+      window.clearTimeout(late);
       document.title = document.title.replace(TITLE_PREFIX, "");
     };
   }, [titleCount]);

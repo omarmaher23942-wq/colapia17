@@ -486,6 +486,13 @@ html:has(.dash:not(.dark)) { background-color: #f4f6fe; }
   .dash-dialog { margin: auto; max-width: 28rem; border-radius: 1.25rem; padding-bottom: 0; }
 }
 .dash-dialog::backdrop { background: rgb(4 6 18 / 0.55); backdrop-filter: blur(4px); }
+
+/* شريط الحفظ اللاصق (محرر المنتج وغيره): زر المساعد العائم يرتفع فوقه بدل أن يغطي زر الحفظ. */
+.copilot-fab { transition: bottom 0.25s ease; }
+.dash:has([data-savebar]) .copilot-fab { bottom: calc(10.5rem + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .dash:has([data-savebar]) .copilot-fab { bottom: 6.75rem; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .dash-dialog[open] { animation: dash-dialog-in 0.18s ease-out; }
 }

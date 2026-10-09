@@ -1,6 +1,7 @@
 // inventory.ts — حركة المخزون الموحّدة للطلبات: الخصم عند الطلب، والإرجاع عند الإلغاء أو الارتجاع، والخصم من جديد
 // عند إعادة فتح طلب ملغي. القاعدة الثابتة: مخزون المنتج ذي التركيبات (مقاس/لون) = مجموع مخزون تركيباته،
 // فكل تغيير في تركيبة يعيد حساب مجموع المنتج داخل نفس المعاملة (لا يبقى رقم المنتج قديماً فيخفي نفاد المخزون).
+// التركيبة التي أخفاها التاجر («غير متاحة») لا تدخل المجموع لأن العميل لا يستطيع شراءها (نفس قاعدة حفظ المنتج).
 import "server-only";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { getTenantDb } from "@/db/tenant";
@@ -14,7 +15,7 @@ export function syncVariantTotals(db: DB, storeId: string, productIds: string[])
   return db
     .update(products)
     .set({
-      stock: sql`(select coalesce(sum(greatest(coalesce(v.stock, 0), 0)), 0) from ${productVariants} v where v.product_id = ${products.id})`,
+      stock: sql`(select coalesce(sum(greatest(coalesce(v.stock, 0), 0)), 0) from ${productVariants} v where v.product_id = ${products.id} and v.is_available = true)`,
     })
     .where(
       and(

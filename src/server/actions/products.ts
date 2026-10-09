@@ -85,202 +85,208 @@ async function uniqueSlug(storeId: string, name: string, excludeId?: string) {
   return `${base}-${Date.now()}`;
 }
 
-export async function duplicateProductAction(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function duplicateProductAction(id: string): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const s = await getMerchantStoreOrNull();
   if (!s) return { ok: false, error: "غير مصرح" };
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "المنتج غير موجود" };
   const db = await getTenantDb(s.storeId);
 
   try {
     const [p] = await db
       .select()
       .from(products)
-      .where(and(eq(products.id, id), eq(products.storeId, s.storeId)))
+      .where(and(eq(products.id, id), eq(products.storeId, s.storeId), isNull(products.deletedAt)))
       .limit(1);
-
     if (!p) return { ok: false, error: "المنتج غير موجود" };
 
-    const newName = `${p.name} (نسخة)`;
-    const newSlug = await uniqueSlug(s.storeId, newName);
+    const newId = crypto.randomUUID();
+    const newName = `${p.name} (نسخة)`.slice(0, 120);
+    const variants = await db
+      .select()
+      .from(productVariants)
+      .where(and(eq(productVariants.productId, id), eq(productVariants.storeId, s.storeId)));
 
-    const [newP] = await db
-      .insert(products)
-      .values({
+    // المنتج وتركيباته في دفعة واحدة: لا نسخة بلا مقاساتها إن فشل جزء.
+    await db.batch([
+      db.insert(products).values({
+        id: newId,
         storeId: s.storeId,
         categoryId: p.categoryId,
         name: newName,
-        slug: newSlug,
+        slug: await uniqueSlug(s.storeId, newName),
         shortDescription: p.shortDescription,
         description: p.description,
-        pricePiasters: p.pricePiasters || 0,
+        pricePiasters: p.pricePiasters,
         compareAtPiasters: p.compareAtPiasters,
         costPiasters: p.costPiasters,
-        sku: p.sku ? `${p.sku}-copy` : null,
+        sku: p.sku ? `${p.sku}-copy`.slice(0, 40) : null,
         stock: p.stock,
-        trackStock: p.trackStock ?? true,
-        images: Array.isArray(p.images) ? p.images : [],
-        attributes: Array.isArray(p.attributes) ? p.attributes : [],
-        optionNames: Array.isArray(p.optionNames) ? p.optionNames : [],
-        tags: Array.isArray(p.tags) ? p.tags : [],
-        badges: Array.isArray(p.badges) ? p.badges : [],
+        trackStock: p.trackStock,
+        images: p.images,
+        attributes: p.attributes,
+        optionNames: p.optionNames,
+        tags: p.tags,
+        badges: p.badges,
         status: "draft",
         isFeatured: false,
+        seoTitle: p.seoTitle,
+        seoDescription: p.seoDescription,
         sortOrder: (p.sortOrder || 0) + 1,
-        searchText: buildSearchText([newName, p.shortDescription, p.description]),
-      })
-      .returning({ id: products.id });
-
-    if (newP) {
-      const existingVariants = await db
-        .select()
-        .from(productVariants)
-        .where(eq(productVariants.productId, id));
-
-      if (existingVariants.length) {
-        await db.insert(productVariants).values(
-          existingVariants.map((v) => ({
-            storeId: s.storeId,
-            productId: newP.id,
-            optionValues: Array.isArray(v.optionValues) ? v.optionValues : [],
-            pricePiasters: v.pricePiasters,
-            compareAtPiasters: v.compareAtPiasters,
-            stock: v.stock,
-            sku: v.sku ? `${v.sku}-copy` : null,
-            imageUrl: v.imageUrl,
-            imageUrls: Array.isArray(v.imageUrls) ? v.imageUrls : [],
-            isAvailable: v.isAvailable ?? true,
-          }))
-        );
-      }
-    }
+        searchText: p.searchText,
+      }),
+      ...(variants.length
+        ? [
+            db.insert(productVariants).values(
+              variants.map((v) => ({
+                storeId: s.storeId,
+                productId: newId,
+                optionValues: v.optionValues,
+                pricePiasters: v.pricePiasters,
+                compareAtPiasters: v.compareAtPiasters,
+                stock: v.stock,
+                sku: v.sku ? `${v.sku}-copy`.slice(0, 40) : null,
+                imageUrl: v.imageUrl,
+                imageUrls: v.imageUrls,
+                isAvailable: v.isAvailable,
+              }))
+            ),
+          ]
+        : []),
+    ] as never);
 
     await invalidateStoreCache(s.store);
     revalidatePath("/dashboard/products");
-    return { ok: true };
+    return { ok: true, id: newId };
   } catch (e) {
     console.error("[duplicateProductAction] Error:", e);
     return { ok: false, error: "تعذر نسخ المنتج، حاول مرة أخرى" };
   }
 }
 
-export async function saveProductAction(raw: unknown) {
+export type SaveProductResult = { ok: true; id: string; slug: string } | { ok: false; error: string; field?: string };
+
+const cleanList = (xs: string[], max: number, len: number) => [...new Set(xs.map((x) => x.trim().slice(0, len)).filter(Boolean))].slice(0, max);
+
+export async function saveProductAction(raw: unknown): Promise<SaveProductResult> {
   const s = await getMerchantStoreOrNull();
-  if (!s) return { error: "غير مصرح" };
+  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const db = await getTenantDb(s.storeId);
 
   const parsed = productInput.safeParse(raw);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message || "بيانات غير صالحة" };
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message || "بيانات غير صالحة", field: issue?.path[0]?.toString() };
   }
 
   const d = parsed.data;
-  if (d.categoryId && !(await categoryBelongsToStore(s.storeId, d.categoryId))) {
-    return { error: "القسم غير موجود" };
+  if (d.price <= 0) return { ok: false, error: "اكتب سعر البيع", field: "price" };
+  if (d.compareAt && d.compareAt <= d.price) {
+    return { ok: false, error: "السعر قبل الخصم يجب أن يكون أعلى من سعر البيع، أو اتركه فارغاً", field: "compareAt" };
   }
-  const searchText = buildSearchText([
-    d.name,
-    d.shortDescription,
-    d.description,
-    ...d.tags,
-    ...d.attributes.map((a) => a.value),
-  ]);
+  if (d.categoryId && !(await categoryBelongsToStore(s.storeId, d.categoryId))) {
+    return { ok: false, error: "القسم غير موجود", field: "categoryId" };
+  }
 
   const hasVariants = d.variants.length > 0;
   if (d.trackStock && !hasVariants && (d.stock === null || d.stock === undefined)) {
-    return { error: "اكتب الكمية المتاحة، أو أوقف «تتبع المخزون» إن كان المنتج متاحاً دائماً" };
+    return { ok: false, error: "اكتب الكمية المتاحة، أو أوقف «تتبع المخزون» إن كان المنتج متاحاً دائماً", field: "stock" };
   }
-  const totalStock = hasVariants ? d.variants.reduce((sum, v) => sum + (v.stock ?? 0), 0) : (d.stock ?? 0);
+  const totalStock = hasVariants ? d.variants.reduce((sum, v) => sum + (v.isAvailable ? (v.stock ?? 0) : 0), 0) : (d.stock ?? 0);
+
+  const tags = cleanList(d.tags, 20, 40);
+  const badges = cleanList(d.badges, 6, 30);
+  const attributes = d.attributes
+    .map((a) => ({ label: a.label.trim().slice(0, 40), value: a.value.trim().slice(0, 120) }))
+    .filter((a) => a.label && a.value)
+    .slice(0, 30);
+  const images = d.images.map((im) => ({ ...im, alt: im.alt?.trim() || d.name }));
 
   const values = {
     storeId: s.storeId,
     name: d.name,
     categoryId: d.categoryId ?? null,
-    shortDescription: d.shortDescription,
-    description: d.description,
+    shortDescription: d.shortDescription?.trim() || null,
+    description: d.description?.trim() || null,
     pricePiasters: d.price,
-    compareAtPiasters: d.compareAt ?? null,
+    compareAtPiasters: d.compareAt || null,
     costPiasters: d.cost ?? null,
-    sku: d.sku,
+    sku: d.sku?.trim() || null,
     trackStock: d.trackStock,
     stock: d.trackStock ? totalStock : null,
-    images: d.images,
-    attributes: d.attributes,
-    optionNames: d.optionNames,
-    tags: d.tags,
-    badges: d.badges,
+    images,
+    attributes,
+    optionNames: hasVariants ? d.optionNames : [],
+    tags,
+    badges,
     status: d.status,
     isFeatured: d.isFeatured,
-    seoTitle: d.seoTitle,
-    seoDescription: d.seoDescription,
-    searchText,
+    seoTitle: d.seoTitle?.trim() || null,
+    seoDescription: d.seoDescription?.trim() || null,
+    searchText: buildSearchText([d.name, d.shortDescription, d.description, d.sku, ...tags, ...attributes.map((a) => a.value)]),
     updatedAt: new Date(),
   };
 
+  let slug: string;
+  const productId = d.id ?? crypto.randomUUID();
+  const existing = d.id
+    ? await db
+        .select({ id: productVariants.id, optionValues: productVariants.optionValues })
+        .from(productVariants)
+        .where(and(eq(productVariants.productId, d.id), eq(productVariants.storeId, s.storeId)))
+    : [];
   if (d.id) {
     const [owned] = await db
-      .select({ id: products.id })
+      .select({ slug: products.slug })
       .from(products)
-      .where(and(eq(products.id, d.id), eq(products.storeId, s.storeId)))
+      .where(and(eq(products.id, d.id), eq(products.storeId, s.storeId), isNull(products.deletedAt)))
       .limit(1);
-    if (!owned) return { error: "المنتج غير موجود" };
-  }
-
-  let productId = d.id;
-
-  if (productId) {
-    // الرابط ثابت بعد الإنشاء: تغيير الاسم لا يكسر روابط المنتج المنشورة على فيسبوك وواتساب ومحركات البحث.
-    await db
-      .update(products)
-      .set(values)
-      .where(and(eq(products.id, productId), eq(products.storeId, s.storeId)));
+    if (!owned) return { ok: false, error: "المنتج غير موجود (ربما حُذف)" };
+    slug = owned.slug; // الرابط ثابت بعد الإنشاء: تغيير الاسم لا يكسر روابطه المنشورة على فيسبوك وواتساب ومحركات البحث.
   } else {
-    const [row] = await db
-      .insert(products)
-      .values({ ...values, slug: await uniqueSlug(s.storeId, d.name) })
-      .returning({ id: products.id });
-    productId = row!.id;
+    slug = await uniqueSlug(s.storeId, d.name);
   }
 
+  // التركيبات: الموجودة تُحدَّث بمعرّفها (فلا تنكسر سلات العملاء ولا الطلبات القديمة)، والجديدة تُضاف، والمحذوفة تُحذف.
+  // سعر التركيبة المساوي لسعر المنتج يُحفظ فارغاً فيرث سعر المنتج: رفع سعر المنتج لاحقاً يصل لكل مقاساته.
+  const byId = new Set(existing.map((e) => e.id));
+  const byKey = new Map(existing.map((e) => [e.optionValues.join("\u0001"), e.id]));
+  const rows = d.variants.map((v) => ({
+    id: v.id && byId.has(v.id) ? v.id : byKey.get(v.optionValues.join("\u0001")),
+    values: {
+      storeId: s.storeId,
+      productId,
+      optionValues: v.optionValues,
+      pricePiasters: v.price && v.price !== d.price ? v.price : null,
+      compareAtPiasters: v.compareAt && v.compareAt !== d.compareAt ? v.compareAt : null,
+      stock: v.stock ?? 0,
+      sku: v.sku?.trim() || null,
+      imageUrl: v.imageUrl ?? null,
+      imageUrls: v.imageUrls,
+      isAvailable: v.isAvailable,
+    },
+  }));
+  const keep = new Set(rows.map((r) => r.id).filter((x): x is string => Boolean(x)));
+  const removed = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
 
-  // مزامنة المتغيرات: كل تركيبة موجودة تُحدَّث بمعرّفها (فلا تنكسر سلات العملاء ولا روابط الطلبات القديمة)،
-  // والجديدة تُضاف، والمحذوفة تُحذف. الكل في دفعة واحدة ذرية.
-  if (productId) {
-    const existing = await db
-      .select({ id: productVariants.id, optionValues: productVariants.optionValues })
-      .from(productVariants)
-      .where(and(eq(productVariants.productId, productId), eq(productVariants.storeId, s.storeId)));
-    const byId = new Set(existing.map((e) => e.id));
-    const byKey = new Map(existing.map((e) => [e.optionValues.join("\u0001"), e.id]));
-    const rows = d.variants.map((v) => ({
-      id: v.id && byId.has(v.id) ? v.id : byKey.get(v.optionValues.join("\u0001")),
-      values: {
-        storeId: s.storeId,
-        productId: productId!,
-        optionValues: v.optionValues,
-        pricePiasters: v.price ?? d.price,
-        compareAtPiasters: v.compareAt ?? d.compareAt ?? null,
-        stock: v.stock ?? 0,
-        sku: v.sku ?? null,
-        imageUrl: v.imageUrl ?? null,
-        imageUrls: v.imageUrls,
-        isAvailable: v.isAvailable,
-      },
-    }));
-    const keep = new Set(rows.map((r) => r.id).filter((x): x is string => Boolean(x)));
-    const removed = existing.filter((e) => !keep.has(e.id)).map((e) => e.id);
-    const ops = [
+  // المنتج وتركيباته في دفعة واحدة ذرية: لا مخزون منتج يخالف مجموع مقاساته إن فشل جزء.
+  const own = and(eq(products.id, productId), eq(products.storeId, s.storeId));
+  try {
+    await db.batch([
+      d.id ? db.update(products).set(values).where(own) : db.insert(products).values({ ...values, id: productId, slug }),
       ...(removed.length ? [db.delete(productVariants).where(and(eq(productVariants.storeId, s.storeId), inArray(productVariants.id, removed)))] : []),
       ...rows
         .filter((r) => r.id)
         .map((r) => db.update(productVariants).set(r.values).where(and(eq(productVariants.id, r.id!), eq(productVariants.storeId, s.storeId)))),
       ...(rows.some((r) => !r.id) ? [db.insert(productVariants).values(rows.filter((r) => !r.id).map((r) => r.values))] : []),
-    ];
-    if (ops.length) await db.batch(ops as never);
+    ] as never);
+  } catch (e) {
+    console.error("[saveProductAction]", e);
+    return { ok: false, error: "تعذر حفظ المنتج، لم يتغير شيء. حاول مرة أخرى" };
   }
 
   await invalidateStoreCache(s.store);
   revalidatePath("/dashboard/products");
-  revalidatePath("/admin");
-  return { id: productId };
+  return { ok: true, id: productId, slug };
 }
 
 export async function deleteProductAction(id: string): Promise<{ ok: boolean; error?: string }> {
