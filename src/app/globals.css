@@ -467,6 +467,30 @@ html:has(.dash:not(.dark)) { background-color: #f4f6fe; }
 }
 @keyframes dash-drift { to { background-position: 640px 320px; } }
 
+/* نافذة اللوحة (<dialog>): ورقة من الأسفل على الموبايل، وفي الوسط على الشاشات الأكبر. */
+.dash-dialog {
+  margin: auto auto 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 92dvh;
+  padding: 0;
+  overflow: auto;
+  color: var(--dash-ink);
+  background: var(--dash-space-2);
+  border: 1px solid color-mix(in srgb, var(--dash-edge) 10%, transparent);
+  border-radius: 1.25rem 1.25rem 0 0;
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.5);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@media (min-width: 640px) {
+  .dash-dialog { margin: auto; max-width: 28rem; border-radius: 1.25rem; padding-bottom: 0; }
+}
+.dash-dialog::backdrop { background: rgb(4 6 18 / 0.55); backdrop-filter: blur(4px); }
+@media (prefers-reduced-motion: no-preference) {
+  .dash-dialog[open] { animation: dash-dialog-in 0.18s ease-out; }
+}
+@keyframes dash-dialog-in { from { opacity: 0; transform: translateY(12px); } }
+
 /* بطاقة الداشبورد الموحّدة: زجاج خفيف وحافة متوهجة عند المرور. */
 .dash-card {
   border-radius: 1.25rem;

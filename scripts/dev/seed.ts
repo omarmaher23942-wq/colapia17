@@ -117,20 +117,27 @@ async function main() {
     const c = pick(custs);
     const ageDays = i < 4 ? rnd() * 0.3 : rnd() * 58;
     const created = new Date(now - ageDays * DAY);
-    const status = i < 4 ? "new" : pick(statuses);
-    const method = i === 4 || i === 5 ? "vodafone_cash" : pick(["cod", "cod", "cod", "instapay"] as const);
+    const transfer = i === 4 || i === 5;
+    const status = i < 6 ? "new" : pick(statuses);
+    const method = i === 4 ? "vodafone_cash" : i === 5 ? "instapay" : pick(["cod", "cod", "cod", "instapay"] as const);
     const lines = Array.from({ length: 1 + Math.floor(rnd() * 2) }, () => pick(prods.slice(0, 8)));
     const subtotal = lines.reduce((a, p) => a + p.pricePiasters, 0);
     const shipping = 6000;
-    const total = subtotal + shipping;
+    const rich = i === 0; // طلب بكل التفاصيل: خصم، رسوم تحصيل، علامة مميزة، رقم بديل، بريد، ملاحظة
+    const codFee = rich ? 1000 : 0;
+    const discount = rich ? 5000 : 0;
+    const total = subtotal + shipping + codFee - discount;
     const [o] = await db
       .insert(orders)
       .values({
         storeId, customerId: c.id, code: `CLP-${++seq}`, status, customerName: c.name, customerPhone: c.phone,
         governorate: c.governorate ?? "cairo", city: "مدينة نصر", address: "شارع عباس العقاد، عمارة 12", subtotalPiasters: subtotal,
-        shippingPiasters: shipping, totalPiasters: total, paymentMethod: method,
-        paymentStatus: i === 4 || i === 5 ? "under_review" : status === "delivered" ? "confirmed" : "pending",
-        transferScreenshotUrl: i === 4 || i === 5 ? productImage("إيصال", 6) : null,
+        shippingPiasters: shipping, codFeePiasters: codFee, discountPiasters: discount, discountCode: rich ? "WELCOME50" : null,
+        totalPiasters: total, paymentMethod: rich ? "cod" : method,
+        paymentStatus: transfer ? "under_review" : status === "delivered" ? "confirmed" : "pending",
+        transferScreenshotUrl: transfer ? productImage("إيصال", 6) : null,
+        transferSenderPhone: transfer ? "01155556666" : null,
+        ...(rich ? { landmark: "أمام صيدلية العزبي", customerAltPhone: "01223334444", customerEmail: "customer@example.com", customerNotes: "يفضل الاتصال قبل الوصول بنصف ساعة" } : {}),
         statusHistory: [{ status: "new", at: created.toISOString() }], createdAt: created, updatedAt: created,
       })
       .returning();

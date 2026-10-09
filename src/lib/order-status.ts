@@ -42,3 +42,11 @@ export const TONE_CHIP: Record<StatusTone, string> = {
   bad: "bg-bad/12 text-bad",
   muted: "bg-edge/[0.06] text-ink-3",
 };
+
+export const TONE_TEXT: Record<StatusTone, string> = {
+  nova: "text-nova-2",
+  ok: "text-ok",
+  warn: "text-warn",
+  bad: "text-bad",
+  muted: "text-ink-3",
+};
