@@ -14,7 +14,9 @@ import {
   shippingZones,
   systemEvents,
   merchants,
+  discounts,
 } from "@/db/schema";
+import { EXIT_OFFER } from "@/lib/exit-offer";
 import { env } from "@/lib/env";
 import { storeUrl } from "@/lib/utils";
 import {
@@ -535,6 +537,15 @@ export const { POST } = serve<Input>(
               return base;
             })
           );
+        }
+
+        // «عرض عند المغادرة» من التسجيل: كود خصم حقيقي في المتجر (لا نافذة بكود غير موجود).
+        const feats = ((intake?.brief ?? {}) as { features?: Record<string, boolean> }).features ?? {};
+        if (feats.exitIntentDiscount === true) {
+          await tdb
+            .insert(discounts)
+            .values({ storeId, code: EXIT_OFFER.code, type: "percentage", value: EXIT_OFFER.percent, perCustomerLimit: 1 })
+            .onConflictDoNothing();
         }
 
         // إحصاءات الكتالوج الفعلية: يبني عليها المخرج الفني شكل الصفحة الرئيسية.

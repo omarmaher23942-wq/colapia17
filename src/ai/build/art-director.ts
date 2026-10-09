@@ -59,7 +59,7 @@ export function composeHome(input: { copy: StudioCopy; design: StudioDesign; sta
       ...(copy.hero.eyebrow ? { eyebrow: copy.hero.eyebrow } : {}),
       headline: copy.hero.headline,
       ...(copy.hero.subheadline ? { subheadline: copy.hero.subheadline } : {}),
-      images: withImg.slice(0, design.heroVariant === "collage" ? 4 : 3).map((p) => ({ url: p.image!, alt: p.name, focalX: 0.5, focalY: 0.4 })),
+      images: withImg.slice(0, design.heroVariant === "orbit" ? 8 : design.heroVariant === "collage" ? 4 : 3).map((p) => ({ url: p.image!, alt: p.name, focalX: 0.5, focalY: 0.4 })),
       ...(design.heroVariant === "product_spotlight" && spotlight ? { spotlightProductSlug: spotlight.slug } : {}),
       primaryCta: { label: copy.hero.primaryCta, target: n === 1 && stats.products[0] ? { type: "product", slug: stats.products[0].slug } : { type: "all_products" }, style: "primary" },
       ...(copy.hero.secondaryCta && firstCat && stats.categories.length > 1

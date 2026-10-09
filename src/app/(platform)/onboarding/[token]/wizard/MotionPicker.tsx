@@ -11,7 +11,7 @@ const OPTIONS: { id: MotionStyle; title: string; sub: string; icon: typeof Feath
   { id: "auto", title: "اختر لي", sub: "يختارها المصمم حسب نشاطك", icon: Wand2 },
   { id: "calm", title: "هادئ", sub: "ظهور ناعم ورصين", icon: Feather },
   { id: "lively", title: "حيوي", sub: "عناصر تتتابع وبطاقات تستجيب", icon: Zap },
-  { id: "cinematic", title: "سينمائي", sub: "عناوين تتكشف وعمق ودوران", icon: Clapperboard },
+  { id: "cinematic", title: "سينمائي", sub: "عناوين تتكشف، وواجهة بصور منتجاتك تدور (من 4 صور)", icon: Clapperboard },
 ];
 
 export function MotionPicker({

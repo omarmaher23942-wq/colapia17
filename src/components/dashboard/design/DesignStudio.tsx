@@ -228,8 +228,11 @@ function MotionSection({ initial }: { initial: { level: "calm" | "lively" | "cin
     setV(next);
     start(async () => {
       const r = await saveMotionAction(next);
-      if (r.ok) toast.success("حُفظت حركة متجرك");
-      else toast.error(r.error);
+      if (!r.ok) return void toast.error(r.error);
+      if (r.orbit === "on") toast.success("صارت واجهة متجرك حلقة من صور منتجاتك تدور، مع الحركة السينمائية");
+      else if (r.orbit === "off") toast.success("حُفظت الحركة، وعادت الواجهة لتصميم ثابت");
+      else if (r.orbit === "needs_images") toast.success("حُفظت الحركة السينمائية. حلقة الصور الدوّارة تظهر حين يصبح لديك 4 منتجات منشورة بصور");
+      else toast.success("حُفظت حركة متجرك");
     });
   };
   return (
@@ -237,7 +240,7 @@ function MotionSection({ initial }: { initial: { level: "calm" | "lively" | "cin
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-[16px] font-black text-ink">الحركة والعمق</h2>
-          <p className="mt-1 text-[12.5px] text-ink-2">كيف تظهر الواجهة والمنتجات لعملائك. التغيير فوري ولا يمس تصميمك.</p>
+          <p className="mt-1 text-[12.5px] text-ink-2">كيف تظهر الواجهة والمنتجات لعملائك. التغيير فوري، و«سينمائي» يجعل الواجهة حلقة من صور منتجاتك.</p>
         </div>
         {saving ? <Loader2 className="size-4 animate-spin text-nova" /> : null}
       </div>

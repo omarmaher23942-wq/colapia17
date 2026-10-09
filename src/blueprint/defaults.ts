@@ -483,6 +483,7 @@ export function defaultBlueprint(input: {
     conversion: {
       stickyAddToCart: true,
       buyNowButton: true,
+      whatsappButton: true,
       freeShippingBar: { enabled: false, thresholdPiasters: 50000 },
       lowStockAlert: { enabled: true, threshold: 5 },
       socialProofToasts: {

@@ -26,6 +26,7 @@ const REVIEWED_MIXED = new Set([
   "src/server/actions/ai-editor.ts",
   "src/server/actions/checkout.ts",
   "src/server/actions/inventory.ts",
+  "src/server/actions/motion.ts",
   "src/server/actions/platform-stores-governance.ts",
   "src/server/actions/shipping.ts",
   "src/server/auth.ts",

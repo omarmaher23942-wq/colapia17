@@ -13,12 +13,11 @@ import {
   Zap,
   Truck,
   MessageCircle,
-  Gift,
   Flame,
   Sparkles,
   ClipboardCheck,
   Pencil,
-  Mic,
+  Star,
   Users,
   Clapperboard,
 } from "lucide-react";
@@ -56,15 +55,12 @@ const FEATURES: { key: FeatureKey; title: string; desc: string; icon: typeof Tim
   { key: "trustBadges", title: "شارات الثقة", desc: "الدفع عند الاستلام والمعاينة والاستبدال", icon: Award },
   { key: "socialProofToasts", title: "إشعارات الطلبات الحقيقية", desc: "«طلب جديد من القاهرة» بهدوء وبلا تكرار", icon: Users },
   { key: "whatsappDirectChat", title: "زر واتساب عائم", desc: "سؤال مباشر عن المنتج", icon: MessageCircle },
-  { key: "lowStockAlert", title: "تنبيه الكمية المحدودة", desc: "«باقي 3 قطع فقط»", icon: Flame },
+  { key: "lowStockAlert", title: "تنبيه الكمية المحدودة", desc: "«باقي 3 قطع فقط» من كميتك الحقيقية (مع تتبع المخزون)", icon: Flame },
   { key: "frequentlyBoughtTogether", title: "يُشترى معه عادةً", desc: "منتجات مكملة في صفحة المنتج", icon: Sparkles },
-  { key: "countdownOffer", title: "عرض بعدّاد تنازلي", desc: "حماس الشراء لعروض محدودة", icon: Timer },
-  { key: "bundleOffer", title: "طقم التوفير", desc: "منتجات مجمعة بخصم إضافي", icon: Gift },
-  { key: "exitIntentDiscount", title: "عرض عند المغادرة", desc: "كود خصم قبل أن يغادر الزائر", icon: Zap },
+  { key: "exitIntentDiscount", title: "عرض عند المغادرة", desc: "خصم 10% لأول طلب بكود WELCOME10 ننشئه في متجرك", icon: Zap },
   { key: "faqSection", title: "أسئلة شائعة", desc: "إجابات عن الشحن والدفع والاستبدال", icon: HelpCircle },
-  { key: "whyChooseUs", title: "لماذا نحن", desc: "مميزات متجرك في قسم أنيق", icon: Award },
   { key: "brandStory", title: "قصة المتجر", desc: "كلمة المؤسس ورسالة العلامة", icon: BookOpen },
-  { key: "customerVoiceReviews", title: "تقييمات صوتية", desc: "العملاء يقيّمون بتسجيل صوتي", icon: Mic },
+  { key: "customerVoiceReviews", title: "آراء العملاء", desc: "تقييمات حقيقية من طلبات فعلية، تظهر مع أول تقييم", icon: Star },
 ];
 
 export function StepLook({

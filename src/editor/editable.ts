@@ -38,7 +38,7 @@ export const PATH_FIELDS: Record<string, string[]> = {
   header: ["variant", "nav", "showCategoriesMenu"],
   "header.nav[]": ["label", "target"],
   footer: ["tagline", "showChannels", "showPaymentIcons"],
-  conversion: ["lowStockAlert", "socialProofToasts", "exitIntentOffer", "productTrustRow", "showSavings", "recommendations", "rememberCustomer"],
+  conversion: ["lowStockAlert", "socialProofToasts", "exitIntentOffer", "whatsappButton", "productTrustRow", "showSavings", "recommendations", "rememberCustomer"],
   "conversion.recommendations": ["frequentlyBoughtTogether"],
   "conversion.productTrustRow[]": ["icon", "text"],
   productPage: ["layout", "showAttributesTable", "showReviews", "showShareButtons"],

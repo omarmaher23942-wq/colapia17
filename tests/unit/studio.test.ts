@@ -69,6 +69,27 @@ describe("art director (design)", () => {
   });
 });
 
+describe("اختيار صاحب المتجر للحركة", () => {
+  beforeEach(() => aiResponse.mockReset());
+
+  it("«سينمائي» = واجهة الحلقة الدوّارة كما في معاينة التسجيل، متى وُجدت 4 صور", async () => {
+    aiResponse.mockResolvedValue({ heroVariant: "split", design: { motion: { level: "calm", depth: false } } });
+    const products = ["a", "b", "c", "d", "e"].map((k, i) => ({ name: `منتج ${i + 1}`, price: 300, imageUrl: `https://x.ufs.sh/f/${k}` }));
+    const rich = { ...intake, brief: { ...intake.brief, motionStyle: "cinematic" as const, depth3d: true }, products };
+    const d = await designStore(rich, fallbackPlan(rich), "store-1", []);
+    expect(d.heroVariant).toBe("orbit");
+    expect(d.design.motion.level).toBe("cinematic");
+    expect(d.design.motion.depth).toBe(true);
+  });
+
+  it("«سينمائي» بلا صور كافية لا يعد بحلقة فارغة", async () => {
+    aiResponse.mockResolvedValue({ heroVariant: "orbit" });
+    const d = await designStore({ ...intake, brief: { ...intake.brief, motionStyle: "cinematic" as const } }, plan, "store-1", []);
+    expect(d.heroVariant).not.toBe("orbit");
+    expect(d.design.motion.level).toBe("cinematic");
+  });
+});
+
 describe("copywriter", () => {
   beforeEach(() => aiResponse.mockReset());
   const design = { design: designSchema.parse({}), heroVariant: "split" as const };

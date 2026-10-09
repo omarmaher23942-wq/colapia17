@@ -212,7 +212,7 @@ export function ConversionWidgets() {
   }, [conversion.exitIntentOffer]);
 
   // ─── Smart WhatsApp message ─────────────────────────────────────────────
-  const whatsappNum = channels.whatsappNumber || channels.phone;
+  const whatsappNum = conversion.whatsappButton === false ? null : channels.whatsappNumber || channels.phone;
   const waMessage = useMemo(() => {
     const base = "أهلاً بك! أرغب في الاستفسار عن";
     if (pathname?.startsWith("/p/")) {

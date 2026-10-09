@@ -414,6 +414,8 @@ export const conversionSchema = z.object({
   expressCheckout: z.boolean().default(true),
   rememberCustomer: z.boolean().default(true),
   messengerOrderButton: z.boolean().default(true),
+  /** زر واتساب العائم في كل صفحات المتجر (يظهر إن وُجد رقم واتساب أو هاتف). */
+  whatsappButton: z.boolean().default(true),
   showSavings: z.boolean().default(true),
   cartDrawer: z.boolean().default(true),
   shareButtons: z.boolean().default(true),

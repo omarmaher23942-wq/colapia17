@@ -270,6 +270,8 @@ export async function designStore(
   // اختيار صاحب المتجر للحركة والعمق يعلو على اختيار المدير الفني.
   if (b.motionWish) design.motion.level = b.motionWish;
   if (typeof b.depthWish === "boolean") design.motion.depth = b.depthWish;
+  // «سينمائي» في التسجيل يعرض حلقة صور تدور: هذا وعد، فالواجهة تكون الحلقة نفسها متى وُجدت 4 صور منتجات.
+  if (b.motionWish === "cinematic" && imgs >= 4) hero = "orbit";
   if ((hero === "fullscreen" || hero === "split" || hero === "editorial" || hero === "product_spotlight") && imgs === 0) hero = "centered";
 
   return {

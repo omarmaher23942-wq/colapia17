@@ -76,6 +76,7 @@ export const FIELD_LABELS: Record<string, FieldMeta> = {
   showAttributesTable: { label: "جدول المواصفات" },
   showReviews: { label: "التقييمات" },
   showShareButtons: { label: "أزرار المشاركة" },
+  whatsappButton: { label: "زر واتساب العائم", hint: "في كل صفحات المتجر، برقم واتساب المتجر (أو الهاتف)" },
   showSavings: { label: "«وفّرت كذا» بجانب السعر قبل الخصم" },
   rememberCustomer: { label: "تذكّر بيانات العميل لطلبه التالي", hint: "على جهازه فقط" },
   noIndex: { label: "أخفِ المتجر من محركات البحث", hint: "لا تفعّله إلا لسبب واضح" },

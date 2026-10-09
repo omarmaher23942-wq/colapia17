@@ -1,4 +1,5 @@
 import "server-only";
+import { EXIT_OFFER } from "@/lib/exit-offer";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -777,7 +778,10 @@ export async function assemble(
       lowStockAlert: { enabled: feat("lowStockAlert", true), threshold: 5 },
       socialProofToasts: { enabled: feat("socialProofToasts", true), minOrdersToShow: 5, lookbackHours: 72 },
       liveViewers: false,
-      exitIntentOffer: { enabled: false, title: "", text: "", showOncePerDays: 3 },
+      exitIntentOffer: feat("exitIntentDiscount", false)
+        ? { enabled: true, title: EXIT_OFFER.title, text: EXIT_OFFER.text, couponCode: EXIT_OFFER.code, showOncePerDays: 3 }
+        : { enabled: false, title: "", text: "", showOncePerDays: 3 },
+      whatsappButton: feat("whatsappDirectChat", true),
       productTrustRow: [],
       deliveryEstimate: true,
       recommendations: {
