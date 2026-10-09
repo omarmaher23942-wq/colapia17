@@ -12,6 +12,8 @@ import { arCount, fmtNum, NOUN } from "@/lib/format";
 import { governorateName } from "@/lib/egypt";
 import { cn } from "@/lib/utils";
 import { collectNote, shippingLabelText, type MessageOrder } from "@/lib/order-messages";
+import { reviewToken } from "@/lib/order-access";
+import { storeUrl } from "@/lib/utils";
 import {
   orderStatusLabel,
   orderStatusTone,
@@ -99,6 +101,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     paymentStatus: o.paymentStatus,
     courierName: o.courierName,
     trackingNumber: o.trackingNumber,
+    reviewUrl: o.status === "delivered" ? storeUrl(store.subdomain, `/review?o=${encodeURIComponent(o.code)}&t=${reviewToken(store.id, o.id)}`) : null,
   };
   const collect = collectNote(o);
   const timeline = [...o.statusHistory].reverse();

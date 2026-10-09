@@ -137,7 +137,8 @@ export async function productReviews(storeId: string, productId: string) {
         body: reviews.body,
         imageUrls: reviews.imageUrls,
         isApproved: reviews.isApproved,
-        isVerified: reviews.isVerified,
+        // «موثّق» فقط لتقييم جاء من طلب حقيقي (التقييمات القديمة كانت موثّقة افتراضياً بلا طلب).
+        isVerified: sql<boolean>`(${reviews.isVerified} and ${reviews.orderId} is not null)`,
         createdAt: reviews.createdAt,
       })
       .from(reviews)

@@ -70,10 +70,8 @@ export default async function StoreLayout({ children, params }: Props) {
   // مسارات إدارية لها layouts خاصة (لا Header/Footer عليها).
   const isAdminRoute =
     pathname === "/admin" || pathname.startsWith("/admin/");
-  const isReviewPageRoute =
-    pathname === "/review" || pathname.startsWith("/review/");
-
-  if (isAdminRoute || isReviewPageRoute) {
+  // صفحة التقييم صارت بهوية المتجر (رأسه وتذييله) كأي صفحة فيه.
+  if (isAdminRoute) {
     return (
       <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
         {children}

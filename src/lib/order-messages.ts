@@ -17,6 +17,8 @@ export type MessageOrder = {
   paymentStatus: string;
   courierName?: string | null;
   trackingNumber?: string | null;
+  /** رابط «قيّم مشترياتك» الموقّع (للطلب المُسلَّم فقط). */
+  reviewUrl?: string | null;
 };
 
 const first = (name: string) => name.trim().split(/\s+/)[0] ?? name;
@@ -61,7 +63,7 @@ export const MESSAGE_LABEL: Record<MessageKind, string> = {
   confirm: "تأكيد الطلب والعنوان",
   preparing: "طلبك قيد التجهيز",
   shipped: "طلبك خرج للشحن",
-  delivered: "شكر بعد التسليم",
+  delivered: "شكر وطلب تقييم",
   cancelled: "بخصوص إلغاء الطلب",
   payment_rejected: "التحويل لم يصل",
   general: "رسالة عن الطلب",
@@ -83,7 +85,9 @@ export function orderMessage(kind: MessageKind, o: MessageOrder, storeName: stri
       return `${hi} طلبك ${o.code} خرج للشحن${via}.${track}${pay}`;
     }
     case "delivered":
-      return `${hi} نتمنى أن يكون طلبك ${o.code} قد أعجبك. رأيك يهمنا ويساعدنا نتحسن.`;
+      return o.reviewUrl
+        ? `${hi} نتمنى أن يكون طلبك ${o.code} قد أعجبك. رأيك يهمنا ويساعد غيرك: قيّم مشترياتك في دقيقة من هنا ${o.reviewUrl}`
+        : `${hi} نتمنى أن يكون طلبك ${o.code} قد أعجبك. رأيك يهمنا ويساعدنا نتحسن.`;
     case "cancelled":
       return `${hi} بخصوص طلبك ${o.code}: تم إلغاؤه. إن كان ذلك غير مقصود أو لديك أي سؤال فنحن هنا.`;
     case "payment_rejected":
