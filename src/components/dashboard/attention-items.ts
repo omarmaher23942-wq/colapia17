@@ -44,7 +44,7 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       title: "إيصالات تحويل للمراجعة",
       chip: arCount(c.receipts, NOUN.receipt),
       desc: "طابق المبلغ في محفظتك أو حسابك، ثم أكّد الدفع أو ارفضه.",
-      href: "/dashboard/orders?payment=under_review",
+      href: "/dashboard/orders?pay=review",
     });
   if (c.pendingReviews > 0)
     items.push({

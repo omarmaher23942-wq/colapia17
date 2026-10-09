@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseOrdersQuery } from "@/server/repos/orders-list";
 import { amountToCollect, collectNote, messageKindFor, orderMessage, shippingLabelText, type MessageOrder } from "@/lib/order-messages";
 
 const order: MessageOrder = {
@@ -60,5 +61,16 @@ describe("whatsapp templates", () => {
     expect(t).toContain("الجيزة — الدقي");
     expect(t).toContain("علامة مميزة: أمام البنك");
     expect(t).toContain("المطلوب تحصيله: 959 ج.م");
+  });
+});
+
+describe("orders list query", () => {
+  it("accepts known filters and falls back safely", () => {
+    expect(parseOrdersQuery({ status: "shipped", pay: "cod", q: "  0101 ", page: "3" })).toEqual({ status: "shipped", pay: "cod", q: "0101", page: 3 });
+    expect(parseOrdersQuery({ status: "hacked", pay: "x", page: "-5" })).toEqual({ status: "all", pay: "all", q: "", page: 1 });
+  });
+
+  it("keeps old receipt links working", () => {
+    expect(parseOrdersQuery({ payment: "under_review" }).pay).toBe("review");
   });
 });

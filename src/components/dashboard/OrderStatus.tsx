@@ -1,3 +1,0 @@
-export const STATUS_LABEL = { new: "جديد", confirmed: "مؤكد", preparing: "جاري التجهيز", shipped: "مع الشحن", delivered: "تم التوصيل", returned: "مرتجع", cancelled: "ملغي" } as const;
-const C: Record<string, string> = { new: "bg-blue-100 text-blue-800", confirmed: "bg-teal-100 text-teal-800", preparing: "bg-violet-100 text-violet-800", shipped: "bg-amber-100 text-amber-800", delivered: "bg-green-100 text-green-800", returned: "bg-edge/[0.06] text-ink-2", cancelled: "bg-red-100 text-red-800" };
-export function StatusBadge({ status }: { status: keyof typeof STATUS_LABEL }) { return <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${C[status]}`}>{STATUS_LABEL[status]}</span>; }
