@@ -19,7 +19,6 @@ import { EmptyStoreState } from "@/components/dashboard/EmptyStoreState";
 import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { HealthScore } from "@/components/dashboard/HealthScore";
-import { NewOrderNotifier } from "@/components/dashboard/NewOrderNotifier";
 import { AIInsightsPanel } from "@/components/dashboard/AIInsightsPanel";
 // ↓ التعديل: استيراد من lib/insights (server-safe) بدل client component
 import { generateInsights } from "@/lib/insights";
@@ -83,7 +82,6 @@ export default async function DashboardHomePage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
-      <NewOrderNotifier />
 
       {ai?.mode === "needs_key" ? (
         <Link

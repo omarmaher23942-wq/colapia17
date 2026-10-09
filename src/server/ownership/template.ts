@@ -31,6 +31,8 @@ const ENTRY_FILES = [
   "src/app/api/dashboard/analytics/export/route.ts",
   "src/app/api/dashboard/orders/export/route.ts",
   "src/app/api/dashboard/customers/export/route.ts",
+  "src/app/api/dashboard/attention/route.ts",
+  "src/app/api/dashboard/search/route.ts",
   "src/app/api/storefront/variants/route.ts",
   "src/app/api/storefront/my-orders/route.ts",
   "src/app/print/invoices/page.tsx",

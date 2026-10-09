@@ -6,7 +6,7 @@
 // - الـ manifest يُكمل الصورة للـ PWA على الديسكتوب.
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "next-themes";
-import { Toaster } from "sonner";
+import { AppToaster } from "@/components/AppToaster";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
@@ -50,13 +50,7 @@ export default function RootLayout({
       <body className="min-h-dvh">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
-          <Toaster
-            position="bottom-center"
-            richColors
-            dir="rtl"
-            closeButton
-            toastOptions={{ classNames: { toast: "font-body" } }}
-          />
+          <AppToaster />
         </ThemeProvider>
       </body>
     </html>

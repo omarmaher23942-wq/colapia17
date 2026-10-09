@@ -53,6 +53,10 @@
   --color-space: var(--dash-space);
   --color-space-2: var(--dash-space-2);
   --color-edge: var(--dash-edge);
+  /* حالات اللوحة الدلالية: نجاح، تنبيه، خطر (تتبدل مع الثيم، فلا تُكتب أزواج emerald/amber/rose يدوياً) */
+  --color-ok: var(--dash-ok);
+  --color-warn: var(--dash-warn);
+  --color-bad: var(--dash-bad);
 
   --animate-marquee: marquee 28s linear infinite;
   --animate-float: float 5s ease-in-out infinite;
@@ -402,6 +406,9 @@
   --dash-space-2: #ffffff;
   --dash-edge: #0d1330;
   --dash-glow: 79 99 240;
+  --dash-ok: #047857;
+  --dash-warn: #b45309;
+  --dash-bad: #be123c;
   color-scheme: light;
 }
 .dash.dark {
@@ -416,8 +423,15 @@
   --dash-space-2: #0b0f24;
   --dash-edge: #ffffff;
   --dash-glow: 111 134 255;
+  --dash-ok: #6ee7b7;
+  --dash-warn: #fcd34d;
+  --dash-bad: #fda4af;
   color-scheme: dark;
 }
+
+/* ما خلف اللوحة عند السحب الزائد على الموبايل يأخذ لون ثيمها بدل الأبيض. */
+html:has(.dash.dark) { background-color: #07091a; color-scheme: dark; }
+html:has(.dash:not(.dark)) { background-color: #f4f6fe; }
 
 /* خلفية الكون: سدم ونجوم ثابتة خلف المحتوى (طبقة واحدة، بلا أي JS). */
 .dash-cosmos { position: relative; isolation: isolate; }

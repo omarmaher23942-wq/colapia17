@@ -1,6 +1,6 @@
 // معمل التصميم: معاينة مكونات الواجهة ببيانات تجريبية بلا قاعدة بيانات. في التطوير فقط (404 في الإنتاج).
 import { notFound } from "next/navigation";
-import { RealtimeProvider } from "@/components/dashboard/RealtimeProvider";
+import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -16,15 +16,15 @@ export default async function DesignLab({ searchParams }: { searchParams: Promis
   if (view === "shell") {
     return (
       <div dir="rtl" className={`dash dash-cosmos min-h-dvh text-ink ${theme === "light" ? "" : "dark"}`}>
-        <RealtimeProvider merchantId="00000000-0000-0000-0000-000000000001" storeId={null}>
+        <DashboardPulse storeId={null} initial={{ newOrders: 3, ordersToHandle: 4, receipts: 1, pendingReviews: 2, outOfStock: 1, lowStock: 2, variantsOut: 1, abandoned: 2 }} initialAt={null}>
           <div className="flex min-h-dvh">
             <DashboardSidebar
               merchant={{ displayName: "عمر ماهر", email: "omar@example.com", avatarUrl: null }}
-              store={{ name: "متجر نوفا", subdomain: "nova", status: "trial" }}
-              badges={{ orders: 3, trialDaysLeft: 1 }}
+              store={{ id: "s1", name: "متجر نوفا", subdomain: "nova", status: "trial" }}
+              allStores={[{ id: "s1", name: "متجر نوفا", subdomain: "nova", status: "trial" }, { id: "s2", name: "بيت الشاي", subdomain: "tea", status: "frozen" }]}
             />
             <div className="flex min-w-0 flex-1 flex-col">
-              <DashboardTopbar merchantName="عمر ماهر" merchantEmail="omar@example.com" merchantAvatarUrl={null} storeStatus="trial" theme={theme === "light" ? "light" : "dark"} />
+              <DashboardTopbar merchantName="عمر ماهر" merchantEmail="omar@example.com" merchantAvatarUrl={null} storeStatus="trial" acceptingOrders theme={theme === "light" ? "light" : "dark"} />
               <main className="min-w-0 flex-1 p-4 md:p-8">
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <KpiCard title="المبيعات (30 يوماً)" value="48,250 ج" delta={18} deltaType="up" icon={Wallet} href="#" sparkline={[3, 5, 4, 7, 6, 9, 8, 12, 11, 14]} />
@@ -36,7 +36,7 @@ export default async function DesignLab({ searchParams }: { searchParams: Promis
             </div>
           </div>
           <Copilot storeName="متجر نوفا" />
-        </RealtimeProvider>
+        </DashboardPulse>
       </div>
     );
   }
