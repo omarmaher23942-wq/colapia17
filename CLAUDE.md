@@ -103,6 +103,11 @@
 - **إعداد GitHub لزر "اربط GitHub" (مرة واحدة):** github.com/settings/developers ثم New OAuth App: Homepage `https://colapia.com`، وCallback `https://colapia.com/api/ownership/github/callback`. ثم في Vercel: `GITHUB_CLIENT_ID` و`GITHUB_CLIENT_SECRET`. بدونهما يظهر خيار ZIP فقط.
 - **المزامنة عند المالك (المستودع الجديد):** العمل يُرفع إلى `main` في colapia17 (أو فرع ثم PR)، وVercel ينشر من `main`. على جهاز المالك: `git pull origin main` قبل أي أمر قاعدة بيانات، ثم `npm run db:migrate`.
 
+### المعاينة المحلية ببيانات حقيقية (Linux / الجلسات السحابية)
+- `bash scripts/dev/preview.sh dev`: Postgres محلي + كل الـ migrations + متجر تجريبي «nova» (منتجات بمتغيرات، 46 طلباً على 60 يوماً، عملاء، تقييمات، سلات متروكة، زيارات) ثم خادم التطوير على 3100. الدخول للوحة بكوكي `clp_m=dev-merchant-session-token-0000000000000000`.
+- `scripts/dev/local-services.cjs` يحاكي Neon HTTP وUpstash Redis دون أي تعديل في كود التطبيق، والبيئة معزولة (`env -i` + `scripts/dev/local.env` بقيم وهمية) فلا تصل لأي مفتاح حقيقي في بيئة الجلسة.
+- لقطات: `bash scripts/dev/preview.sh shot /dashboard/orders orders both dark --full` (375px وسطح مكتب، ويطبع التمرير الأفقي وأخطاء المتصفح). `seed` يعيد البيانات من الصفر، و`run <cmd>` يشغّل أي أمر داخل البيئة المعزولة.
+
 ### المعاينة المحلية (للتطوير)
 - `.env.local` في الـ worktree بقيم وهمية فقط، و`node_modules` رابط junction للمستودع الأصلي.
 - `.claude/launch.json` (مستثنى من git): `web` يشغّل المنصة على 3100، و`store-template` يشغّل مشروع التاجر المولّد (`next start`) على 3200.
