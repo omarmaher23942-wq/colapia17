@@ -42,8 +42,9 @@ async function changeStatus(s: Ctx, orderId: string, status: Status, note?: stri
 
   const closing = CLOSED.has(status) && !CLOSED.has(o.status);
   const reopening = !CLOSED.has(status) && CLOSED.has(o.status);
+  // الطلب التجريبي لم يخصم مخزوناً عند إنشائه، فلا يعيده ولا يخصمه عند تغيير حالته.
   const items =
-    closing || reopening
+    (closing || reopening) && !o.isTest
       ? await db
           .select({ productId: orderItems.productId, variantId: orderItems.variantId, quantity: orderItems.quantity })
           .from(orderItems)

@@ -42,6 +42,7 @@ import {
   emitCartAbandoned,
 } from "@/server/realtime/emitters";
 import { syncVariantTotals } from "@/server/inventory";
+import { getMerchantSession } from "@/server/auth";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
 
 class CheckoutError extends Error {
@@ -451,6 +452,11 @@ export async function placeOrderAction(
     const now = new Date();
     // الطلب يُحفظ بجهاز العميل: يجده في «طلباتي» على نفس الجهاز دون حساب ولا رقم طلب.
     const deviceId = await ensureDeviceId(store.id);
+    // طلب صاحب المتجر من متجره (تجربة الشراء) = طلب تجريبي: يظهر في لوحته بشارة «تجريبي»، ولا يخصم المخزون ولا
+    // يُحسب في المبيعات ولا في عدد طلبات العميل والمنتج ولا في استخدام كود الخصم.
+    const owner = await getMerchantSession().catch(() => null);
+    const isTest = Boolean(owner?.stores.some((x) => x.id === store.id));
+    const counted = isTest ? 0 : 1;
     const customerRef =
       sql`(select ${customers.id} from ${customers} where ${customers.storeId} = ${store.id} and ${customers.phone} = ${input.phone})`;
 
@@ -462,7 +468,8 @@ export async function placeOrderAction(
       code = newOrderCode();
 
       try {
-        const variantProducts = [...new Set(lines.filter((l) => l.v && l.p.trackStock && l.v.stock !== null).map((l) => l.p.id))];
+        const stockLines = isTest ? [] : lines.filter((l) => l.p.trackStock);
+        const variantProducts = [...new Set(stockLines.filter((l) => l.v && l.v.stock !== null).map((l) => l.p.id))];
         await db.batch([
           db
             .insert(customers)
@@ -475,8 +482,8 @@ export async function placeOrderAction(
               governorate: input.governorate,
               city: input.city,
               address: input.address,
-              ordersCount: 1,
-              totalSpentPiasters: total,
+              ordersCount: counted,
+              totalSpentPiasters: total * counted,
               lastOrderAt: now,
             })
             .onConflictDoUpdate({
@@ -488,8 +495,8 @@ export async function placeOrderAction(
                 governorate: input.governorate,
                 city: input.city,
                 altPhone: input.altPhone,
-                ordersCount: sql`${customers.ordersCount} + 1`,
-                totalSpentPiasters: sql`${customers.totalSpentPiasters} + ${total}`,
+                ordersCount: sql`${customers.ordersCount} + ${counted}`,
+                totalSpentPiasters: sql`${customers.totalSpentPiasters} + ${total * counted}`,
                 lastOrderAt: now,
                 updatedAt: now,
               },
@@ -523,6 +530,7 @@ export async function placeOrderAction(
             statusHistory: [{ status: "new", at: now.toISOString() }],
             visitorId: deviceId,
             idempotencyKey: input.idempotencyKey,
+            isTest,
           }),
 
           db.insert(orderItems).values(
@@ -540,7 +548,7 @@ export async function placeOrderAction(
             }))
           ),
 
-          ...lines.map((l) =>
+          ...(isTest ? [] : lines).map((l) =>
             db
               .update(products)
               .set({
@@ -552,8 +560,8 @@ export async function placeOrderAction(
               .where(eq(products.id, l.p.id))
           ),
 
-          ...lines
-            .filter((l) => l.v && l.p.trackStock && l.v.stock !== null)
+          ...stockLines
+            .filter((l) => l.v && l.v.stock !== null)
             .map((l) =>
               db
                 .update(productVariants)
@@ -566,7 +574,7 @@ export async function placeOrderAction(
           // مخزون المنتج ذي التركيبات = مجموع تركيباته بعد الخصم (وإلا يبقى رقمه القديم ويخفي النفاد).
           ...(variantProducts.length ? [syncVariantTotals(db, store.id, variantProducts)] : []),
 
-          ...(discountId
+          ...(discountId && !isTest
             ? [
                 db
                   .update(discounts)

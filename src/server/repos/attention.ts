@@ -59,13 +59,13 @@ export async function attentionCounts(storeId: string): Promise<AttentionCounts>
          and o.status not in ('cancelled','returned')) as receipts,
       (select count(*) from reviews r where r.store_id = ${storeId} and r.is_approved = false) as pending_reviews,
       (select count(*) from products p where p.store_id = ${storeId} and p.deleted_at is null and p.status = 'active'
-         and p.track_stock = true and coalesce(p.stock, 0) <= 0) as out_of_stock,
+         and p.track_stock = true and p.stock <= 0) as out_of_stock,
       (select count(*) from products p where p.store_id = ${storeId} and p.deleted_at is null and p.status = 'active'
          and p.track_stock = true and p.stock between 1 and ${LOW_STOCK_MAX}) as low_stock,
       (select count(distinct v.product_id) from product_variants v
          join products p on p.id = v.product_id and p.store_id = ${storeId}
          where v.store_id = ${storeId} and p.deleted_at is null and p.status = 'active' and p.track_stock = true
-           and coalesce(p.stock, 0) > 0 and v.is_available = true and coalesce(v.stock, 0) <= 0) as variants_out,
+           and (p.stock is null or p.stock > 0) and v.is_available = true and v.stock <= 0) as variants_out,
       (select count(*) from abandoned_carts c where c.store_id = ${storeId} and c.phone is not null
          and c.recovered_order_id is null and c.whatsapp_contacted_at is null
          and c.last_seen_at >= now() - interval '7 days') as abandoned

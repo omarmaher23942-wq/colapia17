@@ -258,7 +258,8 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
       optionValues: v.optionValues,
       pricePiasters: v.price && v.price !== d.price ? v.price : null,
       compareAtPiasters: v.compareAt && v.compareAt !== d.compareAt ? v.compareAt : null,
-      stock: v.stock ?? 0,
+      // بلا تتبع: التركيبة متاحة دائماً (null)، فلا تتحول «نفد» إن شُغّل التتبع لاحقاً قبل كتابة الكميات.
+      stock: d.trackStock ? (v.stock ?? 0) : null,
       sku: v.sku?.trim() || null,
       imageUrl: v.imageUrl ?? null,
       imageUrls: v.imageUrls,

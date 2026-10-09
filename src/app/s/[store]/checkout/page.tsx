@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { Moon, CreditCard } from "lucide-react";
+import { Moon, CreditCard, FlaskConical } from "lucide-react";
 import { and, eq } from "drizzle-orm";
 import { requireStore, getBlueprint } from "@/lib/tenant";
 import { getTenantDb } from "@/db/tenant";
 import { shippingZones } from "@/db/schema";
 import { CheckoutForm } from "@/components/storefront/CheckoutForm";
+import { getMerchantSession } from "@/server/auth";
 
 const SW = 1.75;
 
@@ -27,6 +28,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
   const bp = await getBlueprint(store.id);
   const anyPayment = bp.payments.cod.enabled || bp.payments.vodafoneCash.enabled || bp.payments.instapay.enabled;
   const db = await getTenantDb(store.id);
+  // صاحب المتجر يجرّب الشراء: طلبه يُسجَّل تجريبياً (لا يخصم المخزون ولا يدخل المبيعات)، ونقول له ذلك صراحة.
+  const isOwner = Boolean((await getMerchantSession().catch(() => null))?.stores.some((x) => x.id === store.id));
   const zones = await db
     .select({ code: shippingZones.governorate, fee: shippingZones.feePiasters, etaMin: shippingZones.etaMinDays, etaMax: shippingZones.etaMaxDays, cod: shippingZones.codExtraPiasters })
     .from(shippingZones)
@@ -35,6 +38,15 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
   return (
     <div className="container-x max-w-5xl py-8">
       <h1 className="mb-6 text-3xl">إتمام الطلب</h1>
+      {isOwner ? (
+        <p role="note" className="surface mb-6 flex items-start gap-3 p-4 text-sm leading-6">
+          <FlaskConical strokeWidth={SW} className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+          <span>
+            <b>أنت صاحب المتجر:</b> طلبك هنا تجريبي. يظهر في لوحتك بشارة «تجريبي» لتجرّب رحلة العميل كاملة، ولا يخصم من المخزون
+            ولا يُحسب في مبيعاتك.
+          </span>
+        </p>
+      ) : null}
       {!store.acceptingOrders ? (
         <Notice icon={Moon} text={store.vacationMessage ?? "المتجر في إجازة قصيرة وسنعود قريبًا"} />
       ) : !anyPayment ? (

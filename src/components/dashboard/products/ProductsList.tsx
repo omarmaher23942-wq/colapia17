@@ -22,8 +22,9 @@ const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
 };
 
 function StockCell({ p }: { p: ProductRow }) {
-  if (!p.trackStock) return <span className="text-[12px] text-ink-3">متاح دائماً</span>;
-  const n = p.stock ?? 0;
+  // بلا تتبع، أو تركيبات بعضها بلا كمية (null): متاح دائماً.
+  if (!p.trackStock || p.stock === null) return <span className="text-[12px] text-ink-3">متاح دائماً</span>;
+  const n = p.stock;
   return (
     <span className="flex flex-col">
       <span className={cn("text-[12.5px] font-black tabular-nums", n <= 0 ? "text-bad" : n <= 3 ? "text-warn" : "text-ink")}>

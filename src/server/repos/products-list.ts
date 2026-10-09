@@ -42,12 +42,12 @@ export function parseProductsQuery(sp: Record<string, string | undefined>): Prod
 }
 
 const likeSafe = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`);
-const variantsOutSql = sql`exists (select 1 from product_variants v where v.product_id = ${products.id} and v.is_available = true and coalesce(v.stock, 0) <= 0)`;
+const variantsOutSql = sql`exists (select 1 from product_variants v where v.product_id = ${products.id} and v.is_available = true and v.stock <= 0)`;
 
 function stockCond(stock: ProductsQuery["stock"]): SQL | undefined {
-  if (stock === "out") return and(eq(products.trackStock, true), sql`coalesce(${products.stock}, 0) <= 0`);
+  if (stock === "out") return and(eq(products.trackStock, true), sql`${products.stock} <= 0`);
   if (stock === "low") return and(eq(products.trackStock, true), sql`${products.stock} between 1 and ${LOW_STOCK_MAX}`);
-  if (stock === "variants_out") return and(eq(products.trackStock, true), sql`coalesce(${products.stock}, 0) > 0`, variantsOutSql);
+  if (stock === "variants_out") return and(eq(products.trackStock, true), sql`(${products.stock} is null or ${products.stock} > 0)`, variantsOutSql);
   return undefined;
 }
 
@@ -127,7 +127,7 @@ export async function listProducts(storeId: string, query: ProductsQuery) {
         hasDescription: sql<boolean>`not (${noDescriptionSql})`,
         // products.id صراحة: لا نعتمد على أن الـ join يجعل Drizzle يكتب اسم الجدول.
         variants: sql<number>`(select count(*) from product_variants v where v.product_id = products.id)`.mapWith(Number),
-        variantsOut: sql<number>`(select count(*) from product_variants v where v.product_id = products.id and v.is_available = true and coalesce(v.stock, 0) <= 0)`.mapWith(Number),
+        variantsOut: sql<number>`(select count(*) from product_variants v where v.product_id = products.id and v.is_available = true and v.stock <= 0)`.mapWith(Number),
       })
       .from(products)
       .leftJoin(categories, and(eq(categories.id, products.categoryId), eq(categories.storeId, storeId)))
@@ -141,9 +141,9 @@ export async function listProducts(storeId: string, query: ProductsQuery) {
         active: sql<number>`count(*) filter (where ${products.status} = 'active')`.mapWith(Number),
         draft: sql<number>`count(*) filter (where ${products.status} = 'draft')`.mapWith(Number),
         hidden: sql<number>`count(*) filter (where ${products.status} = 'hidden')`.mapWith(Number),
-        out: sql<number>`count(*) filter (where ${products.trackStock} and coalesce(${products.stock}, 0) <= 0)`.mapWith(Number),
+        out: sql<number>`count(*) filter (where ${products.trackStock} and ${products.stock} <= 0)`.mapWith(Number),
         low: sql<number>`count(*) filter (where ${products.trackStock} and ${products.stock} between 1 and ${LOW_STOCK_MAX})`.mapWith(Number),
-        variantsOut: sql<number>`count(*) filter (where ${products.trackStock} and coalesce(${products.stock}, 0) > 0 and ${variantsOutSql})`.mapWith(Number),
+        variantsOut: sql<number>`count(*) filter (where ${products.trackStock} and (${products.stock} is null or ${products.stock} > 0) and ${variantsOutSql})`.mapWith(Number),
         noDescription: sql<number>`count(*) filter (where ${noDescriptionSql})`.mapWith(Number),
         noImage: sql<number>`count(*) filter (where ${noImageSql})`.mapWith(Number),
         noCost: sql<number>`count(*) filter (where ${products.costPiasters} is null)`.mapWith(Number),

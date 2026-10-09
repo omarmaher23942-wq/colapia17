@@ -92,7 +92,7 @@ export async function dashboardSearch(storeId: string, raw: string): Promise<Sea
       kind: "product" as const,
       id: p.id,
       title: p.name,
-      sub: p.trackStock ? (p.stock && p.stock > 0 ? `المخزون: ${p.stock}` : "نفد المخزون") : "بلا تتبع مخزون",
+      sub: !p.trackStock || p.stock === null ? "متاح دائماً" : p.stock > 0 ? `المخزون: ${p.stock}` : "نفد المخزون",
       pricePiasters: p.price,
       image: p.images?.[0]?.url ?? null,
       status: p.status,
