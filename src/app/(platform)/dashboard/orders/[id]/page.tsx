@@ -223,7 +223,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <CopyButton text={shippingLabelText(msgOrder, store.name)} label="انسخ بيانات الشحن" />
             </header>
             <dl className="grid gap-3 text-[13px] sm:grid-cols-2">
-              <Field label="الاسم">{o.customerName}</Field>
+              <Field label="الاسم">
+                {o.customerId ? (
+                  <Link href={`/dashboard/customers/${o.customerId}`} className="font-bold text-ink hover:text-nova-2" title="ملف العميل وطلباته">
+                    {o.customerName}
+                  </Link>
+                ) : (
+                  o.customerName
+                )}
+              </Field>
               <Field label="الموبايل">
                 <span className="flex flex-wrap items-center gap-2">
                   <a

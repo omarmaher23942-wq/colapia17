@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
-import { discounts, shippingZones, customers } from "@/db/schema";
+import { discounts, shippingZones } from "@/db/schema";
 import { getMerchantStoreOrNull } from "@/server/auth";
 import { GOVERNORATES } from "@/lib/egypt";
 
@@ -130,26 +130,4 @@ export async function saveShippingAction(input: unknown): Promise<Result> {
   else await clear;
   revalidatePath("/dashboard/shipping");
   return {};
-}
-
-// ─── العملاء ────────────────────────────────────────────────────────────────
-
-const customerPatchSchema = z
-  .object({
-    notes: z.string().trim().max(1000).optional(),
-    isBlocked: z.boolean().optional(),
-  });
-
-export async function updateCustomerAction(id: string, patch: unknown): Promise<void> {
-  const s = await getMerchantStoreOrNull();
-  if (!s || !z.string().uuid().safeParse(id).success) return;
-  const db = await getTenantDb(s.storeId);
-  const parsed = customerPatchSchema.safeParse(patch);
-  if (!parsed.success) return;
-
-  await db
-    .update(customers)
-    .set({ ...parsed.data, updatedAt: new Date() })
-    .where(and(eq(customers.id, id), eq(customers.storeId, s.storeId)));
-  revalidatePath("/dashboard/customers");
 }
