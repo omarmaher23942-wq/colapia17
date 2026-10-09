@@ -57,7 +57,11 @@ const cspHeader = [
     // Vercel Analytics
     "https://va.vercel-scripts.com",
     "https://vitals.vercel-insights.com",
-  ].join(" "),
+    // أداة المعاينة المحلية فقط (محاكي الرفع *.ut-ingest.local في scripts/dev/local.env)؛ لا أثر له في الإنتاج.
+    process.env.NODE_ENV !== "production" ? (process.env.DEV_CONNECT_SRC ?? "").split(",").join(" ") : "",
+  ]
+    .filter(Boolean)
+    .join(" "),
 
   "frame-src 'self' https://*.colapia.com https://www.google.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://player.vimeo.com",
 

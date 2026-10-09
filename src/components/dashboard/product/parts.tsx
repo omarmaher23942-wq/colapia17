@@ -73,12 +73,12 @@ export function Field({
   );
 }
 
-export function Switch({ checked, onChange, label, hint, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean }) {
+export function Switch({ checked, onChange, label, hint, disabled, labelId }: { checked: boolean; onChange: (v: boolean) => void; label: string; hint?: string; disabled?: boolean; labelId?: string }) {
   const id = useId();
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <label htmlFor={id} className="text-[12.5px] font-bold text-ink">
+        <label id={labelId} htmlFor={id} className="text-[12.5px] font-bold text-ink">
           {label}
         </label>
         {hint ? <p className="mt-0.5 text-[11.5px] leading-5 text-ink-3">{hint}</p> : null}

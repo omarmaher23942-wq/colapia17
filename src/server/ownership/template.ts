@@ -212,6 +212,9 @@ export function storeFontsFile(bp: StoreBlueprint): string {
     "",
     `export const fontVariables = [${list.map((f) => f.exp).join(", ")}].map((f) => f.variable).join(" ");`,
     "",
+    "/** الخطوط المحمّلة في متجرك: محرر المحتوى يعرضها وحدها (خط غير محمّل لا يظهر في المتجر). */",
+    `export const AVAILABLE_FONTS = ${JSON.stringify([...wanted])} as const;`,
+    "",
   ].join("\n");
 }
 

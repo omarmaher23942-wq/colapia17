@@ -181,6 +181,8 @@ export async function renderSection(
       return <Block.PromoBanner key={s.id} s={s} />;
 
     case "countdown_offer":
+      // عرض انتهى موعده (أو بلا موعد صالح) لا يُعرض: عدّاد أصفار إلحاح كاذب.
+      if (!(Date.parse(s.endsAt) > Date.now())) return null;
       return <Block.CountdownOffer key={s.id} s={s} />;
 
     case "trust_badges": {

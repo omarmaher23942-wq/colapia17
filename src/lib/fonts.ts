@@ -11,3 +11,6 @@ export const fontReadex = Readex_Pro({ subsets: ["arabic", "latin"], variable: "
 export const fontKufi = Noto_Kufi_Arabic({ subsets: ["arabic"], variable: "--font-noto-kufi", display: "swap", preload: false });
 
 export const fontVariables = [fontCairo, fontTajawal, fontIbm, fontAlmarai, fontChanga, fontMessiri, fontReadex, fontKufi].map((f) => f.variable).join(" ");
+
+/** الخطوط المحمّلة (كلها في المنصة؛ ونسخة التاجر تولّد قائمة خطوط متجره فقط): محرر المحتوى يعرضها وحدها. */
+export const AVAILABLE_FONTS = ["cairo", "tajawal", "ibm_plex_arabic", "almarai", "changa", "el_messiri", "readex_pro", "noto_kufi"] as const;

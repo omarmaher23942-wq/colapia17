@@ -46,13 +46,11 @@ import {
   blueprintSchema,
   sectionSchema,
   brandSchema,
-  themeSchema,
   headerSchema,
   footerSchema,
   conversionSchema,
   seoSchema,
   productPageSchema,
-  policyPageSchema,
   type StoreBlueprint,
   type Section,
 } from "@/blueprint/schema";
@@ -63,6 +61,9 @@ import { diffBlueprint } from "@/lib/blueprint-patch";
 import { arCount, NOUN } from "@/lib/format";
 import { storeUrl, cn } from "@/lib/utils";
 import { DashDialog } from "./ui/DashDialog";
+import { ADDABLE_SECTIONS, SECTION_FIELDS } from "@/editor/editable";
+import { ThemePanel } from "./content/ThemePanel";
+import { PagesPanel } from "./content/PagesPanel";
 
 const SW = 1.75;
 const MAX_SECTIONS = 24;
@@ -140,18 +141,52 @@ export function sectionSummary(s: Section): string {
   return "";
 }
 
+/** لماذا لا يظهر القسم في المتجر الآن (إن كان لا يظهر)، بلغة التاجر. */
+export function sectionNote(s: Section, ctx: FormCtx): string | null {
+  if (!SECTION_FIELDS[s.type]) return "هذا النوع لا يظهر في متجرك. احذفه أو استبدله بقسم آخر.";
+  switch (s.type) {
+    case "announcement":
+      return s.messages.some((m) => m.text.trim()) ? null : "لا يظهر: أضف رسالة واحدة على الأقل";
+    case "categories":
+      return ctx.categories.length < 2 ? "لا يظهر قبل وجود قسمين في متجرك" : null;
+    case "trust_badges":
+      return s.items.length < 2 ? "لا يظهر بأقل من شارتين" : null;
+    case "faq":
+      return s.items.some((q) => q.q.trim() && q.a.trim()) ? null : "لا يظهر: أضف سؤالاً بإجابته";
+    case "testimonials":
+      return s.includeVerifiedReviews || s.items.some((it) => it.screenshot?.url) ? null : "لا يظهر: أضف لقطة أو فعّل تقييمات المشترين";
+    case "countdown_offer":
+      return Date.parse(s.endsAt) > Date.now() ? null : "لا يظهر: موعد انتهاء العرض مضى، اختر موعداً قادماً";
+    case "bundle":
+      return s.productSlugs.length < 2 ? "لا يظهر: اختر منتجين على الأقل" : null;
+    case "video":
+      return /youtube\.com\/watch|youtu\.be\/|vimeo\.com\//.test(s.videoUrl ?? "") ? null : "لا يظهر: ضع رابط فيديو من YouTube أو Vimeo";
+    case "product_grid":
+      if (s.source.type === "manual" && !s.source.slugs.length) return "لا يظهر: اختر المنتجات";
+      if (s.source.type === "category" && !s.source.slug) return "لا يظهر: اختر القسم";
+      return null;
+    case "hero":
+      return s.headline.trim() ? null : "اكتب العنوان الرئيسي";
+    default:
+      return null;
+  }
+}
+
 export function ContentEditor({
   initial,
   storeId,
   subdomain,
   categories,
   products,
+  fonts,
 }: {
   initial: StoreBlueprint;
   storeId: string;
   subdomain: string;
   categories: { slug: string; name: string }[];
   products: { slug: string; name: string }[];
+  /** الخطوط المحمّلة في هذا المتجر (lib/fonts.ts). */
+  fonts: readonly string[];
 }) {
   const { draft, base, setDraft, undo, redo, reset, discard, restored, canUndo, canRedo, dirty } = useDraft(initial, storeId);
   const [item, setItem] = useState<Item>({ kind: "sections" });
@@ -259,6 +294,7 @@ export function ContentEditor({
 
   const panel = <K extends keyof StoreBlueprint>(key: K, schema: unknown) => (
     <SchemaForm
+      path={key}
       schema={schema as z.ZodTypeAny}
       value={draft[key]}
       onChange={(nv) => setDraft((d) => ({ ...d, [key]: nv as StoreBlueprint[K] }), true)}
@@ -377,7 +413,7 @@ export function ContentEditor({
                   <h2 className="text-sm font-black text-ink">أقسام الصفحة الرئيسية</h2>
                   <p className="mt-0.5 text-[11.5px] text-ink-3">
                     {arCount(draft.home.length, NOUN.category)}
-                    {hiddenCount ? `، منها ${arCount(hiddenCount, NOUN.category)} مخفي` : ""}. اضغط القسم لتعديل نصوصه وصوره.
+                    {hiddenCount ? `، المخفي منها: ${arCount(hiddenCount, NOUN.category)}` : ""}. اضغط القسم لتعديل نصوصه وصوره.
                   </p>
                 </div>
                 <button
@@ -395,7 +431,8 @@ export function ContentEditor({
               <ol className="space-y-2">
                 {draft.home.map((s, i) => {
                   const label = SECTION_META[s.type]?.label ?? s.type;
-                  const summary = sectionSummary(s);
+                  const note = sectionNote(s, ctx);
+                  const summary = note ?? sectionSummary(s);
                   return (
                     <li key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-edge/[0.07] bg-edge/[0.02] p-2.5 sm:flex-nowrap">
                       <button type="button" onClick={() => open({ kind: "section", id: s.id })} className="flex min-h-10 min-w-[11rem] flex-1 items-center gap-2.5 text-start">
@@ -405,7 +442,7 @@ export function ContentEditor({
                             <span className="truncate">{label}</span>
                             {!s.enabled ? <span className="shrink-0 rounded-full bg-edge/[0.08] px-2 py-0.5 text-[10.5px] font-bold text-ink-3">مخفي</span> : null}
                           </span>
-                          {summary ? <span className="block truncate text-[11.5px] text-ink-3">{summary}</span> : null}
+                          {summary ? <span className={cn("block truncate text-[11.5px]", note ? "font-bold text-warn" : "text-ink-3")}>{summary}</span> : null}
                         </span>
                       </button>
                       <div className="flex shrink-0 items-center gap-0.5 ms-auto">
@@ -442,12 +479,23 @@ export function ContentEditor({
                 <h2 className="text-sm font-black text-ink">{SECTION_META[currentSection.type]?.label ?? currentSection.type}</h2>
                 <p className="mt-0.5 text-[11.5px] text-ink-3">{SECTION_META[currentSection.type]?.description}</p>
               </div>
-              <SchemaForm
-                schema={currentSectionSchema}
-                value={currentSection}
-                onChange={(nv) => setDraft((d) => ({ ...d, home: d.home.map((s) => (s.id === currentSection.id ? (nv as Section) : s)) }), true)}
-                ctx={ctx}
-              />
+              {sectionNote(currentSection, ctx) ? (
+                <p className="flex items-start gap-1.5 rounded-xl border border-warn/25 bg-warn/[0.07] p-3 text-[12px] font-bold leading-6 text-ink-2">{sectionNote(currentSection, ctx)}</p>
+              ) : null}
+              {SECTION_FIELDS[currentSection.type] ? (
+                <SchemaForm
+                  path={`section:${currentSection.type}`}
+                  schema={currentSectionSchema}
+                  value={currentSection}
+                  onChange={(nv) => setDraft((d) => ({ ...d, home: d.home.map((s) => (s.id === currentSection.id ? (nv as Section) : s)) }), true)}
+                  ctx={ctx}
+                />
+              ) : (
+                <button type="button" onClick={() => removeSection(currentSection.id)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-bad/20 px-3.5 text-[12px] font-bold text-bad hover:bg-bad/10">
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  احذف القسم
+                </button>
+              )}
             </div>
           ) : null}
           {item.kind === "section" && !currentSection ? (
@@ -460,7 +508,11 @@ export function ContentEditor({
           ) : null}
 
           {item.kind === "brand" ? <Panel title="العلامة التجارية" hint="اسم المتجر ووصفه وشعاره">{panel("brand", brandSchema)}</Panel> : null}
-          {item.kind === "theme" ? <Panel title="الألوان والخطوط" hint="لوحة الألوان والخطوط والحواف. أنظمة التصميم الكاملة من «تصميم المتجر»">{panel("theme", themeSchema)}</Panel> : null}
+          {item.kind === "theme" ? (
+            <Panel title="الألوان والخطوط" hint="شكل البطاقات والأزرار والحركة من «تصميم المتجر»">
+              <ThemePanel value={draft.theme} fonts={fonts} onChange={(t) => setDraft((d) => ({ ...d, theme: t }), true)} />
+            </Panel>
+          ) : null}
           {item.kind === "layout" ? (
             <div className="space-y-8">
               <Panel title="الهيدر" hint="الشريط العلوي وروابط التنقل">{panel("header", headerSchema)}</Panel>
@@ -470,14 +522,8 @@ export function ContentEditor({
           {item.kind === "conversion" ? <Panel title="محرك المبيعات" hint="العروض والعدّادات والتنبيهات التي تساعد الزائر على الشراء">{panel("conversion", conversionSchema)}</Panel> : null}
           {item.kind === "productPage" ? <Panel title="صفحة المنتج" hint="ما يظهر في صفحة كل منتج وترتيبه">{panel("productPage", productPageSchema)}</Panel> : null}
           {item.kind === "pages" ? (
-            <Panel title="صفحات المتجر" hint="من نحن والصفحات النصية الأخرى. شروط الاستبدال والشحن نفسها من «السياسات والضمان»">
-              <SchemaForm
-                schema={policyPageSchema.array() as unknown as z.ZodTypeAny}
-                value={draft.pages}
-                onChange={(nv) => setDraft((d) => ({ ...d, pages: nv as StoreBlueprint["pages"] }), true)}
-                ctx={ctx}
-                name="pages"
-              />
+            <Panel title="صفحات المتجر" hint="مدة الاستبدال وشروط الشحن نفسها تُضبط من «السياسات والضمان»، وتكتب صفحاتها تلقائياً">
+              <PagesPanel bp={draft} storeBase={storeUrl(subdomain)} onChange={(pages) => setDraft((d) => ({ ...d, pages }), true)} />
             </Panel>
           ) : null}
           {item.kind === "seo" ? <Panel title="الظهور في البحث" hint="العنوان والوصف اللذان يظهران في Google وعند مشاركة رابط المتجر">{panel("seo", seoSchema)}</Panel> : null}
@@ -496,7 +542,7 @@ export function ContentEditor({
 
       <DashDialog open={addOpen} onClose={() => setAddOpen(false)} title="أضف قسماً" description="يُضاف في آخر الصفحة الرئيسية، ثم تحرّكه لمكانه." className="md:max-w-3xl">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-          {(Object.keys(SECTION_META) as Section["type"][]).map((t) => (
+          {ADDABLE_SECTIONS.map((t) => (
             <button key={t} type="button" onClick={() => addSection(t)} className="rounded-xl border border-edge/10 bg-edge/[0.02] p-3 text-start transition-colors hover:border-nova/50 hover:bg-edge/[0.05]">
               <p className="text-[12.5px] font-black text-ink">{SECTION_META[t].label}</p>
               <p className="mt-0.5 line-clamp-2 text-[11.5px] leading-5 text-ink-3">{SECTION_META[t].description}</p>
