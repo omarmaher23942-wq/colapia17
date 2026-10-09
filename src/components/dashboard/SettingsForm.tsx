@@ -57,9 +57,10 @@ import { toast } from "sonner";
 import { cn, storeHost } from "@/lib/utils";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import {
-  saveBlueprintAction,
+  saveBlueprintChangesAction,
   setStoreOpsAction,
 } from "@/server/actions/blueprint";
+import { applyChanges, diffBlueprint, stableJson } from "@/lib/blueprint-patch";
 import {
   updateMerchantProfileAction,
   merchantLogoutAction,
@@ -135,8 +136,9 @@ export function SettingsForm({
     showcaseOptIn: store?.showcaseOptIn ?? false,
   });
 
-  // Baseline للحفظ لإظهار dirty state.
-  const [baseline] = useState(() => ({
+  // آخر نسخة محفوظة: منها «dirty» وفرق الحفظ، وتتحدث بعد كل حفظ ناجح (وإلا بقيت الصفحة «معدّلة» وأعاد الحفظ التلقائي
+  // إرسال التغييرات نفسها كل 30 ثانية، فتتكدس نسخ لا داعي لها في سجل المتجر).
+  const [baseline, setBaseline] = useState(() => ({
     bp: initialBp,
     ops: {
       acceptingOrders: store?.acceptingOrders ?? true,
@@ -150,8 +152,8 @@ export function SettingsForm({
 
   // dirty = أي تغيير على bp أو ops عن الـ baseline.
   const dirty = useMemo(() => {
-    if (JSON.stringify(bp) !== JSON.stringify(baseline.bp)) return true;
-    if (JSON.stringify(ops) !== JSON.stringify(baseline.ops)) return true;
+    if (stableJson(bp) !== stableJson(baseline.bp)) return true;
+    if (stableJson(ops) !== stableJson(baseline.ops)) return true;
     return false;
   }, [bp, ops, baseline]);
 
@@ -254,16 +256,22 @@ export function SettingsForm({
   // ── حفظ الإعدادات (bp + ops) بشكل متزامن.
   const commitSave = useCallback(async () => {
     if (!bp) return;
+    // ما تغيّر فقط فوق النسخة الحالية في الخادم (لا يمسح ما حُفظ من صفحات أخرى بعد فتح هذه الصفحة).
+    const changes = baseline.bp ? diffBlueprint(baseline.bp as unknown as Record<string, unknown>, bp as unknown as Record<string, unknown>) : [];
     const [a] = await Promise.all([
-      saveBlueprintAction(bp, "تحديث إعدادات المتجر"),
+      changes.length ? saveBlueprintChangesAction(changes, "تحديث إعدادات المتجر") : Promise.resolve({ ok: true as const }),
       setStoreOpsAction(ops),
     ]);
-    if (a && "error" in a && a.error) {
+    if (a && !a.ok) {
       toast.error(a.error);
       throw new Error(a.error);
     }
+    const saved = a && "data" in a && a.data ? a.data.blueprint : bp;
+    setBaseline({ bp: saved, ops });
+    // النسخة المحفوظة (وفيها ما حُفظ من صفحات أخرى) + أي تعديل كتبه التاجر أثناء الحفظ.
+    setBp((cur) => (cur && saved ? (applyChanges(saved as unknown as Record<string, unknown>, diffBlueprint(bp as unknown as Record<string, unknown>, cur as unknown as Record<string, unknown>)) as unknown as StoreBlueprint) : saved));
     toast.success("تم حفظ إعدادات المتجر");
-  }, [bp, ops]);
+  }, [bp, ops, baseline.bp]);
 
   const onSaveClick = useCallback(() => {
     if (pendingSave || !dirty) return;

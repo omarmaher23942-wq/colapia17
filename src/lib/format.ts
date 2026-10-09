@@ -60,4 +60,6 @@ export const NOUN = {
   code: { one: "كود واحد", two: "كودان", few: "أكواد", many: "كوداً", other: "كود" },
   category: { one: "قسم واحد", two: "قسمان", few: "أقسام", many: "قسماً", other: "قسم" },
   newCategory: { one: "قسم جديد", two: "قسمان جديدان", few: "أقسام جديدة", many: "قسماً جديداً", other: "قسم جديد" },
+  char: { one: "حرف واحد", two: "حرفان", few: "أحرف", many: "حرفاً", other: "حرف" },
+  item: { one: "عنصر واحد", two: "عنصران", few: "عناصر", many: "عنصراً", other: "عنصر" },
 } satisfies Record<string, ArNoun>;

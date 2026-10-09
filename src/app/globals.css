@@ -360,7 +360,8 @@
 
 @media (max-width: 380px) {
   .container-x { padding-inline: 0.875rem; }
-  h1, .h1-responsive { font-size: 1.875rem; line-height: 1.2; }
+  /* اللوحة مستثناة: عناوينها تحدد مقاسها بنفسها (هذه القاعدة خارج الطبقات فكانت تكبّر «محرر المحتوى» إلى 30px). */
+  h1:not(.dash *), .h1-responsive { font-size: 1.875rem; line-height: 1.2; }
 }
 
 @media (max-width: 640px) {
