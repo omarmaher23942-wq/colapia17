@@ -70,6 +70,7 @@ export function OnboardingWizard(props: Props) {
   const setStore = (p: Partial<StoreValue>) => patch("store", { ...store, ...p });
   const setProducts = (next: OnboardingProduct[]) => patch("products", { ...productsStep, products: next });
   const setSections = (next: OnboardingSection[]) => patch("products", { ...productsStep, sections: next });
+  const setInventory = (inventory: "track" | "always") => patch("products", { ...productsStep, inventory });
   const setLaunch = (p: Partial<LaunchValue>) => patch("launch", normalizeLaunch({ ...launch, ...p }));
 
   // مسودة قديمة أو جديدة: احفظ قيم الإطلاق المكتملة مرة واحدة حتى يُرسل كائن صالح دائماً.
@@ -77,13 +78,13 @@ export function OnboardingWizard(props: Props) {
     if (step !== "identity" && !data.launch) patch("launch", launch);
   }, [step, data.launch, launch, patch]);
 
-  const errorsFor = (s: StepId) => validateStep(s, store, products, launch);
+  const errorsFor = (s: StepId) => validateStep(s, store, products, launch, productsStep.inventory);
   const errorCount = Object.keys(errors).length;
 
   // بعد ظهور الأخطاء نعيد التحقق مع كل تعديل: تختفي الرسالة فور تصحيح الحقل، ولا تبقى أخطاء قديمة معلّقة.
   useEffect(() => {
     if (!errorCount) return;
-    const next = validateStep(step, store, products, launch);
+    const next = validateStep(step, store, products, launch, productsStep.inventory);
     if (JSON.stringify(next) !== JSON.stringify(errors)) setErrors(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [store, products, launch, step]);
@@ -210,6 +211,8 @@ export function OnboardingWizard(props: Props) {
                   products={products}
                   setProducts={setProducts}
                   setSections={setSections}
+                  inventory={productsStep.inventory}
+                  setInventory={setInventory}
                   errors={errors}
                   onOpenLibrary={() => setLibraryOpen(true)}
                 />

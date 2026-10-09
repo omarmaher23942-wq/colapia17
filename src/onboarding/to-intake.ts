@@ -30,7 +30,7 @@ const drop = <T extends Record<string, unknown>>(o: T): T =>
     Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length))
   ) as T;
 
-function mapProduct(p: OnboardingProduct, directives: OwnerDirective[]): IntakeProduct {
+function mapProduct(p: OnboardingProduct, directives: OwnerDirective[], tracking: boolean): IntakeProduct {
   const byId = new Map(p.images.map((i) => [i.id, i.url]));
   const primary = byId.get(p.primaryImageId) ?? p.images[0]?.url ?? "";
   const gallery = p.images.map((i) => i.url).filter((u) => u !== primary);
@@ -45,7 +45,8 @@ function mapProduct(p: OnboardingProduct, directives: OwnerDirective[]): IntakeP
     ? p.variants.map((v) => ({
         optionValues: p.options.map((o) => clean(o.values.find((x) => x.id === v.key[o.id])?.label) ?? ""),
         pricePiasters: toPiasters(v.priceEgp),
-        stock: v.stock,
+        // بلا تتبع: لا كمية (متاحة دائماً). بالتتبع: ما يراه التاجر في الاستمارة هو ما يُحفظ (الفارغ يظهر له 0).
+        stock: tracking ? (v.stock ?? 0) : null,
         available: v.available,
         imageUrls: [],
       }))
@@ -61,8 +62,8 @@ function mapProduct(p: OnboardingProduct, directives: OwnerDirective[]): IntakeP
     category: clean(p.categoryName),
     imageUrl: primary,
     imageUrls: gallery.length ? gallery : undefined,
-    stock: variants.length || p.stock === null ? undefined : (p.stock ?? 20),
-    unlimitedStock: !variants.length && p.stock === null ? true : undefined,
+    stock: !tracking || variants.length || p.stock === null ? undefined : (p.stock ?? 0),
+    unlimitedStock: !variants.length && (!tracking || p.stock === null) ? true : undefined,
     bestSeller: p.bestSeller || undefined,
     sourceId: p.id,
     aiDraft: p.aiDraft,
@@ -81,7 +82,9 @@ export function submissionToIntake(s: OnboardingSubmission, directives: OwnerDir
   const prList: OnboardingProduct[] = Array.isArray(rawProducts) ? rawProducts : (rawProducts?.products ?? []);
   const feat = ln.features;
 
-  const products = prList.map((p) => mapProduct(p, directives));
+  // اختيار التاجر الصريح في خطوة المنتجات؛ المسودات القديمة بلا اختيار = تتبع (سلوكها السابق).
+  const tracking = (Array.isArray(rawProducts) ? undefined : rawProducts?.inventory) !== "always";
+  const products = prList.map((p) => mapProduct(p, directives, tracking));
   const spotlight = prList.find((p) => p.bestSeller) ?? prList[0];
 
   const capturedRequests: string[] = [];
@@ -165,6 +168,7 @@ export function submissionToIntake(s: OnboardingSubmission, directives: OwnerDir
     facebookPageUrl: clean(st.facebookPageUrl),
     tiktokHandle: clean(st.tiktokHandle),
     ownerDirectives: storeDirectives,
+    inventoryTracking: tracking,
   }) as Record<string, unknown>;
 
   const returnDays = ln.returnDays ?? 14;

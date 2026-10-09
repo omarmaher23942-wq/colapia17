@@ -59,7 +59,8 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
   ]);
   const featuredBadge = copyOf(bp?.copy, "bestSellerBadge");
 
-  if (!p) return <ProductEditor key="new" initial={EMPTY_PRODUCT} categories={cats} subdomain={store.subdomain} featuredBadge={featuredBadge} />;
+  // المنتج الجديد يتبع طريقة المخزون التي اختارها التاجر لمتجره.
+  if (!p) return <ProductEditor key="new" initial={{ ...EMPTY_PRODUCT, trackStock: bp?.inventory.tracking ?? true }} categories={cats} subdomain={store.subdomain} featuredBadge={featuredBadge} />;
 
   const initial: EditorProduct = {
     id: p.id,

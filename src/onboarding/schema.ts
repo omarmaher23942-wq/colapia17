@@ -301,10 +301,16 @@ export const productsStepSchema = z
   .object({
     sections: z.array(sectionSchema).max(20).default([]),
     products: z.array(productSchema).max(50).default([]),
+    /** المخزون: «track» تتبع الكميات، «always» كل المنتجات متاحة دائماً. سؤال صريح بلا اختيار مسبق. */
+    inventory: z.enum(["track", "always"]).optional(),
   })
   .refine((v) => v.products.length >= 1, {
     message: "أضف منتجاً واحداً على الأقل لمتجرك",
     path: ["products"],
+  })
+  .refine((v) => Boolean(v.inventory), {
+    message: "اختر طريقة المخزون: نتتبع الكميات، أم كل المنتجات متاحة دائماً",
+    path: ["inventory"],
   });
 
 export type ProductsStepValue = z.output<typeof productsStepSchema>;

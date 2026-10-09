@@ -35,6 +35,7 @@ export default async function DashboardSettingsPage({ searchParams }: { searchPa
         status: store.status,
         url,
         qr: await QRCode.toDataURL(url, { width: 640, margin: 2, color: { dark: "#07091a", light: "#ffffff" } }),
+        inventoryTracking: bp.data.inventory.tracking,
       };
       settings = draftFrom(bp.data, store);
     }

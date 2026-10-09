@@ -1,7 +1,7 @@
 "use client";
 
 // SettingsPage — إعدادات المتجر والحساب في أربعة أقسام (التبويب في الرابط ?tab= ليُفتح مباشرة من أي مكان):
-//  - «المتجر»: رابطه وكود QR، واستقبال الطلبات (وضع الإجازة).
+//  - «المتجر»: رابطه وكود QR، واستقبال الطلبات (وضع الإجازة)، وطريقة المخزون (تُحفظ فوراً، خارج المسودة).
 //  - «الدفع»: الوسائل التي يراها العميل في صفحة الدفع بأرقامها وأسماء أصحابها وتعليمات التحويل.
 //  - «التواصل»: واتساب والهاتف والبريد وإنستاجرام وفيسبوك كما تظهر في المتجر.
 //  - «حسابك»: الاسم والموبايل والصورة، وكلمة المرور (نسخة التاجر)، والخروج، وحذف متجر التجربة (المنصة).
@@ -19,6 +19,7 @@ import { ConfirmDialog } from "../ui/DashDialog";
 import { requestPulse } from "../DashboardPulse";
 import { ContactSection, PaymentsSection, ShareCard, VacationSection } from "./StoreSections";
 import { AccountTab, type AccountInfo } from "./AccountTab";
+import { InventoryMode } from "../products/InventoryMode";
 
 export type SettingsTab = "store" | "payments" | "contact" | "account";
 const TABS: { key: SettingsTab; label: string; icon: typeof UserIcon }[] = [
@@ -42,7 +43,7 @@ const TAB_OF: Record<SettingsField, SettingsTab> = {
   vacationMessage: "store",
 };
 
-export type StoreInfo = { name: string; subdomain: string; status: string; url: string; qr: string };
+export type StoreInfo = { name: string; subdomain: string; status: string; url: string; qr: string; inventoryTracking: boolean };
 
 export function SettingsPage({ initialTab, store, settings, account }: { initialTab: SettingsTab; store: StoreInfo | null; settings: SettingsDraft | null; account: AccountInfo }) {
   const router = useRouter();
@@ -179,6 +180,13 @@ export function SettingsPage({ initialTab, store, settings, account }: { initial
             <div className="space-y-5">
               <ShareCard store={store} />
               <VacationSection d={d} patch={patch} errors={errors} />
+              <section aria-labelledby="inv-title" className="dash-card space-y-3 p-4 sm:p-5">
+                <div>
+                  <h2 id="inv-title" className="text-[15px] font-black text-ink">المخزون</h2>
+                  <p className="mt-0.5 text-[12px] text-ink-3">يُحفظ فور اختياره ويطبَّق على كل المنتجات.</p>
+                </div>
+                <InventoryMode tracking={store.inventoryTracking} />
+              </section>
             </div>
           ) : null}
           {tab === "payments" ? <PaymentsSection d={d} patch={patch} errors={errors} /> : null}

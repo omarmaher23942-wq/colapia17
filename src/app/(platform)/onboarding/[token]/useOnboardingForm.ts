@@ -58,6 +58,7 @@ export function normalizeProductsStep(raw: unknown): ProductsStepValue {
     return {
       sections: Array.isArray(o.sections) ? (o.sections as never) : [],
       products: Array.isArray(o.products) ? (o.products as never) : [],
+      inventory: o.inventory === "track" || o.inventory === "always" ? o.inventory : undefined,
     };
   }
   return { sections: [], products: [] };

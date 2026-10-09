@@ -47,11 +47,14 @@ function rebuild(options: Option[], prev: Variant[]): Variant[] {
 export function VariantEditor({
   product,
   industry,
+  tracking = true,
   onChange,
   error,
 }: {
   product: OnboardingProduct;
   industry?: IndustryId;
+  /** بلا تتبع مخزون لا يظهر عمود الكمية (كل تركيبة متاحة دائماً). */
+  tracking?: boolean;
   onChange: (p: Partial<OnboardingProduct>) => void;
   error?: string;
 }) {
@@ -107,10 +110,10 @@ export function VariantEditor({
               const set = (patch: Partial<Variant>) =>
                 onChange({ variants: product.variants.map((x, j) => (j === vi ? { ...x, ...patch } : x)) });
               return (
-                <li key={keyOf(v.key)} className={cn("grid grid-cols-[1fr_96px_76px_auto] items-center gap-2 px-3 py-2", !v.available && "opacity-50")}>
+                <li key={keyOf(v.key)} className={cn("grid items-center gap-2 px-3 py-2", tracking ? "grid-cols-[1fr_96px_76px_auto]" : "grid-cols-[1fr_96px_auto]", !v.available && "opacity-50")}>
                   <span className="truncate text-[12.5px] font-bold text-ink">{label}</span>
                   <MoneyInput value={v.priceEgp ?? undefined} onChange={(n) => set({ priceEgp: n || null })} placeholder={String(product.priceEgp || "السعر")} ariaLabel={`سعر ${label}`} />
-                  <NumberInput value={v.stock ?? 0} onChange={(n) => set({ stock: n })} max={100000} ariaLabel={`مخزون ${label}`} suffix="قطعة" />
+                  {tracking ? <NumberInput value={v.stock ?? 0} onChange={(n) => set({ stock: n })} max={100000} ariaLabel={`مخزون ${label}`} suffix="قطعة" /> : null}
                   <button
                     type="button"
                     role="switch"

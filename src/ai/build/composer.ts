@@ -62,6 +62,8 @@ export type IntakePolicies = {
 };
 
 export type IntakeBrief = {
+  /** اختيار التاجر لطريقة المخزون (false = كل المنتجات متاحة دائماً). */
+  inventoryTracking?: boolean;
   storeName?: string;
   ownerName?: string;
   industry?: string;
@@ -835,6 +837,7 @@ export async function assemble(
     },
     customCss: design?.customCss ?? "",
     pages: input.pages,
+    inventory: { tracking: brief.inventoryTracking !== false },
     seo: {
       title: (copy?.seo.title || input.plan.seoStrategy.metaTitle || name).slice(0, 70),
       description: (copy?.seo.description || input.plan.seoStrategy.metaDescription || "").slice(0, 160) || undefined,

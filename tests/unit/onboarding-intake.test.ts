@@ -5,6 +5,7 @@ import { submissionToIntake } from "@/onboarding/to-intake";
 const base = {
   store: { storeName: "بيت الأناقة", desiredSubdomain: "beit", industry: "fashion", phone: "01012345678", instagramHandle: "@beit" },
   products: {
+    inventory: "track",
     sections: [{ id: "s1", name: "حريمي" }],
     products: [
       { id: "a", name: "فستان", priceEgp: 1450, categoryName: "حريمي", images: [{ id: "i1", url: "https://x.ufs.sh/f/a" }], stock: null },
@@ -71,5 +72,20 @@ describe("onboarding → intake", () => {
     expect(tee?.variants?.[1]).toMatchObject({ pricePiasters: 32000, available: false, optionValues: ["L"] });
     expect(intake.brief.instagramHandle).toBe("beit");
     expect((intake.brief.features as Record<string, boolean>).stickyAddToCart).toBe(false);
+  });
+
+  it("المخزون: التتبع يحفظ ما كتبه التاجر، و«متاح دائماً» لا يحفظ أي كمية", () => {
+    const [, tee] = intake.products;
+    expect(tee?.variants?.map((v) => v.stock)).toEqual([4, 0]);
+    expect(intake.brief.inventoryTracking).toBe(true);
+
+    const always = submissionToIntake(onboardingSubmissionSchema.parse({ ...base, products: { ...base.products, inventory: "always" } }));
+    expect(always.products.every((p) => p.unlimitedStock || p.variants?.every((v) => v.stock === null))).toBe(true);
+    expect(always.brief.inventoryTracking).toBe(false);
+  });
+
+  it("لا يُرسل التسجيل دون اختيار صريح لطريقة المخزون", () => {
+    const { inventory: _drop, ...rest } = base.products;
+    expect(onboardingSubmissionSchema.safeParse({ ...base, products: rest }).success).toBe(false);
   });
 });

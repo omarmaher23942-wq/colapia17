@@ -10,6 +10,8 @@ import { ProductsFilters } from "@/components/dashboard/products/ProductsFilters
 import { ImportProducts } from "@/components/dashboard/products/ImportProducts";
 import { AiFillDescriptions } from "@/components/dashboard/products/AiFillDescriptions";
 import { PendingImages } from "@/components/dashboard/products/ImageMover";
+import { InventoryMode } from "@/components/dashboard/products/InventoryMode";
+import { getBlueprintOrNull } from "@/lib/tenant";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
 import { NO_STORE_HREF } from "@/lib/edition";
 import { cn } from "@/lib/utils";
@@ -48,7 +50,7 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
   const store = session.store;
   const query = parseProductsQuery(await searchParams);
-  const data = await listProducts(store.id, query);
+  const [data, bp] = await Promise.all([listProducts(store.id, query), getBlueprintOrNull(store.id)]);
   const { counts } = data;
 
   const narrowed = Boolean(query.q || query.category); // يغيّر الأعداد نفسها
@@ -94,6 +96,7 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
       ) : (
         <>
           {!narrowed ? <PendingImages count={counts.externalImages} /> : null}
+          {!narrowed ? <InventoryMode tracking={bp?.inventory.tracking ?? true} compact /> : null}
           <nav aria-label="حالة المنتج" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
             {STATUS_TABS.map((t) => {
               const active = query.status === t.key;

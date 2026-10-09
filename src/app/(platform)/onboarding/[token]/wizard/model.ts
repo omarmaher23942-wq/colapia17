@@ -238,7 +238,7 @@ export function blankProduct(images: OnboardingAsset[], categoryName?: string): 
 
 export type StepId = "identity" | "products" | "shipping" | "policies" | "look";
 
-export function validateStep(step: StepId, store: StoreValue, products: OnboardingProduct[], launch: LaunchValue): Record<string, string> {
+export function validateStep(step: StepId, store: StoreValue, products: OnboardingProduct[], launch: LaunchValue, inventory?: "track" | "always"): Record<string, string> {
   const e: Record<string, string> = {};
   if (step === "identity") {
     if (!store.storeName?.trim()) e.storeName = "اكتب اسم متجرك";
@@ -250,6 +250,7 @@ export function validateStep(step: StepId, store: StoreValue, products: Onboardi
   }
   if (step === "products") {
     if (!products.length) e.products = "أضف منتجاً واحداً على الأقل";
+    if (!inventory) e.inventory = "اختر طريقة المخزون: نتتبع الكميات، أم كل المنتجات متاحة دائماً";
     products.forEach((p, i) => {
       // كل رسالة تسمّي المنتج، فيعرف التاجر أين المشكلة حتى لو كانت قائمته طويلة.
       const label = p.name?.trim() ? `«${p.name.trim().slice(0, 30)}»` : `المنتج رقم ${i + 1}`;

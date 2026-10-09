@@ -706,6 +706,8 @@ export const blueprintSchema = z.object({
   customCss: z.string().max(6000).default(""),
   pages: z.array(policyPageSchema).default([]),
   seo: seoSchema.default({}),
+  /** المخزون على مستوى المتجر: تتبع الكميات (ينفد المنتج عند صفر) أو كل المنتجات متاحة دائماً. يختاره التاجر صراحة. */
+  inventory: z.object({ tracking: z.boolean().default(true) }).default({}),
 });
 
 export type StoreBlueprint = z.infer<typeof blueprintSchema>;

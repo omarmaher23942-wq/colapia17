@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ImagePlus, Library, ArrowLeft, Plus, Trash2, Package, ChevronDown, Copy, Star, FolderTree, X, Sparkles, Infinity as InfinityIcon } from "lucide-react";
+import { ImagePlus, Library, ArrowLeft, Plus, Trash2, Package, ChevronDown, Copy, Star, FolderTree, X, Sparkles, Infinity as InfinityIcon, Boxes, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { IndustryId, OnboardingAsset, OnboardingProduct, OnboardingSection } from "@/onboarding/schema";
 import { ImageUploader } from "../components/ImageUploader";
@@ -29,6 +29,8 @@ export function StepProducts({
   products,
   setProducts,
   setSections,
+  inventory,
+  setInventory,
   errors,
   onOpenLibrary,
 }: {
@@ -38,6 +40,8 @@ export function StepProducts({
   products: OnboardingProduct[];
   setProducts: (p: OnboardingProduct[]) => void;
   setSections: (s: OnboardingSection[]) => void;
+  inventory?: "track" | "always";
+  setInventory: (v: "track" | "always") => void;
   errors: Record<string, string>;
   onOpenLibrary: () => void;
 }) {
@@ -104,6 +108,8 @@ export function StepProducts({
         }} />
       </Section>
 
+      <InventoryChoice value={inventory} onChange={setInventory} error={errors.inventory} />
+
       <ErrorText className="text-[13px]">{errors.products}</ErrorText>
 
       {products.length ? (
@@ -135,6 +141,7 @@ export function StepProducts({
                     product={p}
                     index={i}
                     sections={sectionNames}
+                    tracking={inventory !== "always"}
                     open={openId === p.id}
                     onToggle={() => setOpenId(openId === p.id ? null : p.id)}
                     onChange={(patch) => update(p.id, patch)}
@@ -208,6 +215,7 @@ function ProductCard({
   product: p,
   index: i,
   sections,
+  tracking,
   open,
   onToggle,
   onChange,
@@ -220,6 +228,7 @@ function ProductCard({
   product: OnboardingProduct;
   index: number;
   sections: string[];
+  tracking: boolean;
   open: boolean;
   onToggle: () => void;
   onChange: (p: Partial<OnboardingProduct>) => void;
@@ -280,7 +289,7 @@ function ProductCard({
         <div className="flex flex-wrap items-center gap-2 border-t border-edge/[0.06] px-3 py-2 text-[11.5px] text-ink-3">
           {p.categoryName ? <span className="rounded-md bg-edge/[0.05] px-2 py-0.5 font-bold">{p.categoryName}</span> : null}
           {p.options.length ? <span className="rounded-md bg-edge/[0.05] px-2 py-0.5 font-bold">{p.variants.length} تركيبة</span> : null}
-          <span>{unlimited ? "مخزون غير محدود" : `المخزون: ${p.stock}`}</span>
+          {tracking && !p.options.length ? <span>{unlimited ? "متاح دائماً" : `المخزون: ${p.stock} قطعة`}</span> : null}
           <button type="button" onClick={onToggle} className="ms-auto font-black text-nova-2">
             المقاسات والألوان والتفاصيل
           </button>
@@ -313,7 +322,8 @@ function ProductCard({
                 ))}
               </select>
             </Field>
-            <Field label="المخزون" hint={p.options.length ? "يُحدد لكل تركيبة بالأسفل" : undefined}>
+            {tracking ? (
+            <Field label="المخزون" hint={p.options.length ? "يُحدد لكل تركيبة بالأسفل" : "يقل مع كل طلب، ويظهر «نفد» عند الصفر"}>
               <div className="flex items-center gap-2">
                 <NumberInput
                   value={unlimited ? 0 : (p.stock ?? 0)}
@@ -329,10 +339,11 @@ function ProductCard({
                   onClick={() => onChange({ stock: unlimited ? 20 : null })}
                   className={cn("inline-flex h-10 items-center gap-1.5 rounded-xl border px-3 text-[12px] font-black transition", unlimited ? "border-nova/50 bg-nova/15 text-ink" : "border-edge/10 text-ink-3")}
                 >
-                  <InfinityIcon className="size-4" /> غير محدود
+                  <InfinityIcon className="size-4" /> متاح دائماً
                 </button>
               </div>
             </Field>
+            ) : null}
           </div>
 
           <Field label="الوصف" hint="اختياري: اكتب أي تفاصيل مهمة، ونصيغها نحن بأسلوب مقنع">
@@ -345,8 +356,8 @@ function ProductCard({
             />
           </Field>
 
-          <Field label="المقاسات والألوان" hint="لكل تركيبة سعر ومخزون مستقلان" error={errors[`p${i}options`]}>
-            <VariantEditor product={p} industry={industry} onChange={onChange} />
+          <Field label="المقاسات والألوان" hint={tracking ? "لكل تركيبة سعر وكمية مستقلان" : "لكل تركيبة سعر مستقل"} error={errors[`p${i}options`]}>
+            <VariantEditor product={p} industry={industry} tracking={tracking} onChange={onChange} />
           </Field>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -371,5 +382,44 @@ function ProductCard({
         </div>
       )}
     </div>
+  );
+}
+
+/** سؤال صريح بلا اختيار مسبق: هل نتتبع كميات المخزون، أم كل المنتجات متاحة دائماً؟ يُغيَّر لاحقاً من لوحة التحكم. */
+function InventoryChoice({ value, onChange, error }: { value?: "track" | "always"; onChange: (v: "track" | "always") => void; error?: string }) {
+  const options = [
+    { key: "always", title: "كل المنتجات متاحة دائماً", text: "لا نعدّ الكميات، ولا يظهر «نفد» أبداً. مناسب لمن يصنع بالطلب أو عنده بضاعة وفيرة." },
+    { key: "track", title: "نتتبع الكميات", text: "تكتب كمية كل منتج (ومقاس ولون)، فتقل مع كل طلب ويظهر «نفد» عند الصفر." },
+  ] as const;
+  return (
+    <Section icon={Boxes} title="المخزون في متجرك" sub="اختر ما يناسبك، ويمكنك تغييره في أي وقت من لوحة التحكم.">
+      <div role="radiogroup" aria-label="طريقة المخزون" aria-invalid={error ? true : undefined} className="grid gap-2 sm:grid-cols-2">
+        {options.map((o) => {
+          const on = value === o.key;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => onChange(o.key)}
+              className={cn(
+                "flex items-start gap-3 rounded-2xl border p-4 text-start transition",
+                on ? "border-nova/60 bg-nova/10" : error ? "border-rose-400/50" : "border-edge/10 hover:border-edge/25 hover:bg-edge/[0.03]"
+              )}
+            >
+              <span className={cn("mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border", on ? "border-nova bg-nova text-white" : "border-edge/30")} aria-hidden="true">
+                {on ? <Check className="size-3.5" /> : null}
+              </span>
+              <span>
+                <span className="block text-[14px] font-black text-ink">{o.title}</span>
+                <span className="mt-1 block text-[12.5px] leading-6 text-ink-2">{o.text}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <ErrorText>{error}</ErrorText>
+    </Section>
   );
 }

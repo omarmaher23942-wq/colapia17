@@ -586,5 +586,6 @@ export function defaultBlueprint(input: {
     // ولا تُحفظ هنا إلا الصفحات التي يكتبها التاجر بنفسه.
     pages: [],
     seo: { noIndex: false },
+    inventory: { tracking: true },
   };
 }

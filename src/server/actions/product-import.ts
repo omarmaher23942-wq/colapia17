@@ -10,7 +10,7 @@ import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
 import { getMerchantStoreOrNull } from "@/server/auth";
 import { buildSearchText, normalizeArabic, slugify } from "@/lib/arabic";
-import { invalidateStoreCache } from "@/lib/tenant";
+import { getBlueprintOrNull, invalidateStoreCache } from "@/lib/tenant";
 import { parseCsv } from "@/lib/csv-parse";
 import { IMPORT_MAX_ROWS, planImport } from "@/lib/product-import";
 import { isHostedImage } from "@/lib/media-hosts";
@@ -47,6 +47,8 @@ export async function importProductsAction(raw: unknown): Promise<ImportResult> 
   if (!good.length) return { ok: false, error: "لا يوجد صف صالح للاستيراد" };
 
   const db = await getTenantDb(s.storeId);
+  // «كل المنتجات متاحة دائماً» في المتجر: الكميات في الملف تُحفظ بلا تتبع (تعود إن شُغّل التتبع).
+  const tracking = (await getBlueprintOrNull(s.storeId))?.inventory.tracking ?? true;
   const [existingSlugs, existingCats] = await Promise.all([
     db.select({ slug: products.slug }).from(products).where(eq(products.storeId, s.storeId)),
     db.select({ id: categories.id, name: categories.name, slug: categories.slug }).from(categories).where(eq(categories.storeId, s.storeId)),
@@ -87,7 +89,7 @@ export async function importProductsAction(raw: unknown): Promise<ImportResult> 
     compareAtPiasters: r.compareAtPiasters,
     costPiasters: r.costPiasters,
     sku: r.sku,
-    trackStock: r.stock !== null,
+    trackStock: tracking && r.stock !== null,
     stock: r.stock,
     images: r.images.map((url) => ({ url, alt: r.name })),
     status: parsed.data.publish ? ("active" as const) : ("draft" as const),
