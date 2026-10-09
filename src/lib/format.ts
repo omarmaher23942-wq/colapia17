@@ -55,5 +55,6 @@ export const NOUN = {
   visitor: { one: "زائر واحد", two: "زائران", few: "زوار", many: "زائراً", other: "زائر" },
   row: { one: "صف واحد", two: "صفان", few: "صفوف", many: "صفاً", other: "صف" },
   image: { one: "صورة واحدة", two: "صورتان", few: "صور", many: "صورة", other: "صورة" },
+  category: { one: "قسم واحد", two: "قسمان", few: "أقسام", many: "قسماً", other: "قسم" },
   newCategory: { one: "قسم جديد", two: "قسمان جديدان", few: "أقسام جديدة", many: "قسماً جديداً", other: "قسم جديد" },
 } satisfies Record<string, ArNoun>;

@@ -57,7 +57,7 @@ const ALL: NavSection[] = [
     title: "الكتالوج",
     items: [
       { label: "المنتجات", href: "/dashboard/products", icon: Package, badgeKey: "products", hint: "المنتجات والأسعار والمخزون", keywords: ["products", "مخزون", "اصناف"] },
-      { label: "الفئات", href: "/dashboard/categories", icon: FolderTree, hint: "أقسام المتجر وترتيبها", keywords: ["categories", "اقسام", "تصنيفات"] },
+      { label: "الأقسام", href: "/dashboard/categories", icon: FolderTree, hint: "أقسام المتجر وترتيبها", keywords: ["categories", "فئات", "تصنيفات"] },
       { label: "أكواد الخصم", href: "/dashboard/discounts", icon: TicketPercent, hint: "كوبونات وعروض", keywords: ["discounts", "كوبون", "خصم", "عروض"] },
       { label: "الشحن", href: "/dashboard/shipping", icon: Truck, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
       { label: "السياسات والضمان", href: "/dashboard/policies", icon: ShieldCheck, hint: "الاستبدال والاسترجاع والمعاينة", keywords: ["policies", "استرجاع", "استبدال", "ضمان"] },

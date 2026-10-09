@@ -503,7 +503,7 @@ export function ProductEditor({
 
           <Section title="التنظيم">
             <div data-field="categoryId">
-              <Field label="القسم" error={errors.categoryId} hint={categories.length ? undefined : "لا أقسام بعد. أنشئها من صفحة «الفئات»."}>
+              <Field label="القسم" error={errors.categoryId} hint={categories.length ? undefined : "لا أقسام بعد. أنشئها من صفحة «الأقسام»."}>
                 {(p) => (
                   <select {...p} className={cn(inputCls, "bg-space-2")} value={f.categoryId ?? ""} onChange={(e) => up("categoryId", e.target.value || null)}>
                     <option value="">بلا قسم</option>

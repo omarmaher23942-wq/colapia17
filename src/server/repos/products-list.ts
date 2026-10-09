@@ -125,8 +125,9 @@ export async function listProducts(storeId: string, query: ProductsQuery) {
         category: categories.name,
         orderCount: products.orderCount,
         hasDescription: sql<boolean>`not (${noDescriptionSql})`,
-        variants: sql<number>`(select count(*) from product_variants v where v.product_id = ${products.id})`.mapWith(Number),
-        variantsOut: sql<number>`(select count(*) from product_variants v where v.product_id = ${products.id} and v.is_available = true and coalesce(v.stock, 0) <= 0)`.mapWith(Number),
+        // products.id صراحة: لا نعتمد على أن الـ join يجعل Drizzle يكتب اسم الجدول.
+        variants: sql<number>`(select count(*) from product_variants v where v.product_id = products.id)`.mapWith(Number),
+        variantsOut: sql<number>`(select count(*) from product_variants v where v.product_id = products.id and v.is_available = true and coalesce(v.stock, 0) <= 0)`.mapWith(Number),
       })
       .from(products)
       .leftJoin(categories, and(eq(categories.id, products.categoryId), eq(categories.storeId, storeId)))

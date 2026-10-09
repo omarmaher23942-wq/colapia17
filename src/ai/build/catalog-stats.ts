@@ -27,7 +27,8 @@ export async function catalogStats(storeId: string): Promise<CatalogStats> {
         id: categories.id,
         slug: categories.slug,
         name: categories.name,
-        count: sql<number>`(select count(*)::int from ${products} p where p.category_id = ${categories.id} and p.deleted_at is null and p.status = 'active')`,
+        // مرجع صريح للجدول الخارجي: في select من جدول واحد يكتب Drizzle العمود بلا اسم جدوله فيُقرأ كـ p.id.
+        count: sql<number>`(select count(*)::int from ${products} p where p.category_id = categories.id and p.deleted_at is null and p.status = 'active')`,
       })
       .from(categories)
       .where(and(eq(categories.storeId, storeId), eq(categories.isVisible, true))),
