@@ -5,126 +5,12 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  Bell,
-  CheckCircle2,
-  ChevronLeft,
-  Layers,
-  PackageMinus,
-  PackageX,
-  Receipt,
-  ShoppingBag,
-  ShoppingCart,
-  Star,
-  X,
-  type LucideIcon,
-} from "lucide-react";
+import { Bell, CheckCircle2, ChevronLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEgp } from "@/lib/money";
 import { governorateName } from "@/lib/egypt";
-import { arCount, NOUN } from "@/lib/format";
-import type { AttentionCounts } from "@/server/repos/attention";
 import { useDashboardPulse } from "./DashboardPulse";
-
-type Tone = "nova" | "warn" | "bad" | "ok";
-
-type Item = {
-  key: string;
-  icon: LucideIcon;
-  tone: Tone;
-  title: string;
-  chip: string;
-  desc: string;
-  href: string;
-};
-
-const TONE: Record<Tone, string> = {
-  nova: "bg-nova/12 text-nova-2",
-  warn: "bg-warn/12 text-warn",
-  bad: "bg-bad/12 text-bad",
-  ok: "bg-ok/12 text-ok",
-};
-
-/** بنود الانتباه بالترتيب: المال والعملاء أولاً، ثم المخزون، ثم فرص البيع. */
-export function attentionItems(c: AttentionCounts): Item[] {
-  const items: Item[] = [];
-  if (c.newOrders > 0)
-    items.push({
-      key: "new",
-      icon: ShoppingCart,
-      tone: "nova",
-      title: "طلبات بانتظار التأكيد",
-      chip: arCount(c.newOrders, NOUN.order),
-      desc: "أكّد الطلب ليطمئن العميل أن طلبه وصل ويبدأ التجهيز.",
-      href: "/dashboard/orders?status=new",
-    });
-  if (c.receipts > 0)
-    items.push({
-      key: "receipts",
-      icon: Receipt,
-      tone: "warn",
-      title: "إيصالات تحويل للمراجعة",
-      chip: arCount(c.receipts, NOUN.receipt),
-      desc: "طابق المبلغ في محفظتك أو حسابك، ثم أكّد الدفع أو ارفضه.",
-      href: "/dashboard/orders?payment=under_review",
-    });
-  if (c.pendingReviews > 0)
-    items.push({
-      key: "reviews",
-      icon: Star,
-      tone: "nova",
-      title: "تقييمات بانتظار اعتمادك",
-      chip: arCount(c.pendingReviews, NOUN.review),
-      desc: "التقييم لا يظهر في متجرك قبل أن تعتمده.",
-      href: "/dashboard/reviews",
-    });
-  if (c.outOfStock > 0)
-    items.push({
-      key: "out",
-      icon: PackageX,
-      tone: "bad",
-      title: "نفد المخزون",
-      chip: arCount(c.outOfStock, NOUN.product),
-      desc: "يراها العملاء «نفدت الكمية». حدّث الكمية أو أخفِ المنتج.",
-      href: "/dashboard/products?status=low_stock",
-    });
-  if (c.variantsOut > 0)
-    items.push({
-      key: "variants",
-      icon: Layers,
-      tone: "warn",
-      title: "نفد مقاس أو لون",
-      chip: arCount(c.variantsOut, NOUN.product),
-      desc: "تركيبة واحدة على الأقل نفدت بينما بقية المنتج متاحة.",
-      href: "/dashboard/products",
-    });
-  if (c.lowStock > 0)
-    items.push({
-      key: "low",
-      icon: PackageMinus,
-      tone: "warn",
-      title: "مخزون منخفض",
-      chip: arCount(c.lowStock, NOUN.product),
-      desc: "بقيت 3 قطع أو أقل. جهّز الكمية قبل أن تنفد.",
-      href: "/dashboard/products?status=low_stock",
-    });
-  if (c.abandoned > 0)
-    items.push({
-      key: "carts",
-      icon: ShoppingBag,
-      tone: "ok",
-      title: "سلات متروكة يمكن استرجاعها",
-      chip: arCount(c.abandoned, NOUN.cart),
-      desc: "عملاء كتبوا رقمهم ولم يكملوا الطلب خلال 7 أيام. راسلهم على واتساب.",
-      href: "/dashboard#abandoned",
-    });
-  return items;
-}
-
-/** ما يُحسب في رقم الجرس: ما ينتظر قرار التاجر الآن (لا المخزون ولا الفرص). */
-export function urgentCount(c: AttentionCounts): number {
-  return c.ordersToHandle + c.pendingReviews;
-}
+import { ATTENTION_TONE, attentionItems, urgentCount } from "./attention-items";
 
 function timeAgo(iso: string): string {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
@@ -239,13 +125,13 @@ export function AttentionCenter() {
                         onClick={() => setOpen(false)}
                         className="group flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-edge/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova"
                       >
-                        <span className={cn("mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl", TONE[it.tone])}>
+                        <span className={cn("mt-0.5 grid size-9 shrink-0 place-items-center rounded-xl", ATTENTION_TONE[it.tone])}>
                           <it.icon className="size-4" strokeWidth={2.1} aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className="text-[12.5px] font-black text-ink">{it.title}</span>
-                            <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-black", TONE[it.tone])}>{it.chip}</span>
+                            <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-black", ATTENTION_TONE[it.tone])}>{it.chip}</span>
                           </span>
                           <span className="mt-1 block text-[11.5px] leading-5 text-ink-3">{it.desc}</span>
                         </span>

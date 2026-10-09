@@ -117,7 +117,7 @@ export default async function DashboardLayout({
 
             <main
               id="dashboard-main"
-              className="min-w-0 flex-1 p-4 pb-24 md:p-8 md:pb-8"
+              className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-10"
             >
               {children}
             </main>

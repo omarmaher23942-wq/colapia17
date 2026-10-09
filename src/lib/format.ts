@@ -51,4 +51,6 @@ export const NOUN = {
   cart: { one: "سلة واحدة", two: "سلتان", few: "سلات", many: "سلة", other: "سلة" },
   visit: { one: "زيارة واحدة", two: "زيارتان", few: "زيارات", many: "زيارة", other: "زيارة" },
   day: { one: "يوم واحد", two: "يومان", few: "أيام", many: "يوماً", other: "يوم" },
+  piece: { one: "قطعة واحدة", two: "قطعتان", few: "قطع", many: "قطعة", other: "قطعة" },
+  visitor: { one: "زائر واحد", two: "زائران", few: "زوار", many: "زائراً", other: "زائر" },
 } satisfies Record<string, ArNoun>;
