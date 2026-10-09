@@ -193,7 +193,10 @@ async function main() {
     for (let v = 0; v < visitors; v++) {
       const vid = `d-${d}-${v}`;
       const at = new Date(now - d * DAY - rnd() * DAY * 0.9);
-      events.push({ storeId, visitorId: vid, sessionId: vid, name: "page_view", path: "/", device: rnd() > 0.25 ? "mobile" : "desktop", createdAt: at });
+      // مصادر واقعية: روابط فيسبوك وإنستاجرام وواتساب وحملات utm وبحث جوجل، والباقي مباشر.
+      const r = rnd();
+      const src = r < 0.3 ? { referrer: "https://l.facebook.com/" } : r < 0.42 ? { referrer: "https://l.instagram.com/" } : r < 0.55 ? { utmSource: "whatsapp", referrer: "" } : r < 0.62 ? { referrer: "https://www.google.com/" } : r < 0.66 ? { utmSource: "tiktok", referrer: "" } : { referrer: "" };
+      events.push({ storeId, visitorId: vid, sessionId: vid, name: "page_view", path: "/", device: rnd() > 0.25 ? "mobile" : "desktop", createdAt: at, ...src });
       if (rnd() > 0.45) events.push({ storeId, visitorId: vid, sessionId: vid, name: "product_view", productId: pick(prods).id, createdAt: at });
       if (rnd() > 0.82) events.push({ storeId, visitorId: vid, sessionId: vid, name: "add_to_cart", createdAt: at });
       if (rnd() > 0.92) events.push({ storeId, visitorId: vid, sessionId: vid, name: "begin_checkout", createdAt: at });

@@ -1,89 +1,50 @@
-// app/api/dashboard/analytics/export/route.ts
-// يُصدّر تقرير تحليلات شامل كملف CSV (متوافق مع Excel العربي عبر BOM).
-//
-// السبب: في السابق كان الزر في صفحة Analytics يشير إلى
-// /dashboard/analytics/export كصفحة، لكن لا توجد route. الآن هو route
-// handler حقيقي يُعيد attachment CSV.
-import { NextResponse } from "next/server";
+// /api/dashboard/analytics/export — تقرير التحليلات ملف CSV يفتح في Excel (نفس أرقام الصفحة: analyticsReport):
+// الأيام، ومصادر الزوار، ورحلة الشراء، والمحافظات، والمنتجات، والساعات.
 import { getMerchantSession } from "@/server/auth";
-import {
-  getConversionFunnelV2,
-  getGeoHeatmap,
-  getHourlyPeaks,
-} from "@/server/repos/analytics-v2";
+import { analyticsReport, parseRange } from "@/server/repos/analytics";
+import { csvResponse, egpCell, toCsv } from "@/server/csv";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function csvEscape(v: string): string {
-  const needsQuotes = /[",\n]/.test(v);
-  const cleaned = v.replace(/"/g, '""');
-  return needsQuotes ? `"${cleaned}"` : cleaned;
-}
-
 export async function GET(req: Request) {
   const session = await getMerchantSession();
-  if (!session || !session.storeId) {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (!session?.store) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const days = parseRange(new URL(req.url).searchParams.get("days") ?? undefined);
+  const r = await analyticsReport(session.store.id, days);
 
-  const url = new URL(req.url);
-  const daysParam = url.searchParams.get("days");
-  const days = Math.min(Math.max(parseInt(daysParam ?? "30", 10) || 30, 1), 365);
+  const rows: unknown[][] = [];
+  const blank = () => rows.push([]);
+  rows.push([`تقرير ${session.store.name}: آخر ${days} يوماً`]);
+  rows.push(["الطلبات المحققة فقط (بلا الملغاة والمرتجعة وطلبات التجربة)، والأيام بتوقيت القاهرة"]);
+  blank();
+  rows.push(["الملخص", "هذه الفترة", "الفترة السابقة"]);
+  rows.push(["المبيعات (ج.م)", egpCell(r.current.sales), egpCell(r.previous.sales)]);
+  rows.push(["الطلبات", r.current.orders, r.previous.orders]);
+  rows.push(["الزيارات", r.current.visits, r.previous.visits]);
+  rows.push(["الزوار المختلفون", r.current.visitors, r.previous.visitors]);
+  blank();
+  rows.push(["اليوم", "المبيعات (ج.م)", "الطلبات", "الزيارات"]);
+  for (const d of r.daily) rows.push([d.day, egpCell(d.sales), d.orders, d.visits]);
+  blank();
+  rows.push(["مصدر الزوار", "الزوار", "الطلبات", "المبيعات (ج.م)"]);
+  for (const s of r.sources) rows.push([s.label, s.visitors, s.orders, egpCell(s.sales)]);
+  blank();
+  rows.push(["رحلة الشراء", "الزوار"]);
+  rows.push(["زاروا المتجر", r.funnel.visitors]);
+  rows.push(["شاهدوا منتجاً", r.funnel.viewers]);
+  rows.push(["أضافوا للسلة", r.funnel.carters]);
+  rows.push(["بدؤوا الدفع", r.funnel.checkouts]);
+  rows.push(["طلبوا", r.funnel.buyers]);
+  blank();
+  rows.push(["المنتج", "القطع", "المبيعات (ج.م)"]);
+  for (const p of r.products) rows.push([p.name, p.qty, egpCell(p.sales)]);
+  blank();
+  rows.push(["المحافظة", "الطلبات", "المبيعات (ج.م)"]);
+  for (const g of r.governorates) rows.push([g.name, g.orders, egpCell(g.sales)]);
+  blank();
+  rows.push(["الساعة (القاهرة)", "الطلبات"]);
+  r.hours.forEach((n, h) => rows.push([`${String(h).padStart(2, "0")}:00`, n]));
 
-  const [funnel, geo, hourly] = await Promise.all([
-    getConversionFunnelV2(session.storeId, days),
-    getGeoHeatmap(session.storeId, days),
-    getHourlyPeaks(session.storeId, days),
-  ]);
-
-  const lines: string[] = [];
-  // BOM لإظهار العربية بشكل صحيح في Excel.
-  lines.push("\uFEFF");
-  lines.push(`تقرير أداء المتجر — آخر ${days} يوماً`);
-  lines.push(`تاريخ التصدير: ${new Date().toISOString()}`);
-  lines.push("");
-
-  lines.push("قمع التحويل");
-  lines.push("المرحلة,العدد");
-  lines.push(`زيارات المتجر,${funnel.visits}`);
-  lines.push(`مشاهدات المنتجات,${funnel.productViews}`);
-  lines.push(`إضافة للسلة,${funnel.atc}`);
-  lines.push(`بدء الدفع,${funnel.checkoutStarted}`);
-  lines.push(`طلبات مؤكدة,${funnel.confirmed}`);
-  lines.push(`طلبات مسلمة,${funnel.delivered}`);
-  lines.push("");
-
-  lines.push("المبيعات حسب المحافظة");
-  lines.push("المحافظة,عدد الطلبات,الإيرادات (ج.م)");
-  for (const g of geo) {
-    lines.push(
-      [
-        csvEscape(String(g.governorate ?? "")),
-        String(g.ordersCount ?? 0),
-        String((g.revenue ?? 0) / 100),
-      ].join(",")
-    );
-  }
-  lines.push("");
-
-  lines.push("أوقات الذروة");
-  lines.push("الساعة,عدد الطلبات");
-  for (const h of hourly) {
-    lines.push(`${h.hour},${h.count}`);
-  }
-
-  const csv = lines.join("\n");
-  const filename = `analytics-${session.store?.subdomain ?? "store"}-${days}d-${new Date()
-    .toISOString()
-    .slice(0, 10)}.csv`;
-
-  return new NextResponse(csv, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Cache-Control": "no-store",
-    },
-  });
+  return csvResponse(`analytics-${session.store.subdomain}-${days}d`, toCsv([], rows).replace(/^﻿\r\n/, "﻿"));
 }

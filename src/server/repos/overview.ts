@@ -32,7 +32,7 @@ export type PeriodTotals = {
   visitors: number; // أجهزة فريدة
 };
 
-async function periodTotals(storeId: string, from: Date, to: Date): Promise<PeriodTotals> {
+export async function periodTotals(storeId: string, from: Date, to: Date): Promise<PeriodTotals> {
   const db = await getTenantDb(storeId);
   const [[o], [v]] = await Promise.all([
     db
@@ -56,7 +56,7 @@ async function periodTotals(storeId: string, from: Date, to: Date): Promise<Peri
 
 export type DailyPoint = { day: string; sales: number; orders: number; visits: number };
 
-async function daily(storeId: string, from: Date, days: number): Promise<DailyPoint[]> {
+export async function daily(storeId: string, from: Date, days: number): Promise<DailyPoint[]> {
   const db = await getTenantDb(storeId);
   const dayExpr = (col: unknown) => sql<string>`to_char(${col} at time zone 'Africa/Cairo','YYYY-MM-DD')`;
   const [o, v] = await Promise.all([

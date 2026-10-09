@@ -1,497 +1,363 @@
-// dashboard/analytics/page.tsx — تحليلات متقدمة (v3).
-//
-// التعديلات الجذرية (موجة 3):
-//  1) Comparison periods (current vs previous).
-//  2) Cohort analysis (customers by month).
-//  3) Drill-down links.
-//  4) Export PDF/CSV.
+// dashboard/analytics — التحليلات: ما بعد أرقام «نظرة عامة» (بنفس تعريفاتها): المنحنى اليومي، وقمع الشراء بالزوار،
+// ومن أين يأتي زوارك وطلباتك، ومتى يطلب عملاؤك، والأجهزة، والمحافظات، والمنتجات الأكثر مبيعاً، والعملاء الجدد والعائدون.
+// كل رقم من قاعدة المتجر؛ ما لا بيانات له يظهر فارغاً بشرح، لا رقماً مخترعاً.
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  TrendingUp,
-  ShoppingCart,
-  Eye,
-  Package,
-  AlertTriangle,
-  MapPin,
-  ArrowLeft,
-  Target,
-  Download,
-  BarChart3,
-  Users,
-  Wallet,
-  ArrowUpRight,
-  ArrowDownRight,
-} from "lucide-react";
+import { Download, Monitor, Smartphone } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
-import { RevenueChart } from "@/components/dashboard/RevenueChart";
-import { analyticsStats, type RangeDays } from "@/server/repos/analytics";
+import { NO_STORE_HREF } from "@/lib/edition";
+import { analyticsReport, ANALYTICS_RANGES, parseRange, type RangeDays, type Report } from "@/server/repos/analytics";
+import { pctChange } from "@/server/repos/overview";
 import { formatEgp } from "@/lib/money";
-import { GOVERNORATES } from "@/lib/egypt";
-import { getTenantDb } from "@/db/tenant";
-import { orders, customers, analyticsEvents } from "@/db/schema";
-import { and, eq, gte, lt, sql, ne } from "drizzle-orm";
+import { arCount, fmtDec, fmtNum, NOUN } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { TrendChart } from "@/components/dashboard/analytics/TrendChart";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "التحليلات" };
 
-const RANGES: { value: RangeDays; label: string }[] = [
-  { value: 7, label: "7 أيام" },
-  { value: 30, label: "30 يوماً" },
-  { value: 90, label: "90 يوماً" },
-];
+const RANGE_LABEL: Record<RangeDays, string> = { 7: "7 أيام", 30: "30 يوماً", 90: "90 يوماً" };
+const WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
-function parseDays(v: string | undefined): RangeDays {
-  const n = Number(v);
-  if (n === 7 || n === 30 || n === 90) return n;
-  return 30;
-}
-
-function govName(code: string): string {
-  return GOVERNORATES.find((g) => g.code === code)?.name ?? code;
-}
-
-function DeltaChip({
-  current,
-  previous,
-  suffix = "%",
-}: {
-  current: number;
-  previous: number;
-  suffix?: string;
-}) {
-  if (previous === 0 && current === 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-ink-3">
-        —
-      </span>
-    );
-  }
-  const delta =
-    previous > 0
-      ? Math.round(((current - previous) / previous) * 100)
-      : current > 0
-      ? 100
-      : 0;
-  const positive = delta > 0;
-  const Icon = positive ? ArrowUpRight : ArrowDownRight;
-  return (
-    <span
-      className={`inline-flex items-center gap-0.5 text-[10px] font-black ${
-        positive ? "text-emerald-600 dark:text-emerald-300" : "text-rose-600 dark:text-rose-300"
-      }`}
-    >
-      <Icon className="size-3" strokeWidth={2.5} aria-hidden="true" />
-      {positive ? "+" : ""}
-      {delta}
-      {suffix}
-    </span>
-  );
-}
-
-export default async function AnalyticsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ days?: string }>;
-}) {
+export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
   const session = await getMerchantSession();
-  if (!session) redirect("/login");
-  if (!session.store) redirect("/dashboard");
-  const db = await getTenantDb(session.storeId!);
-
-  const { days: daysParam } = await searchParams;
-  const days = parseDays(daysParam);
-  const storeId = session.store.id;
-
-  const stats = await analyticsStats(storeId, days);
-
-  // Fetch previous period.
-  const now = new Date();
-  const periodStart = new Date(now.getTime() - days * 86_400_000);
-  const prevPeriodStart = new Date(now.getTime() - 2 * days * 86_400_000);
-
-  const [prevPeriod, cohorts, visitsCmp, customersCmp] = await Promise.all([
-    db
-      .select({
-        orders: sql<number>`count(*)`.mapWith(Number),
-        revenue: sql<number>`coalesce(sum(${orders.totalPiasters}) filter (where ${orders.status} not in ('cancelled','returned')), 0)`.mapWith(Number),
-        visitors: sql<number>`0`.mapWith(Number),
-      })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.storeId, storeId),
-          gte(orders.createdAt, prevPeriodStart),
-          lt(orders.createdAt, periodStart)
-        )
-      ),
-
-    // Cohort: عملاء مسجلون شهرياً.
-    db
-      .select({
-        month: sql<string>`to_char(${customers.createdAt} at time zone 'Africa/Cairo', 'YYYY-MM')`,
-        count: sql<number>`count(*)`.mapWith(Number),
-        revenue: sql<number>`coalesce(sum(${customers.totalSpentPiasters}), 0)`.mapWith(Number),
-      })
-      .from(customers)
-      .where(eq(customers.storeId, storeId))
-      .groupBy(sql`1`)
-      .orderBy(sql`1 desc`)
-      .limit(6),
-
-    // زيارات الفترة السابقة الحقيقية للمقارنة (جهاز في يوم).
-    db
-      .select({
-        prev: sql<number>`count(distinct (visitor_id || ':' || to_char(created_at at time zone 'Africa/Cairo','YYYY-MM-DD'))) filter (where name='page_view' and created_at < ${periodStart.toISOString()})`.mapWith(Number),
-      })
-      .from(analyticsEvents)
-      .where(and(eq(analyticsEvents.storeId, storeId), gte(analyticsEvents.createdAt, prevPeriodStart))),
-
-    // العملاء الجدد في الفترة الحالية والسابقة.
-    db
-      .select({
-        current: sql<number>`count(*) filter (where ${customers.createdAt} >= ${periodStart.toISOString()})`.mapWith(Number),
-        previous: sql<number>`count(*) filter (where ${customers.createdAt} >= ${prevPeriodStart.toISOString()} and ${customers.createdAt} < ${periodStart.toISOString()})`.mapWith(Number),
-      })
-      .from(customers)
-      .where(eq(customers.storeId, storeId)),
-  ]);
-
-  const prev = prevPeriod[0]!;
-  const { funnel } = stats;
-
-  const funnelSteps = [
-    { label: "زيارات", value: funnel.views, icon: Eye },
-    { label: "مشاهدة منتج", value: funnel.productViews, icon: Target },
-    { label: "إضافة للسلة", value: funnel.atc, icon: ShoppingCart },
-    { label: "بدء الدفع", value: funnel.checkouts, icon: TrendingUp },
-    { label: "شراء", value: funnel.purchases, icon: Package },
-  ];
-  const maxFunnelValue = Math.max(1, ...funnelSteps.map((s) => s.value));
-
-  const currentOrders = stats.daily.reduce((s, d) => s + d.orders, 0);
-  const currentRevenue = stats.daily.reduce((s, d) => s + d.revenue, 0);
+  if (!session) redirect("/login?redirect=/dashboard/analytics");
+  if (!session.store) redirect(NO_STORE_HREF);
+  const days = parseRange((await searchParams).days);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-ink">
-            التحليلات
-          </h1>
-          <p className="mt-1 text-xs text-ink-3">
-            مؤشرات الأداء لمتجر {session.store.name}
-          </p>
+          <h1 className="text-xl font-black text-ink">التحليلات</h1>
+          <p className="mt-1 text-[12.5px] text-ink-3">آخر {RANGE_LABEL[days]}، مقارنةً بالفترة نفسها قبلها. الطلبات المحققة فقط (بلا الملغاة والمرتجعة وطلبات التجربة).</p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2">
-          <nav
-            aria-label="النطاق الزمني"
-            className="flex items-center gap-1 rounded-xl border border-edge/10 bg-edge/[0.02] p-1"
-          >
-            {RANGES.map((r) => (
+          <nav aria-label="الفترة" className="inline-flex rounded-xl border border-edge/10 bg-edge/[0.03] p-1">
+            {ANALYTICS_RANGES.map((d) => (
               <Link
-                key={r.value}
-                href={`?days=${r.value}`}
-                className={
-                  r.value === days
-                    ? "rounded-lg bg-nova px-3 py-1.5 text-[11px] font-black text-white"
-                    : "rounded-lg px-3 py-1.5 text-[11px] font-bold text-ink-2 transition-colors hover:bg-edge/5"
-                }
+                key={d}
+                href={d === 30 ? "/dashboard/analytics" : `/dashboard/analytics?days=${d}`}
+                aria-current={d === days ? "page" : undefined}
+                className={cn("inline-flex min-h-9 items-center rounded-lg px-3 text-[12px] font-bold transition-colors", d === days ? "bg-nova text-white shadow-sm" : "text-ink-3 hover:bg-edge/5 hover:text-ink")}
               >
-                {r.label}
+                {RANGE_LABEL[d]}
               </Link>
             ))}
           </nav>
-          <a
-            href={`/api/dashboard/analytics/export?days=${days}`} download
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-edge/10 bg-edge/[0.03] px-3.5 text-xs font-bold text-ink transition-colors hover:bg-edge/[0.06]"
-          >
-            <Download className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
-            تصدير
+          <a href={`/api/dashboard/analytics/export?days=${days}`} download className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-edge/10 px-3.5 text-[12px] font-bold text-ink-2 hover:bg-edge/[0.05] hover:text-ink">
+            <Download className="size-4" aria-hidden="true" />
+            Excel
           </a>
         </div>
       </header>
 
-      {/* Top KPIs with comparison */}
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiBlock
-          icon={ShoppingCart}
-          label="الطلبات"
-          value={currentOrders.toLocaleString("ar-EG")}
-          current={currentOrders}
-          previous={prev.orders}
-        />
-        <KpiBlock
-          icon={Wallet}
-          label="الإيرادات"
-          value={formatEgp(currentRevenue)}
-          current={currentRevenue}
-          previous={prev.revenue}
-        />
-        <KpiBlock
-          icon={Users}
-          label="عملاء جدد"
-          value={(customersCmp[0]?.current ?? 0).toLocaleString("ar-EG")}
-          current={customersCmp[0]?.current ?? 0}
-          previous={customersCmp[0]?.previous ?? 0}
-        />
-        <KpiBlock
-          icon={Eye}
-          label="زيارات المتجر"
-          value={funnel.views.toLocaleString("ar-EG")}
-          current={funnel.views}
-          previous={visitsCmp[0]?.prev ?? 0}
-        />
-      </section>
-
-      {/* Revenue chart */}
-      <section className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-black text-ink">المبيعات اليومية</h2>
-          <span className="font-mono text-[11px] text-ink-3">
-            {days} يوماً · {currentOrders} طلب
-          </span>
-        </div>
-        <RevenueChart data={stats.daily} />
-      </section>
-
-      {/* Funnel + Top products */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-          <h2 className="mb-4 text-sm font-black text-ink">قمع التحويل</h2>
-          <ul className="space-y-3">
-            {funnelSteps.map((s) => {
-              const Icon = s.icon;
-              const pct = (s.value / maxFunnelValue) * 100;
-              return (
-                <li key={s.label} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11.5px]">
-                    <span className="flex items-center gap-1.5 font-bold text-ink">
-                      <Icon
-                        className="size-3.5 text-nova-2"
-                        strokeWidth={2}
-                        aria-hidden="true"
-                      />
-                      {s.label}
-                    </span>
-                    <span className="font-mono font-black tabular-nums text-ink">
-                      {s.value.toLocaleString("ar-EG")}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-edge/[0.06]">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-nova to-aurora transition-[width] duration-700"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        <div className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-          <h2 className="mb-4 text-sm font-black text-ink">الأكثر مبيعاً</h2>
-          {stats.topProducts.length === 0 ? (
-            <p className="py-8 text-center text-xs text-ink-3">
-              لا توجد مبيعات بعد.
-            </p>
-          ) : (
-            <ul className="divide-y divide-edge/5">
-              {stats.topProducts.map((p, i) => (
-                <li
-                  key={`${p.productId}-${i}`}
-                  className="flex items-center justify-between gap-3 py-2.5"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="grid size-6 shrink-0 place-items-center rounded-md bg-nova/15 font-mono text-[10.5px] font-black text-nova-2">
-                      {i + 1}
-                    </span>
-                    <p className="truncate text-xs font-bold text-ink">{p.name}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3 text-[11px]">
-                    <span className="font-mono tabular-nums text-ink-3">
-                      {p.qty} قطعة
-                    </span>
-                    <span className="font-mono font-black text-emerald-600 dark:text-emerald-300">
-                      {formatEgp(p.revenue)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      {/* Cohorts */}
-      <section className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <BarChart3
-            className="size-4 text-nova-2"
-            strokeWidth={2.25}
-            aria-hidden="true"
-          />
-          <h2 className="text-sm font-black text-ink">
-            كوهورتات العملاء (آخر 6 شهور)
-          </h2>
-        </div>
-        {cohorts.length === 0 ? (
-          <p className="py-6 text-center text-xs text-ink-3">
-            لا توجد بيانات كافية بعد.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="border-b border-edge/10 text-ink-3">
-                <tr>
-                  <th className="py-2 text-start font-bold">الشهر</th>
-                  <th className="py-2 text-start font-bold">عملاء جدد</th>
-                  <th className="py-2 text-start font-bold">إجمالي المشتريات</th>
-                  <th className="py-2 text-start font-bold">متوسط المشتريات</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-edge/5">
-                {cohorts.map((c) => (
-                  <tr key={c.month}>
-                    <td className="py-2.5 font-mono font-bold text-ink">
-                      {c.month}
-                    </td>
-                    <td className="py-2.5 font-mono text-ink">
-                      {c.count.toLocaleString("ar-EG")}
-                    </td>
-                    <td className="py-2.5 font-mono font-black text-emerald-600 dark:text-emerald-300">
-                      {formatEgp(c.revenue)}
-                    </td>
-                    <td className="py-2.5 font-mono text-ink-2">
-                      {c.count > 0 ? formatEgp(Math.round(c.revenue / c.count)) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {/* Low stock + Governorates */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <AlertTriangle
-              className="size-4 text-amber-700 dark:text-amber-300"
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-            <h2 className="text-sm font-black text-ink">
-              تنبيه المخزون المنخفض
-            </h2>
-          </div>
-          {stats.lowStock.length === 0 ? (
-            <p className="py-6 text-center text-xs text-ink-3">
-              كل المنتجات بمخزون كافٍ.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {stats.lowStock.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-2.5"
-                >
-                  <Link
-                    href={`/dashboard/products/${p.id}`}
-                    className="truncate text-xs font-bold text-ink hover:underline"
-                  >
-                    {p.name}
-                  </Link>
-                  <span className="shrink-0 rounded-md bg-amber-400/15 px-2 py-0.5 font-mono text-[11px] font-black text-amber-700 dark:text-amber-300">
-                    {p.stock} قطع
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <MapPin
-              className="size-4 text-nova-2"
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-            <h2 className="text-sm font-black text-ink">التوزيع الجغرافي</h2>
-          </div>
-          {stats.governorates.length === 0 ? (
-            <p className="py-6 text-center text-xs text-ink-3">
-              لا توجد بيانات بعد.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {stats.governorates.map((g) => (
-                <li
-                  key={g.governorate}
-                  className="flex items-center justify-between gap-3 border-b border-edge/5 pb-2 last:border-0 last:pb-0"
-                >
-                  <span className="text-xs font-bold text-ink">
-                    {govName(g.governorate)}
-                  </span>
-                  <div className="flex items-center gap-3 text-[11px]">
-                    <span className="font-mono text-ink-3">
-                      {g.count} طلب
-                    </span>
-                    <span className="font-mono font-black text-emerald-600 dark:text-emerald-300">
-                      {formatEgp(g.revenue)}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-nova-2 transition-colors hover:text-ink"
-        >
-          <ArrowLeft className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
-          رجوع إلى النظرة العامة
-        </Link>
-      </div>
+      <Suspense key={days} fallback={<div className="dash-card h-96 animate-pulse" aria-label="جارٍ التحميل" />}>
+        <Body storeId={session.store.id} days={days} />
+      </Suspense>
     </div>
   );
 }
 
-function KpiBlock({
-  icon: Icon,
-  label,
-  value,
-  current,
-  previous,
-}: {
-  icon: typeof ShoppingCart;
-  label: string;
-  value: string;
-  current: number;
-  previous: number;
-}) {
+async function Body({ storeId, days }: { storeId: string; days: RangeDays }) {
+  const r = await analyticsReport(storeId, days);
+  const c = r.current;
+  const p = r.previous;
+  const aov = c.orders ? c.sales / c.orders : null;
+  const prevAov = p.orders ? p.sales / p.orders : null;
+  const conv = c.visitors ? (c.orders / c.visitors) * 100 : null;
+  const prevConv = p.visitors ? (p.orders / p.visitors) * 100 : null;
+
   return (
-    <div className="rounded-2xl border border-edge/10 bg-edge/[0.02] p-4">
-      <div className="flex items-start justify-between">
-        <div className="flex size-8 items-center justify-center rounded-lg border border-edge/10 bg-edge/[0.03]">
-          <Icon className="size-4 text-nova-2" strokeWidth={1.75} aria-hidden="true" />
+    <>
+      <section className="dash-card space-y-4 p-4 sm:p-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <Stat label="المبيعات" value={formatEgp(c.sales)} delta={pctChange(c.sales, p.sales)} />
+          <Stat label="الطلبات" value={fmtNum(c.orders)} delta={pctChange(c.orders, p.orders)} />
+          <Stat label="متوسط الطلب" value={aov === null ? "—" : formatEgp(Math.round(aov / 100) * 100)} delta={aov !== null && prevAov !== null ? pctChange(aov, prevAov) : null} />
+          <Stat label="الزيارات" value={fmtNum(c.visits)} delta={pctChange(c.visits, p.visits)} />
+          <Stat label="معدل التحويل" value={conv === null ? "—" : `${fmtDec(conv)}%`} delta={conv !== null && prevConv !== null ? Math.round((conv - prevConv) * 10) / 10 : null} unit="pt" />
         </div>
-        <DeltaChip current={current} previous={previous} />
+        <TrendChart data={r.daily} />
+      </section>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Funnel f={r.funnel} />
+        <Sources rows={r.sources} />
       </div>
-      <div className="mt-4">
-        <p className="text-[24px] font-black leading-none text-ink tabular-nums">
-          {value}
-        </p>
-        <p className="mt-1.5 text-[11px] font-bold text-ink-3">{label}</p>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Timing hours={r.hours} weekdays={r.weekdays} />
+        <Audience r={r} />
       </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <TopProducts rows={r.products} />
+        <Governorates rows={r.governorates} />
+      </div>
+    </>
+  );
+}
+
+function Stat({ label, value, delta, unit = "%" }: { label: string; value: string; delta: number | null; unit?: "%" | "pt" }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-edge/[0.03] p-3">
+      <p className="text-[11.5px] font-bold text-ink-3">{label}</p>
+      <p className="mt-1 truncate text-[17px] font-black tabular-nums text-ink">{value}</p>
+      <p className={cn("mt-0.5 text-[11px] font-bold tabular-nums", delta === null || delta === 0 ? "text-ink-3" : delta > 0 ? "text-ok" : "text-bad")}>
+        {delta === null ? "لا فترة سابقة للمقارنة" : delta === 0 ? "بلا تغيير" : `${delta > 0 ? "+" : "−"}${fmtDec(Math.abs(delta))}${unit === "%" ? "%" : " نقطة"}`}
+      </p>
     </div>
+  );
+}
+
+function Card({ title, hint, children, className }: { title: string; hint?: string; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={cn("dash-card p-4 sm:p-5", className)}>
+      <h2 className="text-[14px] font-black text-ink">{title}</h2>
+      {hint ? <p className="mt-0.5 text-[11.5px] leading-5 text-ink-3">{hint}</p> : null}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+const Empty = ({ children }: { children: React.ReactNode }) => <p className="py-6 text-center text-[12px] text-ink-3">{children}</p>;
+
+function Bar({ value, max, tone = "nova" }: { value: number; max: number; tone?: "nova" | "ok" }) {
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-edge/[0.07]" aria-hidden="true">
+      <div className={cn("h-full rounded-full", tone === "ok" ? "bg-ok" : "bg-nova")} style={{ width: `${max > 0 ? Math.max(2, (value / max) * 100) : 0}%` }} />
+    </div>
+  );
+}
+
+function Funnel({ f }: { f: Report["funnel"] }) {
+  const steps = [
+    { label: "زاروا المتجر", n: f.visitors },
+    { label: "شاهدوا منتجاً", n: f.viewers },
+    { label: "أضافوا للسلة", n: f.carters },
+    { label: "بدؤوا الدفع", n: f.checkouts },
+    { label: "طلبوا", n: f.buyers },
+  ];
+  return (
+    <Card title="رحلة الشراء" hint="كم زائراً وصل لكل خطوة، ونسبة من انتقل من الخطوة السابقة">
+      {f.visitors === 0 ? (
+        <Empty>لا زيارات في هذه الفترة بعد. شارك رابط متجرك لتبدأ الأرقام.</Empty>
+      ) : (
+        <ol className="space-y-3">
+          {steps.map((s, i) => {
+            const prev = i > 0 ? steps[i - 1]!.n : null;
+            const rate = prev ? Math.round((s.n / prev) * 100) : null;
+            return (
+              <li key={s.label} className="space-y-1.5">
+                <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                  <span className="font-bold text-ink">{s.label}</span>
+                  <span className="tabular-nums text-ink-2">
+                    <b className="text-ink">{fmtNum(s.n)}</b>
+                    {rate !== null ? <span className="ms-2 text-[11px] text-ink-3">{fmtNum(rate)}% من السابقة</span> : null}
+                  </span>
+                </div>
+                <Bar value={s.n} max={f.visitors} />
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </Card>
+  );
+}
+
+function Sources({ rows }: { rows: Report["sources"] }) {
+  const maxV = Math.max(0, ...rows.map((r) => r.visitors));
+  return (
+    <Card title="من أين يأتي زوارك" hint="أول صفحة للزائر في الفترة. أضف ?utm_source=instagram لروابطك لتمييزها بدقة">
+      {!rows.length ? (
+        <Empty>لا زيارات في هذه الفترة بعد.</Empty>
+      ) : (
+        <ul className="space-y-3">
+          {rows.map((s) => (
+            <li key={s.key} className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                <span className="font-bold text-ink">{s.label}</span>
+                <span className="text-[11.5px] tabular-nums text-ink-3">
+                  {arCount(s.visitors, NOUN.visitor)}
+                  {s.orders ? (
+                    <>
+                      {" · "}
+                      <b className="text-ok">{arCount(s.orders, NOUN.order)}</b> ({formatEgp(s.sales)})
+                    </>
+                  ) : null}
+                </span>
+              </div>
+              <Bar value={s.visitors} max={maxV} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  );
+}
+
+function Timing({ hours, weekdays }: { hours: number[]; weekdays: number[] }) {
+  const total = hours.reduce((a, b) => a + b, 0);
+  const maxH = Math.max(0, ...hours);
+  const maxD = Math.max(0, ...weekdays);
+  const peak = hours.indexOf(maxH);
+  const peakDay = weekdays.indexOf(maxD);
+  const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? "ص" : "م"}`;
+  return (
+    <Card title="متى يطلب عملاؤك" hint="بتوقيت القاهرة. انشر عروضك قبل ساعات الذروة">
+      {total === 0 ? (
+        <Empty>لا طلبات في هذه الفترة بعد.</Empty>
+      ) : (
+        <div className="space-y-5">
+          <div>
+            <p className="mb-2 text-[12px] text-ink-2">
+              أكثر ساعة: <b className="text-ink">{hourLabel(peak)}</b>
+              {total >= 7 ? (
+                <>
+                  ، وأكثر يوم: <b className="text-ink">{WEEKDAYS[peakDay]}</b>
+                </>
+              ) : null}
+            </p>
+            <div className="flex h-24 items-end gap-[2px]" dir="ltr" role="img" aria-label="الطلبات حسب الساعة">
+              {hours.map((n, h) => (
+                <div key={h} className="flex h-full flex-1 flex-col justify-end" title={`${hourLabel(h)}: ${fmtNum(n)}`}>
+                  <div className={cn("w-full rounded-t-sm", h === peak ? "bg-nova" : "bg-nova/35")} style={{ height: `${maxH ? Math.max(n ? 6 : 0, (n / maxH) * 100) : 0}%` }} />
+                </div>
+              ))}
+            </div>
+            <div className="mt-1 flex justify-between text-[10.5px] text-ink-3" dir="ltr">
+              <span>12 ص</span>
+              <span>6 ص</span>
+              <span>12 م</span>
+              <span>6 م</span>
+              <span>11 م</span>
+            </div>
+          </div>
+          <ul className="space-y-1.5">
+            {WEEKDAYS.map((d, i) => (
+              <li key={d} className="grid grid-cols-[4.5rem_1fr_2.5rem] items-center gap-2 text-[12px]">
+                <span className="font-bold text-ink-2">{d}</span>
+                <Bar value={weekdays[i] ?? 0} max={maxD} />
+                <span className="text-end tabular-nums text-ink-3">{fmtNum(weekdays[i] ?? 0)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function Audience({ r }: { r: Report }) {
+  const dev = r.devices.mobile + r.devices.desktop;
+  const buyers = r.buyers.newBuyers + r.buyers.returning;
+  return (
+    <Card title="جمهورك" hint="أجهزة الزوار، ومن اشترى لأول مرة ومن عاد">
+      <div className="space-y-5">
+        {dev ? (
+          <div className="grid grid-cols-2 gap-3">
+            <Share icon={Smartphone} label="موبايل" n={r.devices.mobile} total={dev} />
+            <Share icon={Monitor} label="كمبيوتر" n={r.devices.desktop} total={dev} />
+          </div>
+        ) : (
+          <Empty>لا زيارات بعد.</Empty>
+        )}
+        {buyers ? (
+          <div>
+            <p className="mb-2 text-[12px] font-bold text-ink-2">المشترون في الفترة: {arCount(buyers, NOUN.customer)}</p>
+            <div className="flex h-3 overflow-hidden rounded-full bg-edge/[0.07]" aria-hidden="true">
+              <div className="bg-nova" style={{ width: `${(r.buyers.newBuyers / buyers) * 100}%` }} />
+              <div className="bg-ok" style={{ width: `${(r.buyers.returning / buyers) * 100}%` }} />
+            </div>
+            <div className="mt-2 flex flex-wrap justify-between gap-2 text-[12px]">
+              <span className="text-ink-2">
+                <span className="me-1 inline-block size-2 rounded-full bg-nova" aria-hidden="true" />
+                جدد: <b className="text-ink">{fmtNum(r.buyers.newBuyers)}</b>
+              </span>
+              <span className="text-ink-2">
+                <span className="me-1 inline-block size-2 rounded-full bg-ok" aria-hidden="true" />
+                عادوا للشراء: <b className="text-ink">{fmtNum(r.buyers.returning)}</b>
+              </span>
+            </div>
+          </div>
+        ) : (
+          <Empty>لا مشترين في هذه الفترة بعد.</Empty>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+function Share({ icon: Icon, label, n, total }: { icon: typeof Smartphone; label: string; n: number; total: number }) {
+  return (
+    <div className="rounded-xl bg-edge/[0.03] p-3">
+      <p className="flex items-center gap-1.5 text-[12px] font-bold text-ink-2">
+        <Icon className="size-4 text-ink-3" aria-hidden="true" />
+        {label}
+      </p>
+      <p className="mt-1 text-[17px] font-black tabular-nums text-ink">{fmtNum(Math.round((n / total) * 100))}%</p>
+      <p className="text-[11px] tabular-nums text-ink-3">{arCount(n, NOUN.visitor)}</p>
+    </div>
+  );
+}
+
+function TopProducts({ rows }: { rows: Report["products"] }) {
+  const max = Math.max(0, ...rows.map((r) => r.sales));
+  return (
+    <Card title="الأكثر مبيعاً" hint="بقيمة المبيعات">
+      {!rows.length ? (
+        <Empty>لا مبيعات في هذه الفترة بعد.</Empty>
+      ) : (
+        <ol className="space-y-3">
+          {rows.map((p, i) => (
+            <li key={`${p.id}-${i}`} className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                {p.id ? (
+                  <Link href={`/dashboard/products/${p.id}`} className="min-w-0 truncate font-bold text-ink hover:text-nova-2">
+                    {p.name}
+                  </Link>
+                ) : (
+                  <span className="min-w-0 truncate font-bold text-ink">{p.name}</span>
+                )}
+                <span className="shrink-0 text-[11.5px] tabular-nums text-ink-3">
+                  {arCount(p.qty, NOUN.piece)} · <b className="text-ink">{formatEgp(p.sales)}</b>
+                </span>
+              </div>
+              <Bar value={p.sales} max={max} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </Card>
+  );
+}
+
+function Governorates({ rows }: { rows: Report["governorates"] }) {
+  const max = Math.max(0, ...rows.map((r) => r.orders));
+  const total = rows.reduce((a, r) => a + r.orders, 0);
+  return (
+    <Card title="المحافظات" hint="أين يسكن من يطلب منك">
+      {!rows.length ? (
+        <Empty>لا طلبات في هذه الفترة بعد.</Empty>
+      ) : (
+        <ul className="space-y-3">
+          {rows.slice(0, 10).map((g) => (
+            <li key={g.code} className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-2 text-[12.5px]">
+                <span className="font-bold text-ink">{g.name}</span>
+                <span className="text-[11.5px] tabular-nums text-ink-3">
+                  {arCount(g.orders, NOUN.order)} ({fmtNum(Math.round((g.orders / total) * 100))}%) · <b className="text-ink">{formatEgp(g.sales)}</b>
+                </span>
+              </div>
+              <Bar value={g.orders} max={max} tone="ok" />
+            </li>
+          ))}
+          {rows.length > 10 ? <li className="text-[11.5px] text-ink-3">و{arCount(rows.length - 10, NOUN.governorate)} أخرى في ملف Excel</li> : null}
+        </ul>
+      )}
+    </Card>
   );
 }

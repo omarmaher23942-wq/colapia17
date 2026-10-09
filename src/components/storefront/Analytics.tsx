@@ -39,6 +39,21 @@ function id(prefix: string, storage: Storage): string {
   }
 }
 
+/** الموقع الذي جاء منه الزائر (التنقل داخل المتجر نفسه ليس مصدراً). */
+function externalReferrer(): string {
+  try {
+    return document.referrer && new URL(document.referrer).origin !== location.origin ? document.referrer.slice(0, 500) : "";
+  } catch {
+    return "";
+  }
+}
+
+/** مصدر الحملة: utm_source، أو معرّف النقر الذي تضيفه إعلانات ميتا وجوجل وتيك توك للرابط. */
+function sourceParam(): string | null {
+  const q = new URLSearchParams(location.search);
+  return q.get("utm_source") ?? (q.has("fbclid") ? "meta" : q.has("gclid") || q.has("gbraid") ? "google" : q.has("ttclid") ? "tiktok" : null);
+}
+
 export function Analytics({ storeId }: { storeId: string }) {
   const path = usePathname();
   const queueRef = useRef<TrackedEvent[]>([]);
@@ -88,8 +103,8 @@ export function Analytics({ storeId }: { storeId: string }) {
         name,
         props,
         path: location.pathname,
-        referrer: document.referrer,
-        utm: new URLSearchParams(location.search).get("utm_source"),
+        referrer: externalReferrer(),
+        utm: sourceParam(),
         device: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
         t: Date.now(),
       });
