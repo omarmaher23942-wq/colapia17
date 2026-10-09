@@ -57,6 +57,8 @@ isolated() {
   for v in NODE_EXTRA_CA_CERTS HTTPS_PROXY https_proxy HTTP_PROXY http_proxy NO_PROXY no_proxy; do
     [ -n "${!v:-}" ] && pass+=("$v=${!v}")
   done
+  # fetch في Node لا يمر بالوكيل إلا بهذا (لجلب صور من روابط خارجية في المعاينة مثلاً).
+  [ -n "${HTTPS_PROXY:-}${https_proxy:-}" ] && pass+=("NODE_USE_ENV_PROXY=1")
   cd "$ROOT"
   env -i PATH="$PATH" HOME="$HOME" TERM="${TERM:-dumb}" NEXT_TELEMETRY_DISABLED=1 "${pass[@]}" \
     NODE_OPTIONS="--require $DEV/local-services.cjs" \

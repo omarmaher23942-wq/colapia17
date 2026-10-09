@@ -64,7 +64,7 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       title: "نفد المخزون",
       chip: arCount(c.outOfStock, NOUN.product),
       desc: "يراها العملاء «نفدت الكمية». حدّث الكمية أو أخفِ المنتج.",
-      href: "/dashboard/products?status=low_stock",
+      href: "/dashboard/products?status=active&stock=out",
     });
   if (c.variantsOut > 0)
     items.push({
@@ -74,7 +74,7 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       title: "نفد مقاس أو لون",
       chip: arCount(c.variantsOut, NOUN.product),
       desc: "تركيبة واحدة على الأقل نفدت بينما بقية المنتج متاحة.",
-      href: "/dashboard/products",
+      href: "/dashboard/products?status=active&stock=variants_out",
     });
   if (c.lowStock > 0)
     items.push({
@@ -84,7 +84,7 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       title: "مخزون منخفض",
       chip: arCount(c.lowStock, NOUN.product),
       desc: "بقيت 3 قطع أو أقل. جهّز الكمية قبل أن تنفد.",
-      href: "/dashboard/products?status=low_stock",
+      href: "/dashboard/products?status=active&stock=low",
     });
   if (c.abandoned > 0)
     items.push({

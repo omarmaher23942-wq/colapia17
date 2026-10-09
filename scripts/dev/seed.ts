@@ -156,6 +156,17 @@ async function main() {
     ) s
     where c.id = s.customer_id`);
 
+  // القطع المبيعة لكل منتج كما يحدّثها الدفع (وتُطرح عند الإلغاء أو المرتجع).
+  await db.execute(sql`
+    update products p set order_count = s.qty
+    from (
+      select i.product_id, sum(i.quantity) as qty
+      from order_items i join orders o on o.id = i.order_id
+      where o.store_id = ${storeId} and o.status not in ('cancelled','returned')
+      group by i.product_id
+    ) s
+    where p.id = s.product_id and p.store_id = ${storeId}`);
+
   await db.insert(reviews).values([
     { storeId, productId: prods[0]!.id, customerName: "سارة أحمد", rating: 5, body: "الخامة ممتازة والمقاس مضبوط.", isApproved: true },
     { storeId, productId: prods[3]!.id, customerName: "أحمد سمير", rating: 4, body: "القميص جميل لكن التوصيل تأخر يوماً.", isApproved: true },

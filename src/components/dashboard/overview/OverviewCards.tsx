@@ -156,7 +156,7 @@ export function readinessItems(r: OverviewData["readiness"] & { hasLogo: boolean
       ok: r.activeProducts > 0 && r.activeWithoutImages === 0,
       label: "صورة لكل منتج منشور",
       detail: r.activeWithoutImages > 0 ? `${arCount(r.activeWithoutImages, NOUN.product)} بلا صورة` : undefined,
-      href: "/dashboard/products",
+      href: r.activeWithoutImages > 0 ? "/dashboard/products?status=active&need=image" : "/dashboard/products",
     },
     { ok: r.hasLogo, label: "شعار المتجر", href: "/dashboard/content" },
     { ok: r.hasContact, label: "رقم واتساب أو هاتف للتواصل", href: "/dashboard/settings" },
@@ -165,7 +165,7 @@ export function readinessItems(r: OverviewData["readiness"] & { hasLogo: boolean
       ok: r.activeProducts > 0 && r.activeWithCost === r.activeProducts,
       label: "سعر التكلفة لكل منتج (لحساب ربحك)",
       detail: r.activeProducts > 0 ? `${fmtNum(r.activeWithCost)}/${fmtNum(r.activeProducts)}` : undefined,
-      href: "/dashboard/products",
+      href: r.activeProducts > r.activeWithCost ? "/dashboard/products?status=active&need=cost" : "/dashboard/products",
     },
     { ok: r.hasOrders, label: "أول طلب: شارك رابط متجرك", href: shareHref },
   ];

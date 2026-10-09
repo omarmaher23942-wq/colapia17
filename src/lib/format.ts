@@ -53,4 +53,7 @@ export const NOUN = {
   day: { one: "يوم واحد", two: "يومان", few: "أيام", many: "يوماً", other: "يوم" },
   piece: { one: "قطعة واحدة", two: "قطعتان", few: "قطع", many: "قطعة", other: "قطعة" },
   visitor: { one: "زائر واحد", two: "زائران", few: "زوار", many: "زائراً", other: "زائر" },
+  row: { one: "صف واحد", two: "صفان", few: "صفوف", many: "صفاً", other: "صف" },
+  image: { one: "صورة واحدة", two: "صورتان", few: "صور", many: "صورة", other: "صورة" },
+  newCategory: { one: "قسم جديد", two: "قسمان جديدان", few: "أقسام جديدة", many: "قسماً جديداً", other: "قسم جديد" },
 } satisfies Record<string, ArNoun>;

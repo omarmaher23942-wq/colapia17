@@ -2,6 +2,7 @@
 // فيوجّه اتصالات التطبيق إلى بدائل محلية دون أي تعديل في كوده:
 //  - https://api.local.neon/sql  → Postgres محلي (بروتوكول Neon HTTP نفسه، نصوص خام، ومعاملات db.batch)
 //  - https://redis.local/...      → Redis في الذاكرة (بروتوكول Upstash REST، مع ترميز base64)
+//  - https://<region>.ut-ingest.local/<key> → رفع UploadThing (يقبل الملف ويعيد رابط ufs.sh كما يفعل الحقيقي)
 //  - أي نطاق آخر ينتهي بـ .local  → فشل فوري (QStash وغيره) بدل انتظار الشبكة
 // حزمة pg تُثبَّت في مجلد كاش خارج المشروع (DEVSTACK_PG_MODULE) فلا تُضاف لاعتماديات المشروع.
 const { Pool } = require(process.env.DEVSTACK_PG_MODULE || "pg");
@@ -179,6 +180,18 @@ globalThis.fetch = async function devstackFetch(input, init) {
     const body = bodyText ? JSON.parse(bodyText) : [u.pathname.split("/").filter(Boolean)].flat();
     const [status, out] = redisReq(u.pathname, body, headers);
     return json(status, out);
+  }
+  if (u.hostname.endsWith(".ut-ingest.local") && init?.method === "PUT") {
+    // UTApi.uploadFiles: الرابط موقّع محلياً بمفتاح وهمي (local.env)، والمحاكي يقبل الملف ويعيد شكل رد UploadThing.
+    const key = u.pathname.slice(1);
+    const size = init.body && typeof init.body.get === "function" ? (init.body.get("file")?.size ?? 0) : 0;
+    // لتجربة تعطل الرفع: touch ~/.cache/colapia-dev/upload-fail (واحذفه للعودة).
+    if (require("node:fs").existsSync(require("node:path").join(process.env.HOME || ".", ".cache/colapia-dev/upload-fail"))) {
+      return json(500, { error: "devstack: upload disabled" });
+    }
+    console.log(`[devstack] uploadthing ← ${key} (${size} bytes)`);
+    const ufsUrl = `https://devstack.ufs.sh/f/${key}`;
+    return json(200, { url: ufsUrl, appUrl: ufsUrl, ufsUrl, fileHash: key });
   }
   if (/(^|\.)local$/.test(u.hostname)) return json(503, { error: "devstack: offline service" });
   return realFetch(input, init);
