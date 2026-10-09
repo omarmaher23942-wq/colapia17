@@ -26,11 +26,10 @@ import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";
 import { readRequestId } from "@/lib/correlation";
+import { platformPricing } from "@/lib/platform-pricing";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "نظرة عامة" };
-
-const PLAN_PRICE_EGP = Number(process.env.PLATFORM_PRICE_EGP ?? process.env.NEXT_PUBLIC_PLATFORM_PRICE ?? 899);
 
 type SearchParams = { onboarding?: string; reason?: string; range?: string };
 
@@ -97,7 +96,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
           expiresAt={store.demoExpiresAt.toISOString()}
           startedAt={(store.demoStartedAt ?? store.deliveredAt)?.toISOString() ?? null}
           serverNow={Date.now()}
-          planPrice={PLAN_PRICE_EGP}
+          planPrice={platformPricing().price}
         />
       ) : null}
 

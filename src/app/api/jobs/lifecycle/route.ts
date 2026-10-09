@@ -7,13 +7,13 @@ import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { conversations, platformPayments, products, stores } from "@/db/schema";
 import { env } from "@/lib/env";
-import { storeUrl } from "@/lib/utils";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { deliverStore } from "@/ai/lifecycle/deliver";
 import { recordEvent, transition } from "@/lifecycle/machine";
 import { JOB_KINDS, claimJob, finishJob, schedule, type JobKind } from "@/lifecycle/scheduler";
 import { deliverToMerchant } from "@/lifecycle/messenger";
-import { paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
+import { platformPricing } from "@/lib/platform-pricing";
+import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
 import { releaseToBuild } from "@/lifecycle/release";
 import { POSTPONE_MS } from "@/lifecycle/config";
 
@@ -28,7 +28,8 @@ const bodySchema = z.object({
   jobId: z.string().uuid().optional(),
 });
 
-const activateUrl = (s: Store) => storeUrl(s.subdomain, "/admin/activate");
+// كل دعوة للدفع تشير لصفحة الدفع على المنصة (لا تحتاج المتجر).
+const activateUrl = () => billingUrl();
 const setStage = (storeId: string, stage: Stage) =>
   db.update(conversations).set({ stage, updatedAt: new Date() }).where(eq(conversations.storeId, storeId));
 
@@ -69,7 +70,7 @@ async function sendTemplate(
 }
 
 const GRACE_MSG = () =>
-  `انتهت فترة التجربة المجانية لمتجرك، ومتجرك محفوظ ليك بالكامل لمدة ${env.GRACE_DAYS} أيام. تقدر تفعّله للأبد بـ ${env.PLATFORM_PRICE_EGP} ج في أي وقت من نفس الرابط بدون أي اشتراكات وبدون أي عمولة.`;
+  `انتهت فترة التجربة المجانية لمتجرك، ومتجرك محفوظ ليك بالكامل لمدة ${env.GRACE_DAYS} أيام. تقدر تفعّله للأبد بـ ${platformPricing().price} ج في أي وقت من نفس الرابط بدون أي اشتراكات وبدون أي عمولة.`;
 
 const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   "delivery.auto": async (s) => {
@@ -94,9 +95,9 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   "payment.invite": async (s) => {
     if (s.status !== "trial" || s.paymentInvitedAt || s.doomAt) return { skip: "not_applicable" };
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
-    const report = await sendTemplate(s, "payment.invite", paymentVars(s.name, activateUrl(s)), {
+    const report = await sendTemplate(s, "payment.invite", paymentVars(s.name, activateUrl()), {
       purpose: "promotional",
-      subject: `فعّل متجرك ${s.name} للأبد بـ ${env.PLATFORM_PRICE_EGP} ج`,
+      subject: `فعّل متجرك ${s.name} للأبد بـ ${platformPricing().price} ج`,
     });
     if (report.viaMeta || report.emailed) {
       await db.update(stores).set({ paymentInvitedAt: new Date(), updatedAt: new Date() }).where(eq(stores.id, s.id));
@@ -120,9 +121,9 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
       return { skip: "not_applicable" };
     return deliverToMerchant(s.id, {
       key: `trial.reminder_20h:${s.id}`,
-      text: `باقي ساعات قليلة على انتهاء فترة التجربة. لو حابب تمتلك متجرك للأبد بـ ${env.PLATFORM_PRICE_EGP} جنيه دفعة واحدة وبدون اشتراكات، تقدر تفعّله الآن:`,
+      text: `باقي ساعات قليلة على انتهاء فترة التجربة. لو حابب تمتلك متجرك للأبد بـ ${platformPricing().price} جنيه دفعة واحدة وبدون اشتراكات، تقدر تفعّله الآن:`,
       purpose: "promotional",
-      buttons: [{ title: "امتلك متجرك الآن", url: activateUrl(s) }],
+      buttons: [{ title: "امتلك متجرك الآن", url: activateUrl() }],
       email: { subject: `باقي ساعات على انتهاء تجربة متجر ${s.name}` },
     });
   },
@@ -146,7 +147,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
       key: `trial.freeze:${s.id}`,
       text: GRACE_MSG(),
       purpose: "transactional",
-      buttons: [{ title: `تفعيل المتجر (${env.PLATFORM_PRICE_EGP} ج)`, url: activateUrl(s) }],
+      buttons: [{ title: `تفعيل المتجر (${platformPricing().price} ج)`, url: activateUrl() }],
       email: { subject: `انتهت تجربة متجر ${s.name} والمتجر محفوظ ليك` },
     });
     return { frozen: true };
@@ -157,9 +158,9 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
     return deliverToMerchant(s.id, {
       key: `trial.last_chance:${s.id}`,
-      text: `فاضل أيام قليلة قبل حذف متجر ${s.name} نهائياً. لو حابب تحتفظ بيه وشغال مدى الحياة، فعّله بـ ${env.PLATFORM_PRICE_EGP} ج من هنا:`,
+      text: `فاضل أيام قليلة قبل حذف متجر ${s.name} نهائياً. لو حابب تحتفظ بيه وشغال مدى الحياة، فعّله بـ ${platformPricing().price} ج من هنا:`,
       purpose: "transactional",
-      buttons: [{ title: "تفعيل المتجر الآن", url: activateUrl(s) }],
+      buttons: [{ title: "تفعيل المتجر الآن", url: activateUrl() }],
       email: { subject: `متجرك ${s.name} على وشك الحذف`, always: true },
     });
   },
@@ -194,7 +195,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     return sendTemplate(
       s,
       "doom.reminder_12h",
-      { store: s.name, price: env.PLATFORM_PRICE_EGP || 899, activate_url: activateUrl(s) },
+      { store: s.name, price: platformPricing().price, activate_url: activateUrl() },
       { purpose: "transactional", subject: `باقي 12 ساعة على مسح متجر ${s.name}` }
     );
   },
@@ -205,7 +206,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     return sendTemplate(
       s,
       "doom.reminder_1h",
-      { store: s.name, activate_url: activateUrl(s) },
+      { store: s.name, activate_url: activateUrl() },
       { purpose: "transactional", subject: `باقي ساعة واحدة على مسح متجر ${s.name}`, always: true }
     );
   },

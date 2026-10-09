@@ -34,6 +34,18 @@ export const fileRouter = {
     })
     .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl, key: file.key })),
 
+  // إيصال تحويل التاجر للمنصة (صفحة الدفع): لصاحب المتجر المسجّل فقط، ويعمل والمتجر مجمّد (حين يحتاجه أكثر).
+  platformReceipt: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
+    .middleware(async () => {
+      const s = await getMerchantSession();
+      if (!s?.store) throw new UploadThingError("سجّل الدخول بحساب صاحب المتجر أولاً");
+      if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) {
+        throw new UploadThingError("محاولات كثيرة، حاول بعد دقائق");
+      }
+      return { storeId: s.store.id };
+    })
+    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
+
   transferProof: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .input(z.object({ subdomain: z.string().min(1).max(63) }))
     .middleware(async ({ req, input }) => {

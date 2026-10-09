@@ -2,6 +2,7 @@
 // - تقرأ كوكي clp_m مباشرة (بدون استعلام DB) لضمان LCP سريع (مبدأ الأداء).
 // - تجلب المراجعات المعتمدة عبر unstable_cache لتفادي ضرب الـ DB في كل طلب.
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
+import { platformPricing } from "@/lib/platform-pricing";
 import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
@@ -55,10 +56,7 @@ export default async function Page() {
     getSessionState(),
   ]);
 
-  const price = Number(process.env.NEXT_PUBLIC_PLATFORM_PRICE ?? 899);
-  const basePrice = Number(
-    process.env.NEXT_PUBLIC_PLATFORM_BASE_PRICE ?? 8999
-  );
+  const { price, basePrice } = platformPricing();
 
   const trialHours = Number(process.env.TRIAL_HOURS ?? 24) || 24;
 

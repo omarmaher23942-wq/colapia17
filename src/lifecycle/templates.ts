@@ -3,7 +3,8 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { messageTemplates } from "@/db/schema";
-import { env } from "@/lib/env";
+import { clientEnv, env } from "@/lib/env";
+import { platformPricing } from "@/lib/platform-pricing";
 import { stripEmoji } from "@/lib/emoji";
 import { sendTemplatedEmail } from "@/lib/email";
 
@@ -38,12 +39,12 @@ export const TEMPLATE_DEFAULTS = {
   "payment.invite": {
     label: "دعوة التملك الدائم",
     vars: ["store", "price", "vodafone", "instapay", "activate_url"],
-    body: "عجبك متجرك {{store}}؟ عشان تمتلكه للأبد وتفتح استقبال أوردرات زبائنك، ادفع {{price}} جنيه فقط لمرة واحدة مدى الحياة بدون أي اشتراكات وبدون أي عمولة.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفع صورة الإيصال من هنا: {{activate_url}}\nوهنفعّل متجرك فوراً مدى الحياة.",
+    body: "عجبك متجرك {{store}}؟ عشان تمتلكه للأبد وتفتح استقبال أوردرات زبائنك، ادفع {{price}} جنيه فقط لمرة واحدة مدى الحياة بدون أي اشتراكات وبدون أي عمولة.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفع صورة الإيصال من هنا: {{activate_url}}\nبنراجع الإيصال بنفسنا، وأول ما نقبله بيتفعّل متجرك ويوصلك بريد.",
   },
   "payment.confirmed": {
     label: "تأكيد الدفع والتفعيل الدائم",
     vars: ["store", "store_url"],
-    body: "تم تأكيد دفعك بنجاح! متجر {{store}} أصبح ملكك للأبد، بدون أي اشتراكات وبدون أي عمولة على مبيعاتك.\nرابط متجرك: {{store_url}}\nفريق كولابيا معاك دائماً لأي استفسار.",
+    body: "تم تأكيد دفعك! متجر {{store}} اتفعّل، بدون أي اشتراكات وبدون أي عمولة على مبيعاتك.\nالخطوة الجاية: من لوحة التحكم افتح «امتلك متجرك» واستلم متجرك وبياناته على حساباتك المجانية بخطوات مشروحة.\nرابط متجرك: {{store_url}}",
   },
   "payment.rejected": {
     label: "رفض الدفع",
@@ -106,10 +107,13 @@ export async function renderTemplate(
   };
 }
 
-export function paymentVars(storeName: string, activateUrl: string) {
+/** صفحة الدفع على المنصة: كل رسالة تدعو للدفع تشير إليها (صفحة /admin/activate في المتجر تحوّل إليها). */
+export const billingUrl = () => `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/billing`;
+
+export function paymentVars(storeName: string, activateUrl: string = billingUrl()) {
   return {
     store: storeName,
-    price: env.PLATFORM_PRICE_EGP || 899,
+    price: platformPricing().price,
     vodafone: env.VODAFONE_CASH_NUMBER,
     instapay: env.INSTAPAY_NUMBER,
     activate_url: activateUrl,

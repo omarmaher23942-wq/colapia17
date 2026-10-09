@@ -6,7 +6,7 @@ import { getMerchantSession } from "@/server/auth";
 import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import { env } from "@/lib/env";
+import { platformPricing } from "@/lib/platform-pricing";
 import { verifyPlatformPayment } from "@/ai/verify-payment";
 import { emitPaymentSubmitted } from "@/server/realtime/emitters";
 import { assessReceipt } from "@/lifecycle/payment-policy";
@@ -15,22 +15,26 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
 
-export async function submitPlatformPaymentAction(
-  subdomain: string,
-  input: {
-    method: "vodafone_cash" | "instapay";
-    senderPhone: string;
-    screenshotUrl: string;
-  }
-) {
+/** حالات المتجر التي يُقبل فيها إيصال: التجربة (ومنها مهلة ما بعد الرفض) والتجميد. */
+const PAYABLE = new Set(["trial", "frozen"]);
+
+export async function submitPlatformPaymentAction(input: {
+  method: "vodafone_cash" | "instapay";
+  senderPhone: string;
+  screenshotUrl: string;
+}) {
   try {
-    // الإيصال يُرفع فقط من صاحب المتجر نفسه، وعلى متجر يملكه.
+    // الإيصال يُرفع من صاحب المتجر نفسه، وعلى متجره النشط في الجلسة.
     const session = await getMerchantSession();
-    const store = session?.stores.find(
-      (x) => x.subdomain.toLowerCase() === String(subdomain ?? "").toLowerCase()
-    );
+    const store = session?.store;
     if (!session || !store) {
       return { ok: false as const, error: "سجّل الدخول بحساب صاحب المتجر أولاً" };
+    }
+    if (store.status === "active") {
+      return { ok: false as const, error: "متجرك مفعّل بالفعل، لا حاجة لدفع آخر" };
+    }
+    if (!PAYABLE.has(store.status)) {
+      return { ok: false as const, error: "متجرك ليس في مرحلة الدفع الآن" };
     }
     if (!(await allow("platformPayment", session.merchantId))) {
       return { ok: false as const, error: "محاولات كثيرة، حاول بعد قليل" };
@@ -43,16 +47,16 @@ export async function submitPlatformPaymentAction(
     if (!phone) {
       return {
         ok: false as const,
-        error: "رقم الموبايل المحول منه غير صحيح",
+        error: "اكتب الرقم الذي حوّلت منه صحيحاً (11 رقماً يبدأ بـ 01)",
       };
     }
 
     if (!isTrustedUploadUrl(input.screenshotUrl)) {
-      return { ok: false as const, error: "مصدر الصورة غير آمن أو غير صالح" };
+      return { ok: false as const, error: "ارفع صورة الإيصال من الصفحة نفسها" };
     }
     const url = new URL(input.screenshotUrl);
 
-    const requiredAmountEgp = env.PLATFORM_PRICE_EGP || 899;
+    const requiredAmountEgp = platformPricing().price;
     const requiredAmountPiasters = requiredAmountEgp * 100;
 
     const [paymentRecord] = await db
@@ -102,20 +106,14 @@ export async function submitPlatformPaymentAction(
         }).catch((e) => console.error("[submitPlatformPaymentAction] owner alert failed:", e));
       });
       revalidatePath("/dashboard", "layout");
-      return {
-        ok: true as const,
-        activated: false as const,
-        message: "استلمنا إيصالك. نراجعه الآن يدوياً، وسيصلك بريد فور تفعيل متجرك.",
-      };
     }
-
     return { ok: true as const };
   } catch (e) {
     const err = e as { code?: string; cause?: { code?: string } };
     if (err?.code === "23505" || err?.cause?.code === "23505") {
       return {
         ok: false as const,
-        error: "لديك إيصال قيد المراجعة بالفعل. سنخبرك فور تأكيده.",
+        error: "لديك إيصال قيد المراجعة بالفعل، وسنبلغك فور قبوله.",
       };
     }
     // eslint-disable-next-line no-console
