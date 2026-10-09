@@ -1,12 +1,12 @@
 "use server";
 
-// commerce.ts — إدارة الخصومات والشحن والعملاء من داشبورد التاجر.
+// commerce.ts — إدارة الشحن من داشبورد التاجر (الخصومات في discounts.ts، والعملاء في customers.ts).
 // كل إجراء: جلسة تاجر بمتجر يملكه + مدخلات محققة بـ Zod (المفاتيح غير المعروفة تُحذف) + شرط storeId في كل كتابة.
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
-import { discounts, shippingZones } from "@/db/schema";
+import { shippingZones } from "@/db/schema";
 import { getMerchantStoreOrNull } from "@/server/auth";
 import { GOVERNORATES } from "@/lib/egypt";
 
@@ -14,80 +14,6 @@ type Result = { error?: string };
 
 const GOV_CODES = new Set<string>(GOVERNORATES.map((g) => g.code));
 const egpToPiasters = (v: number) => Math.round(v * 100);
-
-// ─── الخصومات ───────────────────────────────────────────────────────────────
-
-const discountSchema = z
-  .object({
-    id: z.string().uuid().optional(),
-    code: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .regex(/^[A-Z0-9_-]{3,20}$/, "الكود من 3 إلى 20 حرفاً إنجليزياً أو رقماً"),
-    type: z.enum(["percentage", "fixed", "free_shipping"]),
-    value: z.coerce.number().min(0),
-    minSubtotal: z.coerce.number().min(0).nullable().optional(),
-    maxUses: z.coerce.number().int().min(1).nullable().optional(),
-    perCustomerLimit: z.coerce.number().int().min(1).nullable().optional(),
-    endsAt: z
-      .string()
-      .refine((v) => !Number.isNaN(Date.parse(v)), "تاريخ انتهاء غير صالح")
-      .nullable()
-      .optional(),
-    isActive: z.boolean(),
-  })
-  .refine((d) => d.type !== "percentage" || (d.value > 0 && d.value <= 100), {
-    message: "نسبة الخصم بين 1 و100",
-    path: ["value"],
-  })
-  .refine((d) => d.type !== "fixed" || d.value > 0, {
-    message: "قيمة الخصم يجب أن تكون أكبر من صفر",
-    path: ["value"],
-  });
-
-export async function saveDiscountAction(input: unknown): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
-  if (!s) return { error: "غير مصرح" };
-  const db = await getTenantDb(s.storeId);
-  const parsed = discountSchema.safeParse(input);
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };
-  const d = parsed.data;
-
-  const values = {
-    code: d.code,
-    type: d.type,
-    value: d.type === "fixed" ? egpToPiasters(d.value) : Math.round(d.value),
-    minSubtotalPiasters: d.minSubtotal ? egpToPiasters(d.minSubtotal) : null,
-    maxUses: d.maxUses ?? null,
-    perCustomerLimit: d.perCustomerLimit ?? null,
-    endsAt: d.endsAt ? new Date(d.endsAt) : null,
-    isActive: d.isActive,
-  };
-
-  try {
-    if (d.id) {
-      await db
-        .update(discounts)
-        .set(values)
-        .where(and(eq(discounts.id, d.id), eq(discounts.storeId, s.storeId)));
-    } else {
-      await db.insert(discounts).values({ ...values, storeId: s.storeId });
-    }
-  } catch {
-    return { error: "الكود مستخدم بالفعل" };
-  }
-  revalidatePath("/dashboard/discounts");
-  return {};
-}
-
-export async function deleteDiscountAction(id: string): Promise<void> {
-  const s = await getMerchantStoreOrNull();
-  if (!s || !z.string().uuid().safeParse(id).success) return;
-  const db = await getTenantDb(s.storeId);
-  await db.delete(discounts).where(and(eq(discounts.id, id), eq(discounts.storeId, s.storeId)));
-  revalidatePath("/dashboard/discounts");
-}
 
 // ─── الشحن ──────────────────────────────────────────────────────────────────
 

@@ -57,6 +57,7 @@ export const NOUN = {
   image: { one: "صورة واحدة", two: "صورتان", few: "صور", many: "صورة", other: "صورة" },
   openOrder: { one: "طلب جارٍ", two: "طلبان جاريان", few: "طلبات جارية", many: "طلباً جارياً", other: "طلب جارٍ" },
   times: { one: "مرة", two: "مرتين", few: "مرات", many: "مرة", other: "مرة" },
+  code: { one: "كود واحد", two: "كودان", few: "أكواد", many: "كوداً", other: "كود" },
   category: { one: "قسم واحد", two: "قسمان", few: "أقسام", many: "قسماً", other: "قسم" },
   newCategory: { one: "قسم جديد", two: "قسمان جديدان", few: "أقسام جديدة", many: "قسماً جديداً", other: "قسم جديد" },
 } satisfies Record<string, ArNoun>;

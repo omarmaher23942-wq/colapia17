@@ -13,7 +13,7 @@ import { buildSearchText, slugify } from "../../src/lib/arabic";
 
 const {
   merchants, stores, storeBlueprints, categories, products, productVariants, shippingZones,
-  customers, orders, orderItems, reviews, abandonedCarts, analyticsEvents, sessions,
+  customers, orders, orderItems, reviews, abandonedCarts, analyticsEvents, sessions, discounts,
 } = schema;
 
 const DAY = 864e5;
@@ -166,6 +166,14 @@ async function main() {
       group by i.product_id
     ) s
     where p.id = s.product_id and p.store_id = ${storeId}`);
+
+  // أكواد خصم بحالات مختلفة (يعمل، ينتهي قريباً بحد استخدام، موقوف، منتهٍ). WELCOME50 مستخدم في طلب البذرة الغني.
+  await db.insert(discounts).values([
+    { storeId, code: "WELCOME50", type: "fixed", value: 5000, minSubtotalPiasters: 30000, perCustomerLimit: 1, usedCount: 1 },
+    { storeId, code: "SUMMER15", type: "percentage", value: 15, maxUses: 20, usedCount: 7, endsAt: new Date(Date.now() + 5 * DAY) },
+    { storeId, code: "FREESHIP", type: "free_shipping", value: 0, minSubtotalPiasters: 50000, isActive: false },
+    { storeId, code: "RAMADAN10", type: "percentage", value: 10, endsAt: new Date(Date.now() - 20 * DAY), usedCount: 3 },
+  ]);
 
   await db.insert(reviews).values([
     { storeId, productId: prods[0]!.id, customerName: "سارة أحمد", rating: 5, body: "الخامة ممتازة والمقاس مضبوط.", isApproved: true },

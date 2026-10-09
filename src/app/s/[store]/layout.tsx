@@ -13,6 +13,7 @@ import { EditorProvider } from "@/editor/EditorProvider";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
+import { PromoFromLink } from "@/components/storefront/PromoFromLink";
 import { ConversionWidgets } from "@/components/storefront/ConversionWidgets";
 import { Analytics } from "@/components/storefront/Analytics";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
@@ -179,6 +180,7 @@ export default async function StoreLayout({ children, params }: Props) {
           />
 
           <CartDrawer />
+          <PromoFromLink subdomain={store.subdomain} />
           <ConversionWidgets />
           <Analytics storeId={store.id} />
         </div>

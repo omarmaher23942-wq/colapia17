@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
-import { and, eq, sql, inArray, isNull } from "drizzle-orm";
+import { and, eq, ne, sql, inArray, isNull } from "drizzle-orm";
 import {
   getStoreBySubdomain,
   getBlueprint,
@@ -296,7 +296,9 @@ async function validateDiscount(
         and(
           eq(orders.storeId, storeId),
           eq(orders.customerPhone, phone),
-          eq(orders.discountCode, code)
+          eq(orders.discountCode, code),
+          // الطلب الملغي لا يستهلك حق العميل في الكود.
+          ne(orders.status, "cancelled")
         )
       );
     if ((row?.c ?? 0) >= d.perCustomerLimit)
