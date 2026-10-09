@@ -40,6 +40,7 @@ import {
   type Quote,
 } from "@/server/actions/checkout";
 import { UploadButton } from "@/lib/uploadthing-client";
+import { paymentMethods } from "@/lib/payment-methods";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import { useHydrated } from "./CartView";
 import { CheckoutProgress, useCheckoutProgress } from "./CheckoutProgress";
@@ -78,35 +79,7 @@ function newKey(): string {
   }
 }
 
-function methodsOf(p: StoreBlueprint["payments"]): Method[] {
-  const out: Method[] = [];
-  if (p.cod.enabled)
-    out.push({
-      id: "cod",
-      label: "الدفع عند الاستلام كاش",
-      desc: "ادفع كاش للمندوب عند الاستلام",
-    });
-  if (p.vodafoneCash.enabled)
-    out.push({
-      id: "vodafone_cash",
-      label: "فودافون كاش / محافظ إلكترونية",
-      desc: p.vodafoneCash.number
-        ? `حوّل على ${p.vodafoneCash.number}`
-        : "تحويل فودافون كاش",
-      targetNumber: p.vodafoneCash.number,
-    });
-  if (p.instapay.enabled)
-    out.push({
-      id: "instapay",
-      label: "إنستاباي (InstaPay)",
-      desc:
-        p.instapay.address ?? p.instapay.number
-          ? `حوّل على ${p.instapay.address ?? p.instapay.number}`
-          : "تحويل إنستاباي",
-      targetNumber: p.instapay.address ?? p.instapay.number,
-    });
-  return out;
-}
+const methodsOf = (p: StoreBlueprint["payments"]) => paymentMethods(p) as Method[];
 
 const PHONE_RE = /^01[0125]\d{8}$/;
 function isPhoneValid(v: string) {

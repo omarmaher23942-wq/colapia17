@@ -34,7 +34,10 @@ export function Field({
   max,
   children,
   optional,
+  id: fixedId,
 }: {
+  /** معرّف ثابت للحقل (للتركيز عليه من خارج النموذج)؛ وإلا يُولَّد. */
+  id?: string;
   label: string;
   hint?: string;
   error?: string | null;
@@ -43,7 +46,8 @@ export function Field({
   optional?: boolean;
   children: (p: { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean }) => React.ReactNode;
 }) {
-  const id = useId();
+  const autoId = useId();
+  const id = fixedId ?? autoId;
   const hintId = `${id}-h`;
   const near = max !== undefined && count !== undefined && count >= max * 0.8;
   return (

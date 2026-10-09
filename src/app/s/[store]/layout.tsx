@@ -158,6 +158,12 @@ export default async function StoreLayout({ children, params }: Props) {
         >
           <div className="s-progress" aria-hidden="true" />
           {bp.design.motion.depth ? <DepthController /> : null}
+          {!store.acceptingOrders ? (
+            // وضع الإجازة: يعرفه الزائر من أول صفحة، لا عند الدفع بعد أن يملأ سلته.
+            <p role="status" className="s-announce px-4 py-2 text-center text-[13px] font-bold">
+              {store.vacationMessage || "المتجر لا يستقبل طلبات الآن، وسنعود قريباً"}
+            </p>
+          ) : null}
           <Header
             header={bp.header}
             brand={bp.brand}

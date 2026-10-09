@@ -104,7 +104,7 @@ const GROUPS: { label: string; items: { kind: PanelKind; label: string; icon: ty
 const ELSEWHERE = [
   { href: "/dashboard/design", label: "تصميم المتجر والحركة", icon: Wand2 },
   { href: "/dashboard/shipping", label: "الشحن والمحافظات", icon: Truck },
-  { href: "/dashboard/settings", label: "الدفع والتواصل", icon: CreditCard },
+  { href: "/dashboard/settings?tab=payments", label: "الدفع والتواصل", icon: CreditCard },
   { href: "/dashboard/policies", label: "السياسات والضمان", icon: ShieldCheck },
 ];
 

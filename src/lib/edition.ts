@@ -19,3 +19,6 @@ export const DASHBOARD_TITLE_TEMPLATE = "%s · Colapia";
 
 /** صفحات اللوحة الخاصة بالمنصة وحدها (الدفع للمنصة، تعدد المتاجر). */
 export const PLATFORM_ONLY_NAV = ["/dashboard/billing", "/dashboard/store", "/dashboard/design"] as const;
+
+/** دخول صاحب المتجر: في المنصة بـ Google (فلا كلمة مرور تُغيَّر)، وفي مشروع التاجر بالبريد وكلمة المرور. */
+export const OWNER_LOGIN = "google" as "google" | "password";
