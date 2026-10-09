@@ -58,7 +58,10 @@ describe("full build assembly", () => {
     const { report } = repairBlueprint(bp, { name: "بيت العسل", storeId: "s1" });
     expect(report.repaired).toBe(false);
     const home = parsed.success ? parsed.data.home : [];
-    expect(home.map((s) => s.type)).toEqual(["announcement", "hero", "trust_badges", "categories", "product_grid", "brand_story", "testimonials", "faq"]);
+    // صف لكل قسم فيه 3 منتجات فأكثر، و«كيف تطلب» من حقائق المتجر، و«تواصل معنا» في الختام.
+    expect(home.map((s) => s.type)).toEqual(["announcement", "hero", "trust_badges", "categories", "product_grid", "product_grid", "product_grid", "steps", "brand_story", "testimonials", "faq", "contact"]);
+    const steps = home.find((s) => s.type === "steps");
+    expect(steps?.type === "steps" && steps.items.length).toBeGreaterThanOrEqual(3);
     expect(parsed.success && parsed.data.brand.logo?.url).toBe("https://x.ufs.sh/f/logo");
     expect(parsed.success && parsed.data.copy.addToCart).toBe("حطه في السلة");
     const faq = home.find((s) => s.type === "faq");

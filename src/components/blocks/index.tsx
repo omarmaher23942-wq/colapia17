@@ -11,6 +11,7 @@ export { Bundle } from "./Bundle";
 export { Video } from "./Video";
 export { Contact } from "./Contact";
 export { CustomBlocks } from "./CustomBlocks";
+export { Steps } from "./Steps";
 
 export { About } from "./About";
 export { Testimonials } from "./Testimonials";

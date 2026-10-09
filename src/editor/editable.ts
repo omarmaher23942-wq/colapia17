@@ -27,6 +27,7 @@ export const SECTION_FIELDS: Partial<Record<Section["type"], string[]>> = {
   contact: ["title", "address", ...SHELL],
   brand_story: ["variant", "title", "body", "image", "quote", ...SHELL],
   custom_blocks: ["title", "blocks", ...SHELL],
+  steps: ["eyebrow", "title", "subtitle", "items", ...SHELL],
 };
 
 /** أنواع الأقسام التي يمكن إضافتها (يعرضها المتجر). يطابقها اختبار مع registry.tsx. */
@@ -46,6 +47,7 @@ export const PATH_FIELDS: Record<string, string[]> = {
   "section:announcement.messages[]": ["text"],
   "section:promo_banner.items[]": ["title", "text", "couponCode"],
   "section:trust_badges.items[]": ["icon", "title", "text"],
+  "section:steps.items[]": ["icon", "title", "text"],
   "section:testimonials.items[]": ["screenshot", "name", "text"],
   "section:faq.items[]": ["q", "a"],
   "section:custom_blocks.blocks[]": ["text"],

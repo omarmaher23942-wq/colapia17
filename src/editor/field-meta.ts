@@ -106,6 +106,7 @@ export const CONTEXT_LABELS: Record<string, FieldMeta> = {
   "section:trust_badges.items": { label: "الشارات", hint: "شارة تدّعي سياسة غير مفعّلة تُخفى تلقائياً" },
   "section:announcement.messages": { label: "الرسائل", hint: "رسالة تدّعي سياسة غير صحيحة تُخفى تلقائياً" },
   "section:faq.items": { label: "الأسئلة" },
+  "section:steps.items": { label: "الخطوات", hint: "من 2 إلى 4؛ خطوة تعِد بسياسة غير مفعّلة تُخفى تلقائياً" },
   "section:promo_banner.items": { label: "العروض" },
   "section:custom_blocks.blocks": { label: "الفقرات" },
   "section:hero.images": { label: "الصور", hint: "صورة واحدة على الأقل لتصميم بصورة؛ 3 للكولاج و4 للمداري" },

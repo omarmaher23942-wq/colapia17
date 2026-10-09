@@ -125,6 +125,17 @@ export function composeHome(input: { copy: StudioCopy; design: StudioDesign; sta
     out.push(base("product_grid", { variant: "carousel", ...heading(copy.sections.onSale), source: { type: "on_sale" }, limit: Math.min(onSale, 10), columnsMobile: 2, columnsDesktop: 4, showViewAll: false, quickAdd: true }));
   }
 
+  // 5ب) صف لكل قسم حقيقي (حتى 3) حين يكفي الكتالوج: المتجر يمتلئ بمنتجاته هو لا بأقسام فارغة.
+  if (n >= 6 && liveCats.length >= 2) {
+    for (const c of liveCats.filter((c) => c.count >= 3).slice(0, 3)) {
+      out.push(base("product_grid", { variant: "carousel", title: c.name, source: { type: "category", slug: c.slug }, limit: Math.min(c.count, 10), columnsMobile: 2, columnsDesktop: 4, showViewAll: c.count > 4, quickAdd: true }));
+    }
+  }
+
+  // 5ج) كيف تطلب: خطوات الشراء الحقيقية في هذا المتجر (من حقائقه؛ تُراجع عند العرض أيضاً).
+  const steps = orderSteps(copy.trust);
+  out.push(base("steps", { variant: "numbered", eyebrow: "بسهولة", title: "كيف تطلب", subtitle: "من اختيار المنتج لحد ما يوصلك", items: steps }));
+
   // 6) القصة: من كلام صاحب المتجر أو فلسفته.
   if (on(features, "brandStory") && copy.story.body) {
     out.push(
@@ -153,7 +164,25 @@ export function composeHome(input: { copy: StudioCopy; design: StudioDesign; sta
     out.push(base("faq", { variant: "accordion", ...heading(copy.sections.faq), items: copy.faq.slice(0, 6) }));
   }
 
+  // 10) تواصل معنا: قنوات المتجر الحقيقية بشعاراتها (القسم يختفي وحده إن لم توجد قناة).
+  out.push(base("contact", { variant: "cards", title: "عندك سؤال؟ كلّمنا", showChannels: true }));
+
   return applyRhythm(out);
+}
+
+/** خطوات الطلب من حقائق المتجر فقط: اختيار، طلب بلا حساب، ثم ما يقدمه المتجر فعلاً عند الاستلام وبعده. */
+export function orderSteps(trust: StudioCopy["trust"]): { icon: string; title: string; text: string; fact?: string }[] {
+  const has = (k: string) => trust.find((t) => t.fact === k);
+  const out: { icon: string; title: string; text: string; fact?: string }[] = [
+    { icon: "shopping-bag", title: "اختار منتجك", text: "تصفّح المنتجات بصورها وأسعارها، وأضف ما يعجبك للسلة." },
+    { icon: "smartphone", title: "اطلب في دقيقة", text: "اكتب اسمك ورقمك وعنوانك، بدون حساب ولا تسجيل." },
+  ];
+  if (has("inspection")) out.push({ icon: "eye", title: "عاين قبل ما تدفع", text: "افتح الشحنة وافحص المنتج مع المندوب قبل أن تدفع.", fact: "inspection" });
+  else if (has("cod")) out.push({ icon: "banknote", title: "ادفع عند الاستلام", text: "ادفع نقداً عند وصول طلبك.", fact: "cod" });
+  else out.push({ icon: "package", title: "تابع طلبك", text: "تابع حالة طلبك خطوة بخطوة من «طلباتي» حتى يصلك." });
+  const ret = has("returns");
+  if (ret) out.push({ icon: "rotate-ccw", title: "لو ما ناسبك", text: (ret.text ?? ret.title).slice(0, 160), fact: "returns" });
+  return out;
 }
 
 /** إيقاع بصري: الأقسام الرئيسية تتبادل بين الخلفية الأساسية والبديلة، والإعلان والواجهة بلا تبادل. */

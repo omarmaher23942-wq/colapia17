@@ -219,6 +219,13 @@ export async function renderSection(
     case "custom_blocks":
       return <Block.CustomBlocks key={s.id} s={s} />;
 
+    case "steps": {
+      // خطوة تعِد بسياسة لم تعد صحيحة (معاينة، دفع عند الاستلام، استبدال) تُحذف عند العرض.
+      const items = groundedItems(s.items, ctx.facts, "drop");
+      if (items.length < 2) return null;
+      return <Block.Steps key={s.id} s={{ ...s, items }} />;
+    }
+
     default:
       return null;
   }

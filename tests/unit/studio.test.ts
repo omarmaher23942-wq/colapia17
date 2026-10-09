@@ -133,7 +133,15 @@ describe("copywriter", () => {
     });
     const degraded: { unit: string; reason: string }[] = [];
     const c = await writeStore(intake, plan, design, "store-1", degraded);
-    expect(c.hero.headline).toBe("مياده فاشون");
+    // عنوان حقيقي للنشاط (لا اسم المتجر مكرراً ولا اسم قسم عام)، وأقسام بعناوين، وقصة، وأسئلة من الحقائق.
+    expect(c.hero.headline).not.toBe("مياده فاشون");
+    expect(c.hero.headline).not.toMatch(/منتجاتنا/);
+    expect(c.hero.headline.length).toBeGreaterThan(8);
+    expect(c.sections.bestSellers?.title).toBeTruthy();
+    expect(c.story.body?.length ?? 0).toBeGreaterThan(80);
+    expect(c.faq.length).toBeGreaterThanOrEqual(3);
+    expect(c.faq.some((f) => /أعاين/.test(f.q))).toBe(false); // المتجر لا يسمح بالمعاينة: لا سؤال عنها
+    expect(JSON.stringify(c)).not.toMatch(/\d+\s*(عميل|تقييم|سنة|سنوات)/); // لا أرقام مخترعة
     expect(c.trust.every((t) => ["cod", "nationwide", "fast_delivery", "whatsapp"].includes(t.fact))).toBe(true);
   });
 });

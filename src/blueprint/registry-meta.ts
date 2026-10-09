@@ -89,6 +89,11 @@ export const SECTION_META: Record<
     icon: "phone",
     description: "قنوات التواصل والعنوان",
   },
+  steps: {
+    label: "كيف تطلب",
+    icon: "list-ordered",
+    description: "خطوات الشراء في متجرك: الطلب والدفع والاستلام",
+  },
   custom_blocks: {
     label: "قسم مخصص",
     icon: "blocks",

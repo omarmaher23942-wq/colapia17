@@ -373,11 +373,22 @@ export const customBlocksSection = z.object({
   ])).min(1).max(12),
 });
 
+/** «كيف تطلب»: خطوات الشراء الحقيقية في هذا المتجر (تُبنى من حقائق سياسته، فلا وعد غير صحيح). */
+export const stepsSection = z.object({
+  ...base,
+  type: z.literal("steps"),
+  variant: z.enum(["numbered", "timeline"]).default("numbered"),
+  eyebrow: z.string().max(40).optional(),
+  title: z.string().max(70).optional(),
+  subtitle: z.string().max(160).optional(),
+  items: z.array(z.object({ icon: z.string(), title: z.string().max(40), text: z.string().max(160), fact: z.string().max(30).optional() })).min(2).max(4),
+});
+
 export const sectionSchema = z.discriminatedUnion("type", [
   heroSection, announcementSection, categoriesSection, productGridSection, promoBannerSection,
   countdownOfferSection, trustBadgesSection, testimonialsSection, faqSection, aboutSection,
   instagramSection, richTextSection, bundleSection, statsSection, videoSection, contactSection,
-  brandStorySection, newsletterSection, customBlocksSection,
+  brandStorySection, newsletterSection, customBlocksSection, stepsSection,
 ]);
 export type Section = z.infer<typeof sectionSchema>;
 
@@ -762,6 +773,7 @@ export type ProductGridSection = z.infer<typeof productGridSection>;
 export type PromoBannerSection = z.infer<typeof promoBannerSection>;
 export type CountdownOfferSection = z.infer<typeof countdownOfferSection>;
 export type TrustBadgesSection = z.infer<typeof trustBadgesSection>;
+export type StepsSection = z.infer<typeof stepsSection>;
 export type TestimonialsSection = z.infer<typeof testimonialsSection>;
 export type FaqSection = z.infer<typeof faqSection>;
 export type AboutSection = z.infer<typeof aboutSection>;

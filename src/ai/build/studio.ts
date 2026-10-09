@@ -6,6 +6,7 @@
 //    رسائل الطلب، SEO) من «حقائق» المتجر الفعلية فقط، بلا أي ادعاء غير صحيح.
 //
 // كل رد يُفحص بصرامة: ما لا يطابق القواعد يُستبدل بقيمة مشتقة من بيانات التاجر نفسه، لا بنص عام.
+import { fallbackCopy } from "./fallback-copy";
 import "server-only";
 import { z } from "zod";
 import { callAIJson } from "@/ai/runner";
@@ -365,29 +366,11 @@ ${TONES[b.tone] ?? TONES.friendly_egyptian}.
 {"brandTagline":"","hero":{"eyebrow":"","headline":"","subheadline":"","primaryCta":"","secondaryCta":""},"announcements":[{"fact":"","text":""}],"trust":[{"fact":"","title":"","text":"","icon":""}],"sections":{"featured":{"eyebrow":"","title":"","subtitle":""}},"story":{"title":"","body":"","quote":""},"faq":[{"q":"","a":""}],"footerTagline":"","microcopy":{},"seo":{"title":"","description":""},"checkoutSuccess":"","orderMessages":{"confirmed":"","shipped":"","delivered":"","abandoned":""}}`;
 }
 
-/** محتوى مشتق من بيانات المتجر وحقائقه فقط، حين يتعذر الذكاء الاصطناعي. */
+/** محتوى حين يتعذر الذكاء الاصطناعي (أو لإكمال ما نقص من رده): نصوص احترافية حسب النشاط مبنية على بيانات المتجر
+ * وحقائقه فقط (ai/build/fallback-copy.ts)، لا اسم المتجر مكرراً وأسماء أقسامه. */
 function derivedCopy(b: StoreBrief): StudioCopy {
-  const cats = b.stats.categories.slice(0, 3);
-  const top = b.products.find((p) => p.bestSeller) ?? b.products[0];
-  const facts = b.facts;
-  return {
-    brandTagline: cats.length ? cats.join(" · ") : top?.name ?? b.name,
-    hero: {
-      eyebrow: b.stats.categories[0],
-      headline: b.name,
-      subheadline: [cats.length ? cats.join("، ") : top?.name, facts[0]?.detail].filter(Boolean).join(". "),
-      primaryCta: "تسوّق الآن",
-    },
-    announcements: facts.slice(0, 3).map((f) => ({ fact: f.key, text: f.title })),
-    trust: facts.slice(0, 4).map((f) => ({ fact: f.key, title: f.title, text: f.detail, icon: f.icon })),
-    sections: {},
-    story: b.founderStory ? { title: `حكاية ${b.name}`, body: b.founderStory } : {},
-    faq: facts.slice(0, 5).map((f) => ({ q: `${f.title}؟`, a: f.detail })),
-    footerTagline: b.positioning?.slice(0, 150) ?? "",
-    microcopy: {},
-    seo: { title: `${b.name}${cats[0] ? ` | ${cats[0]}` : ""}`.slice(0, 65) },
-    orderMessages: {},
-  };
+  const f = fallbackCopy(b);
+  return { ...f, microcopy: {}, orderMessages: {} };
 }
 
 function groundCopy(c: CopyOut, b: StoreBrief): StudioCopy {
