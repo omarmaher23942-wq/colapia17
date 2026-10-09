@@ -16,6 +16,8 @@ import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
 import { DASHBOARD_TITLE_TEMPLATE, EDITION } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
+import { ownWindow } from "@/lib/ownership-window";
+import { OwnDeadlineBanner } from "@/components/dashboard/own/OwnDeadlineBanner";
 
 export const metadata: Metadata = {
   title: { default: "لوحة التحكم", template: DASHBOARD_TITLE_TEMPLATE },
@@ -62,6 +64,12 @@ export default async function DashboardLayout({
     );
   }
 
+  // متجر مدفوع لم يُنقل: شريط المهلة في كل صفحة، وبعد انتهائها تبقى «امتلك متجرك» والدفع فقط.
+  const own = session.store ? ownWindow(session.store) : ({ phase: "none" } as const);
+  const path = (await headers()).get("x-pathname") ?? "";
+  const onOwnPage = path.startsWith("/dashboard/own");
+  if (own.phase === "overdue" && !onOwnPage && !path.startsWith("/dashboard/billing")) redirect("/dashboard/own");
+
   // أعداد «ما يحتاج انتباهك» من الخادم مع أول رسم، فلا تومض الشارات من صفر.
   const pulseAt = new Date().toISOString();
   const pulse = session.storeId ? await attentionCounts(session.storeId).catch(() => null) : null;
@@ -103,6 +111,7 @@ export default async function DashboardLayout({
                 : null
             }
             allStores={session.stores.map((s) => ({ id: s.id, name: s.name, subdomain: s.subdomain, status: s.status }))}
+            ownDue={own.phase === "open" || own.phase === "overdue"}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -119,6 +128,7 @@ export default async function DashboardLayout({
               id="dashboard-main"
               className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
             >
+              {own.phase === "open" && !onOwnPage ? <OwnDeadlineBanner deadline={own.deadline.toISOString()} serverNow={Date.now()} /> : null}
               {children}
             </main>
           </div>

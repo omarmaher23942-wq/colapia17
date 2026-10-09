@@ -40,11 +40,14 @@ export const canTransition = (from: StoreStatus, to: StoreStatus) => TRANSITIONS
 
 const TRIAL_KINDS: JobKind[] = ["trial.reminder_6h", "trial.reminder_20h", "trial.freeze", "trial.last_chance", "trial.purge"];
 const DOOM_KINDS: JobKind[] = ["doom.reminder_12h", "doom.reminder_1h", "doom.purge"];
+const OWN_KINDS: JobKind[] = ["own.reminder_24h", "own.deadline", "own.purge_warning", "own.purge"];
 
 /** مؤقتات تُلغى تلقائياً بمجرد دخول الحالة */
 const CANCEL_ON_ENTER: Partial<Record<StoreStatus, readonly JobKind[]>> = {
   building: ["review.auto_release", "review.reminder"],
   active: [...TRIAL_KINDS, ...DOOM_KINDS, "payment.invite"],
+  // إلغاء تفعيل (active → frozen): لا مهلة نقل لمتجر غير مدفوع.
+  frozen: OWN_KINDS,
   deleted: JOB_KINDS,
 };
 

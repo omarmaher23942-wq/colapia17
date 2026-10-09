@@ -37,6 +37,8 @@ type Props = {
   live: OwnershipLive;
   purgeAfter: string | null;
   purgedAt: string | null;
+  /** مهلة النقل بعد الدفع (lib/ownership-window.ts)، إن كانت جارية أو انتهت. */
+  deadline?: { at: string; purgeAt: string; overdue: boolean } | null;
 };
 
 export function OwnershipCenter(props: Props) {
@@ -78,9 +80,10 @@ export function OwnershipCenter(props: Props) {
         <p className="text-[12px] font-black text-nova">امتلك متجرك للأبد</p>
         <h1 className="mt-1 text-2xl font-black text-ink">«{props.storeName}» على حساباتك أنت</h1>
         <p className="mt-2 max-w-xl text-[13px] leading-7 text-ink-2">
-          متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك ينتقلون لحساباتك المجانية على GitHub و Vercel و Neon. بلا اشتراك، وبلا أي مفاتيح لدينا.
-          كل الخطوات تعمل من الموبايل، في نحو 10 دقائق.
+          متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك ينتقلون لحساباتك المجانية (GitHub، Vercel، Neon). بلا اشتراك، وبلا أي مفاتيح لدينا.
+          كل الخطوات تعمل من الموبايل، في نحو نصف ساعة.
         </p>
+        {props.deadline ? <DeadlineNote {...props.deadline} /> : null}
         <ol className="mt-5 grid grid-cols-4 gap-2" aria-label="مراحل الاستلام">
           {["الكود", "النشر", "الاستلام", "تم"].map((l, i) => (
             <li
@@ -458,6 +461,28 @@ function GuideBox({ guide, defaultOpen = false }: { guide: Guide; defaultOpen?: 
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function DeadlineNote({ at, purgeAt, overdue }: { at: string; purgeAt: string; overdue: boolean }) {
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(new Date(iso));
+  return (
+    <div role="status" className={cn("mt-4 flex items-start gap-2.5 rounded-xl border p-3 text-[12.5px] leading-6", overdue ? "border-bad/35 bg-bad/[0.07]" : "border-warn/35 bg-warn/[0.07]")}>
+      <Clock className={cn("mt-1 size-4 shrink-0", overdue ? "text-bad" : "text-warn")} aria-hidden="true" />
+      <p className="text-ink-2">
+        {overdue ? (
+          <>
+            <b className="text-ink">انتهت مهلة النقل، فمتجرك متوقف عن استقبال الطلبات.</b> أكمل الخطوات الآن ويعمل على موقعك فوراً. إن لم يكتمل النقل حتى{" "}
+            <b className="text-ink">{fmt(purgeAt)}</b> تُحذف بيانات المتجر من Colapia.
+          </>
+        ) : (
+          <>
+            <b className="text-ink">أكمل النقل قبل {fmt(at)}.</b> بعدها يتوقف المتجر عن استقبال الطلبات حتى تكمله، فالمنصة لا تستضيف المتاجر المدفوعة.
+          </>
+        )}
+      </p>
     </div>
   );
 }

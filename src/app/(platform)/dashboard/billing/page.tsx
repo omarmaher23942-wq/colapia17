@@ -17,6 +17,7 @@ import { formatEgp } from "@/lib/money";
 import { prettyPhone } from "@/lib/phone";
 import { platformPricing } from "@/lib/platform-pricing";
 import { billingStage, type BillingPayment, type BillingStage } from "@/lib/billing-stage";
+import { ownWindow, type OwnWindow } from "@/lib/ownership-window";
 import { PayForm } from "@/components/dashboard/billing/PayForm";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 
@@ -88,7 +89,7 @@ export default async function BillingPage() {
       ) : null}
 
       {stage.kind === "review" ? <InReview payment={stage.payment} /> : null}
-      {stage.kind === "active" ? <Activated activatedAt={stage.activatedAt} payment={stage.payment} /> : null}
+      {stage.kind === "active" ? <Activated activatedAt={stage.activatedAt} payment={stage.payment} window={ownWindow(store)} now={now} /> : null}
       {stage.kind === "owned" ? (
         <StateCard tone="ok" icon={CheckCircle2} title="استلمت متجرك" text="متجرك يعمل على حساباتك أنت، ولا شيء مطلوب منك هنا.">
           <CtaLink href="/dashboard/own">روابط موقعك الجديد</CtaLink>
@@ -244,13 +245,19 @@ function InReview({ payment }: { payment: BillingPayment }) {
   );
 }
 
-function Activated({ activatedAt, payment }: { activatedAt: Date | null; payment: BillingPayment | null }) {
+function Activated({ activatedAt, payment, window: w, now }: { activatedAt: Date | null; payment: BillingPayment | null; window: OwnWindow; now: number }) {
+  const due =
+    w.phase === "open"
+      ? ` انقله قبل ${when(w.deadline)} (${inTime(w.deadline, now)})، وبعدها يتوقف المتجر عن استقبال الطلبات حتى تكمل النقل.`
+      : w.phase === "overdue"
+        ? ` انتهت مهلة النقل فتوقف المتجر عن استقبال الطلبات؛ أكمل النقل قبل ${when(w.purgeAt)} وإلا تُحذف بياناته من Colapia.`
+        : "";
   return (
     <StateCard
-      tone="ok"
+      tone={w.phase === "overdue" ? "bad" : "ok"}
       icon={PartyPopper}
       title="متجرك مفعّل"
-      text={`${activatedAt ? `فُعِّل ${when(activatedAt)}` : "دفعتك مؤكدة"}${payment ? ` بدفعة ${formatEgp(payment.amountPiasters)}` : ""}. الخطوة الباقية: استلم متجرك وبياناته على حساباتك أنت، وبعدها لا يبقى عندنا شيء منه.`}
+      text={`${activatedAt ? `فُعِّل ${when(activatedAt)}` : "دفعتك مؤكدة"}${payment ? ` بدفعة ${formatEgp(payment.amountPiasters)}` : ""}. الخطوة الباقية: استلم متجرك وبياناته على حساباتك أنت.${due}`}
     >
       <CtaLink href="/dashboard/own">امتلك متجرك الآن</CtaLink>
     </StateCard>

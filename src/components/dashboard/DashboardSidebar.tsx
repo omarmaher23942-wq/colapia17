@@ -28,6 +28,8 @@ type Props = {
   } | null;
   /** كل متاجر التاجر (المبدّل يظهر من متجرين فأكثر). */
   allStores: SwitcherStore[];
+  /** متجر مدفوع لم يُنقل بعد: «امتلك متجرك» هي الخطوة المطلوبة الآن، فتُبرز في القائمة. */
+  ownDue?: boolean;
 };
 
 const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
@@ -221,6 +223,7 @@ function SidebarContent({
   merchant,
   store,
   allStores,
+  ownDue,
   pathname,
   badgeOf,
   close,
@@ -292,6 +295,7 @@ function SidebarContent({
                 const Icon = item.icon;
                 const active = isNavActive(pathname, item.href, item.exact);
                 const count = badgeOf(item.badgeKey);
+                const due = ownDue && item.href === "/dashboard/own";
 
                 return (
                   <li key={item.href}>
@@ -302,7 +306,7 @@ function SidebarContent({
                       className={cn(
                         "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12.5px] font-bold transition-colors",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova",
-                        active ? "text-ink" : "text-ink-2/75 hover:bg-edge/[0.04] hover:text-ink"
+                        active ? "text-ink" : due ? "bg-nova/10 text-ink ring-1 ring-nova/30" : "text-ink-2/75 hover:bg-edge/[0.04] hover:text-ink"
                       )}
                     >
                       {active ? (
@@ -328,6 +332,7 @@ function SidebarContent({
                       />
 
                       <span className="flex-1 truncate">{item.label}</span>
+                      {due ? <span className="rounded-full bg-nova px-2 py-0.5 text-[10px] font-black text-white">مطلوب الآن</span> : null}
 
                       {count > 0 && item.badgeKey ? (
                         <span

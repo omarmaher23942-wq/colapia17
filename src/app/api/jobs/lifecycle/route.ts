@@ -5,7 +5,7 @@ import { z } from "zod";
 import { UTApi } from "uploadthing/server";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
-import { conversations, platformPayments, products, stores } from "@/db/schema";
+import { conversations, platformPayments, products, storeTransfers, stores } from "@/db/schema";
 import { env } from "@/lib/env";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { deliverStore } from "@/ai/lifecycle/deliver";
@@ -16,6 +16,10 @@ import { platformPricing } from "@/lib/platform-pricing";
 import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
 import { releaseToBuild } from "@/lifecycle/release";
 import { POSTPONE_MS } from "@/lifecycle/config";
+import { ownWindow } from "@/lib/ownership-window";
+import { purgeStore } from "@/server/ownership/transfer";
+import { invalidateStoreCache } from "@/lib/tenant";
+import { clientEnv } from "@/lib/env";
 
 export const maxDuration = 60;
 
@@ -30,6 +34,8 @@ const bodySchema = z.object({
 
 // كل دعوة للدفع تشير لصفحة الدفع على المنصة (لا تحتاج المتجر).
 const activateUrl = () => billingUrl();
+const ownUrl = () => `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/own`;
+const cairo = (d: Date) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(d);
 const setStage = (storeId: string, stage: Stage) =>
   db.update(conversations).set({ stage, updatedAt: new Date() }).where(eq(conversations.storeId, storeId));
 
@@ -187,6 +193,66 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     await setStage(s.id, "lost");
     await notifyAdmin(`تم حذف متجر ${s.subdomain} ومسح ملفاته بعد انتهاء فترة السماح`, { storeId: s.id });
     return { deleted: true, files: keys.length };
+  },
+
+  // ── مهلة نقل المتجر المدفوع (lib/ownership-window.ts) ──
+  "own.reminder_24h": async (s) => {
+    const w = ownWindow(s);
+    if (w.phase !== "open") return { skip: w.phase };
+    return deliverToMerchant(s.id, {
+      key: `own.reminder_24h:${s.id}`,
+      text: `باقي يوم على مهلة نقل متجر ${s.name} لحساباتك (حتى ${cairo(w.deadline)}). النقل بخطوات مشروحة ويأخذ نحو نصف ساعة، وبعد المهلة يتوقف المتجر عن استقبال الطلبات حتى تكمله.`,
+      purpose: "transactional",
+      buttons: [{ title: "انقل متجرك الآن", url: ownUrl() }],
+      email: { subject: `باقي يوم لنقل متجرك ${s.name}`, always: true },
+    });
+  },
+
+  "own.deadline": async (s) => {
+    const w = ownWindow(s);
+    if (w.phase !== "overdue") return { skip: w.phase };
+    await invalidateStoreCache(s).catch(() => {});
+    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "own.deadline", actor: "timer" });
+    return deliverToMerchant(s.id, {
+      key: `own.deadline:${s.id}`,
+      text: `انتهت مهلة نقل متجر ${s.name}، فتوقف عن استقبال الطلبات. بياناتك كلها محفوظة: أكمل النقل الآن ويعمل متجرك على موقعك فوراً. إن لم يكتمل النقل حتى ${cairo(w.purgeAt)} تُحذف بيانات المتجر من Colapia.`,
+      purpose: "transactional",
+      buttons: [{ title: "أكمل النقل", url: ownUrl() }],
+      email: { subject: `متجرك ${s.name} متوقف حتى تكمل نقله`, always: true },
+    });
+  },
+
+  "own.purge_warning": async (s) => {
+    const w = ownWindow(s);
+    if (w.phase !== "overdue") return { skip: w.phase };
+    return deliverToMerchant(s.id, {
+      key: `own.purge_warning:${s.id}`,
+      text: `تنبيه أخير: بيانات متجر ${s.name} (المنتجات والطلبات والعملاء) تُحذف من Colapia ${cairo(w.purgeAt)} لأن نقلها لحساباتك لم يكتمل. أكمل النقل الآن لتحتفظ بها.`,
+      purpose: "transactional",
+      buttons: [{ title: "أكمل النقل الآن", url: ownUrl() }],
+      email: { subject: `تنبيه أخير: بيانات متجرك ${s.name} تُحذف قريباً`, always: true },
+    });
+  },
+
+  "own.purge": async (s) => {
+    const w = ownWindow(s);
+    if (w.phase !== "overdue") return { skip: w.phase };
+    if (w.purgeAt.getTime() > Date.now() + 2 * 60_000) return { skip: "purge_moved" };
+    // استلام جارٍ الآن: لا نحذف تحت قدميه؛ نعيد المحاولة بعد ساعة.
+    const [busy] = await db
+      .select({ id: storeTransfers.id })
+      .from(storeTransfers)
+      .where(and(eq(storeTransfers.storeId, s.id), eq(storeTransfers.status, "importing")))
+      .limit(1);
+    if (busy) {
+      await schedule(s.id, "own.purge", new Date(Date.now() + POSTPONE_MS));
+      return { postponed: "importing" };
+    }
+    const r = await transition({ storeId: s.id, to: "deleted", from: ["active"], actor: "timer", set: { deletedAt: new Date() }, reason: "not_owned_in_time" });
+    if (!r.ok) return { skip: r.reason };
+    const purged = await purgeStore(s);
+    await notifyAdmin(`حُذفت بيانات متجر ${s.subdomain} (مدفوع) لأن صاحبه لم ينقله خلال المهلة`, { storeId: s.id });
+    return { deleted: true, purged };
   },
 
   "doom.reminder_12h": async (s) => {

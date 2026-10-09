@@ -1,10 +1,24 @@
 import Link from "next/link";
-import { Lock, Wrench } from "lucide-react";
+import { Lock, Truck, Wrench } from "lucide-react";
 
 const SW = 1.75;
 
 /** يظهر للزوار عندما يكون المتجر مجمدًا أو قيد البناء، بدون كشف أي تفاصيل داخلية */
 export function FrozenGate({ status, activateHref = "/admin/activate" }: { status: string; activateHref?: string }) {
+  // متجر مدفوع انتهت مهلة نقله لموقع صاحبه: لا يستقبل طلبات هنا حتى يكتمل النقل.
+  if (status === "moving") {
+    return (
+      <div className="container-x grid min-h-[60vh] place-items-center py-20 text-center">
+        <div className="max-w-md">
+          <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20" aria-hidden="true">
+            <Truck strokeWidth={SW} className="size-7" />
+          </span>
+          <h1 className="mt-5 text-2xl">المتجر ينتقل إلى موقعه الجديد</h1>
+          <p className="mt-2 text-muted-foreground">نعود قريباً على عنوان المتجر الخاص. شكراً لصبرك.</p>
+        </div>
+      </div>
+    );
+  }
   const frozen = status === "frozen";
   const Icon = frozen ? Lock : Wrench;
   return (

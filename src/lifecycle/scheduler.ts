@@ -18,6 +18,10 @@ export const JOB_KINDS = [
   "doom.reminder_12h",
   "doom.reminder_1h",
   "doom.purge",            // المسح النهائي بعد رفض الدفع
+  "own.reminder_24h",      // قبل انتهاء مهلة نقل المتجر المدفوع بيوم
+  "own.deadline",          // انتهت المهلة: المتجر يتوقف عن استقبال الطلبات حتى يكتمل النقل
+  "own.purge_warning",     // قبل حذف بيانات متجر لم يُنقل بثلاثة أيام
+  "own.purge",             // حذف بيانات متجر مدفوع لم يُنقل بعد المهلة الإضافية
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
@@ -168,6 +172,18 @@ export const schedulePaymentInvite = (storeId: string, deliveredAt: Date) =>
   schedule(storeId, "payment.invite", new Date(deliveredAt.getTime() + env.PAYMENT_INVITE_DELAY_MIN * 60_000));
 
 /** عداد الـ 24 ساعة بعد رفض الدفع: مسح نهائي + تذكيران اختياريان للعميل */
+/** مهام مهلة نقل المتجر المدفوع (lib/ownership-window.ts)، تُجدول عند قبول الدفع. */
+export async function scheduleOwnership(storeId: string, deadline: Date, purgeAt: Date) {
+  const now = Date.now();
+  const jobs: [JobKind, Date][] = [
+    ["own.reminder_24h", new Date(deadline.getTime() - 24 * H)],
+    ["own.deadline", deadline],
+    ["own.purge_warning", new Date(purgeAt.getTime() - 3 * 24 * H)],
+    ["own.purge", purgeAt],
+  ];
+  for (const [kind, at] of jobs) if (at.getTime() > now) await schedule(storeId, kind, at);
+}
+
 export async function scheduleDoom(storeId: string, doomAt: Date) {
   await schedule(storeId, "doom.purge", doomAt);
   for (const [kind, hoursBefore] of [["doom.reminder_12h", 12], ["doom.reminder_1h", 1]] as const) {
