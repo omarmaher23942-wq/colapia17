@@ -40,6 +40,7 @@ const TAB_OF: Record<SettingsField, SettingsTab> = {
   email: "contact",
   instagram: "contact",
   facebook: "contact",
+  tiktok: "contact",
   vacationMessage: "store",
 };
 

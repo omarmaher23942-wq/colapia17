@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanFacebook, cleanInstagram, cleanInstapay, draftFrom, validateSettings, type SettingsDraft } from "@/lib/store-settings";
+import { cleanFacebook, cleanInstagram, cleanInstapay, cleanTiktok, draftFrom, validateSettings, type SettingsDraft } from "@/lib/store-settings";
 
 const base: SettingsDraft = {
   cod: true,
@@ -12,6 +12,7 @@ const base: SettingsDraft = {
   email: "",
   instagram: "",
   facebook: "",
+  tiktok: "",
   acceptingOrders: true,
   vacationMessage: "",
 };
@@ -47,7 +48,7 @@ describe("إعدادات المتجر", () => {
     expect(cleanFacebook("facebook.com/novastyle")).toBe("https://facebook.com/novastyle");
     expect(cleanFacebook("https://evil.com/facebook.com")).toBeNull();
     const r = validateSettings({ ...base, whatsapp: "010 1234 5678", email: " Hello@Nova.COM ", instagram: "@nova", facebook: "" });
-    expect(r.ok && r.data.channels).toEqual({ whatsappNumber: "01012345678", phone: undefined, email: "hello@nova.com", instagramUsername: "nova", facebookUrl: undefined });
+    expect(r.ok && r.data.channels).toEqual({ whatsappNumber: "01012345678", phone: undefined, email: "hello@nova.com", instagramUsername: "nova", facebookUrl: undefined, tiktokUsername: undefined });
   });
 
   it("رقم واتساب غير مصري يُرفض بحقله", () => {
@@ -67,5 +68,13 @@ describe("إعدادات المتجر", () => {
     expect(d.instapay.target).toBe("s@instapay");
     const r = validateSettings(d);
     expect(r.ok && r.data.ops).toEqual({ acceptingOrders: false, vacationMessage: "إجازة العيد" });
+  });
+
+  it("تيك توك: الاسم أو @ أو الرابط، ويُرفض غير الصالح", () => {
+    expect(cleanTiktok("https://www.tiktok.com/@Nova.Style?lang=ar")).toBe("nova.style");
+    expect(cleanTiktok("@nova_style")).toBe("nova_style");
+    expect(cleanTiktok("نوفا")).toBeNull();
+    const r = validateSettings({ ...base, tiktok: "@nova" });
+    expect(r.ok && r.data.channels.tiktokUsername).toBe("nova");
   });
 });

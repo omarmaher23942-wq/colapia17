@@ -198,7 +198,7 @@ function Method({ children }: { children: React.ReactNode }) {
 }
 
 export function ContactSection({ d, patch, errors }: Props) {
-  const field = (key: "whatsapp" | "phone" | "email" | "instagram" | "facebook", label: string, hint: string, extra: React.InputHTMLAttributes<HTMLInputElement>) => (
+  const field = (key: "whatsapp" | "phone" | "email" | "instagram" | "facebook" | "tiktok", label: string, hint: string, extra: React.InputHTMLAttributes<HTMLInputElement>) => (
     <Field id={`set-${key}`} label={label} optional hint={hint} error={errors[key]}>
       {(a) => <input {...a} {...extra} dir="ltr" autoComplete="off" className={cn(inputCls, extra.type === "tel" && "font-mono")} value={d[key]} onChange={(e) => patch({ [key]: e.target.value } as Partial<SettingsDraft>, [key])} />}
     </Field>
@@ -206,11 +206,12 @@ export function ContactSection({ d, patch, errors }: Props) {
   return (
     <Section title="التواصل" hint="كيف يصل إليك عملاؤك. ما تتركه فارغاً لا يظهر في المتجر">
       <div className="grid gap-4 sm:grid-cols-2">
-        {field("whatsapp", "واتساب", "في رأس المتجر والفوتر وقسم التواصل", { type: "tel", inputMode: "tel", placeholder: "01xxxxxxxxx" })}
+        {field("whatsapp", "واتساب", "زر واتساب في رأس المتجر، وفي الفوتر وقسم التواصل", { type: "tel", inputMode: "tel", placeholder: "01xxxxxxxxx" })}
         {field("phone", "رقم الهاتف", "في الفوتر وقسم التواصل", { type: "tel", inputMode: "tel", placeholder: "01xxxxxxxxx" })}
-        {field("email", "البريد", "في الفوتر", { type: "email", inputMode: "email", placeholder: "hello@yourstore.com" })}
-        {field("instagram", "إنستاجرام", "في الفوتر. اكتب اسم الحساب أو الصق رابطه", { placeholder: "@yourstore" })}
-        <div className="sm:col-span-2">{field("facebook", "فيسبوك", "في الفوتر. الصق رابط صفحتك", { inputMode: "url", placeholder: "facebook.com/yourstore" })}</div>
+        {field("email", "البريد", "في الفوتر وقسم التواصل", { type: "email", inputMode: "email", placeholder: "hello@yourstore.com" })}
+        {field("instagram", "إنستاجرام", "بشعاره في الفوتر وقسم التواصل. اكتب اسم الحساب أو الصق رابطه", { placeholder: "@yourstore" })}
+        {field("tiktok", "تيك توك", "بشعاره في الفوتر وقسم التواصل. اكتب اسم الحساب أو الصق رابطه", { placeholder: "@yourstore" })}
+        <div className="sm:col-span-2">{field("facebook", "فيسبوك", "بشعاره في الفوتر وقسم التواصل. الصق رابط صفحتك", { inputMode: "url", placeholder: "facebook.com/yourstore" })}</div>
       </div>
     </Section>
   );

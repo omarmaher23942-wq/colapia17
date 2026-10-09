@@ -13,6 +13,7 @@ export type SettingsDraft = {
   email: string;
   instagram: string;
   facebook: string;
+  tiktok: string;
   acceptingOrders: boolean;
   vacationMessage: string;
 };
@@ -29,12 +30,13 @@ export type SettingsField =
   | "email"
   | "instagram"
   | "facebook"
+  | "tiktok"
   | "vacationMessage";
 
 export const SETTINGS_LIMITS = { holder: 60, instructions: 400, vacation: 160 } as const;
 
 /** الترتيب الذي ينتقل به التركيز لأول خطأ. */
-export const SETTINGS_FIELD_ORDER: SettingsField[] = ["payments", "vodafone.number", "vodafone.holder", "instapay.target", "instapay.holder", "transferInstructions", "whatsapp", "phone", "email", "instagram", "facebook", "vacationMessage"];
+export const SETTINGS_FIELD_ORDER: SettingsField[] = ["payments", "vodafone.number", "vodafone.holder", "instapay.target", "instapay.holder", "transferInstructions", "whatsapp", "phone", "email", "instagram", "facebook", "tiktok", "vacationMessage"];
 
 const IPA = /^[a-z0-9][a-z0-9._-]{0,39}@instapay$/i;
 
@@ -45,6 +47,15 @@ export function cleanInstagram(raw: string): string | null {
   const fromUrl = /instagram\.com\/([^/?#\s]+)/i.exec(t)?.[1];
   const u = (fromUrl ?? t).replace(/^@+/, "").trim();
   return /^[a-z0-9._]{1,30}$/i.test(u) ? u.toLowerCase() : null;
+}
+
+/** حساب تيك توك من أي شكل: @name أو name أو رابط الحساب (tiktok.com/@name). */
+export function cleanTiktok(raw: string): string | null {
+  const t = raw.trim();
+  if (!t) return "";
+  const fromUrl = /tiktok\.com\/@([^/?#\s]+)/i.exec(t)?.[1];
+  const u = (fromUrl ?? t).replace(/^@+/, "").trim();
+  return /^[a-z0-9._]{2,24}$/i.test(u) ? u.toLowerCase() : null;
 }
 
 /** رابط صفحة فيسبوك (https، على facebook.com أو fb.com). */
@@ -79,7 +90,7 @@ export type CleanSettings = {
     requireTransferProof: boolean;
     transferInstructions?: string;
   };
-  channels: { whatsappNumber?: string; phone?: string; email?: string; instagramUsername?: string; facebookUrl?: string };
+  channels: { whatsappNumber?: string; phone?: string; email?: string; instagramUsername?: string; facebookUrl?: string; tiktokUsername?: string };
   ops: { acceptingOrders: boolean; vacationMessage: string };
 };
 
@@ -110,6 +121,8 @@ export function validateSettings(d: SettingsDraft): { ok: true; data: CleanSetti
   if (ig === null) e.instagram = "اسم الحساب فقط (حروف إنجليزية وأرقام و . و _) أو رابط الحساب";
   const fb = cleanFacebook(d.facebook);
   if (fb === null) e.facebook = "رابط صفحتك على فيسبوك (facebook.com/...)";
+  const tt = cleanTiktok(d.tiktok);
+  if (tt === null) e.tiktok = "اسم الحساب فقط (حروف إنجليزية وأرقام و . و _) أو رابط الحساب";
 
   const vacation = d.vacationMessage.trim();
   if (vacation.length > SETTINGS_LIMITS.vacation) e.vacationMessage = `الرسالة ${SETTINGS_LIMITS.vacation} حرفاً على الأكثر`;
@@ -126,7 +139,7 @@ export function validateSettings(d: SettingsDraft): { ok: true; data: CleanSetti
         requireTransferProof: d.requireTransferProof,
         transferInstructions: opt(d.transferInstructions.trim()),
       },
-      channels: { whatsappNumber: opt(wa), phone: opt(ph), email: opt(email), instagramUsername: opt(ig), facebookUrl: opt(fb) },
+      channels: { whatsappNumber: opt(wa), phone: opt(ph), email: opt(email), instagramUsername: opt(ig), facebookUrl: opt(fb), tiktokUsername: opt(tt) },
       ops: { acceptingOrders: d.acceptingOrders, vacationMessage: vacation },
     },
   };
@@ -134,7 +147,7 @@ export function validateSettings(d: SettingsDraft): { ok: true; data: CleanSetti
 
 /** مسودة الصفحة من الإعدادات المحفوظة. */
 export function draftFrom(
-  bp: { payments: { cod: { enabled: boolean }; vodafoneCash: { enabled: boolean; number?: string; holderName?: string }; instapay: { enabled: boolean; address?: string; number?: string; holderName?: string }; requireTransferProof: boolean; transferInstructions?: string }; channels: { whatsappNumber?: string; phone?: string; email?: string; instagramUsername?: string; facebookUrl?: string } },
+  bp: { payments: { cod: { enabled: boolean }; vodafoneCash: { enabled: boolean; number?: string; holderName?: string }; instapay: { enabled: boolean; address?: string; number?: string; holderName?: string }; requireTransferProof: boolean; transferInstructions?: string }; channels: { whatsappNumber?: string; phone?: string; email?: string; instagramUsername?: string; facebookUrl?: string; tiktokUsername?: string } },
   ops: { acceptingOrders: boolean; vacationMessage: string | null }
 ): SettingsDraft {
   const p = bp.payments;
@@ -150,6 +163,7 @@ export function draftFrom(
     email: c.email ?? "",
     instagram: c.instagramUsername ?? "",
     facebook: c.facebookUrl ?? "",
+    tiktok: c.tiktokUsername ?? "",
     acceptingOrders: ops.acceptingOrders,
     vacationMessage: ops.vacationMessage ?? "",
   };

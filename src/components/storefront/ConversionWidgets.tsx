@@ -4,11 +4,12 @@
 // - Social Proof Toasts ببيانات حقيقية من /api/proof (مع throttling).
 // - Exit-Intent Modal بكود قابل للنسخ بضغطة.
 // - WhatsApp floating button ذكي: الرسالة تتضمن اسم الصفحة/المنتج.
+import { BrandIcon } from "./brand-icons";
+import { waLink } from "@/lib/whatsapp";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  MessageCircle,
   X,
   Gift,
   MapPin,
@@ -224,9 +225,7 @@ export function ConversionWidgets() {
     return `${base} متجركم.`;
   }, [pathname]);
 
-  const waHref = whatsappNum
-    ? `https://wa.me/2${whatsappNum}?text=${encodeURIComponent(waMessage)}`
-    : null;
+  const waHref = waLink(whatsappNum, waMessage);
 
   const onCopyCoupon = () => {
     const code = conversion.exitIntentOffer.couponCode;
@@ -310,7 +309,7 @@ export function ConversionWidgets() {
           aria-label="تواصل عبر واتساب"
           className="fixed bottom-5 end-4 z-40 grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
-          <MessageCircle className="size-7" strokeWidth={2} aria-hidden="true" />
+          <BrandIcon brand="whatsapp" className="size-7" />
           <span className="sr-only">واتساب</span>
         </a>
       ) : null}

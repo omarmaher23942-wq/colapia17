@@ -6,10 +6,7 @@
 // POLICY_LINKS. كذلك إزالة تكرار الهاتف/واتساب عند تطابق الأرقام.
 import Link from "next/link";
 import {
-  Facebook,
-  Instagram,
   Phone,
-  MessageCircle,
   Banknote,
   Smartphone,
   Wallet,
@@ -23,6 +20,11 @@ import {
 import type { StoreBlueprint } from "@/blueprint/schema";
 import type { StoreFact } from "@/blueprint/facts";
 import { Icon } from "./Icon";
+import { BRAND_COLORS, BrandIcon, type BrandKey } from "./brand-icons";
+import { socialLinks } from "@/lib/store-channels";
+
+// تيك توك أسود رسمياً: يتبع لون نص المتجر حتى يظهر على الخلفيات الداكنة.
+const brandColor = (k: BrandKey) => (k === "tiktok" ? "var(--card-foreground)" : BRAND_COLORS[k]);
 
 const SW = 1.75;
 
@@ -75,7 +77,10 @@ export function Footer({
   const showWhatsapp =
     Boolean(channels.whatsappNumber) && whatsappNorm !== phoneNorm;
 
-  // 3) الأقسام التي لا تتكرر.
+  // 3) كل قناة حفظها التاجر بشعارها الرسمي (واتساب، إنستجرام، فيسبوك، تيك توك، ماسنجر).
+  const social = socialLinks(channels);
+
+  // 4) الأقسام التي لا تتكرر.
   const uniqueCategories = categories.slice(0, 7);
 
   return (
@@ -113,94 +118,27 @@ export function Footer({
             </ul>
           ) : null}
 
-          {footer.showChannels ? (
-            <ul className="flex flex-wrap gap-2 pt-2">
-              {channels.whatsappNumber ? (
-                <li>
+          {footer.showChannels && social.length ? (
+            <ul className="flex flex-wrap gap-2 pt-2" aria-label="تابعنا">
+              {social.map((l) => (
+                <li key={l.key}>
                   <a
-                    href={`https://wa.me/2${channels.whatsappNumber}`}
+                    href={l.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    aria-label="واتساب"
-                    className="grid size-10 place-items-center rounded-xl border transition-colors hover:opacity-80"
+                    aria-label={`${l.label}: ${l.handle}`}
+                    title={l.label}
+                    className="grid size-10 place-items-center rounded-xl border transition-transform hover:-translate-y-0.5"
                     style={{
-                      background:
-                        "color-mix(in srgb, var(--muted) 60%, transparent)",
-                      borderColor: "var(--border)",
+                      background: `color-mix(in srgb, ${brandColor(l.key)} 12%, transparent)`,
+                      borderColor: `color-mix(in srgb, ${brandColor(l.key)} 28%, transparent)`,
+                      color: brandColor(l.key),
                     }}
                   >
-                    <MessageCircle
-                      className="size-4"
-                      strokeWidth={SW}
-                      aria-hidden="true"
-                    />
+                    <BrandIcon brand={l.key} className="size-[18px]" />
                   </a>
                 </li>
-              ) : null}
-              {channels.phone ? (
-                <li>
-                  <a
-                    href={`tel:${channels.phone}`}
-                    aria-label="اتصل بنا"
-                    className="grid size-10 place-items-center rounded-xl border transition-colors hover:opacity-80"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--muted) 60%, transparent)",
-                      borderColor: "var(--border)",
-                    }}
-                  >
-                    <Phone
-                      className="size-4"
-                      strokeWidth={SW}
-                      aria-hidden="true"
-                    />
-                  </a>
-                </li>
-              ) : null}
-              {channels.instagramUsername ? (
-                <li>
-                  <a
-                    href={`https://instagram.com/${channels.instagramUsername}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="إنستجرام"
-                    className="grid size-10 place-items-center rounded-xl border transition-colors hover:opacity-80"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--muted) 60%, transparent)",
-                      borderColor: "var(--border)",
-                    }}
-                  >
-                    <Instagram
-                      className="size-4"
-                      strokeWidth={SW}
-                      aria-hidden="true"
-                    />
-                  </a>
-                </li>
-              ) : null}
-              {channels.facebookUrl ? (
-                <li>
-                  <a
-                    href={channels.facebookUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="فيسبوك"
-                    className="grid size-10 place-items-center rounded-xl border transition-colors hover:opacity-80"
-                    style={{
-                      background:
-                        "color-mix(in srgb, var(--muted) 60%, transparent)",
-                      borderColor: "var(--border)",
-                    }}
-                  >
-                    <Facebook
-                      className="size-4"
-                      strokeWidth={SW}
-                      aria-hidden="true"
-                    />
-                  </a>
-                </li>
-              ) : null}
+              ))}
             </ul>
           ) : null}
         </div>
@@ -283,51 +221,30 @@ export function Footer({
           </h3>
           <ul className="space-y-2.5 text-xs font-bold">
             {showPhone ? (
-              <li className="flex items-center gap-1.5">
-                <Phone
-                  className="size-3.5 shrink-0"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
-                <a
-                  href={`tel:${channels.phone}`}
-                  dir="ltr"
-                  className="font-mono tabular-nums"
-                >
+              <li className="flex items-center gap-2">
+                <Phone className="size-3.5 shrink-0" strokeWidth={SW} aria-hidden="true" />
+                <a href={`tel:${channels.phone}`} dir="ltr" className="tabular-nums transition-opacity hover:opacity-70">
                   {channels.phone}
                 </a>
               </li>
             ) : null}
-            {showWhatsapp ? (
-              <li className="flex items-center gap-1.5">
-                <MessageCircle
-                  className="size-3.5 shrink-0"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
-                <a
-                  href={`https://wa.me/2${channels.whatsappNumber}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  dir="ltr"
-                  className="font-mono tabular-nums"
-                >
-                  {channels.whatsappNumber}
-                </a>
-              </li>
-            ) : null}
+            {social
+              .filter((l) => l.key !== "whatsapp" || showWhatsapp)
+              .map((l) => (
+                <li key={l.key} className="flex min-w-0 items-center gap-2">
+                  <BrandIcon brand={l.key} className="size-3.5 shrink-0" style={{ color: brandColor(l.key) }} />
+                  <a href={l.href} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate transition-opacity hover:opacity-70">
+                    <span className="sr-only">{l.label}: </span>
+                    <bdi dir="ltr" className={l.key === "whatsapp" ? "tabular-nums" : undefined}>
+                      {l.handle}
+                    </bdi>
+                  </a>
+                </li>
+              ))}
             {channels.email ? (
-              <li className="flex items-center gap-1.5">
-                <Mail
-                  className="size-3.5 shrink-0"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
-                <a
-                  href={`mailto:${channels.email}`}
-                  dir="ltr"
-                  className="truncate font-mono"
-                >
+              <li className="flex min-w-0 items-center gap-2">
+                <Mail className="size-3.5 shrink-0" strokeWidth={SW} aria-hidden="true" />
+                <a href={`mailto:${channels.email}`} dir="ltr" className="min-w-0 truncate transition-opacity hover:opacity-70">
                   {channels.email}
                 </a>
               </li>

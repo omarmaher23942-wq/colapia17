@@ -6,6 +6,8 @@
 // header.nav.label و categories.name قد يتطابقان نصياً، فيظهر الرابط مرتين
 // في الـ nav (مرة من nav، ومرة من categories). الحل: فلترة categories
 // لإزالة أي قسم يتطابق اسمه مع أي nav.label.
+import { BrandIcon } from "./brand-icons";
+import { waLink } from "@/lib/whatsapp";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
@@ -14,7 +16,6 @@ import {
   Search,
   ShoppingBag,
   X,
-  MessageCircle,
   User,
   Package,
 } from "lucide-react";
@@ -200,17 +201,13 @@ export function Header({
           <div className={cn("flex items-center gap-1.5", layout === "centered_logo" && "md:order-3 md:justify-end")}>
             {channels.whatsappNumber ? (
               <a
-                href={`https://wa.me/2${channels.whatsappNumber}`}
+                href={waLink(channels.whatsappNumber) ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hidden size-10 items-center justify-center rounded-xl text-emerald-500 transition-colors hover:bg-emerald-500/10 sm:inline-flex"
                 aria-label="واتساب"
               >
-                <MessageCircle
-                  className="size-4.5"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
+                <BrandIcon brand="whatsapp" className="size-[18px]" />
               </a>
             ) : null}
 
@@ -441,7 +438,7 @@ export function Header({
 
             {channels.whatsappNumber ? (
               <a
-                href={`https://wa.me/2${channels.whatsappNumber}`}
+                href={waLink(channels.whatsappNumber) ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black"
@@ -450,11 +447,7 @@ export function Header({
                   color: "var(--primary-foreground)",
                 }}
               >
-                <MessageCircle
-                  className="size-4"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
+                <BrandIcon brand="whatsapp" className="size-4" />
                 واتساب المتجر
               </a>
             ) : null}

@@ -26,6 +26,7 @@ const input = z.object({
   email: str(200),
   instagram: str(200),
   facebook: str(300),
+  tiktok: str(200),
   acceptingOrders: z.boolean(),
   vacationMessage: str(1000),
 });
