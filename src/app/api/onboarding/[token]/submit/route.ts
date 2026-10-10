@@ -26,7 +26,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
     const parsed = body.safeParse(rawJson);
     const clientVersion = parsed.success ? parsed.data.draftVersion : 0;
 
-    const r = await submitOnboarding(g.session, clientVersion);
+    const r = await submitOnboarding(g.session, clientVersion, undefined, { ip: clientIp(req) });
 
     if (r.ok) return json(r);
 
@@ -40,7 +40,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ token: string 
       );
     }
 
-    return json(r, 422);
+    return json(r, r.error === "limited" ? 429 : 422);
   } catch (e) {
     console.error("[onboarding/submit] Unhandled error:", e);
     return NextResponse.json(

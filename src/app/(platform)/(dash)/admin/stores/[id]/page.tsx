@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
-import { stores, merchants, orders, platformPayments, storeSnapshots, systemEvents } from "@/db/schema";
+import { stores, merchants, orders, platformPayments, storeSnapshots, systemEvents, aiCalls } from "@/db/schema";
 import { storeUrl } from "@/lib/utils";
 import { formatEgp } from "@/lib/money";
 import { StoreAdminActions } from "@/components/platform/StoreAdminActions";
@@ -19,14 +19,28 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
   const [s] = await db.select().from(stores).where(eq(stores.id, id));
   if (!s) notFound();
 
-  const [[m], [o], pays, snaps, events, bp] = await Promise.all([
+  const [[m], [o], pays, snaps, events, bp, aiUse] = await Promise.all([
     db.select().from(merchants).where(eq(merchants.id, s.merchantId)),
     (await getTenantDb(id)).select({ n: sql<number>`count(*)`.mapWith(Number), v: sql<number>`coalesce(sum(total_piasters),0)`.mapWith(Number) }).from(orders).where(eq(orders.storeId, id)),
     db.select().from(platformPayments).where(eq(platformPayments.storeId, id)).orderBy(desc(platformPayments.createdAt)),
     db.select().from(storeSnapshots).where(eq(storeSnapshots.storeId, id)).orderBy(desc(storeSnapshots.version)).limit(15),
     db.select().from(systemEvents).where(eq(systemEvents.storeId, id)).orderBy(desc(systemEvents.createdAt)).limit(20),
     getBlueprint(id).catch(() => null),
+    // استهلاك الذكاء الاصطناعي الفعلي لهذا المتجر (تكلفة المعاينة): أعداد وتوكنز من السجل، لا أسعار مفترضة.
+    db
+      .select({
+        purpose: aiCalls.purpose,
+        calls: sql<number>`count(*)`.mapWith(Number),
+        failed: sql<number>`count(*) filter (where not ${aiCalls.ok})`.mapWith(Number),
+        tin: sql<number>`coalesce(sum(${aiCalls.tokensIn}),0)`.mapWith(Number),
+        tout: sql<number>`coalesce(sum(${aiCalls.tokensOut}),0)`.mapWith(Number),
+      })
+      .from(aiCalls)
+      .where(eq(aiCalls.storeId, id))
+      .groupBy(aiCalls.purpose)
+      .orderBy(sql`sum(${aiCalls.tokensIn} + ${aiCalls.tokensOut}) desc`),
   ]);
+  const aiTotal = aiUse.reduce((a, r) => ({ calls: a.calls + r.calls, failed: a.failed + r.failed, tokens: a.tokens + r.tin + r.tout }), { calls: 0, failed: 0, tokens: 0 });
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -52,6 +66,39 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
             snapshots={snaps}
           />
           
+          <div className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5">
+            <h2 className="text-sm font-black text-white mb-1 border-b border-white/5 pb-2">استهلاك الذكاء الاصطناعي لهذا المتجر</h2>
+            {aiUse.length ? (
+              <>
+                <p className="text-xs text-slate-400 mt-2">
+                  {aiTotal.calls} استدعاء ({aiTotal.failed} فشل) · {aiTotal.tokens.toLocaleString("en-US")} توكن إجمالاً. قارن مع سعر موديلك لتعرف تكلفة المعاينة.
+                </p>
+                <table className="mt-3 w-full text-xs">
+                  <thead>
+                    <tr className="text-slate-500 text-start">
+                      <th className="text-start font-bold pb-1">الغرض</th>
+                      <th className="text-start font-bold pb-1">استدعاءات</th>
+                      <th className="text-start font-bold pb-1">توكن مدخل</th>
+                      <th className="text-start font-bold pb-1">توكن مخرج</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-slate-300">
+                    {aiUse.map((r) => (
+                      <tr key={r.purpose}>
+                        <td className="py-1.5 font-mono" dir="ltr">{r.purpose}</td>
+                        <td className="py-1.5 tabular-nums">{r.calls}{r.failed ? <span className="text-rose-400"> ({r.failed} فشل)</span> : null}</td>
+                        <td className="py-1.5 tabular-nums">{r.tin.toLocaleString("en-US")}</td>
+                        <td className="py-1.5 tabular-nums">{r.tout.toLocaleString("en-US")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            ) : (
+              <p className="text-xs text-slate-400 mt-2">لا استدعاءات مسجلة لهذا المتجر.</p>
+            )}
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5">
               <h2 className="text-sm font-black text-white mb-4 border-b border-white/5 pb-2">أداء المبيعات (GMV)</h2>

@@ -12,12 +12,14 @@ import { onboardingSubmissionSchema } from "./schema";
 import { submissionToIntake } from "./to-intake";
 import { richness } from "./richness";
 import { checkSubdomain, releaseSubdomain } from "./subdomain";
+import { reservePreview } from "./preview-guard";
 import type { SessionRow } from "./sessions";
 
 export type SubmitResult =
   | { ok: true; storeId: string; subdomain: string; reviewDeadlineAt: string | null; alreadySubmitted?: boolean; retriggered?: boolean }
   | { ok: false; error: "invalid"; firstStep: string; issues: { path: string; message: string }[] }
   | { ok: false; error: "subdomain"; status: "invalid" | "reserved" | "taken"; message: string }
+  | { ok: false; error: "limited"; reason: "merchant" | "ip" | "phone" | "daily"; message: string }
   | { ok: false; error: "conflict"; draftVersion: number }
   | { ok: false; error: "not_found"; message: string };
 
@@ -32,7 +34,8 @@ const READY_STATUSES = new Set(["review", "trial", "active"]);
 export async function submitOnboarding(
   session: SessionRow,
   _draftVersion: number,
-  clientData?: Record<string, unknown>
+  clientData?: Record<string, unknown>,
+  ctx: { ip?: string } = {}
 ): Promise<SubmitResult> {
   // ────────────────────────────────────────────────────────────────────────────
   // المسار الاستثنائي: المستخدم عاد بعد submit سابق.
@@ -146,6 +149,10 @@ export async function submitOnboarding(
     .where(eq(conversations.id, session.conversationId))
     .limit(1);
   if (!conv) return { ok: false, error: "not_found", message: "المحادثة غير موجودة." };
+
+  // حماية المعاينة المجانية من الإساءة (تكلفة ذكاء اصطناعي حقيقية لكل متجر).
+  const gate = await reservePreview({ merchantId: conv.merchantId, ip: ctx.ip ?? "unknown", phone: submission.store.phone });
+  if (!gate.ok) return { ok: false, error: "limited", reason: gate.reason, message: gate.message };
 
   const now = new Date();
   const storeId = randomUUID();
