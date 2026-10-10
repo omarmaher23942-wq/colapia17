@@ -3,8 +3,27 @@ import { env } from "@/lib/env";
 
 type Channel = "messenger" | "instagram";
 
-/** Message Tags المسموحة خارج نافذة 24 ساعة (Messenger فقط) */
-export type Tag = "ACCOUNT_UPDATE" | "CONFIRMED_EVENT_UPDATE" | "POST_PURCHASE_UPDATE";
+/**
+ * Message Tags خارج نافذة 24 ساعة:
+ *  - HUMAN_AGENT: ردّ موظف بشري حقيقي فقط، حتى 7 أيام من رسالة العميل، على Messenger وInstagram، ويحتاج موافقة App Review من Meta.
+ *    لا يُستخدم أبداً لرد آلي (يُرفض وقد يعرّض التطبيق للتقييد).
+ *  - ACCOUNT_UPDATE وأخواتها: Messenger فقط، وتفيد مصادر غير رسمية أن Meta قيّدتها في 2026 [تحقق من وثائق Meta]:
+ *    لذلك أي فشل في إرسالها يُحفظ كرسالة معلّقة وتصل بالبريد (lifecycle/messenger.ts).
+ */
+export type Tag = "HUMAN_AGENT" | "ACCOUNT_UPDATE" | "CONFIRMED_EVENT_UPDATE" | "POST_PURCHASE_UPDATE";
+
+/** أقصى مدة لردّ بشري بوسم HUMAN_AGENT. */
+export const HUMAN_AGENT_WINDOW_MS = 7 * 24 * 36e5;
+/** نافذة الرد العادية (24 ساعة) بهامش نصف ساعة. */
+export const STANDARD_WINDOW_MS = 23.5 * 36e5;
+
+/** كيف يُرسَل ردّ لعميل راسلنا آخر مرة في `lastUserMessageAt`: عادي، أو بوسم بشري، أو ممنوع. */
+export function replyMode(lastUserMessageAt: Date | null, now = Date.now()): { mode: "standard" } | { mode: "human_agent" } | { mode: "closed" } {
+  const age = lastUserMessageAt ? now - lastUserMessageAt.getTime() : Infinity;
+  if (age < STANDARD_WINDOW_MS) return { mode: "standard" };
+  if (age < HUMAN_AGENT_WINDOW_MS) return { mode: "human_agent" };
+  return { mode: "closed" };
+}
 
 type SendResult = { message_id?: string };
 type CallOpts = { retry?: boolean };
@@ -74,9 +93,11 @@ async function readJson(res: Response): Promise<any> {
   try { return JSON.parse(txt); } catch { return { raw: txt.slice(0, 300) }; }
 }
 
-/** Tags خاصة بـ Messenger فقط، و Instagram يرفضها */
+/** Instagram يقبل HUMAN_AGENT وحده؛ بقية الوسوم لـ Messenger فقط. */
 function messaging(ch: Channel, tag?: Tag) {
-  return tag && ch === "messenger" ? { messaging_type: "MESSAGE_TAG", tag } : { messaging_type: "RESPONSE" };
+  if (!tag) return { messaging_type: "RESPONSE" };
+  if (ch === "messenger" || tag === "HUMAN_AGENT") return { messaging_type: "MESSAGE_TAG", tag };
+  return { messaging_type: "RESPONSE" };
 }
 
 async function call(ch: Channel, payload: Record<string, unknown>, opts: CallOpts = {}): Promise<SendResult> {

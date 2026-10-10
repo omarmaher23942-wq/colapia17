@@ -3,6 +3,9 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { Client } from "@upstash/qstash";
 import { env, clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { conversations, messages } from "@/db/schema";
 
 type Channel = "messenger" | "instagram";
 
@@ -66,6 +69,37 @@ function toPayload(channel: Channel, ev: any): InboundPayload | null {
   };
 }
 
+/**
+ * صدى رسالة خرجت من صفحتنا (is_echo): إن لم يرسلها تطبيقنا (app_id مختلف أو غائب) فهي رد موظف بشري من صندوق الصفحة،
+ * فنوقف الوكيل لهذه المحادثة حتى لا يتدخل بين العميل والموظف، وتظهر بحالة «تدخل بشري» في /admin/conversations.
+ */
+async function handleEcho(channel: Channel, ev: any): Promise<void> {
+  const msg = ev?.message;
+  if (!msg?.is_echo) return;
+  const appId = msg.app_id != null ? String(msg.app_id) : "";
+  if (appId && env.META_APP_ID && appId === env.META_APP_ID) return; // رسالتنا نحن (الوكيل)
+  const customerId = ev?.recipient?.id ? String(ev.recipient.id) : null;
+  if (!customerId) return;
+  try {
+    const [conv] = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(and(eq(conversations.channel, channel), eq(conversations.externalId, customerId)))
+      .limit(1);
+    if (!conv) return;
+    await db
+      .update(conversations)
+      .set({ botPaused: true, stage: "human", updatedAt: new Date() })
+      .where(eq(conversations.id, conv.id));
+    await db
+      .insert(messages)
+      .values({ conversationId: conv.id, role: "human_agent", externalMid: msg.mid ? String(msg.mid) : undefined, text: typeof msg.text === "string" && msg.text ? msg.text : "[مرفق]" })
+      .onConflictDoNothing();
+  } catch (e) {
+    console.error("[webhooks/meta] echo handling failed", e);
+  }
+}
+
 /** يسجّل الرسالة كمُستلمة ثم ينشرها. لو فشل النشر نحذف علامة التكرار حتى تنجح إعادة إرسال Meta */
 async function dispatch(p: InboundPayload): Promise<boolean> {
   const dedupKey = `meta:mid:${p.mid}`;
@@ -121,6 +155,10 @@ export async function POST(req: Request) {
   const payloads: InboundPayload[] = [];
   for (const entry of body?.entry ?? []) {
     for (const ev of entry?.messaging ?? []) {
+      if (ev?.message?.is_echo) {
+        await handleEcho(channel, ev);
+        continue;
+      }
       const p = toPayload(channel, ev);
       if (p) payloads.push(p);
     }

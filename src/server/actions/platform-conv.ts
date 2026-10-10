@@ -4,7 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, messages, intakes, systemEvents } from "@/db/schema";
 import { getPlatformSession } from "@/server/auth";
-import { meta } from "@/channels/meta";
+import { meta, replyMode } from "@/channels/meta";
 import { aiText } from "@/ai/providers";
 
 async function guard() { const u = await getPlatformSession(); if (!u) throw new Error("غير مصرح"); return u; }
@@ -18,8 +18,10 @@ export async function togglePauseAction(id: string, paused: boolean) {
 /** رد بشري: يوقف المساعد ويرسل عبر القناة (مع tag خارج النافذة) ويحفظ */
 export async function humanReplyAction(id: string, text: string) {
   const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return { error: "محادثة غير موجودة" };
-  const inWindow = c.lastUserMessageAt && Date.now() - c.lastUserMessageAt.getTime() < 23.5 * 36e5;
-  try { await meta.text(c.channel, c.externalId, text, inWindow ? undefined : c.channel === "messenger" ? "ACCOUNT_UPDATE" : undefined); }
+  // رد بشري: عادي داخل 24 ساعة، وبوسم HUMAN_AGENT حتى 7 أيام (Meta)، وبعدها ممنوع.
+  const mode = replyMode(c.lastUserMessageAt);
+  if (mode.mode === "closed") return { error: "مرّ أكثر من 7 أيام على آخر رسالة من العميل، ولا تسمح Meta بالرد الآن. تواصل معه بوسيلة أخرى (بريد أو اتصال)." };
+  try { await meta.text(c.channel, c.externalId, text, mode.mode === "human_agent" ? "HUMAN_AGENT" : undefined); }
   catch (e) { return { error: `فشل الإرسال: ${String(e).slice(0, 160)}` }; }
   await db.insert(messages).values({ conversationId: id, role: "human_agent", text, model: u.name });
   await db.update(conversations).set({ botPaused: true, stage: "human", lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, id));

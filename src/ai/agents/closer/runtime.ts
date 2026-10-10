@@ -10,7 +10,10 @@ import { getPrompt } from "@/ai/prompts";
 import { env } from "@/lib/env";
 import { isOn } from "@/lib/flags";
 import { issueOnboardingSession } from "@/onboarding/sessions";
+import { redis } from "@/lib/redis";
+import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { closerTurnSchema, type CloserTurn } from "./turn";
+import { HANDOFF_REPLY, MAX_MESSAGES_PER_HOUR, RATE_NOTICE, needsDisclosure, wantsHuman, withDisclosure } from "./policy";
 
 type Channel = "messenger" | "instagram";
 type InboundAttachment = { type: "image" | "video" | "audio" | "file"; url?: string };
@@ -61,14 +64,11 @@ const START_INTENT_RE = new RegExp(
 
 function interpolateVars(): Record<string, string> {
   const { price, basePrice, renewal } = platformPricing();
-  const trial = env.TRIAL_ACTIVE_MINUTES ?? 180;
-  const sla = env.DELIVERY_SLA_HOURS ?? 1;
   return {
     price: String(price),
     basePrice: String(basePrice),
     renewal: String(renewal),
-    trial: String(trial),
-    sla: String(sla),
+    trialHours: String(env.TRIAL_HOURS ?? 24),
   };
 }
 
@@ -78,12 +78,12 @@ function formatEgpNumber(n: number): string {
 
 // ─── الرسالة الطارئة بدون رابط (المستوى الأخير) ────────────────────────────
 function emergencyReply(vars: Record<string, string>): string {
-  return `أهلاً بيك في كولابيا. بنبني متجرك الإلكتروني الكامل بمنتجاتك وتجربة مجانية ${vars.trial} دقيقة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج (عرض لفترة محدودة) وتشمل سنة استضافة. ابعتلي اسم نشاطك وهجهّزلك رابط البدء فوراً.`;
+  return `أهلاً بيك في كولابيا. بنبني متجرك الإلكتروني الكامل بمنتجاتك وتجربة مجانية ${vars.trialHours} ساعة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج (عرض لفترة محدودة) وتشمل سنة استضافة. ابعتلي اسم نشاطك وهجهّزلك رابط البدء فوراً.`;
 }
 
 // ─── الرسالة الافتراضية مع زر الاستمارة ────────────────────────────────────
 function fallbackWithLink(vars: Record<string, string>, url: string) {
-  const text = `أهلاً بيك في كولابيا. بنبني لك متجر إلكتروني فاخر بمنتجاتك في دقائق وتجربة مجانية ${vars.trial} دقيقة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة، وتشمل المتجر وسنة استضافة كاملة، بلا عمولة على مبيعاتك. اضغط الزر وابدأ استمارتك في دقيقتين:`;
+  const text = `أهلاً بيك في كولابيا. بنبني لك متجر إلكتروني فاخر بمنتجاتك في دقائق وتجربة مجانية ${vars.trialHours} ساعة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة، وتشمل المتجر وسنة استضافة كاملة، بلا عمولة على مبيعاتك. اضغط الزر وابدأ استمارتك في دقيقتين:`;
   const buttonTitle = "ابدأ استمارة متجرك الآن";
   return { text, buttonTitle, url };
 }
@@ -134,9 +134,33 @@ export async function handleInbound(
   // تجاوز الـ bot إذا التاجر مسك المحادثة.
   if (conv.botPaused && conv.stage === "human") return;
 
+  if (!botOn) return;
+
   const vars = interpolateVars();
   const lastUserMessage = userTexts.join(" ").trim();
   const userTriggeredLink = START_INTENT_RE.test(lastUserMessage);
+
+  // حد رسائل المرسل الواحد في الساعة: يحمي فاتورة الذكاء الاصطناعي من الإغراق والحلقات الآلية.
+  const used = await redis
+    .incr(`bot:rl:${channel}:${senderId}`)
+    .then(async (n) => {
+      if (n === 1) await redis.expire(`bot:rl:${channel}:${senderId}`, 3600);
+      return n;
+    })
+    .catch(() => 0);
+  if (used > MAX_MESSAGES_PER_HOUR) {
+    // تنبيه واحد فقط لكل ساعة ثم صمت.
+    if (used === MAX_MESSAGES_PER_HOUR + 1) await metaApi.text(channel, senderId, RATE_NOTICE).catch(() => {});
+    return;
+  }
+
+  // طلب صريح لموظف: نوقف الوكيل ونحوّل لفريقنا، ولا نحاول البيع.
+  if (wantsHuman(lastUserMessage)) {
+    await handoffToHuman(channel, senderId, conv, "طلب العميل موظفاً");
+    return;
+  }
+
+  const disclose = await shouldDisclose(conv.id);
 
   const system = await getPrompt("closer.system", vars);
   const history = await buildHistory(conv.id);
@@ -164,7 +188,14 @@ export async function handleInbound(
       "[closer] AI call failed, applying guaranteed button fallback:",
       err
     );
-    await sendFallbackWithLink(channel, senderId, conv, vars);
+    await sendFallbackWithLink(channel, senderId, conv, vars, disclose);
+    await metaApi.typing(channel, senderId, false);
+    return;
+  }
+
+  // الذكاء الاصطناعي نفسه رأى أن الموقف يحتاج إنساناً (شكوى، استفسار خارج نطاقنا...).
+  if (turn.requestHuman) {
+    await handoffToHuman(channel, senderId, conv, turn.requestHuman);
     await metaApi.typing(channel, senderId, false);
     return;
   }
@@ -187,11 +218,12 @@ export async function handleInbound(
         replyText
       );
       if (genericSmell) {
-        replyText = `عظيم ومجال مطلوب في مصر. بنبني لك متجر كامل بالصور والمقاسات والدفع عند الاستلام، وتجربة ${vars.trial} دقيقة مجانية، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة وتشمل سنة استضافة. اضغط الزر وابدأ استمارتك:`;
+        replyText = `عظيم ومجال مطلوب في مصر. بنبني لك متجر كامل بالصور والمقاسات والدفع عند الاستلام، وتجربة ${vars.trialHours} ساعة مجانية، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة وتشمل سنة استضافة. اضغط الزر وابدأ استمارتك:`;
       } else if (!mentionsLinkOrButton) {
         replyText = `${replyText}\n\nاضغط الزر وابدأ استمارتك في دقيقتين:`;
       }
 
+      replyText = withDisclosure(replyText, disclose);
       await metaApi.buttons(channel, senderId, replyText, [
         { title: buttonTitle, url: issued.url },
       ]);
@@ -210,14 +242,15 @@ export async function handleInbound(
         .where(eq(conversations.id, conv.id));
     } catch (e) {
       console.error("[closer] issueOnboardingSession failed:", e);
-      await sendFallbackWithLink(channel, senderId, conv, vars);
+      await sendFallbackWithLink(channel, senderId, conv, vars, disclose);
     }
   } else {
-    await metaApi.text(channel, senderId, turn.reply);
+    const reply = withDisclosure(turn.reply, disclose);
+    await metaApi.text(channel, senderId, reply);
     await db.insert(messages).values({
       conversationId: conv.id,
       role: "assistant",
-      text: turn.reply,
+      text: reply,
     });
     await db
       .update(conversations)
@@ -228,16 +261,51 @@ export async function handleInbound(
   await metaApi.typing(channel, senderId, false);
 }
 
+/** هل يُفصح الوكيل أنه آلي في هذا الرد؟ (بداية المحادثة، أو بعد انقطاع 24 ساعة، أو بعد تدخل بشري). */
+async function shouldDisclose(conversationId: string): Promise<boolean> {
+  const [lastBot] = await db
+    .select({ at: messages.createdAt })
+    .from(messages)
+    .where(and(eq(messages.conversationId, conversationId), eq(messages.role, "assistant")))
+    .orderBy(desc(messages.createdAt))
+    .limit(1);
+  const [lastHuman] = await db
+    .select({ at: messages.createdAt })
+    .from(messages)
+    .where(and(eq(messages.conversationId, conversationId), eq(messages.role, "human_agent")))
+    .orderBy(desc(messages.createdAt))
+    .limit(1);
+  return needsDisclosure({
+    lastBotMessageAt: lastBot?.at ?? null,
+    hasAnyBotMessage: Boolean(lastBot),
+    resumedFromHuman: Boolean(lastHuman && (!lastBot || lastHuman.at > lastBot.at)),
+  });
+}
+
+/** يوقف الوكيل لهذه المحادثة، يخبر العميل، وينبّه المالك. المحادثة تظهر في /admin/conversations بحالة «تدخل بشري». */
+async function handoffToHuman(channel: Channel, senderId: string, conv: Conv, reason: string) {
+  await db
+    .update(conversations)
+    .set({ botPaused: true, stage: "human", lastBotMessageAt: new Date(), updatedAt: new Date() })
+    .where(eq(conversations.id, conv.id));
+  await metaApi.text(channel, senderId, HANDOFF_REPLY).catch((e) => console.error("[closer] handoff reply failed", e));
+  await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text: HANDOFF_REPLY });
+  await notifyAdmin(`محادثة تحتاج موظفاً بشرياً (${channel}): ${reason.slice(0, 160)}`, { conversationId: conv.id });
+}
+
 // ─── Fallback حتمي: يحاول الرابط، ثم يتراجع لرسالة نصية ────────────────────
 async function sendFallbackWithLink(
   channel: Channel,
   senderId: string,
   conv: Conv,
-  vars: Record<string, string>
+  vars: Record<string, string>,
+  disclose: boolean
 ) {
   try {
     const issued = await issueOnboardingSession(conv.id);
-    const { text, buttonTitle, url } = fallbackWithLink(vars, issued.url);
+    const f = fallbackWithLink(vars, issued.url);
+    const text = withDisclosure(f.text, disclose);
+    const { buttonTitle, url } = f;
     await metaApi.buttons(channel, senderId, text, [
       { title: buttonTitle, url },
     ]);
@@ -261,11 +329,12 @@ async function sendFallbackWithLink(
 
   // المستوى الأخير: نص بدون رابط (لا يسقط أبداً).
   try {
-    await metaApi.text(channel, senderId, emergencyReply(vars));
+    const emergency = withDisclosure(emergencyReply(vars), disclose);
+    await metaApi.text(channel, senderId, emergency);
     await db.insert(messages).values({
       conversationId: conv.id,
       role: "assistant",
-      text: emergencyReply(vars),
+      text: emergency,
     });
     await db
       .update(conversations)
