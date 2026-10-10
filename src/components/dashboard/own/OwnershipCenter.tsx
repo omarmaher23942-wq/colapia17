@@ -19,12 +19,15 @@ import {
   PlayCircle,
   ShieldCheck,
   Database,
+  Power,
   Clock,
+  Trash2,
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { issueTransferCodeAction, ownershipLiveAction, type OwnershipLive } from "@/server/actions/ownership";
+import { useRouter } from "next/navigation";
+import { deleteMyPlatformDataAction, issueTransferCodeAction, ownershipLiveAction, resumePlatformCopyAction, stopPlatformCopyAction, type OwnershipLive } from "@/server/actions/ownership";
 import { GUIDES, type Guide } from "./guides";
 
 type Props = {
@@ -35,10 +38,9 @@ type Props = {
   repo: string | null;
   github: { state: string | null; message: string | null };
   live: OwnershipLive;
-  purgeAfter: string | null;
   purgedAt: string | null;
-  /** مهلة النقل بعد الدفع (lib/ownership-window.ts)، إن كانت جارية أو انتهت. */
-  deadline?: { at: string; purgeAt: string; overdue: boolean } | null;
+  /** أوقف التاجر نسخة المنصة بنفسه (بعد نقله). */
+  offlineAt: string | null;
 };
 
 export function OwnershipCenter(props: Props) {
@@ -71,19 +73,19 @@ export function OwnershipCenter(props: Props) {
   const step = owned ? 4 : !repo ? 1 : !deployed && !live.transfer ? 2 : 3;
 
   if (!props.active) return <Locked />;
-  if (owned) return <Owned storeName={props.storeName} url={live.ownedUrl!} purgedAt={props.purgedAt} repo={repo} githubEnabled={props.githubEnabled} />;
+  if (owned) return <Owned storeName={props.storeName} subdomain={props.subdomain} url={live.ownedUrl!} purgedAt={props.purgedAt} offlineAt={props.offlineAt} repo={repo} githubEnabled={props.githubEnabled} />;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <header className="dash-card relative overflow-hidden p-6">
         <div aria-hidden className="pointer-events-none absolute -end-16 -top-16 size-56 rounded-full bg-nova/25 blur-3xl" />
-        <p className="text-[12px] font-black text-nova">امتلك متجرك للأبد</p>
+        <p className="text-[12px] font-black text-nova">امتلك متجرك (اختياري)</p>
         <h1 className="mt-1 text-2xl font-black text-ink">«{props.storeName}» على حساباتك أنت</h1>
         <p className="mt-2 max-w-xl text-[13px] leading-7 text-ink-2">
-          متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك ينتقلون لحساباتك المجانية (GitHub، Vercel، Neon). بلا اشتراك، وبلا أي مفاتيح لدينا.
+          متجرك يعمل عندنا بالفعل طوال اشتراكك. وإن أحببت نسخة على حساباتك أنت، تنقل متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك إلى حساباتك
+          (GitHub، Vercel، Neon) بلا أي مفاتيح لدينا. لا مهلة ولا استعجال: لن يتوقف متجرك ولن يُحذف شيء حتى تقرر أنت.
           كل الخطوات تعمل من الموبايل، في نحو نصف ساعة.
         </p>
-        {props.deadline ? <DeadlineNote {...props.deadline} /> : null}
         <ol className="mt-5 grid grid-cols-4 gap-2" aria-label="مراحل الاستلام">
           {["الكود", "النشر", "الاستلام", "تم"].map((l, i) => (
             <li
@@ -465,37 +467,15 @@ function GuideBox({ guide, defaultOpen = false }: { guide: Guide; defaultOpen?: 
   );
 }
 
-function DeadlineNote({ at, purgeAt, overdue }: { at: string; purgeAt: string; overdue: boolean }) {
-  const fmt = (iso: string) =>
-    new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(new Date(iso));
-  return (
-    <div role="status" className={cn("mt-4 flex items-start gap-2.5 rounded-xl border p-3 text-[12.5px] leading-6", overdue ? "border-bad/35 bg-bad/[0.07]" : "border-warn/35 bg-warn/[0.07]")}>
-      <Clock className={cn("mt-1 size-4 shrink-0", overdue ? "text-bad" : "text-warn")} aria-hidden="true" />
-      <p className="text-ink-2">
-        {overdue ? (
-          <>
-            <b className="text-ink">انتهت مهلة النقل، فمتجرك متوقف عن استقبال الطلبات.</b> أكمل الخطوات الآن ويعمل على موقعك فوراً. إن لم يكتمل النقل حتى{" "}
-            <b className="text-ink">{fmt(purgeAt)}</b> تُحذف بيانات المتجر من Colapia.
-          </>
-        ) : (
-          <>
-            <b className="text-ink">أكمل النقل قبل {fmt(at)}.</b> بعدها يتوقف المتجر عن استقبال الطلبات حتى تكمله، فالمنصة لا تستضيف المتاجر المدفوعة.
-          </>
-        )}
-      </p>
-    </div>
-  );
-}
-
 function Locked() {
   return (
     <div className="mx-auto max-w-xl dash-card p-8 text-center">
       <span className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-edge/[0.06] text-ink-3">
         <Lock className="size-6" />
       </span>
-      <h1 className="text-xl font-black text-ink">امتلك متجرك بعد التفعيل</h1>
+      <h1 className="text-xl font-black text-ink">نسخة على حساباتك بعد التفعيل</h1>
       <p className="mx-auto mt-2 max-w-sm text-[13px] leading-7 text-ink-2">
-        بعد الدفعة الواحدة تستلم متجرك ولوحة تحكمه على حساباتك المجانية، ملكاً لك للأبد بلا أي اشتراك.
+        بعد تفعيل متجرك تستطيع، متى شئت، نقل نسخة منه ولوحة تحكمه إلى حساباتك المجانية. اختياري تماماً، ومتجرك يعمل عندنا طوال اشتراكك.
       </p>
       <Link href="/dashboard/billing" className="mt-5 inline-flex h-11 items-center gap-2 rounded-2xl bg-nova px-5 text-sm font-black text-white">
         فعّل متجرك <ArrowLeft className="size-4" />
@@ -504,7 +484,23 @@ function Locked() {
   );
 }
 
-function Owned({ storeName, url, purgedAt, repo, githubEnabled }: { storeName: string; url: string; purgedAt: string | null; repo: string | null; githubEnabled: boolean }) {
+function Owned({
+  storeName,
+  subdomain,
+  url,
+  purgedAt,
+  offlineAt,
+  repo,
+  githubEnabled,
+}: {
+  storeName: string;
+  subdomain: string;
+  url: string;
+  purgedAt: string | null;
+  offlineAt: string | null;
+  repo: string | null;
+  githubEnabled: boolean;
+}) {
   const host = (() => {
     try {
       return new URL(url).host;
@@ -518,25 +514,26 @@ function Owned({ storeName, url, purgedAt, repo, githubEnabled }: { storeName: s
         <span className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-emerald-500 text-white shadow-2xl shadow-emerald-500/30">
           <PartyPopper className="size-7" />
         </span>
-        <h1 className="text-2xl font-black text-ink">«{storeName}» الآن ملكك بالكامل</h1>
+        <h1 className="text-2xl font-black text-ink">«{storeName}» انتقل إلى حساباتك</h1>
         <p className="mx-auto mt-2 max-w-sm text-[13px] leading-7 text-ink-2">
-          متجرك ولوحة تحكمه يعملان على حساباتك في <b dir="ltr">{host}</b>. رابطك القديم يحوّل زوارك إليه تلقائياً.
+          لديك الآن نسخة كاملة تعمل على حساباتك في <b dir="ltr">{host}</b>.
+          {purgedAt
+            ? " حذفت بياناتك من المنصة بطلبك، ورابطك القديم يحوّل زوارك إلى موقعك الجديد."
+            : offlineAt
+              ? " أوقفتَ النسخة التي عندنا، ورابطك القديم يحوّل زوارك إلى موقعك الجديد."
+              : " ونسختك التي عندنا ما زالت تعمل طوال اشتراكك. لا شيء يتوقف ولا يُحذف إلا بطلبك أنت."}
         </p>
         <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <a href={`${url}/dashboard`} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-nova to-nova-deep text-sm font-black text-white">
             لوحة تحكمك الجديدة <ExternalLink className="size-4" />
           </a>
           <a href={url} className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-edge/10 text-sm font-bold text-ink-2">
-            شاهد متجرك
+            شاهد موقعك الجديد
           </a>
         </div>
-        <p className="mt-6 flex items-center justify-center gap-2 text-[12px] text-ink-3">
-          {purgedAt ? <Check className="size-3.5 text-emerald-500" /> : <Loader2 className="size-3.5 animate-spin" />}
-          {purgedAt
-            ? `حُذفت كل بيانات متجرك وصوره من Colapia (${new Date(purgedAt).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}).`
-            : "نحذف الآن بيانات متجرك وصوره من Colapia؛ نسختك الوحيدة صارت عندك."}
-        </p>
       </div>
+
+      {!purgedAt ? <PlatformCopy subdomain={subdomain} offline={Boolean(offlineAt)} /> : null}
 
       {repo && githubEnabled ? (
         <section className="dash-card space-y-3 p-6">
@@ -577,5 +574,90 @@ function Owned({ storeName, url, purgedAt, repo, githubEnabled }: { storeName: s
         </p>
       </section>
     </div>
+  );
+}
+
+/** إيقاف نسخة المنصة أو حذف بياناتها منها: اختياريان ولا يمسان اشتراكك (سنتك الجارية تبقى سارية). */
+function PlatformCopy({ subdomain, offline }: { subdomain: string; offline: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [typed, setTyped] = useState("");
+
+  async function run(key: string, fn: () => Promise<{ ok: boolean; error?: string }>, done: string) {
+    setBusy(key);
+    const r = await fn().catch(() => ({ ok: false, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    setBusy(null);
+    if (!r.ok) return void toast.error(r.error ?? "تعذّر التنفيذ");
+    toast.success(done);
+    setConfirmDelete(false);
+    router.refresh();
+  }
+
+  return (
+    <section className="dash-card space-y-4 p-6" aria-labelledby="platform-copy">
+      <h2 id="platform-copy" className="flex items-center gap-2 text-[15px] font-black text-ink">
+        <Power className="size-4.5 text-nova" /> نسختك التي عندنا على Colapia
+      </h2>
+      <p className="text-[13px] leading-7 text-ink-2">
+        {offline
+          ? "أوقفت هذه النسخة: زوار رابطك يُحوَّلون لموقعك الجديد، وبياناتك عندنا محفوظة."
+          : "ما زالت تعمل وتستقبل طلبات على رابطك الأصلي. أنت من يقرر: أوقفها متى اطمأننت لموقعك الجديد، أو احذف بياناتك منا."}{" "}
+        اشتراكك (سنة الاستضافة) يبقى سارياً في الحالتين ولا يتغير.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {offline ? (
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void run("resume", resumePlatformCopyAction, "عادت النسخة للعمل على رابطك الأصلي")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge/15 px-4 text-[13px] font-bold text-ink hover:bg-edge/5 disabled:opacity-60"
+          >
+            {busy === "resume" ? <Loader2 className="size-4 animate-spin" /> : <Power className="size-4" />} أعد تشغيل النسخة
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => void run("stop", stopPlatformCopyAction, "أُوقفت النسخة. زوار رابطك الأصلي يذهبون لموقعك الجديد")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge/15 px-4 text-[13px] font-bold text-ink hover:bg-edge/5 disabled:opacity-60"
+          >
+            {busy === "stop" ? <Loader2 className="size-4 animate-spin" /> : <Power className="size-4" />} أوقف تشغيل الموقع على المنصة الآن
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={() => setConfirmDelete((v) => !v)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-bad/30 px-4 text-[13px] font-bold text-bad hover:bg-bad/5 disabled:opacity-60"
+        >
+          <Trash2 className="size-4" /> احذف بياناتي من المنصة
+        </button>
+      </div>
+      {confirmDelete ? (
+        <div className="space-y-3 rounded-2xl border border-bad/30 bg-bad/[0.05] p-4">
+          <p className="text-[12.5px] leading-6 text-ink-2">
+            <b className="text-ink">لا رجعة في هذا.</b> تُحذف منتجاتك وطلباتك وعملاؤك وصورك من Colapia نهائياً، ويتوقف الموقع عندنا. تأكد أن موقعك الجديد يعمل وأن بياناتك وصلت إليه كاملة.
+            اكتب رابط متجرك <b dir="ltr">{subdomain}</b> للتأكيد.
+          </p>
+          <input
+            dir="ltr"
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            aria-label="اكتب رابط متجرك للتأكيد"
+            placeholder={subdomain}
+            className="h-11 w-full rounded-xl border border-edge/15 bg-transparent px-3 text-[13px] text-ink outline-none focus:border-bad"
+          />
+          <button
+            type="button"
+            disabled={busy !== null || typed.trim().toLowerCase() !== subdomain.toLowerCase()}
+            onClick={() => void run("delete", () => deleteMyPlatformDataAction(typed), "حُذفت بياناتك من المنصة")}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-bad px-4 text-[13px] font-black text-white disabled:opacity-50"
+          >
+            {busy === "delete" ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />} احذف نهائياً
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }

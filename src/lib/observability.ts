@@ -1,4 +1,5 @@
 import "server-only";
+import { clientIp } from "./client-ip";
 import { headers } from "next/headers";
 import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
@@ -44,7 +45,7 @@ export async function captureException(error: unknown, context?: Record<string, 
 export async function getClientIp(): Promise<string> {
   try {
     const h = await headers();
-    return h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "0.0.0.0";
+    return clientIp(h);
   } catch {
     return "0.0.0.0";
   }

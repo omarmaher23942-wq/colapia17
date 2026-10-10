@@ -35,8 +35,10 @@ const serverSchema = z.object({
   VODAFONE_CASH_NUMBER: z.string().regex(/^01[0125]\d{8}$/),
   INSTAPAY_NUMBER: z.string().regex(/^01[0125]\d{8}$/),
 
-  PLATFORM_BASE_PRICE_EGP: z.coerce.number().int().positive().default(8999),
-  PLATFORM_PRICE_EGP: z.coerce.number().int().positive().default(899),
+  // الأسعار تُقرأ من lib/platform-pricing.ts (مصدر واحد)؛ هنا للتحقق من الصيغة فقط.
+  PLATFORM_BASE_PRICE_EGP: z.coerce.number().int().positive().default(7999),
+  PLATFORM_PRICE_EGP: z.coerce.number().int().positive().default(1999),
+  PLATFORM_RENEWAL_EGP: z.coerce.number().int().positive().default(1299),
 
   /**
    * مدة التجربة النشطة (Demo Active Window) بالدقائق.
@@ -102,7 +104,10 @@ if (!clientParsed.success) {
 export const clientEnv = clientParsed.data;
 
 const isServer = typeof window === "undefined";
-const serverParsed = isServer
+// البناء (next build داخل Docker على Railway أو غيره) لا يحمل الأسرار: تُقرأ وقت التشغيل فقط.
+// الصفحات كلها ديناميكية، فلا يحتاج البناء قيمها. القيم العامة NEXT_PUBLIC_* وحدها تُثبَّت وقت البناء.
+const isBuild = process.env.NEXT_PHASE === "phase-production-build" || process.env.SKIP_ENV_VALIDATION === "1";
+const serverParsed = isServer && !isBuild
   ? serverSchema.safeParse(process.env)
   : null;
 if (serverParsed && !serverParsed.success) {

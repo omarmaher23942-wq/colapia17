@@ -1,13 +1,14 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
+import { clientIp as ipOf } from "@/lib/client-ip";
 import { findSessionByToken, type SessionRow } from "./sessions";
 
 export const json = (body: unknown, status = 200) =>
   NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
 export function clientIp(req: Request): string {
-  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "unknown";
+  return ipOf(req.headers);
 }
 
 /** عدّاد نافذة ثابتة. عند تعطل Redis نسمح بالطلب (تجربة التاجر أهم من الحد) with تسجيل الخطأ */

@@ -1,9 +1,14 @@
 // billing-stage.ts — في أي مرحلة دفع يقف التاجر (صفحة /dashboard/billing). منطق خالص مختبَر: نفس قواعد دورة الحياة
 // (lifecycle/scheduler.ts و payments.ts): التجربة تنتهي عند demoExpiresAt فيُجمَّد المتجر، ويُحذف بعد GRACE_DAYS؛
 // ورفض الإيصال يضع doomAt (موعد حذف أقرب)؛ والإيصال قيد المراجعة يؤجل أي تجميد أو حذف حتى يُحسم.
+// المتجر المفعّل له اشتراك استضافة سنوي (lib/hosting.ts): المرحلة «active» تحمل حالته وإيصال التجديد إن وُجد.
+
+import { hostingState, type HostingState } from "./hosting";
 
 export type BillingPayment = {
   id: string;
+  kind: "setup" | "renewal";
+  coversUntil: Date | null;
   status: "pending" | "under_review" | "confirmed" | "rejected" | "refunded";
   method: string;
   amountPiasters: number;
@@ -22,13 +27,25 @@ export type BillingStore = {
   purgeAt: Date | null;
   activatedAt: Date | null;
   ownedAt: Date | null;
+  purgedAt: Date | null;
+  hostingExpiresAt: Date | null;
+  platformOfflineAt: Date | null;
 };
 
 export type PayPhase = "trial" | "expired" | "frozen" | "rejected";
 
 export type BillingStage =
   | { kind: "owned" }
-  | { kind: "active"; activatedAt: Date | null; payment: BillingPayment | null }
+  | {
+      kind: "active";
+      activatedAt: Date | null;
+      payment: BillingPayment | null;
+      hosting: HostingState;
+      /** إيصال تجديد قيد المراجعة. */
+      renewalPending: BillingPayment | null;
+      /** آخر إيصال تجديد مرفوض ما لم يأتِ بعده قبول. */
+      renewalRejected: BillingPayment | null;
+    }
   | { kind: "review"; payment: BillingPayment }
   | {
       kind: "pay";
@@ -46,8 +63,17 @@ const DAY = 864e5;
 /** payments بالأحدث أولاً. */
 export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date()): BillingStage {
   if (store.status === "active") {
-    if (store.ownedAt) return { kind: "owned" };
-    return { kind: "active", activatedAt: store.activatedAt, payment: payments.find((p) => p.status === "confirmed") ?? null };
+    // حذف التاجر بيانات متجره من المنصة بعد نقله: لا شيء يُدفع هنا.
+    if (store.purgedAt) return { kind: "owned" };
+    const latestRenewal = payments.find((p) => p.kind === "renewal" && (p.status === "rejected" || p.status === "confirmed")) ?? null;
+    return {
+      kind: "active",
+      activatedAt: store.activatedAt,
+      payment: payments.find((p) => p.status === "confirmed") ?? null,
+      hosting: hostingState(store, now, "platform"),
+      renewalPending: payments.find((p) => p.status === "under_review") ?? null,
+      renewalRejected: latestRenewal?.status === "rejected" ? latestRenewal : null,
+    };
   }
   if (store.status === "suspended") return { kind: "unavailable", reason: "suspended" };
   if (store.status === "deleted") return { kind: "unavailable", reason: "deleted" };

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+import { verifiedByQStash } from "@/server/qstash-verify";
 import { Client } from "@upstash/qstash";
 import { env, clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
@@ -70,7 +70,7 @@ const byTimestamp = (
   b: { timestamp?: number } | null
 ) => (Number(a?.timestamp) || 0) - (Number(b?.timestamp) || 0);
 
-export const POST = verifySignatureAppRouter(async (req: Request) => {
+export const POST = verifiedByQStash(async (req: Request) => {
   const started = Date.now();
   if (req.headers.get("x-internal") !== env.QSTASH_INTERNAL_SECRET)
     return new Response("forbidden", { status: 403 });

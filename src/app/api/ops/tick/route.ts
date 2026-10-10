@@ -50,4 +50,5 @@ export async function GET(req: Request) {
   });
 }
 
+// جداول QStash ترسل POST افتراضياً (Railway أو Render بلا Vercel Cron): نفس المنطق ونفس التحقق.
 export const POST = GET;

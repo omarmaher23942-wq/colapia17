@@ -1,0 +1,13 @@
+# لا يدخل صورة Docker أي ملف أسرار أو ناتج محلي.
+.env
+.env.*
+
+node_modules
+.next
+.git
+.vercel
+.claude
+*.tsbuildinfo
+store-check
+repomix-output*
+omar.py

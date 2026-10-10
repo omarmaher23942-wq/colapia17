@@ -9,7 +9,6 @@
 import "server-only";
 import { and, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
-import { after } from "next/server";
 import { UTApi } from "uploadthing/server";
 import { db } from "@/db/client";
 import { stores, storeTransfers, merchants } from "@/db/schema";
@@ -24,7 +23,6 @@ export const TRANSFER_TTL_DAYS = 7;
  * قرار المالك: بعد استلام ناجح تُحذف بيانات المتجر من المنصة فوراً (الصفوف والصور). المهلة القصيرة هنا
  * احتياط فقط: الحذف يبدأ لحظة التأكيد، وإن تعطّل لأي سبب تُكمله مهمة ops/sweep الدورية.
  */
-export const PURGE_GRACE_HOURS = 0;
 export const EXPORT_PAGE_SIZE = 300;
 /** نسخة صيغة التصدير: مشروع التاجر يرفض صيغة لا يعرفها بدل أن يستورد بيانات ناقصة. */
 export const EXPORT_FORMAT = 1;
@@ -187,7 +185,7 @@ export async function completeTransfer(req: Request, body: { siteUrl?: unknown; 
   if (!siteUrl) throw new TransferError("عنوان الموقع غير صالح (يجب أن يبدأ بـ https://)", 400);
   // تأكيد مكرر من نفس الموقع (انقطع الاتصال قبل وصول الرد الأول): الاستلام تم، والبيانات حُذفت هنا بالفعل.
   if (transfer.status === "completed") {
-    if (transfer.siteUrl === siteUrl) return { ok: true as const, purgeAfterHours: PURGE_GRACE_HOURS };
+    if (transfer.siteUrl === siteUrl) return { ok: true as const };
     throw new TransferError("استُخدم هذا الكود بالفعل لاستلام المتجر.", 409);
   }
   const stats = (body.stats && typeof body.stats === "object" ? body.stats : {}) as Record<string, unknown>;
@@ -209,33 +207,20 @@ export async function completeTransfer(req: Request, body: { siteUrl?: unknown; 
       .where(eq(storeTransfers.id, transfer.id)),
     db
       .update(stores)
-      .set({ ownedUrl: siteUrl, ownedAt: now, purgeAfter: new Date(now.getTime() + PURGE_GRACE_HOURS * 36e5), updatedAt: now })
+      .set({ ownedUrl: siteUrl, ownedAt: now, updatedAt: now })
       .where(eq(stores.id, store.id)),
   ]);
   await invalidateStoreCache(store);
   log.info("store", "transfer_completed", { storeId: store.id, siteUrl });
-  // الحذف بعد الرد: موقع التاجر لا ينتظره.
-  after(() => purgeStore({ ...store, ownedAt: now }).then(() => undefined));
-  return { ok: true as const, purgeAfterHours: PURGE_GRACE_HOURS };
+  // لا حذف تلقائي (قرار المالك 2026-10-10): نسخة المنصة تبقى تعمل طوال اشتراكه، والحذف والإيقاف بزرّين يضغطهما التاجر بنفسه.
+  return { ok: true as const };
 }
 
 // ─── الحذف بعد الاستلام ──────────────────────────────────────────────────────
 
 const UT_KEY_RE = /https:\/\/(?:utfs\.io|[a-z0-9-]+\.ufs\.sh)\/f\/([^/?#"'\s]+)/gi;
 
-/** يحذف بيانات المتاجر التي استلمها أصحابها ولم تُحذف بعد (احتياط لأي حذف فوري تعطّل). */
-export async function purgeOwnedStores(limit = 3): Promise<{ purged: string[] }> {
-  const due = await db
-    .select()
-    .from(stores)
-    .where(and(lte(stores.purgeAfter, new Date()), isNull(stores.purgedAt)))
-    .limit(limit);
-  const purged: string[] = [];
-  for (const store of due) if (await purgeStore(store)) purged.push(store.id);
-  return { purged };
-}
-
-/** يحذف كل بيانات متجر مستلَم من المنصة: الصفوف من القاعدة والصور من UploadThing. */
+/** يحذف كل بيانات متجر من المنصة (الصفوف والصور). يُستدعى فقط بطلب صاحب المتجر بعد نقله (deleteMyPlatformDataAction). */
 export async function purgeStore(store: Store): Promise<boolean> {
   try {
     // مفاتيح الملفات أولاً (قبل حذف الصفوف التي تحمل روابطها).

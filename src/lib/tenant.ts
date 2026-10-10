@@ -100,8 +100,9 @@ export async function requireStore(
     if (EDITION === "store") redirect("/setup");
     notFound();
   }
-  // استلم التاجر متجره على حساباته: نطاق المنصة يحوّل الزائر لنفس الصفحة في متجره الجديد.
-  if (EDITION === "platform" && store.ownedUrl) {
+  // نقل التاجر متجره لموقعه الخاص ثم أوقف نسخته هنا بنفسه (أو حذف بياناتها): الزائر يُحوَّل لنفس الصفحة في موقعه.
+  // مجرد النقل لا يحوّل شيئاً: النسخة على المنصة تبقى تعمل طوال اشتراكه ما لم يوقفها.
+  if (EDITION === "platform" && store.ownedUrl && (store.platformOfflineAt || store.purgedAt)) {
     const path = (await headers()).get("x-pathname") ?? "/";
     permanentRedirect(new URL(path, store.ownedUrl).toString());
   }

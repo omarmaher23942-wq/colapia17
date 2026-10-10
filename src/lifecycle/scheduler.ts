@@ -4,6 +4,7 @@ import { and, asc, eq, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm"
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
 import { env, clientEnv } from "@/lib/env";
+import { HOSTING_GRACE_DAYS } from "@/lib/hosting";
 
 export const JOB_KINDS = [
   "delivery.auto",
@@ -18,10 +19,11 @@ export const JOB_KINDS = [
   "doom.reminder_12h",
   "doom.reminder_1h",
   "doom.purge",            // المسح النهائي بعد رفض الدفع
-  "own.reminder_24h",      // قبل انتهاء مهلة نقل المتجر المدفوع بيوم
-  "own.deadline",          // انتهت المهلة: المتجر يتوقف عن استقبال الطلبات حتى يكتمل النقل
-  "own.purge_warning",     // قبل حذف بيانات متجر لم يُنقل بثلاثة أيام
-  "own.purge",             // حذف بيانات متجر مدفوع لم يُنقل بعد المهلة الإضافية
+  "hosting.reminder_30d",  // قبل انتهاء سنة الاستضافة بشهر
+  "hosting.reminder_7d",
+  "hosting.reminder_1d",
+  "hosting.expired",       // انتهت السنة: يبدأ السماح (المتجر يعمل)
+  "hosting.paused",        // انتهى السماح: المتجر يتوقف عن الظهور للزوار (لا حذف أبداً)
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
@@ -172,14 +174,16 @@ export const schedulePaymentInvite = (storeId: string, deliveredAt: Date) =>
   schedule(storeId, "payment.invite", new Date(deliveredAt.getTime() + env.PAYMENT_INVITE_DELAY_MIN * 60_000));
 
 /** عداد الـ 24 ساعة بعد رفض الدفع: مسح نهائي + تذكيران اختياريان للعميل */
-/** مهام مهلة نقل المتجر المدفوع (lib/ownership-window.ts)، تُجدول عند قبول الدفع. */
-export async function scheduleOwnership(storeId: string, deadline: Date, purgeAt: Date) {
+/** تذكيرات اشتراك الاستضافة حول تاريخ انتهائه (lib/hosting.ts). أي تجديد يعيد جدولتها بالتاريخ الجديد. */
+export async function scheduleHosting(storeId: string, expiresAt: Date) {
   const now = Date.now();
+  const D = 24 * H;
   const jobs: [JobKind, Date][] = [
-    ["own.reminder_24h", new Date(deadline.getTime() - 24 * H)],
-    ["own.deadline", deadline],
-    ["own.purge_warning", new Date(purgeAt.getTime() - 3 * 24 * H)],
-    ["own.purge", purgeAt],
+    ["hosting.reminder_30d", new Date(expiresAt.getTime() - 30 * D)],
+    ["hosting.reminder_7d", new Date(expiresAt.getTime() - 7 * D)],
+    ["hosting.reminder_1d", new Date(expiresAt.getTime() - D)],
+    ["hosting.expired", expiresAt],
+    ["hosting.paused", new Date(expiresAt.getTime() + HOSTING_GRACE_DAYS * D)],
   ];
   for (const [kind, at] of jobs) if (at.getTime() > now) await schedule(storeId, kind, at);
 }

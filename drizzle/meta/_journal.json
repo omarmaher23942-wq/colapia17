@@ -36,6 +36,13 @@
       "when": 1791498982987,
       "tag": "0004_outreach",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791665089342,
+      "tag": "0005_hosting",
+      "breakpoints": true
     }
   ]
 }

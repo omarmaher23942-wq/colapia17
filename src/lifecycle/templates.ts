@@ -1,4 +1,5 @@
-// (نفس الملف مع تعديل الدالة الأخيرة)
+// templates.ts — رسائل دورة حياة المتجر (البوت والبريد). المالك يعدّلها من لوحته (message_templates)، وهذه القيم الافتراضية.
+// نموذج الاستضافة (2026-10-10): الباقة = إنشاء المتجر + سنة استضافة، ثم تجديد سنوي معلن. لا «للأبد» ولا «بلا اشتراك».
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -37,14 +38,19 @@ export const TEMPLATE_DEFAULTS = {
     body: "جرّب متجرك كأنك زبون: اضغط على زر 'جرّب كزبون' في لوحة التحكم، واطلب منتج وشوف إزاي الطلب بيوصلك وفاتورته بتطلع بضغطة زر واحدة.",
   },
   "payment.invite": {
-    label: "دعوة التملك الدائم",
-    vars: ["store", "price", "vodafone", "instapay", "activate_url"],
-    body: "عجبك متجرك {{store}}؟ عشان تمتلكه للأبد وتفتح استقبال أوردرات زبائنك، ادفع {{price}} جنيه فقط لمرة واحدة مدى الحياة بدون أي اشتراكات وبدون أي عمولة.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفع صورة الإيصال من هنا: {{activate_url}}\nبنراجع الإيصال بنفسنا، وأول ما نقبله بيتفعّل متجرك ويوصلك بريد.",
+    label: "دعوة لتفعيل المتجر (الباقة)",
+    vars: ["store", "price", "renewal", "vodafone", "instapay", "activate_url"],
+    body: "عجبك متجرك {{store}}؟ عشان تفتحه لزباينك وتستقبل أوردرات حقيقية، الباقة {{price}} جنيه: المتجر نفسه + سنة استضافة كاملة علينا (السيرفر والصور والذكاء الاصطناعي والتحديثات)، وبدون أي عمولة على مبيعاتك. التجديد بعد السنة الأولى {{renewal}} جنيه للسنة.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفع صورة الإيصال من هنا: {{activate_url}}\nبنراجع الإيصال بنفسنا، وأول ما نقبله بيتفعّل متجرك ويوصلك بريد.",
   },
   "payment.confirmed": {
-    label: "تأكيد الدفع والتفعيل الدائم",
-    vars: ["store", "store_url"],
-    body: "تم تأكيد دفعك! متجر {{store}} اتفعّل، بدون أي اشتراكات وبدون أي عمولة على مبيعاتك.\nالخطوة الجاية: من لوحة التحكم افتح «امتلك متجرك» واستلم متجرك وبياناته على حساباتك المجانية بخطوات مشروحة.\nرابط متجرك: {{store_url}}",
+    label: "تأكيد الدفع وتفعيل المتجر",
+    vars: ["store", "store_url", "expires"],
+    body: "تم تأكيد دفعك! متجر {{store}} اتفعّل وبقى مفتوح لزباينك، والاستضافة سارية لحد {{expires}}. مفيش أي عمولة على مبيعاتك.\nرابط متجرك: {{store_url}}\nلو حبيت في أي وقت تاخد نسخة من متجرك على حساباتك الخاصة، هتلاقي «امتلك متجرك» في لوحة التحكم (اختياري تماماً).",
+  },
+  "hosting.renewed": {
+    label: "تأكيد تجديد الاستضافة",
+    vars: ["store", "store_url", "expires"],
+    body: "تم تجديد استضافة متجر {{store}} سنة كاملة، وبقت سارية لحد {{expires}}. شكراً لثقتك!\nرابط متجرك: {{store_url}}",
   },
   "payment.rejected": {
     label: "رفض الدفع",
@@ -54,7 +60,7 @@ export const TEMPLATE_DEFAULTS = {
   "doom.reminder_12h": {
     label: "تذكير قبل المسح بـ 12 ساعة",
     vars: ["store", "price", "activate_url"],
-    body: "فاضل 12 ساعة على انتهاء مهلة حفظ متجر {{store}}. لتفعيله مدى الحياة بـ {{price}} ج ارفع إثبات الدفع من هنا: {{activate_url}}",
+    body: "فاضل 12 ساعة على انتهاء مهلة حفظ متجر {{store}}. لتفعيله بالباقة ({{price}} ج تشمل سنة استضافة) ارفع إثبات الدفع من هنا: {{activate_url}}",
   },
   "doom.reminder_1h": {
     label: "تذكير قبل المسح بساعة",
@@ -114,10 +120,16 @@ export function paymentVars(storeName: string, activateUrl: string = billingUrl(
   return {
     store: storeName,
     price: platformPricing().price,
+    renewal: platformPricing().renewal,
     vodafone: env.VODAFONE_CASH_NUMBER,
     instapay: env.INSTAPAY_NUMBER,
     activate_url: activateUrl,
   };
+}
+
+/** تاريخ يوم بالعربية (أرقام لاتينية، بتوقيت القاهرة): «الأحد 12 أكتوبر 2027». */
+export function formatDay(d: Date): string {
+  return new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" }).format(d);
 }
 
 /**
@@ -144,7 +156,8 @@ export async function sendEmailFromTemplate(
     options?.subject ??
     ({
       "delivery.welcome": `متجرك جاهز — ${vars.store ?? ""}`,
-      "payment.confirmed": `تم تأكيد التفعيل الدائم — ${vars.store ?? ""}`,
+      "payment.confirmed": `تم تفعيل متجرك — ${vars.store ?? ""}`,
+      "hosting.renewed": `تم تجديد الاستضافة — ${vars.store ?? ""}`,
       "payment.rejected": `تعذّر تأكيد الدفع — ${vars.store ?? ""}`,
       "form.received": `استلمنا استمارتك — ${vars.name ?? ""}`,
     } as Record<string, string>)[key as string] ??

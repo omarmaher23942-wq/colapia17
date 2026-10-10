@@ -49,7 +49,7 @@ function statusMeta(status: string | null, acceptingOrders: boolean): { label: s
     if (!acceptingOrders) return { label: "استقبال الطلبات متوقف مؤقتاً", tone: "warn" };
     return EDITION === "store"
       ? { label: "متجرك يستقبل الطلبات", tone: "ok" }
-      : { label: "مدفوع · جاهز للاستلام", tone: "ok" };
+      : { label: "مفعّل", tone: "ok" };
   }
   switch (status) {
     case "demo":

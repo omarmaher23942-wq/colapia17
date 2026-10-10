@@ -17,7 +17,7 @@ import { PromoFromLink } from "@/components/storefront/PromoFromLink";
 import { ConversionWidgets } from "@/components/storefront/ConversionWidgets";
 import { Analytics } from "@/components/storefront/Analytics";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
-import { ownWindow } from "@/lib/ownership-window";
+import { hostingServes, hostingState } from "@/lib/hosting";
 import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstImpressionBanner";
 import { listVisibleCategories } from "@/server/repos/catalog";
 import { getCustomerSession } from "@/server/auth";
@@ -84,10 +84,11 @@ export default async function StoreLayout({ children, params }: Props) {
   // بوابة الحالات: نتحقق قبل تحميل الـ blueprint.
   // هذا يمنع 404 لو المتجر قيد البناء (blueprint قد يكون غير موجود).
   // ═════════════════════════════════════════════════════════════════════
-  if (GATED_STATUSES.has(store.status) || ownWindow(store).phase === "overdue") {
+  const hosting = hostingState(store);
+  if (GATED_STATUSES.has(store.status) || !hostingServes(hosting)) {
     return (
       <div className="min-h-dvh bg-[#07091a]">
-        <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : "moving"} />
+        <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : hosting.phase === "offline" ? "offline" : "paused"} name={store.name} />
       </div>
     );
   }

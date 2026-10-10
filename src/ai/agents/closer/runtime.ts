@@ -1,4 +1,5 @@
 import "server-only";
+import { platformPricing } from "@/lib/platform-pricing";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
@@ -59,13 +60,13 @@ const START_INTENT_RE = new RegExp(
 );
 
 function interpolateVars(): Record<string, string> {
-  const price = env.PLATFORM_PRICE_EGP ?? 899;
-  const basePrice = env.PLATFORM_BASE_PRICE_EGP ?? 8999;
+  const { price, basePrice, renewal } = platformPricing();
   const trial = env.TRIAL_ACTIVE_MINUTES ?? 180;
   const sla = env.DELIVERY_SLA_HOURS ?? 1;
   return {
     price: String(price),
     basePrice: String(basePrice),
+    renewal: String(renewal),
     trial: String(trial),
     sla: String(sla),
   };

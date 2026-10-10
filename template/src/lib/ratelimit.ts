@@ -35,6 +35,4 @@ export async function allow(name: LimitName, key: string): Promise<boolean> {
   return true;
 }
 
-export function clientIp(headers: Headers) {
-  return headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "0.0.0.0";
-}
+export { clientIp } from "./client-ip";

@@ -16,8 +16,8 @@ import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
 import { DASHBOARD_TITLE_TEMPLATE, EDITION } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
-import { ownWindow } from "@/lib/ownership-window";
-import { OwnDeadlineBanner } from "@/components/dashboard/own/OwnDeadlineBanner";
+import { hostingState } from "@/lib/hosting";
+import { HostingBanner } from "@/components/dashboard/HostingBanner";
 
 export const metadata: Metadata = {
   title: { default: "لوحة التحكم", template: DASHBOARD_TITLE_TEMPLATE },
@@ -45,14 +45,10 @@ export default async function DashboardLayout({
     redirect("/login?redirect=/dashboard&reason=no_session");
   }
 
-  // متجر استلمه صاحبه: لوحة المنصة لم تعد مكان إدارته، فكل صفحاتها تحوّل لصفحة "امتلك متجرك".
-  if (EDITION === "platform" && session.store?.ownedAt) {
-    const path = (await headers()).get("x-pathname") ?? "";
-    if (!path.startsWith("/dashboard/own")) redirect("/dashboard/own");
-  }
-
-  // بعد الاستلام تبقى صفحة واحدة فقط بلا قائمة ولا أدوات: روابط موقعه الجديد وطرق استرجاع الدخول.
-  if (EDITION === "platform" && session.store?.ownedAt) {
+  // بيانات المتجر حُذفت من المنصة بطلب صاحبه (بعد نقله لموقعه): تبقى صفحة واحدة بلا قائمة: روابط موقعه الجديد.
+  if (EDITION === "platform" && session.store?.purgedAt) {
+    const path0 = (await headers()).get("x-pathname") ?? "";
+    if (!path0.startsWith("/dashboard/own")) redirect("/dashboard/own");
     const jar0 = await cookies();
     const theme0 = jar0.get(DASH_THEME_COOKIE)?.value === "light" ? "light" : "dark";
     return (
@@ -64,11 +60,10 @@ export default async function DashboardLayout({
     );
   }
 
-  // متجر مدفوع لم يُنقل: شريط المهلة في كل صفحة، وبعد انتهائها تبقى «امتلك متجرك» والدفع فقط.
-  const own = session.store ? ownWindow(session.store) : ({ phase: "none" } as const);
+  // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح والإيقاف. لا تُقفل اللوحة أبداً: البيانات بيانات التاجر.
+  const hosting = session.store ? hostingState(session.store) : ({ phase: "none" } as const);
   const path = (await headers()).get("x-pathname") ?? "";
-  const onOwnPage = path.startsWith("/dashboard/own");
-  if (own.phase === "overdue" && !onOwnPage && !path.startsWith("/dashboard/billing")) redirect("/dashboard/own");
+  const onBilling = path.startsWith("/dashboard/billing");
 
   // أعداد «ما يحتاج انتباهك» من الخادم مع أول رسم، فلا تومض الشارات من صفر.
   const pulseAt = new Date().toISOString();
@@ -111,7 +106,6 @@ export default async function DashboardLayout({
                 : null
             }
             allStores={session.stores.map((s) => ({ id: s.id, name: s.name, subdomain: s.subdomain, status: s.status }))}
-            ownDue={own.phase === "open" || own.phase === "overdue"}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -128,7 +122,7 @@ export default async function DashboardLayout({
               id="dashboard-main"
               className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
             >
-              {own.phase === "open" && !onOwnPage ? <OwnDeadlineBanner deadline={own.deadline.toISOString()} serverNow={Date.now()} /> : null}
+              {!onBilling && (hosting.phase === "renew_soon" || hosting.phase === "grace" || hosting.phase === "paused") ? <HostingBanner state={hosting} /> : null}
               {children}
             </main>
           </div>

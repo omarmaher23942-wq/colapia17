@@ -5,7 +5,6 @@ import { and, asc, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
 import { env, clientEnv } from "@/lib/env";
-import { purgeOwnedStores } from "@/server/ownership/transfer";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -45,11 +44,8 @@ export async function GET(req: Request) {
     );
   }
 
-  // متاجر استلمها أصحابها وانتهت مهلة الأمان: تُحذف بياناتها وصورها من المنصة.
-  const purge = await purgeOwnedStores().catch(() => ({ purged: [] as string[] }));
-
   if (!jobs.length) {
-    return NextResponse.json({ ok: true, recovered: 0, failed: 0, total: 0, purged: purge.purged.length });
+    return NextResponse.json({ ok: true, recovered: 0, failed: 0, total: 0 });
   }
 
   let client: Client;
@@ -95,9 +91,9 @@ export async function GET(req: Request) {
     recovered,
     failed,
     total: jobs.length,
-    purged: purge.purged.length,
     ...(errors.length ? { errors: errors.slice(0, 5) } : {}),
   });
 }
 
+// جداول QStash ترسل POST افتراضياً (Railway أو Render بلا Vercel Cron): نفس المنطق ونفس التحقق.
 export const POST = GET;

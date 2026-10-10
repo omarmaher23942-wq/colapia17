@@ -43,7 +43,7 @@ import {
 } from "@/server/realtime/emitters";
 import { syncVariantTotals } from "@/server/inventory";
 import { getMerchantSession } from "@/server/auth";
-import { ownWindow } from "@/lib/ownership-window";
+import { hostingServes, hostingState } from "@/lib/hosting";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
 
 class CheckoutError extends Error {
@@ -337,7 +337,7 @@ export async function placeOrderAction(
   const input = parsed.data;
 
   const store = await getStoreBySubdomain(subdomain);
-  if (!store || !isStorePubliclyVisible(store) || ownWindow(store).phase === "overdue")
+  if (!store || !isStorePubliclyVisible(store) || !hostingServes(hostingState(store)))
     return { ok: false, error: "المتجر لا يستقبل طلبات حالياً" };
   const db = await getTenantDb(store.id);
   if (!store.acceptingOrders)

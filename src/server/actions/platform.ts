@@ -6,7 +6,8 @@ import { getMerchantSession } from "@/server/auth";
 import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import { platformPricing } from "@/lib/platform-pricing";
+import { amountFor, type PaymentKind } from "@/lib/platform-pricing";
+import { canRenewNow, hostingState } from "@/lib/hosting";
 import { verifyPlatformPayment } from "@/ai/verify-payment";
 import { emitPaymentSubmitted } from "@/server/realtime/emitters";
 import { assessReceipt } from "@/lifecycle/payment-policy";
@@ -15,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 
 
-/** حالات المتجر التي يُقبل فيها إيصال: التجربة (ومنها مهلة ما بعد الرفض) والتجميد. */
+/** حالات المتجر التي يُقبل فيها إيصال الباقة الأولى: التجربة (ومنها مهلة ما بعد الرفض) والتجميد. */
 const PAYABLE = new Set(["trial", "frozen"]);
 
 export async function submitPlatformPaymentAction(input: {
@@ -30,10 +31,14 @@ export async function submitPlatformPaymentAction(input: {
     if (!session || !store) {
       return { ok: false as const, error: "سجّل الدخول بحساب صاحب المتجر أولاً" };
     }
+    // متجر مفعّل = تجديد سنة استضافة (قبل الانتهاء بشهرين، أو في السماح أو الإيقاف). غير ذلك = الباقة الأولى.
+    let kind: PaymentKind = "setup";
     if (store.status === "active") {
-      return { ok: false as const, error: "متجرك مفعّل بالفعل، لا حاجة لدفع آخر" };
-    }
-    if (!PAYABLE.has(store.status)) {
+      if (!canRenewNow(hostingState(store))) {
+        return { ok: false as const, error: "اشتراكك سارٍ، والتجديد يُفتح قبل انتهائه بشهرين" };
+      }
+      kind = "renewal";
+    } else if (!PAYABLE.has(store.status)) {
       return { ok: false as const, error: "متجرك ليس في مرحلة الدفع الآن" };
     }
     if (!(await allow("platformPayment", session.merchantId))) {
@@ -56,7 +61,7 @@ export async function submitPlatformPaymentAction(input: {
     }
     const url = new URL(input.screenshotUrl);
 
-    const requiredAmountEgp = platformPricing().price;
+    const requiredAmountEgp = amountFor(kind);
     const requiredAmountPiasters = requiredAmountEgp * 100;
 
     const [paymentRecord] = await db
@@ -64,6 +69,7 @@ export async function submitPlatformPaymentAction(input: {
       .values({
         storeId: store.id,
         method: input.method,
+        kind,
         amountPiasters: requiredAmountPiasters,
         senderPhone: phone,
         screenshotUrl: url.toString(),
@@ -74,7 +80,7 @@ export async function submitPlatformPaymentAction(input: {
       scope: "payment",
       storeId: store.id,
       actor: `merchant:${session.merchantId}`,
-      message: `تحويل جديد للمنصة بقيمة ${requiredAmountEgp} ج.م من متجر ${store.subdomain}`,
+      message: `${kind === "renewal" ? "تجديد استضافة" : "تحويل جديد للمنصة"} بقيمة ${requiredAmountEgp} ج.م من متجر ${store.subdomain}`,
     });
 
     if (paymentRecord?.id) {
@@ -101,6 +107,7 @@ export async function submitPlatformPaymentAction(input: {
           method: input.method,
           senderPhone: phone,
           amountEgp: requiredAmountEgp,
+          kind,
           screenshotUrl: url.toString(),
           assessment: assessReceipt(verification, requiredAmountEgp),
         }).catch((e) => console.error("[submitPlatformPaymentAction] owner alert failed:", e));

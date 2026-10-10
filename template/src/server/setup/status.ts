@@ -14,6 +14,8 @@ export type SetupStatus =
   | { phase: "needs_import"; importing: boolean }
   | { phase: "done"; setup: SetupState };
 
+let schemaSync: Promise<void> | null = null;
+
 async function tableExists(name: string): Promise<boolean> {
   const sql = neon(DATABASE_URL);
   const rows = (await sql`select to_regclass(${`public.${name}`}) as t`) as { t: string | null }[];
@@ -25,7 +27,14 @@ export async function setupStatus(): Promise<SetupStatus> {
   try {
     if (!(await tableExists("store_settings"))) return { phase: "needs_schema" };
     const setup = await getSetting<SetupState>("setup");
-    if (setup) return { phase: "done", setup };
+    if (setup) {
+      // بعد «حدّث مستودعك لآخر إصدار» قد يحمل الكود أعمدة جديدة: نطبّق ما لم يُطبَّق من المخطط مرة لكل تشغيل للخادم.
+      await (schemaSync ??= ensureSchema().catch((e) => {
+        schemaSync = null;
+        throw e;
+      }));
+      return { phase: "done", setup };
+    }
     return { phase: "needs_import", importing: Boolean(await getSetting("import")) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

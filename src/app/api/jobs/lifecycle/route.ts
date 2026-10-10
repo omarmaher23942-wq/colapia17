@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { verifySignatureAppRouter } from "@upstash/qstash/nextjs";
+import { verifiedByQStash } from "@/server/qstash-verify";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { UTApi } from "uploadthing/server";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
-import { conversations, platformPayments, products, storeTransfers, stores } from "@/db/schema";
+import { conversations, platformPayments, products, stores } from "@/db/schema";
 import { env } from "@/lib/env";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { deliverStore } from "@/ai/lifecycle/deliver";
@@ -16,8 +16,7 @@ import { platformPricing } from "@/lib/platform-pricing";
 import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
 import { releaseToBuild } from "@/lifecycle/release";
 import { POSTPONE_MS } from "@/lifecycle/config";
-import { ownWindow } from "@/lib/ownership-window";
-import { purgeStore } from "@/server/ownership/transfer";
+import { hostingState } from "@/lib/hosting";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { clientEnv } from "@/lib/env";
 
@@ -34,8 +33,7 @@ const bodySchema = z.object({
 
 // كل دعوة للدفع تشير لصفحة الدفع على المنصة (لا تحتاج المتجر).
 const activateUrl = () => billingUrl();
-const ownUrl = () => `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/own`;
-const cairo = (d: Date) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(d);
+const cairoDay = (d: Date) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" }).format(d);
 const setStage = (storeId: string, stage: Stage) =>
   db.update(conversations).set({ stage, updatedAt: new Date() }).where(eq(conversations.storeId, storeId));
 
@@ -60,6 +58,22 @@ async function postponeIfReviewing(s: Store, kind: JobKind): Promise<boolean> {
   return true;
 }
 
+/** تذكير قبل انتهاء سنة الاستضافة؛ يتخطى إن جُدِّد الاشتراك (تغيّر تاريخ الانتهاء) أو أوقف التاجر متجره. */
+async function hostingReminder(s: Store, days: number) {
+  const st = hostingState(s);
+  if (st.phase !== "renew_soon") return { skip: st.phase };
+  if (Math.abs(st.daysLeft - days) > 1) return { skip: "renewed_or_moved" };
+  const { renewal } = platformPricing();
+  const when = days === 1 ? "غداً" : `بعد ${days === 7 ? "أسبوع" : "شهر"}`;
+  return deliverToMerchant(s.id, {
+    key: `hosting.reminder_${days}d:${s.id}:${st.expiresAt.getTime()}`,
+    text: `تنبيه: سنة استضافة متجر ${s.name} تنتهي ${when} (${cairoDay(st.expiresAt)}). التجديد سنة كاملة بـ ${renewal} ج، ويُضاف لنهاية اشتراكك الحالي فلا تخسر أي يوم. متجرك وبياناتك كما هم دائماً.`,
+    purpose: "transactional",
+    buttons: [{ title: `جدّد الآن (${renewal} ج)`, url: billingUrl() }],
+    email: { subject: `اشتراك متجرك ${s.name} ينتهي ${when}`, always: days <= 7 },
+  });
+}
+
 async function sendTemplate(
   s: Store,
   key: TemplateKey,
@@ -76,7 +90,7 @@ async function sendTemplate(
 }
 
 const GRACE_MSG = () =>
-  `انتهت فترة التجربة المجانية لمتجرك، ومتجرك محفوظ ليك بالكامل لمدة ${env.GRACE_DAYS} أيام. تقدر تفعّله للأبد بـ ${platformPricing().price} ج في أي وقت من نفس الرابط بدون أي اشتراكات وبدون أي عمولة.`;
+  `انتهت فترة التجربة المجانية لمتجرك، ومتجرك محفوظ ليك بالكامل لمدة ${env.GRACE_DAYS} أيام. تقدر تفعّله في أي وقت من نفس الرابط بالباقة (${platformPricing().price} ج تشمل سنة استضافة كاملة، وبدون أي عمولة على مبيعاتك).`;
 
 const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   "delivery.auto": async (s) => {
@@ -103,7 +117,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
     const report = await sendTemplate(s, "payment.invite", paymentVars(s.name, activateUrl()), {
       purpose: "promotional",
-      subject: `فعّل متجرك ${s.name} للأبد بـ ${platformPricing().price} ج`,
+      subject: `افتح متجرك ${s.name} لزباينك: ${platformPricing().price} ج تشمل سنة استضافة`,
     });
     if (report.viaMeta || report.emailed) {
       await db.update(stores).set({ paymentInvitedAt: new Date(), updatedAt: new Date() }).where(eq(stores.id, s.id));
@@ -127,9 +141,9 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
       return { skip: "not_applicable" };
     return deliverToMerchant(s.id, {
       key: `trial.reminder_20h:${s.id}`,
-      text: `باقي ساعات قليلة على انتهاء فترة التجربة. لو حابب تمتلك متجرك للأبد بـ ${platformPricing().price} جنيه دفعة واحدة وبدون اشتراكات، تقدر تفعّله الآن:`,
+      text: `باقي ساعات قليلة على انتهاء فترة التجربة. لو حابب تفتح متجرك لزباينك، الباقة ${platformPricing().price} جنيه وتشمل سنة استضافة كاملة، وتقدر تفعّله الآن:`,
       purpose: "promotional",
-      buttons: [{ title: "امتلك متجرك الآن", url: activateUrl() }],
+      buttons: [{ title: "فعّل متجرك الآن", url: activateUrl() }],
       email: { subject: `باقي ساعات على انتهاء تجربة متجر ${s.name}` },
     });
   },
@@ -164,7 +178,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
     return deliverToMerchant(s.id, {
       key: `trial.last_chance:${s.id}`,
-      text: `فاضل أيام قليلة قبل حذف متجر ${s.name} نهائياً. لو حابب تحتفظ بيه وشغال مدى الحياة، فعّله بـ ${platformPricing().price} ج من هنا:`,
+      text: `فاضل أيام قليلة قبل حذف متجر ${s.name} نهائياً. لو حابب تحتفظ بيه وتفتحه لزباينك، فعّله بالباقة (${platformPricing().price} ج تشمل سنة استضافة) من هنا:`,
       purpose: "transactional",
       buttons: [{ title: "تفعيل المتجر الآن", url: activateUrl() }],
       email: { subject: `متجرك ${s.name} على وشك الحذف`, always: true },
@@ -195,64 +209,39 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     return { deleted: true, files: keys.length };
   },
 
-  // ── مهلة نقل المتجر المدفوع (lib/ownership-window.ts) ──
-  "own.reminder_24h": async (s) => {
-    const w = ownWindow(s);
-    if (w.phase !== "open") return { skip: w.phase };
+  // ── اشتراك الاستضافة (lib/hosting.ts): تذكيرات قبل الانتهاء، ثم السماح، ثم الإيقاف. لا حذف أبداً. ──
+  "hosting.reminder_30d": (s) => hostingReminder(s, 30),
+  "hosting.reminder_7d": (s) => hostingReminder(s, 7),
+  "hosting.reminder_1d": (s) => hostingReminder(s, 1),
+
+  "hosting.expired": async (s) => {
+    const st = hostingState(s);
+    if (st.phase !== "grace") return { skip: st.phase };
+    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.expired", actor: "timer" });
+    const { renewal } = platformPricing();
     return deliverToMerchant(s.id, {
-      key: `own.reminder_24h:${s.id}`,
-      text: `باقي يوم على مهلة نقل متجر ${s.name} لحساباتك (حتى ${cairo(w.deadline)}). النقل بخطوات مشروحة ويأخذ نحو نصف ساعة، وبعد المهلة يتوقف المتجر عن استقبال الطلبات حتى تكمله.`,
+      key: `hosting.expired:${s.id}:${st.expiresAt.getTime()}`,
+      text: `انتهت سنة استضافة متجر ${s.name}. متجرك ما زال يعمل كالمعتاد حتى ${cairoDay(st.pauseAt)}، وبعدها يتوقف عن الظهور للزوار حتى تجدد. التجديد سنة كاملة بـ ${renewal} ج من صفحة الدفع، ولا يُحذف أي شيء من بياناتك.`,
       purpose: "transactional",
-      buttons: [{ title: "انقل متجرك الآن", url: ownUrl() }],
-      email: { subject: `باقي يوم لنقل متجرك ${s.name}`, always: true },
+      buttons: [{ title: `جدّد الآن (${renewal} ج)`, url: billingUrl() }],
+      email: { subject: `انتهت سنة استضافة متجرك ${s.name}`, always: true },
     });
   },
 
-  "own.deadline": async (s) => {
-    const w = ownWindow(s);
-    if (w.phase !== "overdue") return { skip: w.phase };
+  "hosting.paused": async (s) => {
+    const st = hostingState(s);
+    if (st.phase !== "paused") return { skip: st.phase };
     await invalidateStoreCache(s).catch(() => {});
-    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "own.deadline", actor: "timer" });
+    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.paused", actor: "timer" });
+    await notifyAdmin(`توقف متجر ${s.subdomain} لانتهاء الاستضافة وفترة السماح (بياناته محفوظة)`, { storeId: s.id });
+    const { renewal } = platformPricing();
     return deliverToMerchant(s.id, {
-      key: `own.deadline:${s.id}`,
-      text: `انتهت مهلة نقل متجر ${s.name}، فتوقف عن استقبال الطلبات. بياناتك كلها محفوظة: أكمل النقل الآن ويعمل متجرك على موقعك فوراً. إن لم يكتمل النقل حتى ${cairo(w.purgeAt)} تُحذف بيانات المتجر من Colapia.`,
+      key: `hosting.paused:${s.id}:${st.expiresAt.getTime()}`,
+      text: `توقف متجر ${s.name} مؤقتاً عن الظهور للزوار لانتهاء الاستضافة. لم يُحذف أي شيء: منتجاتك وطلباتك وعملاؤك وتصميمك محفوظون كما هم، وبمجرد التجديد (${renewal} ج للسنة) يعود متجرك فوراً بنفس الرابط.`,
       purpose: "transactional",
-      buttons: [{ title: "أكمل النقل", url: ownUrl() }],
-      email: { subject: `متجرك ${s.name} متوقف حتى تكمل نقله`, always: true },
+      buttons: [{ title: "جدّد وأعد متجرك", url: billingUrl() }],
+      email: { subject: `متجرك ${s.name} متوقف مؤقتاً حتى التجديد`, always: true },
     });
-  },
-
-  "own.purge_warning": async (s) => {
-    const w = ownWindow(s);
-    if (w.phase !== "overdue") return { skip: w.phase };
-    return deliverToMerchant(s.id, {
-      key: `own.purge_warning:${s.id}`,
-      text: `تنبيه أخير: بيانات متجر ${s.name} (المنتجات والطلبات والعملاء) تُحذف من Colapia ${cairo(w.purgeAt)} لأن نقلها لحساباتك لم يكتمل. أكمل النقل الآن لتحتفظ بها.`,
-      purpose: "transactional",
-      buttons: [{ title: "أكمل النقل الآن", url: ownUrl() }],
-      email: { subject: `تنبيه أخير: بيانات متجرك ${s.name} تُحذف قريباً`, always: true },
-    });
-  },
-
-  "own.purge": async (s) => {
-    const w = ownWindow(s);
-    if (w.phase !== "overdue") return { skip: w.phase };
-    if (w.purgeAt.getTime() > Date.now() + 2 * 60_000) return { skip: "purge_moved" };
-    // استلام جارٍ الآن: لا نحذف تحت قدميه؛ نعيد المحاولة بعد ساعة.
-    const [busy] = await db
-      .select({ id: storeTransfers.id })
-      .from(storeTransfers)
-      .where(and(eq(storeTransfers.storeId, s.id), eq(storeTransfers.status, "importing")))
-      .limit(1);
-    if (busy) {
-      await schedule(s.id, "own.purge", new Date(Date.now() + POSTPONE_MS));
-      return { postponed: "importing" };
-    }
-    const r = await transition({ storeId: s.id, to: "deleted", from: ["active"], actor: "timer", set: { deletedAt: new Date() }, reason: "not_owned_in_time" });
-    if (!r.ok) return { skip: r.reason };
-    const purged = await purgeStore(s);
-    await notifyAdmin(`حُذفت بيانات متجر ${s.subdomain} (مدفوع) لأن صاحبه لم ينقله خلال المهلة`, { storeId: s.id });
-    return { deleted: true, purged };
   },
 
   "doom.reminder_12h": async (s) => {
@@ -300,7 +289,7 @@ const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   },
 };
 
-export const POST = verifySignatureAppRouter(async (req: Request) => {
+export const POST = verifiedByQStash(async (req: Request) => {
   if (req.headers.get("x-internal") !== env.QSTASH_INTERNAL_SECRET) return new Response("forbidden", { status: 403 });
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));

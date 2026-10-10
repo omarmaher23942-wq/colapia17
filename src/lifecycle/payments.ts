@@ -8,13 +8,13 @@ import { invalidateStoreCache } from "@/lib/tenant";
 import {
   cancelJobs,
   scheduleDoom,
-  scheduleOwnership,
+  scheduleHosting,
   type JobKind,
 } from "./scheduler";
-import { OWN_DEADLINE_ENABLED, ownDeadline, ownPurgeAt } from "@/lib/ownership-window";
+import { extendHosting, hostingExpiry } from "@/lib/hosting";
 import { recordEvent, transition } from "./machine";
 import { deliverToMerchant } from "./messenger";
-import { paymentVars, renderTemplate } from "./templates";
+import { formatDay, paymentVars, renderTemplate } from "./templates";
 import { emitPaymentConfirmed } from "@/server/realtime/emitters";
 
 const TRIAL_JOBS: JobKind[] = [
@@ -92,7 +92,11 @@ export async function confirmStorePayment(
     cur = "frozen";
   }
 
-  if (cur !== "active") {
+  // كل دفعة مقبولة = سنة استضافة: من نهاية الاشتراك الحالي إن كان سارياً، وإلا من اليوم.
+  const renewal = cur === "active";
+  const expiresAt = extendHosting(renewal ? hostingExpiry(store) : null, now);
+
+  if (!renewal) {
     const r = await transition({
       storeId: store.id,
       to: "active",
@@ -100,6 +104,7 @@ export async function confirmStorePayment(
       actor,
       set: {
         activatedAt: store.activatedAt ?? now,
+        hostingExpiresAt: expiresAt,
         frozenAt: null,
         purgeAt: null,
         doomAt: null,
@@ -115,15 +120,18 @@ export async function confirmStorePayment(
         }) لا تسمح بالتفعيل`
       );
     }
+  } else {
+    const [renewed] = await db
+      .update(stores)
+      .set({ hostingExpiresAt: expiresAt, updatedAt: now })
+      .where(eq(stores.id, store.id))
+      .returning();
+    if (renewed) await invalidateStoreCache(renewed).catch(() => {});
   }
+  await db.update(platformPayments).set({ coversUntil: expiresAt }).where(eq(platformPayments.id, paymentId));
 
-  // مهلة نقل المتجر لحسابات التاجر تبدأ من التفعيل (تذكير، ثم إيقاف الطلبات، ثم الحذف إن لم يُنقل).
-  const activatedAt = store.activatedAt ?? now;
-  if (OWN_DEADLINE_ENABLED) {
-    await scheduleOwnership(store.id, ownDeadline(activatedAt), ownPurgeAt(activatedAt)).catch((e) =>
-      console.error("[payments] schedule ownership jobs failed", e)
-    );
-  }
+  // تذكيرات التجديد (قبل الانتهاء بـ30 و7 أيام ويوم، ثم عند الانتهاء، ثم عند الإيقاف). تجديد لاحق يعيد جدولتها.
+  await scheduleHosting(store.id, expiresAt).catch((e) => console.error("[payments] schedule hosting jobs failed", e));
 
   await db
     .update(conversations)
@@ -136,7 +144,7 @@ export async function confirmStorePayment(
     storeRef: store.subdomain,
     type: "payment.confirmed",
     actor,
-    data: { paymentId },
+    data: { paymentId, kind: renewal ? "renewal" : "setup", hostingExpiresAt: expiresAt.toISOString() },
   });
 
   // حدث Pusher: تأكيد الدفعة.
@@ -148,15 +156,16 @@ export async function confirmStorePayment(
     confirmedBy: actor,
   });
 
-  const { text } = await renderTemplate("payment.confirmed", {
+  const { text } = await renderTemplate(renewal ? "hosting.renewed" : "payment.confirmed", {
     store: store.name,
     store_url: storeUrl(store.subdomain),
+    expires: formatDay(expiresAt),
   });
   await deliverToMerchant(store.id, {
     key: `payment.confirmed:${paymentId}`,
     text,
     purpose: "transactional",
-    email: { subject: "تم تأكيد دفعك" },
+    email: { subject: renewal ? "تم تجديد استضافة متجرك" : "تم تأكيد دفعك وتفعيل متجرك" },
   });
   return { ok: true };
 }

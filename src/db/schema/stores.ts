@@ -39,6 +39,11 @@ export const stores = pgTable(
     frozenAt: timestamp("frozen_at", { withTimezone: true }),
     purgeAt: timestamp("purge_at", { withTimezone: true }),
     activatedAt: timestamp("activated_at", { withTimezone: true }),
+    // الاستضافة (نموذج الاشتراك السنوي): المتجر يعمل على المنصة حتى هذا التاريخ، ثم مهلة سماح، ثم «موقوف» بلا حذف أبداً.
+    // كل دفعة مؤكدة تمده سنة (lib/hosting.ts و lifecycle/payments.ts).
+    hostingExpiresAt: timestamp("hosting_expires_at", { withTimezone: true }),
+    // صاحب المتجر أوقف نسخته على المنصة بنفسه (بعد نقله لموقعه الخاص): الزائر يُحوَّل لموقعه الجديد إن وُجد.
+    platformOfflineAt: timestamp("platform_offline_at", { withTimezone: true }),
 
     reviewedBy: uuid("reviewed_by").references(() => platformUsers.id),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -62,6 +67,7 @@ export const stores = pgTable(
     index("stores_review_deadline_idx").on(t.reviewDeadlineAt),
     index("stores_doom_at_idx").on(t.doomAt),
     index("stores_purge_after_idx").on(t.purgeAfter),
+    index("stores_hosting_expires_idx").on(t.hostingExpiresAt),
   ]
 );
 

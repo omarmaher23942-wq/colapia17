@@ -1,12 +1,13 @@
-// dashboard/billing — دفع Colapia (مرة واحدة) على المنصة فقط. الصفحة تعرض مرحلة التاجر كما هي (lib/billing-stage.ts):
+// dashboard/billing — باقة Colapia واشتراك الاستضافة، على المنصة فقط. الصفحة تعرض مرحلة التاجر كما هي (lib/billing-stage.ts):
 //  - الدفع: التجربة الجارية بموعد التجميد والحذف، أو انتهاؤها، أو التجميد، أو رفض إيصال سابق بسببه؛ ثم نموذج التحويل.
 //  - قيد المراجعة: الإيصال المرسَل وخطوات ما بعده (المالك يراجع بنفسه؛ لا موعد نَعِد به). تتحدث تلقائياً عند القبول.
-//  - مفعّل: الخطوة التالية «امتلك متجرك». ومستلَم: لا شيء مطلوب.
+//  - مفعّل: حالة الاستضافة (سارية، تقترب، سماح، متوقف) وتاريخ انتهائها، والتجديد حين يُفتح (lib/hosting.ts).
+//  - بيانات محذوفة بطلب التاجر بعد نقله: لا شيء مطلوب.
 // السعر من platformPricing (نفس الهبوط والتحقق من الإيصال)، وأرقام التحويل من متغيرات المنصة.
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { AlertTriangle, ArrowLeft, Check, CheckCircle2, Clock, ExternalLink, Hourglass, Lock, PartyPopper, Receipt, Snowflake, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarCheck, Check, CheckCircle2, Clock, ExternalLink, Hourglass, Lock, PauseCircle, Receipt, RefreshCw, Snowflake, XCircle } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
 import { platformPayments } from "@/db/schema";
@@ -17,12 +18,12 @@ import { formatEgp } from "@/lib/money";
 import { prettyPhone } from "@/lib/phone";
 import { platformPricing } from "@/lib/platform-pricing";
 import { billingStage, type BillingPayment, type BillingStage } from "@/lib/billing-stage";
-import { ownWindow, type OwnWindow } from "@/lib/ownership-window";
+import { canRenewNow, HOSTING_GRACE_DAYS, RENEW_OPEN_DAYS, type HostingState } from "@/lib/hosting";
 import { PayForm } from "@/components/dashboard/billing/PayForm";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "الدفع والتفعيل" };
+export const metadata = { title: "الباقة والاستضافة" };
 
 const METHOD: Record<string, string> = { vodafone_cash: "فودافون كاش", instapay: "إنستاباي", cod: "نقداً" };
 
@@ -50,6 +51,8 @@ export default async function BillingPage() {
   const payments = (await db
     .select({
       id: platformPayments.id,
+      kind: platformPayments.kind,
+      coversUntil: platformPayments.coversUntil,
       status: platformPayments.status,
       method: platformPayments.method,
       amountPiasters: platformPayments.amountPiasters,
@@ -68,13 +71,14 @@ export default async function BillingPage() {
   const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now));
   const pricing = platformPricing();
 
+  const renewing = stage.kind === "active" && Boolean(stage.renewalPending);
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      {stage.kind === "review" ? <AutoRefresh everyMs={15000} /> : null}
+      {stage.kind === "review" || renewing ? <AutoRefresh everyMs={15000} /> : null}
       <header>
-        <h1 className="text-xl font-black text-ink">الدفع والتفعيل</h1>
+        <h1 className="text-xl font-black text-ink">الباقة والاستضافة</h1>
         <p className="mt-1 text-[12.5px] text-ink-3">
-          {fmtNum(pricing.price)} ج.م مرة واحدة لمتجر {store.name}، بلا اشتراك ولا عمولة على مبيعاتك.
+          متجر {store.name}: الباقة {fmtNum(pricing.price)} ج.م تشمل سنة استضافة كاملة، ثم {fmtNum(pricing.renewal)} ج.م لكل سنة بعدها. بلا عمولة على مبيعاتك.
         </p>
       </header>
 
@@ -84,14 +88,14 @@ export default async function BillingPage() {
             <PhaseBanner stage={stage} now={now} />
             <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} />
           </div>
-          <Offer price={pricing.price} basePrice={pricing.basePrice} />
+          <Offer price={pricing.price} basePrice={pricing.basePrice} renewal={pricing.renewal} />
         </div>
       ) : null}
 
       {stage.kind === "review" ? <InReview payment={stage.payment} /> : null}
-      {stage.kind === "active" ? <Activated activatedAt={stage.activatedAt} payment={stage.payment} window={ownWindow(store)} now={now} /> : null}
+      {stage.kind === "active" ? <Hosting stage={stage} renewal={pricing.renewal} now={now} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} /> : null}
       {stage.kind === "owned" ? (
-        <StateCard tone="ok" icon={CheckCircle2} title="استلمت متجرك" text="متجرك يعمل على حساباتك أنت، ولا شيء مطلوب منك هنا.">
+        <StateCard tone="ok" icon={CheckCircle2} title="بيانات متجرك حُذفت من Colapia بطلبك" text="متجرك يعمل على حساباتك أنت، ولا شيء مطلوب منك هنا.">
           <CtaLink href="/dashboard/own">روابط موقعك الجديد</CtaLink>
         </StateCard>
       ) : null}
@@ -159,28 +163,30 @@ function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay
   );
 }
 
-function Offer({ price, basePrice }: { price: number; basePrice: number }) {
+function Offer({ price, basePrice, renewal }: { price: number; basePrice: number; renewal: number }) {
   const off = basePrice > price ? Math.round((1 - price / basePrice) * 100) : 0;
   return (
     <aside aria-label="ما تدفع مقابله" className="dash-card p-5 lg:sticky lg:top-20">
-      <p className="text-[12px] font-bold text-ink-3">تدفع مرة واحدة</p>
+      <p className="text-[12px] font-bold text-ink-3">الباقة: متجرك + سنة استضافة</p>
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
         <span className="text-4xl font-black tabular-nums text-ink">{fmtNum(price)}</span>
         <span className="text-[14px] font-bold text-ink-2">ج.م</span>
         {off ? (
           <>
             <s className="text-[13px] tabular-nums text-ink-3">{fmtNum(basePrice)} ج.م</s>
-            <span className="rounded-md bg-ok/10 px-1.5 py-0.5 text-[11px] font-black text-ok">خصم {fmtNum(off)}%</span>
+            <span className="rounded-md bg-ok/10 px-1.5 py-0.5 text-[11px] font-black text-ok">عرض الإطلاق: خصم {fmtNum(off)}%</span>
           </>
         ) : null}
       </div>
+      {off ? <p className="mt-1 text-[11.5px] text-ink-3">لفترة محدودة ولعدد محدود من المتاجر.</p> : null}
       <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
         {[
-          "متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك، ينتقلون لحساباتك أنت بخطوات مشروحة: GitHub، Vercel، Neon.",
-          "بلا اشتراك ولا عمولة لنا على أي طلب، ولا مفاتيحك عندنا.",
-          "تحديث متجرك لآخر إصدار بزر واحد متى شئت.",
-          "مساعد ذكي في لوحتك يعمل بمفتاح Groq المجاني الخاص بك.",
-          "الشكل نفسه الذي تراه الآن، لا يتغير بعد الدفع.",
+          "متجرك بتصميمه الحالي ولوحة تحكمه، مفتوح لعملائك على رابطه نفسه.",
+          "سنة استضافة كاملة علينا: السيرفر والقاعدة والصور والتحديثات والمساعد الذكي في لوحتك.",
+          "بلا عمولة لنا على أي طلب.",
+          `بعد السنة الأولى: ${fmtNum(renewal)} ج.م للسنة، تجدد متى شئت قبل الانتهاء.`,
+          "متجرك لا يُحذف بسبب التأخر في التجديد: يتوقف عن الظهور فقط ويعود فور التجديد.",
+          "نسخة من متجرك على حساباتك الخاصة متى أردت («امتلك متجرك»، اختياري).",
         ].map((t) => (
           <li key={t} className="flex gap-2">
             <Check className="mt-1 size-4 shrink-0 text-ok" aria-hidden="true" />
@@ -188,25 +194,28 @@ function Offer({ price, basePrice }: { price: number; basePrice: number }) {
           </li>
         ))}
       </ul>
-      <p className="mt-4 border-t border-edge/10 pt-3 text-[11.5px] leading-5 text-ink-3">
-        الخطط المجانية لهذه الخدمات تكفي متجراً في بدايته؛ لو تجاوزها متجرك تدفع لهم مباشرة، لا لنا.
-      </p>
     </aside>
   );
 }
 
-function InReview({ payment }: { payment: BillingPayment }) {
-  const steps = [
+function InReview({ payment, renewal }: { payment: BillingPayment; renewal?: boolean }) {
+  const steps = renewal
+    ? [
+        { done: true, title: "وصل إيصال التجديد", text: `${formatEgp(payment.amountPiasters)} عبر ${METHOD[payment.method] ?? payment.method}، ${shortFmt.format(payment.createdAt)}` },
+        { done: false, current: true, title: "نراجع الإيصال بأنفسنا", text: "متجرك لا يتوقف أثناء المراجعة إن كان يعمل الآن." },
+        { done: false, title: "تُمد الاستضافة سنة ويصلك بريد", text: "وتتحدث هذه الصفحة وحدها." },
+      ]
+    : [
     { done: true, title: "وصل إيصالك", text: `${formatEgp(payment.amountPiasters)} عبر ${METHOD[payment.method] ?? payment.method}، ${shortFmt.format(payment.createdAt)}` },
     { done: false, current: true, title: "نراجع الإيصال بأنفسنا", text: "نطابق المبلغ والرقم المحوَّل منه مع ما وصلنا. لا يُجمَّد متجرك ولا يُحذف أثناء ذلك." },
     { done: false, title: "يُفعَّل متجرك ويصلك بريد", text: "وتتحدث هذه الصفحة وحدها." },
-    { done: false, title: "تستلم متجرك على حساباتك", text: "من «امتلك متجرك» بخطوات مشروحة." },
-  ];
+    { done: false, title: "متجرك مفتوح لعملائك", text: "بسنة استضافة كاملة تبدأ من يوم القبول." },
+      ];
   return (
     <section aria-labelledby="review-title" className="dash-card grid gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto]">
       <div>
         <h2 id="review-title" className="flex items-center gap-2 text-[16px] font-black text-ink">
-          <Clock className="size-5 text-nova-2" aria-hidden="true" /> إيصالك قيد المراجعة
+          <Clock className="size-5 text-nova-2" aria-hidden="true" /> {renewal ? "إيصال التجديد قيد المراجعة" : "إيصالك قيد المراجعة"}
         </h2>
         <ol className="mt-4 space-y-0">
           {steps.map((s, i) => (
@@ -245,24 +254,83 @@ function InReview({ payment }: { payment: BillingPayment }) {
   );
 }
 
-function Activated({ activatedAt, payment, window: w, now }: { activatedAt: Date | null; payment: BillingPayment | null; window: OwnWindow; now: number }) {
-  const due =
-    w.phase === "open"
-      ? ` انقله قبل ${when(w.deadline)} (${inTime(w.deadline, now)})، وبعدها يتوقف المتجر عن استقبال الطلبات حتى تكمل النقل.`
-      : w.phase === "overdue"
-        ? ` انتهت مهلة النقل فتوقف المتجر عن استقبال الطلبات؛ أكمل النقل قبل ${when(w.purgeAt)} وإلا تُحذف بياناته من Colapia.`
-        : "";
+function Hosting({
+  stage,
+  renewal,
+  now,
+  vodafone,
+  instapay,
+}: {
+  stage: Extract<BillingStage, { kind: "active" }>;
+  renewal: number;
+  now: number;
+  vodafone: string;
+  instapay: string;
+}) {
+  const h = stage.hosting;
+  const card = hostingCard(h, now);
+  const open = canRenewNow(h) && !stage.renewalPending;
   return (
-    <StateCard
-      tone={w.phase === "overdue" ? "bad" : "ok"}
-      icon={PartyPopper}
-      title="متجرك مفعّل"
-      text={`${activatedAt ? `فُعِّل ${when(activatedAt)}` : "دفعتك مؤكدة"}${payment ? ` بدفعة ${formatEgp(payment.amountPiasters)}` : ""}. الخطوة الباقية: استلم متجرك وبياناته على حساباتك أنت.${due}`}
-    >
-      <CtaLink href="/dashboard/own">امتلك متجرك الآن</CtaLink>
-    </StateCard>
+    <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+      <div className="space-y-4">
+        <StateCard tone={card.tone} icon={card.icon} title={card.title} text={card.text}>
+          {h.phase === "offline" ? <CtaLink href="/dashboard/own">إدارة نسختك على المنصة</CtaLink> : null}
+        </StateCard>
+        {stage.renewalPending ? <InReview payment={stage.renewalPending} renewal /> : null}
+        {stage.renewalRejected && !stage.renewalPending ? (
+          <div className="flex items-start gap-3 rounded-2xl border border-bad/30 bg-bad/[0.06] p-4">
+            <XCircle className="mt-0.5 size-5 shrink-0 text-bad" aria-hidden="true" />
+            <div className="min-w-0 text-[12.5px] leading-6">
+              <p className="font-black text-ink">لم نقبل إيصال التجديد السابق</p>
+              <p className="text-ink-2">{stage.renewalRejected.reviewNote?.trim() || "لم نتمكن من التأكد من وصول التحويل."}</p>
+            </div>
+          </div>
+        ) : null}
+        {open ? <PayForm price={renewal} vodafone={vodafone} instapay={instapay} /> : null}
+      </div>
+      <aside aria-label="اشتراكك" className="dash-card p-5 lg:sticky lg:top-20">
+        <p className="text-[12px] font-bold text-ink-3">التجديد السنوي</p>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="text-3xl font-black tabular-nums text-ink">{fmtNum(renewal)}</span>
+          <span className="text-[13px] font-bold text-ink-2">ج.م / سنة</span>
+        </div>
+        <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
+          {[
+            `يُفتح قبل انتهاء اشتراكك بـ ${fmtNum(RENEW_OPEN_DAYS)} يوماً، والسنة الجديدة تُضاف لنهاية الحالية فلا تخسر يوماً.`,
+            `بعد الانتهاء يبقى متجرك يعمل ${fmtNum(HOSTING_GRACE_DAYS)} يوماً، ثم يتوقف عن الظهور للزوار حتى التجديد.`,
+            "لا يُحذف شيء من بياناتك بسبب التأخر في التجديد.",
+            "نذكّرك قبل الانتهاء بشهر وأسبوع ويوم.",
+          ].map((t) => (
+            <li key={t} className="flex gap-2">
+              <Check className="mt-1 size-4 shrink-0 text-ok" aria-hidden="true" />
+              <span>{t}</span>
+            </li>
+          ))}
+        </ul>
+        {stage.activatedAt ? <p className="mt-4 border-t border-edge/10 pt-3 text-[11.5px] text-ink-3">مفعّل منذ {when(stage.activatedAt)}.</p> : null}
+      </aside>
+    </div>
   );
 }
+
+function hostingCard(h: HostingState, now: number): { tone: keyof typeof TONE; icon: typeof Clock; title: string; text: string } {
+  switch (h.phase) {
+    case "active":
+      return { tone: "ok", icon: CalendarCheck, title: "متجرك مفعّل والاستضافة سارية", text: `حتى ${dayFmt.format(h.expiresAt)} (${inTime(h.expiresAt, now)}). لا شيء مطلوب منك الآن.` };
+    case "renew_soon":
+      return { tone: "warn", icon: RefreshCw, title: `اشتراكك ينتهي ${inTime(h.expiresAt, now)}`, text: `في ${dayFmt.format(h.expiresAt)}. جدّد الآن وتُضاف السنة الجديدة بعد هذا التاريخ.` };
+    case "grace":
+      return { tone: "bad", icon: AlertTriangle, title: "انتهت سنة الاستضافة", text: `متجرك ما زال يعمل حتى ${dayFmt.format(h.pauseAt)} (${inTime(h.pauseAt, now)})، ثم يتوقف عن الظهور للزوار حتى تجدد. بياناتك محفوظة كاملة.` };
+    case "paused":
+      return { tone: "bad", icon: PauseCircle, title: "متجرك متوقف مؤقتاً", text: "لا يراه الزوار الآن لانتهاء الاستضافة. لم يُحذف أي شيء: جدّد ويعود فوراً بنفس الرابط ونفس البيانات." };
+    case "offline":
+      return { tone: "muted", icon: PauseCircle, title: "أوقفت نسخة متجرك على المنصة", text: "زوار رابطك يُحوَّلون لموقعك الخاص. يمكنك إعادة تشغيلها هنا متى شئت ما دام اشتراكك سارياً." };
+    default:
+      return { tone: "ok", icon: CheckCircle2, title: "متجرك مفعّل", text: "دفعتك مؤكدة." };
+  }
+}
+
+const dayFmt = new Intl.DateTimeFormat("ar-EG-u-nu-latn", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" });
 
 function Unavailable({ reason }: { reason: "building" | "suspended" | "deleted" }) {
   if (reason === "building")
@@ -351,8 +419,9 @@ function History({ payments }: { payments: BillingPayment[] }) {
               </span>
               <div className="min-w-0 flex-1 basis-40">
                 <p className="text-[13px] font-bold text-ink">
-                  {formatEgp(p.amountPiasters)} · {METHOD[p.method] ?? p.method}
+                  {p.kind === "renewal" ? "تجديد سنة" : "الباقة"} · {formatEgp(p.amountPiasters)} · {METHOD[p.method] ?? p.method}
                 </p>
+                {p.status === "confirmed" && p.coversUntil ? <p className="text-[11.5px] text-ok">الاستضافة حتى {dayFmt.format(p.coversUntil)}</p> : null}
                 <p className="text-[11.5px] text-ink-3">
                   {shortFmt.format(p.createdAt)}
                   {p.senderPhone ? (

@@ -179,6 +179,10 @@ export const platformPayments = pgTable(
     storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
     method: paymentMethodEnum("method").notNull(),
     amountPiasters: integer("amount_piasters").notNull(),
+    // setup = الباقة الأولى (البناء + سنة استضافة)، renewal = تجديد سنة.
+    kind: text("kind").$type<"setup" | "renewal">().notNull().default("setup"),
+    // نهاية الاستضافة التي غطتها هذه الدفعة بعد قبولها (سجل للتاجر وللمالك).
+    coversUntil: timestamp("covers_until", { withTimezone: true }),
     senderPhone: text("sender_phone"),
     screenshotUrl: text("screenshot_url"),
     screenshotHash: text("screenshot_hash"),

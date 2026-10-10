@@ -84,6 +84,9 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // خادم Node مستقل (Dockerfile): يحمل ما تحتاجه الصفحات فقط، فتصغر الصورة وذاكرة التشغيل على Railway أو أي مضيف.
+  // Vercel يتجاهله ويبني بطريقته.
+  output: "standalone",
   // "امتلك متجرك" يولّد مشروع التاجر من ملفات المشروع نفسها وقت التشغيل (server/ownership/template.ts).
   outputFileTracingIncludes: {
     "/api/ownership/zip": ["./src/**/*", "./template/**/*", "./public/sounds/**/*", "./public/logo.png", "./package.json", "./package-lock.json", "./postcss.config.mjs", "./next-env.d.ts"],

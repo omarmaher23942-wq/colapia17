@@ -25,6 +25,7 @@ import { secureToken, sha256 } from "@/lib/ids";
 import { clientEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/utils";
 import { readRequestId } from "@/lib/correlation";
+import { clientIp } from "@/lib/client-ip";
 import { log } from "@/lib/logger";
 import { sendTemplatedEmail } from "@/lib/email";
 
@@ -99,7 +100,7 @@ async function createSession(
       subjectId,
       storeId,
       userAgent: h.get("user-agent")?.slice(0, 300),
-      ip: h.get("x-real-ip") ?? undefined,
+      ip: clientIp(h),
       expiresAt: new Date(Date.now() + SESSION_DAYS * 864e5),
     })
     .returning({ id: sessions.id });

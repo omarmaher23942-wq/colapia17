@@ -7,7 +7,7 @@ import { getPrompt } from "./prompts";
 import { db } from "@/db/client";
 import { platformPayments } from "@/db/schema";
 import { env } from "@/lib/env";
-import { platformPricing } from "@/lib/platform-pricing";
+import { amountFor } from "@/lib/platform-pricing";
 import type { Verification } from "@/lifecycle/payment-policy";
 
 const verificationOutputSchema = z.object({
@@ -49,7 +49,7 @@ export async function verifyPlatformPayment(paymentId: string): Promise<Verifica
     .limit(1);
 
   // السعر الحقيقي المطلوب من إعدادات النظام الرسمية
-  const officialPriceEgp = platformPricing().price;
+  const officialPriceEgp = amountFor(p.kind === "renewal" ? "renewal" : "setup");
 
   const expected = {
     amountEgp: officialPriceEgp,

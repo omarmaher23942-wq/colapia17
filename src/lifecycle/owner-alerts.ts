@@ -19,6 +19,7 @@ export async function notifyOwnerOfPayment(p: {
   method: string;
   senderPhone: string;
   amountEgp: number;
+  kind?: "setup" | "renewal";
   screenshotUrl: string;
   assessment: ReceiptAssessment;
 }): Promise<void> {
@@ -27,13 +28,15 @@ export async function notifyOwnerOfPayment(p: {
   const review = `${clientEnv.NEXT_PUBLIC_APP_URL}/admin/payments?focus=${p.paymentId}`;
   await sendEmail({
     to,
-    subject: `${p.assessment.level === "danger" ? "🔴 " : ""}إيصال دفع جديد: ${p.storeName} (${p.amountEgp} ج)`,
-    headline: "إيصال دفع جديد ينتظر قرارك",
+    subject: `${p.assessment.level === "danger" ? "🔴 " : ""}${p.kind === "renewal" ? "تجديد استضافة" : "إيصال دفع جديد"}: ${p.storeName} (${p.amountEgp} ج)`,
+    headline: p.kind === "renewal" ? "إيصال تجديد استضافة ينتظر قرارك" : "إيصال دفع جديد ينتظر قرارك",
     paragraphs: [
       `المتجر: ${p.storeName} (${p.subdomain})`,
       `المبلغ: ${p.amountEgp} ج عبر ${METHOD[p.method] ?? p.method}، من الرقم ${p.senderPhone}.`,
       `${LEVEL[p.assessment.level]}: ${p.assessment.summary}`,
-      "المتجر لن يُفعَّل حتى تقبل الإيصال. بمجرد القبول يُفعَّل فوراً ويصل التاجر بريد التفعيل.",
+      p.kind === "renewal"
+        ? "بمجرد القبول تُمد استضافة المتجر سنة كاملة (ويعود فوراً إن كان متوقفاً)، ويصل التاجر بريد التأكيد."
+        : "المتجر لن يُفعَّل حتى تقبل الإيصال. بمجرد القبول يُفعَّل بسنة استضافة ويصل التاجر بريد التفعيل.",
     ],
     buttons: [
       { title: "راجع واقبل الآن", url: review },

@@ -49,7 +49,7 @@ export default async function DesignLab({ searchParams }: { searchParams: Promis
         githubEnabled
         repo={view === "repo" || view === "transfer" || view === "owned" ? "omar/nova-store" : null}
         github={{ state: null, message: null }}
-        purgeAfter={null}
+        offlineAt={null}
         purgedAt={view === "owned" ? new Date().toISOString() : null}
         live={{
           transfer: view === "transfer" ? { status: "importing", siteUrl: "https://nova-store.vercel.app", lastSeenAt: new Date().toISOString(), expiresAt: new Date().toISOString() } : null,
