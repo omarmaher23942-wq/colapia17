@@ -8,6 +8,7 @@ export const uid = () => Math.random().toString(36).slice(2, 10);
 export type StoreValue = {
   storeName?: string;
   ownerName?: string;
+  industryNote?: string;
   desiredSubdomain?: string;
   industry?: IndustryId;
   phone?: string;

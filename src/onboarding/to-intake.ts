@@ -146,7 +146,8 @@ export function submissionToIntake(s: OnboardingSubmission, directives: OwnerDir
   const brief = drop({
     storeName: clean(st.storeName),
     ownerName: clean(st.ownerName),
-    industry: clean(st.industry),
+    // «نشاط آخر» مع وصف بكلمات التاجر: الوصف هو نوع النشاط الذي يراه المصمم والكاتب.
+    industry: st.industry === "other" && clean(st.industryNote) ? clean(st.industryNote) : clean(st.industry),
     phone: st.phone,
     whatsappNumber: st.whatsapp || st.phone,
     email: clean(st.email),

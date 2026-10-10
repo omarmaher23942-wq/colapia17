@@ -79,6 +79,18 @@ export function StepIdentity({
             );
           })}
         </div>
+        {store.industry === "other" ? (
+          <Field label="ماذا تبيع؟" hint="بكلماتك (اختياري لكنه يرفع جودة التصميم والنصوص كثيراً)" error={errors.industryNote} htmlFor="industryNote">
+            <input
+              id="industryNote"
+              value={store.industryNote ?? ""}
+              onChange={(e) => setStore({ industryNote: e.target.value })}
+              placeholder="مثال: حقائب جلد يدوية، كتب مستعملة، مستلزمات حيوانات أليفة"
+              maxLength={60}
+              className={cn(inputCls, errors.industryNote && "border-rose-400/60")}
+            />
+          </Field>
+        ) : null}
         {store.industry && INDUSTRY_SMART_DEFAULTS[store.industry].taglineSuggestion ? (
           <p className="flex items-center gap-1.5 text-[12px] text-ink-3">
             <Sparkles className="size-3.5 text-aurora" aria-hidden="true" />

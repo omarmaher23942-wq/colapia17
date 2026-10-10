@@ -227,6 +227,8 @@ export const storeStepSchema = z.object({
   storeName: reqText(1, 80, "اسم متجرك مطلوب"),
   ownerName: optText(80),
   industry: z.enum(INDUSTRY_IDS).catch("other").default("fashion"),
+  // عند اختيار «نشاط آخر»: ما يبيعه التاجر بكلماته («حقائب يدوية»، «كتب مستعملة»...). يصل للمصمم والكاتب كنوع نشاط.
+  industryNote: optText(60),
   desiredSubdomain: z
     .preprocess(
       (v) => {
