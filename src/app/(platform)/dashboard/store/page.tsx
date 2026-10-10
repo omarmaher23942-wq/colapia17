@@ -31,7 +31,7 @@ const STATUS_LABEL: Record<
   string,
   { label: string; tone: "emerald" | "amber" | "rose" | "neutral" }
 > = {
-  active: { label: "مفعّل مدى الحياة", tone: "emerald" },
+  active: { label: "مفعّل", tone: "emerald" },
   trial: { label: "تجربة نشطة", tone: "amber" },
   building: { label: "قيد البناء", tone: "amber" },
   review: { label: "قيد التجهيز", tone: "amber" },
@@ -197,7 +197,7 @@ export default async function StoreDetailPage() {
             <QuickAction
               href="/dashboard/billing"
               icon={Wallet}
-              label={store.status === "active" ? "الفوترة" : "تفعيل المتجر للأبد"}
+              label={store.status === "active" ? "الفوترة" : "تفعيل المتجر"}
               highlight={store.status !== "active"}
             />
           </ul>

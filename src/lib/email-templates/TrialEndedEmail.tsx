@@ -41,15 +41,15 @@ export function TrialEndedEmail({
 
       <div style={{ marginTop: "20px", marginBottom: "20px" }}>
         <EmailButton href={activateUrl} primaryColor="#0f766e">
-          فعّل متجرك للأبد ({priceEgp} ج)
+          فعّل متجرك ({priceEgp} ج تشمل سنة استضافة)
         </EmailButton>
       </div>
 
       <EmailDivider />
 
       <EmailParagraph>
-        <strong>تفعيل المتجر =</strong> ملكية أبدية، بلا اشتراكات، بلا
-        عمولة على المبيعات، وتحديثات دائمة. دفعة واحدة فقط.
+        <strong>تفعيل المتجر =</strong> متجرك مفتوح لعملائك بسنة استضافة كاملة
+        وتحديثات، بلا عمولة على المبيعات.
       </EmailParagraph>
 
       <EmailParagraph>

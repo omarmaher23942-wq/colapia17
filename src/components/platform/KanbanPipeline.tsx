@@ -77,7 +77,7 @@ const COLUMNS = [
   },
   {
     id: "active",
-    title: "مفعّل للأبد",
+    title: "مفعّل",
     color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
   },
 ] as const;

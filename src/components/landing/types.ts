@@ -14,4 +14,5 @@ export interface LandingReview {
 export interface LandingPricing {
   price: number;
   basePrice: number;
+  renewal: number;
 }

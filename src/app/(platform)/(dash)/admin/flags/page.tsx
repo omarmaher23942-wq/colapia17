@@ -1,4 +1,5 @@
 import { db } from "@/db/client";
+import { platformPricing } from "@/lib/platform-pricing";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
 
@@ -12,7 +13,7 @@ const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; confi
   { key: "trial.enabled", enabled: true, description: "تفعيل التجربة المجانية للتاجر" },
   { key: "payments.ai_verify", enabled: true, description: "الفحص الآلي لإيصالات التحويل بـ Gemini Vision" },
   { key: "showcase.enabled", enabled: true, description: "عرض المتاجر المميزة في الصفحة الرئيسية" },
-  { key: "pricing", enabled: true, description: "سعر التفعيل الدائم", config: { priceEgp: 899, basePriceEgp: 8999 } },
+  { key: "pricing", enabled: true, description: "أسعار الباقة والتجديد (من المتغيرات PLATFORM_*_EGP)", config: { ...platformPricing() } },
   { key: "sla", enabled: true, description: "مدد التشغيل والتجربة", config: { deliveryMinutes: 5, demoActiveMinutes: 180, graceDays: 7 } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
 ];

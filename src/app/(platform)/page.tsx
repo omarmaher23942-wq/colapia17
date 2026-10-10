@@ -56,9 +56,9 @@ export default async function Page() {
     getSessionState(),
   ]);
 
-  const { price, basePrice } = platformPricing();
+  const { price, basePrice, renewal } = platformPricing();
 
   const trialHours = Number(process.env.TRIAL_HOURS ?? 24) || 24;
 
-  return <Landing session={session} reviews={reviews} pricing={{ price, basePrice }} trialHours={trialHours} />;
+  return <Landing session={session} reviews={reviews} pricing={{ price, basePrice, renewal }} trialHours={trialHours} />;
 }

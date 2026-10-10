@@ -351,7 +351,7 @@ export function EmptyStoreState({
             { icon: Clock, text: "180 دقيقة تجربة حرة ونشطة لكافة المزايا" },
             {
               icon: Zap,
-              text: "899 ج فقط للتملك الدائم مدى الحياة وبدون أي عمولات",
+              text: "باقة واحدة تشمل سنة استضافة كاملة وبدون أي عمولات",
             },
           ].map(({ icon: Icon, text }) => (
             <li

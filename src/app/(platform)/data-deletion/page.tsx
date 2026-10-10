@@ -8,7 +8,9 @@ If you wish to request the deletion of your personal or business data processed 
 1. **Via Messenger:** Send a message to our Page stating "حذف بياناتي" or "Delete my data".
 2. **Via Email:** Send an email to **privacy@colapia.com** containing your Page name and profile link.
 
-Upon receiving your request, all personal conversations, uploaded media, and non-activated store blueprints will be permanently purged within 7 business days.`;
+Merchants with an active store can also delete all of their store data themselves from the dashboard (Own your store → Delete my data) after exporting a copy.
+
+Upon receiving your request, all personal conversations, uploaded media, and store data will be permanently purged within 7 business days.`;
 
 export default function DataDeletion() {
   return (

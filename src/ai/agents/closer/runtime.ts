@@ -43,7 +43,7 @@ const START_INTENT_RE = new RegExp(
     "اعمل(ولي|ليا)\\s*المتجر",
     // سعر وعرض
     "(بكام|السعر|التكلفة|الثمن)",
-    "(899|8,999|8999)",
+    "(1,?999|7,?999|1,?299)",
     "(خصم|عرض|اوفر|أوفر)",
     // ذكر النشاط (يحفّز إرسال الرابط فوراً)
     "ملابس|أزياء|ازياء|فساتين|عبايات|طرح",
@@ -78,12 +78,12 @@ function formatEgpNumber(n: number): string {
 
 // ─── الرسالة الطارئة بدون رابط (المستوى الأخير) ────────────────────────────
 function emergencyReply(vars: Record<string, string>): string {
-  return `أهلاً بيك في كولابيا. بنبني متجرك الإلكتروني الكامل بمنتجاتك وتجربة مجانية ${vars.trial} دقيقة، مع خصم 90% لتملّكه بـ ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج. ابعتلي اسم نشاطك وهجهّزلك رابط البدء فوراً.`;
+  return `أهلاً بيك في كولابيا. بنبني متجرك الإلكتروني الكامل بمنتجاتك وتجربة مجانية ${vars.trial} دقيقة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج (عرض لفترة محدودة) وتشمل سنة استضافة. ابعتلي اسم نشاطك وهجهّزلك رابط البدء فوراً.`;
 }
 
 // ─── الرسالة الافتراضية مع زر الاستمارة ────────────────────────────────────
 function fallbackWithLink(vars: Record<string, string>, url: string) {
-  const text = `أهلاً بيك في كولابيا. بنبني لك متجر إلكتروني فاخر بمنتجاتك في دقائق وتجربة مجانية ${vars.trial} دقيقة، بخصم 90% لتملّكه بـ ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج (مرة واحدة، بلا اشتراكات وبلا عمولة). اضغط الزر وابدأ استمارتك في دقيقتين:`;
+  const text = `أهلاً بيك في كولابيا. بنبني لك متجر إلكتروني فاخر بمنتجاتك في دقائق وتجربة مجانية ${vars.trial} دقيقة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة، وتشمل المتجر وسنة استضافة كاملة، بلا عمولة على مبيعاتك. اضغط الزر وابدأ استمارتك في دقيقتين:`;
   const buttonTitle = "ابدأ استمارة متجرك الآن";
   return { text, buttonTitle, url };
 }
@@ -187,7 +187,7 @@ export async function handleInbound(
         replyText
       );
       if (genericSmell) {
-        replyText = `عظيم ومجال مطلوب في مصر. بنبني لك متجر كامل بالصور والمقاسات والدفع عند الاستلام، وتجربة ${vars.trial} دقيقة مجانية، بخصم 90% لتملّكه بـ ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج. اضغط الزر وابدأ استمارتك:`;
+        replyText = `عظيم ومجال مطلوب في مصر. بنبني لك متجر كامل بالصور والمقاسات والدفع عند الاستلام، وتجربة ${vars.trial} دقيقة مجانية، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة وتشمل سنة استضافة. اضغط الزر وابدأ استمارتك:`;
       } else if (!mentionsLinkOrButton) {
         replyText = `${replyText}\n\nاضغط الزر وابدأ استمارتك في دقيقتين:`;
       }

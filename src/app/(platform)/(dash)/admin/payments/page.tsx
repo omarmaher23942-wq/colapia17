@@ -29,6 +29,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
     .select({
       pId: platformPayments.id,
       pAmount: platformPayments.amountPiasters,
+      pKind: platformPayments.kind,
       pMethod: platformPayments.method,
       pSenderPhone: platformPayments.senderPhone,
       pScreenshotUrl: platformPayments.screenshotUrl,
@@ -63,10 +64,10 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
         <div>
           <h1 className="text-2xl font-black text-white flex items-center gap-2">
             <Wallet className="size-6 text-emerald-400" />
-            تدقيق التحويلات المالية (899 ج.م)
+            تدقيق التحويلات المالية
           </h1>
           <p className="mt-1 text-xs text-[#c3cdf0]/70">
-            الذكاء الاصطناعي يقرأ الإيصالات ويقارن المبالغ، وتأكيد التفعيل للأبد بضغطة زر منك.
+            الذكاء الاصطناعي يقرأ الإيصالات ويقارن المبالغ، وتأكيد التفعيل (أو تمديد الاستضافة سنة) بضغطة زر منك.
           </p>
         </div>
 
@@ -111,6 +112,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <p className="text-xs text-[#8d97c4] font-mono mt-0.5" dir="ltr">{r.sSubdomain ? `${r.sSubdomain}.colapia.com` : "—"}</p>
                     </div>
                     <span className="rounded-xl bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-sm font-black font-mono border border-emerald-500/30 shadow-sm">
+                      {r.pKind === "renewal" ? "تجديد · " : "باقة · "}
                       {formatEgp(r.pAmount)}
                     </span>
                   </div>
@@ -127,7 +129,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <div className="flex items-center justify-between font-bold">
                         <span className="flex items-center gap-1.5">
                           {rec === "approve" ? <ShieldCheck className="size-4 text-teal-400" /> : rec === "reject" ? <XCircle className="size-4 text-rose-400" /> : <AlertTriangle className="size-4 text-amber-400" />}
-                          {rec === "approve" ? "مطابق للمتوقع (899 ج)" : rec === "reject" ? "غير مطابق" : "يحتاج فحصك اليدوي"}
+                          {rec === "approve" ? "مطابق للمتوقع" : rec === "reject" ? "غير مطابق" : "يحتاج فحصك اليدوي"}
                         </span>
                         <span className="font-mono bg-black/20 px-2 py-0.5 rounded-md">ثقة {Math.round((v.confidence ?? 0) * 100)}%</span>
                       </div>
@@ -153,7 +155,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <RevokePayment id={r.pId} />
                     </div>
                   ) : r.pStatus === "confirmed" ? (
-                    <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20"><CheckCircle2 className="size-4" /> تم التأكيد وتفعيل المتجر للأبد</span>
+                    <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20"><CheckCircle2 className="size-4" /> تم التأكيد وتفعيل المتجر</span>
                   ) : (
                     <span className="text-rose-400 flex items-center gap-1.5 bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20"><XCircle className="size-4" /> تم الرفض وإبلاغ التاجر بالسبب</span>
                   )}

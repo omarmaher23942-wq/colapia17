@@ -54,7 +54,7 @@ export async function deleteStoreAction(raw: unknown): Promise<Result> {
   const p = deleteInput.safeParse(raw);
   if (!p.success || p.data.confirm !== s.store.name.trim()) return { ok: false, error: "اكتب اسم المتجر كما هو بالضبط للتأكيد" };
   if (!(DELETABLE as readonly string[]).includes(s.store.status)) {
-    return { ok: false, error: s.store.status === "active" ? "متجرك مدفوع: استلمه من «امتلك متجرك»، وتُحذف بياناته من المنصة فور الاستلام" : "لا يمكن حذف المتجر في حالته الحالية" };
+    return { ok: false, error: s.store.status === "active" ? "متجرك مدفوع ولا يُحذف من هنا. بعد نقل نسخة منه لحساباتك يمكنك حذف بياناتك من صفحة «امتلك متجرك»" : "لا يمكن حذف المتجر في حالته الحالية" };
   }
   const [pending] = await db
     .select({ id: platformPayments.id })

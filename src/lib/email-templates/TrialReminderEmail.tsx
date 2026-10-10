@@ -25,7 +25,7 @@ export function TrialReminderEmail({
       preheader={
         isUrgent
           ? `باقي ${hoursLeft} ساعة على انتهاء تجربة ${storeName}`
-          : `باقي ${hoursLeft} ساعة لتفعيل متجر ${storeName} مدى الحياة`
+          : `باقي ${hoursLeft} ساعة لتفعيل متجر ${storeName}`
       }
       footerNote={`إشعار من منصة Colapia بخصوص تجربة متجر ${storeName}.`}
     >
@@ -39,12 +39,12 @@ export function TrialReminderEmail({
 
       <EmailParagraph>
         {isUrgent
-          ? `متجر "${storeName}" هيتجمد خلال ${hoursLeft} ساعة لو ما اتُفعّلش. عشان تحافظ على متجرك شغال مدى الحياة، فعّله الآن بـ ${priceEgp} ج فقط.`
-          : `تجربة متجر "${storeName}" قربت تنتهي. عشان تضمن متجرك شغال دايماً، فعّله مدى الحياة بـ ${priceEgp} ج فقط.`}
+          ? `متجر "${storeName}" هيتجمد خلال ${hoursLeft} ساعة لو ما اتُفعّلش. عشان تحافظ على متجرك شغال، فعّله الآن بالباقة (${priceEgp} ج تشمل سنة استضافة).`
+          : `تجربة متجر "${storeName}" قربت تنتهي. عشان تضمن متجرك شغال، فعّله بالباقة (${priceEgp} ج تشمل سنة استضافة).`}
       </EmailParagraph>
 
       <EmailInfoBox tone={isUrgent ? "warning" : "info"}>
-        <strong>عرض الـ 30 متجر الأوائل</strong>
+        <strong>عرض الإطلاق (لفترة محدودة)</strong>
         <br />
         بدلاً من <span style={{ textDecoration: "line-through", color: "#64748b" }}>
           {basePriceEgp.toLocaleString("en-US")} ج
@@ -52,7 +52,7 @@ export function TrialReminderEmail({
         → <b style={{ color: "#0f766e", fontSize: "16px" }}>{priceEgp} ج فقط</b>
         <br />
         <span style={{ fontSize: "12px", color: "#64748b" }}>
-          وفّر {savings.toLocaleString("en-US")} ج — دفعة واحدة، ملكية أبدية، بلا اشتراكات.
+          وفّر {savings.toLocaleString("en-US")} ج — الباقة تشمل سنة استضافة كاملة، بلا عمولة.
         </span>
       </EmailInfoBox>
 

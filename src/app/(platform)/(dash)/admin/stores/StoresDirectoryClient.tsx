@@ -137,7 +137,7 @@ export function StoresDirectoryClient({
             className="h-10 rounded-xl border border-white/10 bg-[#0e1424] px-3 text-xs text-white outline-none focus:border-[#8fa8ff]"
           >
             <option value="">كل الحالات</option>
-            <option value="active">مفعّل للأبد</option>
+            <option value="active">مفعّل</option>
             <option value="trial">تجربة نشطة</option>
             <option value="frozen">مجمّد</option>
             <option value="review">بانتظار التسليم</option>

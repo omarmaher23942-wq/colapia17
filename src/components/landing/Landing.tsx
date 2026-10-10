@@ -69,11 +69,11 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
             <h1 className="text-[2.2rem] font-black leading-[1.15] tracking-tight sm:text-5xl lg:text-[3.6rem]">
               متجر يُصمَّم ويُكتب <span className="land-gradient-text">لك وحدك</span>
               <br />
-              ثم يصبح ملكك للأبد
+              ونستضيفه ونشغّله لك
             </h1>
             <p className="max-w-xl text-base leading-8 text-[#c3cdf0]/85 sm:text-lg">
               اوصف نشاطك ومنتجاتك في 5 خطوات قصيرة. مدير فني بالذكاء الاصطناعي يصمم هوية متجرك، وكاتب محتوى يكتب كل كلمة فيه من سياساتك الحقيقية.
-              جرّبه {trialHours} ساعة مجاناً، وإن أعجبك ادفع مرة واحدة واستلمه على حساباتك أنت.
+              جرّبه {trialHours} ساعة مجاناً، وإن أعجبك فباقة واحدة تشمل متجرك وسنة استضافة كاملة علينا، بلا عمولة على مبيعاتك.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Primary label="ابدأ متجرك مجاناً" />
@@ -82,7 +82,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               </a>
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[#c3cdf0]/75">
-              {["بلا بطاقة بنكية", "بلا اشتراك شهري", "بلا عمولة على مبيعاتك"].map((t) => (
+              {["بلا بطاقة بنكية", "سنة استضافة مشمولة", "بلا عمولة على مبيعاتك"].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
                   <Check className="size-4 text-emerald-400" aria-hidden="true" /> {t}
                 </li>
@@ -97,9 +97,9 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
           <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-white/10 bg-white/10 md:grid-cols-4">
             {[
               { icon: BadgePercent, big: "0%", small: "عمولة على أي بيعة" },
-              { icon: Wallet, big: "مرة واحدة", small: "تدفع ولا تتكرر" },
+              { icon: Server, big: "سنة كاملة", small: "استضافة وتشغيل مشمولان" },
               { icon: Timer, big: `${trialHours} ساعة`, small: "تجربة كاملة قبل الدفع" },
-              { icon: KeyRound, big: "حساباتك", small: "الكود والبيانات باسمك" },
+              { icon: KeyRound, big: "نسختك متى شئت", small: "تصدير اختياري لحساباتك" },
             ].map(({ icon: Icon, big, small }) => (
               <li key={small} className="flex flex-col gap-1 bg-[#0a0e24] p-5 sm:p-6">
                 <Icon className="size-5 text-[#8fa8ff]" aria-hidden="true" />
@@ -118,7 +118,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               { icon: ClipboardList, t: "اوصف متجرك", d: "اسمك ونشاطك ومنتجاتك بصورها وأسعارها ومقاساتها، وسياسة الشحن والاستبدال. 5 خطوات تعمل من الموبايل." },
               { icon: Wand2, t: "يُبنى أمامك", d: "تتابع البناء خطوة بخطوة: الاتجاه الفني، ثم النصوص، ثم الكتالوج، ثم التصميم والصفحات." },
               { icon: Timer, t: `جرّبه ${trialHours} ساعة`, d: "متجرك ولوحة تحكمه يعملان بالكامل: أضف منتجات، استقبل طلبات، وأعد التصميم إن أردت." },
-              { icon: Rocket, t: "ادفع مرة وامتلكه", d: "بعد الدفع ينتقل متجرك بكل بياناته إلى حسابات باسمك، بخطوات مشروحة من الموبايل." },
+              { icon: Rocket, t: "فعّله وانطلق", d: "بعد تحويل الباقة ومراجعة الإيصال يُفتح متجرك لعملائك على رابطه، ونستضيفه ونشغّله لك سنة كاملة." },
             ].map(({ icon: Icon, t, d }, i) => (
               <li key={t} className="land-card group relative flex flex-col gap-3 rounded-3xl p-6">
                 <span className="flex items-center justify-between">
@@ -180,12 +180,12 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               <div className="relative grid items-center gap-10 lg:grid-cols-2">
                 <div className="space-y-5">
                   <Eyebrow>
-                    <ShieldCheck className="size-3.5 text-emerald-400" aria-hidden="true" /> ليس اشتراكاً. ملكك.
+                    <ShieldCheck className="size-3.5 text-emerald-400" aria-hidden="true" /> بياناتك بيدك دائماً
                   </Eyebrow>
-                  <h2 className="text-3xl font-black leading-tight sm:text-4xl">متجرك يعيش على حساباتك أنت، لا عندنا</h2>
+                  <h2 className="text-3xl font-black leading-tight sm:text-4xl">نسخة من متجرك على حساباتك، متى أردت</h2>
                   <p className="text-[15px] leading-8 text-[#c3cdf0]/80">
-                    بعد الدفع ينتقل متجرك ولوحة تحكمه بكل منتجاتك وطلباتك وعملائك وصورك إلى حسابات باسمك. الخطوات مشروحة من الموبايل، وتأخذ نحو 10 دقائق.
-                    لا نحتفظ بأي مفتاح لحساباتك، ونحذف بيانات متجرك من عندنا فور اكتمال الاستلام، ورابطك القديم يحوّل زوارك لموقعك الجديد.
+                    متجرك يعمل عندنا ولا تحتاج أي خطوة تقنية. وإن أحببت، تنقل نسخة كاملة منه ومن لوحة تحكمه بكل منتجاتك وطلباتك وعملائك وصورك إلى حسابات باسمك،
+                    بخطوات مشروحة من الموبايل. لا مهلة ولا استعجال: لن يتوقف متجرك ولن يُحذف شيء إلا بطلبك أنت، ولا نحتفظ بأي مفتاح لحساباتك.
                   </p>
                 </div>
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -213,26 +213,28 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
 
         {/* ─── السعر ─── */}
         <section id="pricing" className="container-x scroll-mt-24 py-24 sm:py-32">
-          <Heading eyebrow="السعر" title="دفعة واحدة. لا شيء بعدها لنا." />
+          <Heading eyebrow="السعر" title="باقة واحدة. وتجديدها معلن من اليوم الأول." />
           <div className="mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="relative overflow-hidden rounded-[2rem] border border-[#8fa8ff]/30 bg-gradient-to-b from-[#8fa8ff]/12 via-[#0e1430] to-[#0b1026] p-8 shadow-[0_40px_120px_-30px_rgba(111,134,255,0.45)] sm:p-10">
               {discount ? (
                 <span className="absolute end-6 top-6 rounded-full bg-[#8fa8ff]/15 px-3 py-1 text-xs font-black text-[#c9d4ff]">خصم {fmtEGP(discount)}%</span>
               ) : null}
-              <p className="text-sm font-bold text-[#c3cdf0]/70">متجرك كاملاً، ملكاً لك</p>
+              <p className="text-sm font-bold text-[#c3cdf0]/70">الباقة: متجرك كاملاً + سنة استضافة</p>
               <div className="mt-3 flex items-end gap-3">
                 <span className="text-6xl font-black tabular-nums">{fmtEGP(pricing.price)}</span>
                 <span className="mb-2 text-lg font-bold text-[#c3cdf0]/70">ج.م</span>
                 {pricing.basePrice > pricing.price ? <span className="mb-2.5 text-sm text-[#c3cdf0]/50 line-through">{fmtEGP(pricing.basePrice)} ج.م</span> : null}
               </div>
-              <p className="mt-1 text-[13px] text-[#c3cdf0]/70">مرة واحدة فقط. بعد تجربة {trialHours} ساعة تقرر فيها بنفسك.</p>
+              <p className="mt-1 text-[13px] text-[#c3cdf0]/70">
+                {pricing.basePrice > pricing.price ? "عرض الإطلاق لفترة محدودة ولعدد محدود من المتاجر. " : ""}ثم {fmtEGP(pricing.renewal)} ج.م لكل سنة بعدها. بعد تجربة {trialHours} ساعة تقرر فيها بنفسك.
+              </p>
               <ul className="mt-8 space-y-3 text-[14px]">
                 {[
                   "متجر كامل صممه وكتبه الذكاء الاصطناعي لنشاطك",
                   "لوحة تحكم كاملة بالطلبات والفواتير والتحليلات",
-                  "نقل المتجر وبياناته لحساباتك بخطوات مشروحة",
-                  "بلا عمولة على مبيعاتك وبلا اشتراك لنا",
-                  "مساعد ذكي في لوحتك يعمل بمفتاحك المجاني",
+                  "سنة استضافة كاملة: السيرفر والقاعدة والصور والتحديثات",
+                  "بلا عمولة على مبيعاتك",
+                  "مساعد ذكي في لوحتك، ونسخة تصدّرها لحساباتك متى أردت",
                 ].map((b) => (
                   <li key={b} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4.5 shrink-0 text-emerald-400" aria-hidden="true" /> {b}
@@ -243,7 +245,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
                 <Primary label={`ابدأ تجربة ${trialHours} ساعة مجاناً`} />
               </div>
               <p className="mt-4 text-[11.5px] leading-6 text-[#c3cdf0]/55">
-                الدفع بتحويل فودافون كاش أو إنستاباي، ونفعّل متجرك فور مراجعة الإيصال. لو تجاوز متجرك الخطط المجانية لمزوّدي الاستضافة، تدفع لهم مباشرة.
+                الدفع بتحويل فودافون كاش أو إنستاباي، ونفعّل متجرك فور مراجعة الإيصال. إن تأخرت في التجديد يتوقف متجرك عن الظهور فقط ويعود فور التجديد، ولا تُحذف بياناتك.
               </p>
             </div>
 
@@ -259,11 +261,11 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {[
-                    ["الدفع", "مرة واحدة", "كل شهر"],
+                    ["الدفع", "سنوي بسعر معلن", "كل شهر"],
                     ["عمولة المبيعات", "لا يوجد", "غالباً نسبة"],
                     ["التصميم", "مصمم لمتجرك", "قالب مشترك"],
-                    ["الكود والبيانات", "ملكك", "على المنصة"],
-                    ["لو قررت المغادرة", "متجرك معك", "تبدأ من جديد"],
+                    ["بياناتك", "تصدّرها متى شئت", "على المنصة"],
+                    ["لو تأخرت في الدفع", "يتوقف دون حذف", "قد تفقد المتجر"],
                   ].map(([k, a, b]) => (
                     <tr key={k}>
                       <td className="py-3 text-[#c3cdf0]/70">{k}</td>
@@ -291,7 +293,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section id="faq" className="container-x scroll-mt-24 py-24 sm:py-32">
           <Heading eyebrow="أسئلة" title="قبل ما تبدأ" />
           <div className="mx-auto mt-12 max-w-3xl space-y-3">
-            {faq(trialHours).map(([q, a]) => (
+            {faq(trialHours, pricing).map(([q, a]) => (
               <details key={q} className="land-card group rounded-2xl px-5 py-4 open:bg-white/[0.05]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-black">
                   {q}
@@ -348,14 +350,16 @@ function Feature({ icon: Icon, title, text, className }: { icon: typeof Wand2; t
   );
 }
 
-function faq(h: number): [string, string][] {
+function faq(h: number, pricing: LandingPricing): [string, string][] {
   return [
     ["كم يستغرق بناء متجري؟", "الاستمارة 5 خطوات قصيرة، وبعدها يُبنى متجرك خلال دقائق وأنت تتابع كل مرحلة على الشاشة. لو تعثر الذكاء الاصطناعي في أي جزء، يُكمل البناء ببديل مشتق من بياناتك، لا بنص عام."],
     ["هل التجربة مجانية فعلاً؟", `نعم. ${h} ساعة كاملة بمتجرك ولوحة تحكمه، بلا بطاقة بنكية. لو لم يعجبك لا تدفع شيئاً.`],
     ["كيف أدفع، ومتى يتفعّل متجري؟", "تحوّل المبلغ بفودافون كاش أو إنستاباي وترفع صورة الإيصال من لوحتك. نراجع الإيصال بأنفسنا ونفعّل متجرك، ويصلك بريد فور التفعيل."],
-    ["ماذا يعني أن المتجر ملكي للأبد؟", "بعد الدفع تستلم كود متجرك ولوحة تحكمه في مستودع GitHub باسمك، وتنشره على Vercel بقاعدة بيانات Neon، وتنتقل إليه كل منتجاتك وطلباتك وعملائك وصورك. بعدها لا يعتمد متجرك علينا في أي شيء."],
-    ["هل أحتاج خبرة تقنية؟", "لا. كل خطوة مشروحة بالعربي وتعمل من الموبايل: زر يُنشئ المستودع، ونسخ ولصق لمفتاحين مجانيين، وكود استلام. لو احتجت مساعدة تواصل معنا."],
-    ["هل توجد تكاليف بعد الدفع؟", "لا شيء لنا: لا اشتراك ولا عمولة. المتجر يعمل على حساباتك لدى مزوّدي الاستضافة، ولكل منهم خطة مجانية للبداية؛ إن كبر متجرك وتجاوزها تدفع لهم مباشرة."],
+    ["هل أقدر أخذ متجري معي لو أردت؟", "نعم، وبلا أي مهلة. من لوحتك تنقل نسخة كاملة من متجرك ولوحة تحكمه (كود وبيانات وصور) إلى مستودع GitHub باسمك، وتنشرها على حساباتك. النقل اختياري تماماً: متجرك يبقى يعمل عندنا حتى تقرر أنت إيقافه أو حذف بياناتك، واشتراكك يبقى سارياً كما هو."],
+    ["هل أحتاج خبرة تقنية؟", "لا. متجرك يعمل عندنا بلا أي خطوة منك. وإن اخترت نقل نسخة لحساباتك فكل خطوة مشروحة بالعربي وتعمل من الموبايل."],
+    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (عرض إطلاق لفترة محدودة بدل ${fmtEGP(pricing.basePrice)} ج.م)` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه متى شئت قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
+    ["ماذا لو لم أجدد؟", "بعد انتهاء السنة يبقى متجرك يعمل أسبوعين إضافيين، ثم يتوقف عن الظهور للزوار. لا نحذف أي شيء بسبب التأخر: بياناتك محفوظة، وبمجرد التجديد يعود متجرك فوراً بنفس الرابط. ونذكّرك بالبريد قبل الانتهاء بشهر وأسبوع ويوم."],
+    ["هل أقدر أربط نطاقي الخاص (دومين)؟", "غير متاح حالياً. كل متجر يعمل على رابط باسمه مثل اسمك.colapia.com. وإن نقلت نسخة لحساباتك تربط عليها أي نطاق تملكه."],
     ["هل أقدر أغيّر التصميم؟", "نعم. من «تصميم المتجر» تعيد التصميم بالذكاء الاصطناعي بضغطة وتستعيد أي تصميم سابق، وتختار مستوى الحركة، وتعدّل الألوان والنصوص والسياسات من لوحة التحكم."],
     ["هل يحتاج عملائي لإنشاء حساب؟", "لا. العميل يطلب باسمه ورقمه، ويجد طلباته محفوظة على جهازه في «طلباتي» بحالتها الحية، ويصله بريد مع كل خطوة إن كتب بريده."],
   ];

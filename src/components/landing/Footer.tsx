@@ -46,8 +46,8 @@ export function Footer() {
           <div className="lg:col-span-2">
             <ColapiaLogo size={32} />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#c3cdf0]/60">
-              منصة مصرية تبني متاجر إلكترونية احترافية للتجار العرب بالذكاء
-              الاصطناعي — بملكية أبدية وبلا عمولة.
+              منصة مصرية تصمم متجرك الإلكتروني بالذكاء الاصطناعي وتستضيفه
+              وتشغّله لك، بلا عمولة على مبيعاتك.
             </p>
             <div className="mt-5 flex flex-col gap-2 text-sm text-[#c3cdf0]/60">
               <span className="inline-flex items-center gap-2">
@@ -85,7 +85,8 @@ export function Footer() {
           <div className="flex items-center gap-3">
             <span className="text-xs text-[#c3cdf0]/50">مبني باستخدام</span>
             <div className="flex items-center gap-2">
-              <PartnerBadge name="Vercel" />
+              <PartnerBadge name="Railway" />
+              <PartnerBadge name="Cloudflare" />
               <PartnerBadge name="Neon" />
               <PartnerBadge name="Upstash" />
             </div>

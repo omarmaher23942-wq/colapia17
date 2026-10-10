@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 const SW = 1.75;
 
 const REASONS = [
-  "المبلغ غير مطابق لعرض التفعيل (المطلوب 899 ج.م)",
+  "المبلغ غير مطابق لسعر الباقة أو التجديد المعلن",
   "الرقم المُحوَّل إليه غير صحيح (ليس رقم المنصة الرسمي)",
   "صورة الإيصال غير واضحة أو ناقصة التاريخ والرقم",
   "نفس صورة الإيصال استُخدمت في تحويل سابق",
@@ -26,7 +26,7 @@ export function PaymentDecision({ id, suggested }: { id: string; suggested?: str
       try {
         await decidePaymentAction(id, decision, reasonNote);
         if (decision === "confirm") {
-          toast.success("تم تأكيد الدفع وتفعيل المتجر للأبد 🎉");
+          toast.success("تم تأكيد الدفع وتفعيل المتجر 🎉");
         } else {
           toast.success("تم رفض الدفعة وإبلاغ التاجر بالسبب.");
         }
@@ -81,7 +81,7 @@ export function PaymentDecision({ id, suggested }: { id: string; suggested?: str
         className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-emerald-400 to-emerald-500 py-3 text-xs font-black text-[#07091a] shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
       >
         {pending ? <Loader2 className="size-4.5 animate-spin" /> : <CheckCircle2 className="size-4.5" />}
-        <span>تأكيد التحويل وتفعيل المتجر للأبد</span>
+        <span>تأكيد التحويل وتفعيل المتجر</span>
       </button>
 
       <button
