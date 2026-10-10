@@ -7,6 +7,13 @@
 
 import { EDITION } from "./edition";
 
+/**
+ * مفتاح التشغيل: مهلة النقل وحذف البيانات خاصان بنموذج «ننقل المتجر لحسابات التاجر».
+ * في نموذج الاستضافة (الافتراضي بقرار المالك 2026-10-10) المنصة تستضيف المتجر المدفوع، فلا مهلة ولا حذف.
+ * يُفعَّل فقط بـ OWN_DEADLINE_ENABLED=1.
+ */
+export const OWN_DEADLINE_ENABLED = process.env.OWN_DEADLINE_ENABLED === "1";
+
 export const OWN_WINDOW_HOURS = 72;
 export const OWN_PURGE_DAYS = 14;
 
@@ -31,10 +38,11 @@ export function ownPurgeAt(activatedAt: Date): Date {
   return new Date(ownDeadline(activatedAt).getTime() + OWN_PURGE_DAYS * D);
 }
 
-export function ownWindow(store: { status: string; activatedAt: Date | null; ownedAt: Date | null }, now = new Date(), edition: string = EDITION): OwnWindow {
+export function ownWindow(store: { status: string; activatedAt: Date | null; ownedAt: Date | null }, now = new Date(), edition: string = EDITION, enabled: boolean = OWN_DEADLINE_ENABLED): OwnWindow {
   // مشروع التاجر نفسه هو المتجر بعد النقل: لا مهلة فيه.
   if (edition !== "platform") return { phase: "none" };
   if (store.ownedAt) return { phase: "owned" };
+  if (!enabled) return { phase: "none" };
   if (store.status !== "active" || !store.activatedAt) return { phase: "none" };
   const deadline = ownDeadline(store.activatedAt);
   const purgeAt = ownPurgeAt(store.activatedAt);

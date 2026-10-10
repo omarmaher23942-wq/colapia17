@@ -11,7 +11,7 @@ import {
   scheduleOwnership,
   type JobKind,
 } from "./scheduler";
-import { ownDeadline, ownPurgeAt } from "@/lib/ownership-window";
+import { OWN_DEADLINE_ENABLED, ownDeadline, ownPurgeAt } from "@/lib/ownership-window";
 import { recordEvent, transition } from "./machine";
 import { deliverToMerchant } from "./messenger";
 import { paymentVars, renderTemplate } from "./templates";
@@ -119,9 +119,11 @@ export async function confirmStorePayment(
 
   // مهلة نقل المتجر لحسابات التاجر تبدأ من التفعيل (تذكير، ثم إيقاف الطلبات، ثم الحذف إن لم يُنقل).
   const activatedAt = store.activatedAt ?? now;
-  await scheduleOwnership(store.id, ownDeadline(activatedAt), ownPurgeAt(activatedAt)).catch((e) =>
-    console.error("[payments] schedule ownership jobs failed", e)
-  );
+  if (OWN_DEADLINE_ENABLED) {
+    await scheduleOwnership(store.id, ownDeadline(activatedAt), ownPurgeAt(activatedAt)).catch((e) =>
+      console.error("[payments] schedule ownership jobs failed", e)
+    );
+  }
 
   await db
     .update(conversations)
