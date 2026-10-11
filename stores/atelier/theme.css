@@ -1,0 +1,17 @@
+/* جلد أتيليه طين: ألوان الطين المحروق وحواف مستديرة ناعمة. كل القواعد داخل .storefront. */
+.storefront {
+  --atelier-clay: #b4532a;
+  --atelier-sand: #f4ece1;
+}
+.storefront .s-card { border-radius: 22px; }
+.storefront .atelier-ribbon {
+  background: var(--atelier-clay);
+  color: #fff;
+}
+.storefront .atelier-step {
+  background: var(--atelier-sand);
+  color: #3b2416;
+  border-radius: 20px;
+}
+/* عناوين الأقسام تأخذ لونها من نبرة القسم في النواة؛ البطاقة الفاتحة تحتاج لونها صراحة. */
+.storefront .atelier-step :is(h3, p, span, svg) { color: #3b2416; }

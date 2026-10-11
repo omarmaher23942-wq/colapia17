@@ -373,6 +373,19 @@ export const customBlocksSection = z.object({
   ])).min(1).max(12),
 });
 
+/**
+ * مكوّن خاص بهذا المتجر وحده (stores/<slug>/blocks/<name>.tsx في المستودع). يضعه فريق البناء في الصفحة كأي قسم،
+ * فيستطيع التاجر إخفاءه وترتيبه من المحرر، أما شكله وسلوكه فمن الكود. اسم بلا ملف مطابق في سجل المتجر لا يُعرض.
+ */
+export const storeBlockSection = z.object({
+  ...base,
+  type: z.literal("store_block"),
+  variant: z.literal("default").default("default"),
+  name: z.string().regex(/^[a-z0-9][a-z0-9-]{0,39}$/),
+  title: z.string().max(80).optional(),
+  props: z.record(z.string(), z.unknown()).default({}),
+});
+
 /** «كيف تطلب»: خطوات الشراء الحقيقية في هذا المتجر (تُبنى من حقائق سياسته، فلا وعد غير صحيح). */
 export const stepsSection = z.object({
   ...base,
@@ -388,7 +401,7 @@ export const sectionSchema = z.discriminatedUnion("type", [
   heroSection, announcementSection, categoriesSection, productGridSection, promoBannerSection,
   countdownOfferSection, trustBadgesSection, testimonialsSection, faqSection, aboutSection,
   instagramSection, richTextSection, bundleSection, statsSection, videoSection, contactSection,
-  brandStorySection, newsletterSection, customBlocksSection, stepsSection,
+  brandStorySection, newsletterSection, customBlocksSection, stepsSection, storeBlockSection,
 ]);
 export type Section = z.infer<typeof sectionSchema>;
 

@@ -28,10 +28,13 @@ export const SECTION_FIELDS: Partial<Record<Section["type"], string[]>> = {
   brand_story: ["variant", "title", "body", "image", "quote", ...SHELL],
   custom_blocks: ["title", "blocks", ...SHELL],
   steps: ["eyebrow", "title", "subtitle", "items", ...SHELL],
+  // مكوّن كتبه فريق البناء لهذا المتجر: شكله من الكود، والتاجر يعدّل عنوانه ويخفيه ويرتبه فقط.
+  store_block: ["title"],
 };
 
 /** أنواع الأقسام التي يمكن إضافتها (يعرضها المتجر). يطابقها اختبار مع registry.tsx. */
-export const ADDABLE_SECTIONS = Object.keys(SECTION_FIELDS) as Section["type"][];
+/** ما يضيفه التاجر بنفسه. المكوّن الخاص يضعه فريق البناء فقط (يحتاج ملفاً في مستودع المتاجر). */
+export const ADDABLE_SECTIONS = (Object.keys(SECTION_FIELDS) as Section["type"][]).filter((t) => t !== "store_block");
 
 /** حقول بقية الأجزاء والعناصر المتداخلة (المسار كما يبنيه SchemaForm). */
 export const PATH_FIELDS: Record<string, string[]> = {

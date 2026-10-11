@@ -94,6 +94,11 @@ export const SECTION_META: Record<
     icon: "list-ordered",
     description: "خطوات الشراء في متجرك: الطلب والدفع والاستلام",
   },
+  store_block: {
+    label: "مكوّن خاص بالمتجر",
+    icon: "sparkles",
+    description: "مكوّن صممه فريق Colapia لمتجرك وحده",
+  },
   custom_blocks: {
     label: "قسم مخصص",
     icon: "blocks",

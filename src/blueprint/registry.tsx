@@ -1,9 +1,9 @@
 import * as B from "@/components/blocks";
 import type { Section, StoreBlueprint } from "./schema";
 import { groundedItems, type StoreFact } from "./facts";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { getTenantDb } from "@/db/tenant";
-import { products, categories as categoriesTable } from "@/db/schema/catalog";
+import { fetchCategoriesForSection, fetchProductsForSource, type ProductSource } from "./section-data";
+import { loadBlock, loadSectionOverride } from "@/stores/resolve";
+import type { StoreKit } from "@/stores-kit/types";
 
 export * from "./registry-meta";
 
@@ -14,130 +14,36 @@ export type SectionCtx = {
   channels: StoreBlueprint["channels"];
   facts: StoreFact[];
   copy: StoreBlueprint["copy"];
+  /** واجهة كود المتجر الخاص (stores/<slug>/). بدونها تُعرض النواة وحدها ولا تظهر المكوّنات الخاصة. */
+  kit?: StoreKit;
 };
 
-// ─── Product fetching by source ────────────────────────────────────────────
-type ProductSource =
-  | { type: "featured" }
-  | { type: "newest" }
-  | { type: "best_sellers" }
-  | { type: "on_sale" }
-  | { type: "category"; slug: string }
-  | { type: "manual"; slugs: string[] }
-  | { type: "tag"; tag: string };
-
-async function fetchProductsForSource(
-  storeId: string,
-  source: ProductSource | undefined,
-  limit: number
-): Promise<any[]> {
-  const db = await getTenantDb(storeId);
-  const base = and(
-    eq(products.storeId, storeId),
-    eq(products.status, "active"),
-    isNull(products.deletedAt)
-  );
-
-  let q = db.select().from(products).$dynamic();
-
-  switch (source?.type) {
-    case "featured":
-      q = q.where(and(base, eq(products.isFeatured, true))).orderBy(asc(products.sortOrder));
-      break;
-    case "best_sellers":
-      q = q.where(base).orderBy(desc(products.orderCount));
-      break;
-    case "newest":
-      q = q.where(base).orderBy(desc(products.createdAt));
-      break;
-    case "on_sale":
-      q = q
-        .where(and(base, sql`${products.compareAtPiasters} > ${products.pricePiasters}`))
-        .orderBy(asc(products.sortOrder));
-      break;
-    case "category": {
-      const [cat] = await db
-        .select({ id: categoriesTable.id })
-        .from(categoriesTable)
-        .where(
-          and(
-            eq(categoriesTable.storeId, storeId),
-            eq(categoriesTable.slug, source.slug)
-          )
-        )
-        .limit(1);
-      if (!cat) return [];
-      q = q.where(and(base, eq(products.categoryId, cat.id)));
-      break;
-    }
-    case "manual": {
-      const slugs = Array.isArray(source.slugs) ? source.slugs : [];
-      if (slugs.length === 0) return [];
-      q = q.where(and(base, inArray(products.slug, slugs)));
-      break;
-    }
-    case "tag": {
-      q = q.where(and(base, sql`${products.tags} @> ${JSON.stringify([source.tag])}::jsonb`));
-      break;
-    }
-    default:
-      q = q.where(base).orderBy(asc(products.sortOrder));
-  }
-
-  return q.limit(Math.max(1, Math.min(limit, 24)));
-}
-
-// ─── Categories fetching ───────────────────────────────────────────────────
-async function fetchCategoriesForSection(
-  storeId: string,
-  slugs: string[] | undefined
-): Promise<
-  Array<{
-    id: string;
-    name: string;
-    slug: string;
-    productCount: number;
-    firstProductImage: string | null;
-  }>
-> {
-  const db = await getTenantDb(storeId);
-  const base = and(
-    eq(categoriesTable.storeId, storeId),
-    eq(categoriesTable.isVisible, true)
-  );
-
-  // استعلام واحد: العدد وصورة الغلاف لكل قسم بـ subquery بدل استعلامين لكل قسم. الغلاف صورة القسم إن رفعها التاجر،
-  // وإلا صورة أول منتج منشور فيه.
-  const live = sql`p.store_id = ${storeId} and p.category_id = categories.id and p.status = 'active' and p.deleted_at is null`;
-  const rows = await db
-    .select({
-      id: categoriesTable.id,
-      name: categoriesTable.name,
-      slug: categoriesTable.slug,
-      imageUrl: categoriesTable.imageUrl,
-      productCount: sql<number>`(select count(*) from products p where ${live})`.mapWith(Number),
-      firstImage: sql<string | null>`(select p.images->0->>'url' from products p where ${live} and jsonb_array_length(p.images) > 0 order by p.sort_order asc limit 1)`,
-    })
-    .from(categoriesTable)
-    .where(
-      Array.isArray(slugs) && slugs.length > 0
-        ? and(base, inArray(categoriesTable.slug, slugs))
-        : base
-    )
-    .orderBy(asc(categoriesTable.sortOrder))
-    .limit(12);
-
-  return rows.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    productCount: c.productCount,
-    firstProductImage: c.imageUrl || c.firstImage || null,
-  }));
-}
-
 // ─── Main async dispatcher ─────────────────────────────────────────────────
-export async function renderSection(
+/**
+ * يعرض قسماً: مكوّن المتجر الخاص إن كتبه فريق البناء (stores/<slug>/sections/<type>.tsx، ويستلم ما كانت النواة
+ * ستعرضه في `core`)، وإلا قسم النواة. المكوّن الجديد كلياً (store_block) من stores/<slug>/blocks/<name>.tsx.
+ */
+export async function renderSection(s: Section, ctx: SectionCtx): Promise<React.ReactNode> {
+  if (!s.enabled) return null;
+  if (s.type === "store_block") return renderStoreBlock(s, ctx);
+  const [core, Override] = await Promise.all([
+    renderCoreSection(s, ctx),
+    ctx.kit ? loadSectionOverride(ctx.kit.store.subdomain, s.type) : null,
+  ]);
+  if (!Override || !ctx.kit) return core;
+  return <Override key={s.id} s={s} kit={ctx.kit} core={core} />;
+}
+
+export async function renderStoreBlock(s: Extract<Section, { type: "store_block" }>, ctx: SectionCtx): Promise<React.ReactNode> {
+  if (!s.enabled || !ctx.kit) return null;
+  const Comp = await loadBlock(ctx.kit.store.subdomain, s.name);
+  // اسم بلا ملف (حُذف المكوّن أو نُقل القسم لمتجر آخر): لا شيء بدل خطأ يُسقط الصفحة.
+  if (!Comp) return null;
+  return <Comp key={s.id} s={s} props={s.props} kit={ctx.kit} />;
+}
+
+/** قسم النواة وحده، بلا أي استبدال من المتجر. */
+export async function renderCoreSection(
   s: Section,
   ctx: SectionCtx
 ): Promise<React.ReactNode> {

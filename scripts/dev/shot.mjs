@@ -1,5 +1,5 @@
 // shot.mjs — لقطات شاشة للمعاينة (موبايل 375px وسطح مكتب) بجلسة التاجر التجريبية، مع فحص التمرير الأفقي
-// وأخطاء المتصفح. يُشغَّل عبر: bash scripts/dev/preview.sh shot <path> [name] [mobile|desktop|both] [dark|light] [--full] [--click=css] [--wait=ms]
+// وأخطاء المتصفح. يُشغَّل عبر: bash scripts/dev/preview.sh shot <path> [name] [mobile|desktop|both] [dark|light] [--full] [--click=css] [--wait=ms] [--store=<sub>]
 // اللقطات في $DEVSTACK_SHOTS (افتراضياً ~/.cache/colapia-dev/shots).
 import { createRequire } from "node:module";
 import { mkdirSync } from "node:fs";
@@ -11,6 +11,9 @@ const { chromium } = createRequire(join(cache, "node/"))("playwright");
 const [, , path = "/dashboard", name = "shot", mode = "both", theme = "dark", ...rest] = process.argv;
 const full = rest.includes("--full");
 const click = rest.find((r) => r.startsWith("--click="))?.slice(8);
+// --store=atelier: صفحة متجر على نطاقه (atelier.localhost:3100)، كما يراها الزائر.
+const store = rest.find((r) => r.startsWith("--store="))?.slice(8);
+const origin = store ? `http://${store}.localhost:3100` : "http://localhost:3100";
 const wait = Number(rest.find((r) => r.startsWith("--wait="))?.slice(7) ?? 600);
 const out = process.env.DEVSTACK_SHOTS ?? join(cache, "shots");
 mkdirSync(out, { recursive: true });
@@ -30,7 +33,7 @@ for (const s of mode === "both" ? ["mobile", "desktop"] : [mode]) {
   const errors = [];
   page.on("pageerror", (e) => errors.push(`pageerror: ${e.message}`));
   page.on("console", (m) => m.type() === "error" && errors.push(`console: ${m.text().slice(0, 300)}`));
-  const res = await page.goto(`http://localhost:3100${path}`, { waitUntil: "networkidle", timeout: 120_000 });
+  const res = await page.goto(`${origin}${path}`, { waitUntil: "networkidle", timeout: 120_000 });
   await page.waitForTimeout(wait);
   if (click) {
     await page.click(click);

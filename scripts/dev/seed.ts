@@ -204,11 +204,47 @@ async function main() {
   }
   for (let i = 0; i < events.length; i += 500) await db.insert(analyticsEvents).values(events.slice(i, i + 500));
 
+  const atelier = await seedAtelier(db, now);
+
   const token = "dev-merchant-session-token-0000000000000000";
   await db.delete(sessions).where(eq(sessions.tokenHash, sha(token)));
   await db.insert(sessions).values({ tokenHash: sha(token), subjectType: "merchant", subjectId: m!.id, storeId, expiresAt: new Date(now + 30 * DAY) });
   console.log(`✓ متجر nova (${storeId}) بـ ${prods.length} منتجات و46 طلباً و${events.length} حدث زيارة`);
+  console.log(`✓ متجر atelier (${atelier}) بتخصيصات stores/atelier/ (مكوّن خاص، هيدر، صفحة /craft)`);
   console.log(`clp_m=${token}`);
+}
+
+/**
+ * متجر ثانٍ بتخصيصات مختلفة تماماً (stores/atelier/) لإثبات أن كل المتاجر تعمل من نشر واحد وأن ما يخص متجراً
+ * لا يظهر في غيره: http://atelier.localhost:3100 مقابل http://nova.localhost:3100.
+ */
+async function seedAtelier(db: ReturnType<typeof drizzle<typeof schema>>, now: number): Promise<string> {
+  const old = await db.select().from(stores).where(eq(stores.subdomain, "atelier")).limit(1);
+  if (old[0]) {
+    await db.delete(stores).where(eq(stores.id, old[0].id));
+    await db.delete(merchants).where(eq(merchants.id, old[0].merchantId));
+  }
+  const [m] = await db.insert(merchants).values({ displayName: "ليلى سامي", email: "laila.dev@example.com", isActivated: true, phone: "01198765432" }).returning();
+  const [s] = await db
+    .insert(stores)
+    .values({ merchantId: m!.id, subdomain: "atelier", name: "أتيليه طين", status: "active", activatedAt: new Date(now - 30 * DAY), hostingExpiresAt: new Date(now + 335 * DAY) })
+    .returning();
+  const storeId = s!.id;
+  const bp = defaultBlueprint({ name: "أتيليه طين", tagline: "فخار مصنوع يدوياً في الفيوم", industry: "home", instapay: "laila@instapay", inspectionAllowed: false, storeId });
+  // مكوّن خاص بهذا المتجر وحده (stores/atelier/blocks/craft-process.tsx) بعد الواجهة مباشرة.
+  bp.home.splice(1, 0, { id: "craft", type: "store_block", enabled: true, variant: "default", name: "craft-process", title: "من الطين إلى بيتك", props: { days: 9 }, spacing: "normal", background: "default", reveal: "fade" } as (typeof bp.home)[number]);
+  await db.insert(storeBlueprints).values({ storeId, data: bp });
+  await db.insert(shippingZones).values(defaultShippingZones().map((z) => ({ ...z, storeId })));
+  const [cat] = await db.insert(categories).values({ storeId, name: "أكواب وأطباق", slug: "اكواب-واطباق", sortOrder: 0 }).returning();
+  const items: Array<[string, number]> = [["كوب فخار مزجج", 32000], ["طبق تقديم كبير", 68000], ["طقم فناجين قهوة", 95000], ["مزهرية الفيوم", 54000]];
+  await db.insert(products).values(
+    items.map(([name, price], i) => ({
+      storeId, categoryId: cat!.id, name, slug: slugify(name), pricePiasters: price, stock: 5 + i, trackStock: true, status: "active" as const,
+      images: [{ url: productImage(name, i + 3), alt: name }], searchText: buildSearchText([name]), shortDescription: `${name} مشكَّل يدوياً، كل قطعة مختلفة قليلاً.`,
+      isFeatured: i < 3, sortOrder: i, createdAt: new Date(now - (10 - i) * DAY),
+    })),
+  );
+  return storeId;
 }
 
 main().catch((e) => {

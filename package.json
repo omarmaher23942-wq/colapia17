@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "predev": "tsx scripts/stores/registry.ts",
     "dev": "next dev",
+    "prebuild": "tsx scripts/stores/registry.ts && tsx scripts/stores/guard.ts",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -17,7 +19,9 @@
     "db:adopt-baseline": "tsx scripts/db-adopt-baseline.ts",
     "db:reindex-search": "tsx scripts/reindex-search.ts",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm run test"
+    "check": "npm run typecheck && npm run lint && npm run stores:check && npm run test",
+    "stores:registry": "tsx scripts/stores/registry.ts",
+    "stores:check": "tsx scripts/stores/registry.ts --check && tsx scripts/stores/guard.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.0",

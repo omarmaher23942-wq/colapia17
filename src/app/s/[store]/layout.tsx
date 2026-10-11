@@ -22,6 +22,8 @@ import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstIm
 import { listVisibleCategories } from "@/server/repos/catalog";
 import { getCustomerSession } from "@/server/auth";
 import { notFound } from "next/navigation";
+import { createStoreKit } from "@/stores-kit/server";
+import { loadSlot, storeTheme } from "@/stores/resolve";
 
 type Props = {
   children: React.ReactNode;
@@ -109,6 +111,24 @@ export default async function StoreLayout({ children, params }: Props) {
   const facts = await getStoreFacts(store.id, rawBp);
   const bp = truthfulBlueprint(rawBp, facts);
 
+  // تخصيصات هذا المتجر من مستودع المتاجر (stores/<slug>/): الجلد، والهيدر والفوتر إن كتبهما فريق البناء.
+  const kit = createStoreKit({ store, bp, facts });
+  const [HeaderSlot, FooterSlot] = await Promise.all([loadSlot(store.subdomain, "Header"), loadSlot(store.subdomain, "Footer")]);
+  const theme = storeTheme(store.subdomain);
+
+  const coreHeader = <Header header={bp.header} brand={bp.brand} categories={categories} channels={bp.channels} />;
+  const coreFooter = (
+    <Footer
+      footer={bp.footer}
+      brand={bp.brand}
+      channels={bp.channels}
+      pages={allPolicyPages(bp)}
+      payments={bp.payments}
+      categories={categories}
+      facts={facts}
+    />
+  );
+
   const customer = customerSession
     ? {
         id: customerSession.customer.id,
@@ -144,6 +164,7 @@ export default async function StoreLayout({ children, params }: Props) {
             __html: themeStyleSheet(bp.theme, ".storefront") + designStyleSheet(bp, ".storefront"),
           }}
         />
+        {theme ? <style data-store-theme dangerouslySetInnerHTML={{ __html: theme }} /> : null}
 
         <OwnerFirstImpressionBanner
           subdomain={store.subdomain}
@@ -166,24 +187,11 @@ export default async function StoreLayout({ children, params }: Props) {
               {store.vacationMessage || "المتجر لا يستقبل طلبات الآن، وسنعود قريباً"}
             </p>
           ) : null}
-          <Header
-            header={bp.header}
-            brand={bp.brand}
-            categories={categories}
-            channels={bp.channels}
-          />
+          {HeaderSlot ? <HeaderSlot kit={kit} core={coreHeader} /> : coreHeader}
 
           <main className="flex-1">{children}</main>
 
-          <Footer
-            footer={bp.footer}
-            brand={bp.brand}
-            channels={bp.channels}
-            pages={allPolicyPages(bp)}
-            payments={bp.payments}
-            categories={categories}
-            facts={facts}
-          />
+          {FooterSlot ? <FooterSlot kit={kit} core={coreFooter} /> : coreFooter}
 
           <CartDrawer />
           <PromoFromLink subdomain={store.subdomain} />
