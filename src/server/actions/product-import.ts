@@ -8,7 +8,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { buildSearchText, normalizeArabic, slugify } from "@/lib/arabic";
 import { getBlueprintOrNull, invalidateStoreCache } from "@/lib/tenant";
 import { parseCsv } from "@/lib/csv-parse";
@@ -35,7 +35,7 @@ export type ImportResult =
   | { ok: false; error: string };
 
 export async function importProductsAction(raw: unknown): Promise<ImportResult> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "الملف فارغ أو أكبر من المسموح" };
@@ -130,7 +130,7 @@ const FINAL_ERRORS = new Set(["invalid_url", "blocked_host", "not_found", "too_l
  * لأن سياسة أمان المتجر لا تعرض صوراً من مضيف آخر.
  */
 export async function rehostProductImagesAction(raw: unknown): Promise<RehostResult> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = z.object({ id: z.string().uuid() }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "منتج غير صالح" };
@@ -195,7 +195,7 @@ export async function rehostProductImagesAction(raw: unknown): Promise<RehostRes
 
 /** المنتجات التي ما زالت صورها على روابط خارجية (لتنبيه «انقل الصور» في صفحة المنتجات). */
 export async function productsWithExternalImagesAction(): Promise<{ id: string; name: string }[]> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return [];
   const db = await getTenantDb(s.storeId);
   const rows = await db
@@ -208,7 +208,7 @@ export async function productsWithExternalImagesAction(): Promise<{ id: string; 
 
 /** المنتجات بلا وصف (لزر «اكتب الأوصاف الناقصة» بالذكاء الاصطناعي). */
 export async function productsMissingCopyAction(): Promise<{ id: string; name: string; priceEgp: number; category: string | null }[]> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return [];
   const db = await getTenantDb(s.storeId);
   const rows = await db

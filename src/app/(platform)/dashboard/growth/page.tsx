@@ -1,4 +1,4 @@
-import { requireMerchantStore } from "@/server/auth";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { ReferralDashboard } from "@/components/growth/ReferralDashboard";
 import { SocialShareCardGenerator } from "@/components/growth/SocialShareCardGenerator";
 import { getTenantDb } from "@/db/tenant";
@@ -8,7 +8,7 @@ import { and, eq, isNull } from "drizzle-orm";
 export const dynamic = "force-dynamic";
 
 export default async function GrowthDashboardPage() {
-  const s = await requireMerchantStore();
+  const s = await requireStoreArea("discounts");
   const db = await getTenantDb(s.storeId);
 
   // جلب منتج عشوائي لتوليد كارت السوشيال ميديا كبداية

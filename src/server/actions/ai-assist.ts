@@ -2,7 +2,7 @@
 
 // أدوات الذكاء الاصطناعي في لوحة التاجر. كلها تمر عبر ai/merchant (مفتاح التاجر بعد التفعيل).
 import { z } from "zod";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { MerchantAiError, merchantAiStatus, merchantObject, type MerchantAiStatus } from "@/ai/merchant";
 import { log } from "@/lib/logger";
@@ -42,7 +42,7 @@ const TONE: Record<string, string> = {
 };
 
 export async function aiProductCopyAction(raw: unknown): Promise<Result<ProductCopy>> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   const input = copyInput.safeParse(raw);
   if (!input.success) return { ok: false, error: "اكتب اسم المنتج أولاً" };
@@ -86,7 +86,7 @@ export async function aiProductCopyAction(raw: unknown): Promise<Result<ProductC
 }
 
 export async function aiStatusAction(): Promise<MerchantAiStatus | null> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return null;
   return merchantAiStatus({ id: s.storeId, status: s.store.status });
 }
@@ -98,7 +98,7 @@ const historySchema = z
 
 /** مساعد اللوحة الذكي: يجيب من بيانات المتجر الحقيقية (قراءة فقط). */
 export async function copilotAction(raw: unknown): Promise<Result<string>> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   const history = historySchema.safeParse(raw);
   if (!history.success || history.data.at(-1)?.role !== "user") return { ok: false, error: "اكتب سؤالك أولاً" };
@@ -118,7 +118,7 @@ export async function copilotAction(raw: unknown): Promise<Result<string>> {
 
 /** يحفظ محتوى كتبه الذكاء الاصطناعي لمنتج بلا وصف (من «أكمل الأوصاف الناقصة»): لا يكتب فوق ما كتبه التاجر. */
 export async function applyProductCopyAction(raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   const parsed = z.object({ id: z.string().uuid(), copy: copyOutput }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "بيانات غير صالحة" };

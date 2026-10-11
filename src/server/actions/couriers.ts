@@ -3,12 +3,12 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { orders, orderItems } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { governorateName } from "@/lib/egypt";
 import ExcelJS from "exceljs";
 
 export async function exportOrdersExcelAction(statusFilter?: string) {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("orders");
   if (!s) throw new Error("غير مصرح");
   const db = await getTenantDb(s.storeId);
 

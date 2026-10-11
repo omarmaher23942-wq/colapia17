@@ -1,6 +1,7 @@
 // dashboard/settings — الإعدادات: الدفع والتواصل واستقبال الطلبات ورابط المتجر وكود QR، وحسابك.
 // الإعدادات تُقرأ من القاعدة مباشرة (لا من كاش المتجر) لتعرض آخر ما حُفظ من أي صفحة.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import { getMerchantSession } from "@/server/auth";
@@ -19,6 +20,7 @@ const TABS: SettingsTab[] = ["store", "payments", "contact", "account"];
 export default async function DashboardSettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/settings");
+  await requireStoreArea("settings");
   const { tab } = await searchParams;
   const store = session.store;
 

@@ -10,7 +10,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { shippingZones, storeBlueprints } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema } from "@/blueprint/schema";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { GOVERNORATES } from "@/lib/egypt";
@@ -45,7 +45,7 @@ const input = z.object({
 export type ShippingSettingsInput = z.input<typeof input>;
 
 export async function saveShippingSettingsAction(raw: unknown): Promise<{ ok: true } | { ok: false; error: string; governorate?: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("shipping");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) {

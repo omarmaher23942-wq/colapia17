@@ -1,6 +1,6 @@
 // /dashboard/own — "امتلك متجرك": نقل المتجر ولوحة التحكم إلى حسابات التاجر (GitHub + Vercel + Neon).
 import type { Metadata } from "next";
-import { requireMerchantStore } from "@/server/auth";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { githubEnabled } from "@/server/ownership/github";
 import { latestTransfer } from "@/server/ownership/transfer";
 import { OwnershipCenter } from "@/components/dashboard/own/OwnershipCenter";
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "امتلك متجرك" };
 
 export default async function OwnPage({ searchParams }: { searchParams: Promise<{ github?: string; message?: string }> }) {
-  const s = await requireMerchantStore();
+  const s = await requireStoreArea("billing");
   const q = await searchParams;
   const t = await latestTransfer(s.storeId);
   return (

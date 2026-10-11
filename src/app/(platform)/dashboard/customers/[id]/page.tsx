@@ -1,6 +1,7 @@
 // dashboard/customers/[id]/page.tsx — ملف العميل: التواصل (اتصال، واتساب، نسخ)، والعنوان، ومجاميعه الحقيقية من الطلبات،
 // وكل طلباته بحالاتها، وأكثر ما يشتريه، وملاحظات خاصة، وحظر برقمه.
 import type { Metadata } from "next";
+import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowRight, Mail, MapPin, MessageCircle, Phone, ShoppingBag } from "lucide-react";
@@ -24,6 +25,7 @@ async function load(id: string) {
   const session = await getMerchantSession();
   if (!session) redirect(`/login?redirect=/dashboard/customers/${id}`);
   if (!session.storeId) redirect(NO_STORE_HREF);
+  await requireStoreArea("customers");
   if (!UUID.test(id)) notFound();
   const profile = await customerProfile(session.storeId, id);
   if (!profile) notFound();

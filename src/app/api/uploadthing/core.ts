@@ -5,6 +5,7 @@ import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { z } from "zod";
 import { getMerchantSession } from "@/server/auth";
+import { ownerStore, storeFor } from "@/server/merchant-guard";
 import { getStoreBySubdomain, isStorePubliclyVisible } from "@/lib/tenant";
 import { allow, clientIp } from "@/lib/ratelimit";
 import { onboardingImageRoute } from "@/onboarding/uploader";
@@ -15,7 +16,8 @@ const f = createUploadthing();
 export const fileRouter = {
   productImage: f({ image: { maxFileSize: "8MB", maxFileCount: 10 } })
     .middleware(async () => {
-      const s = await getMerchantSession();
+      // صور المنتجات وصور محرر المحتوى: لمن يدير المنتجات أو المحتوى.
+      const s = (await storeFor("products")) ?? (await storeFor("content"));
       if (!s) throw new UploadThingError("غير مصرح");
       return { storeId: s.storeId };
     })
@@ -29,7 +31,7 @@ export const fileRouter = {
     image: { maxFileSize: "4MB", maxFileCount: 1 },
   })
     .middleware(async () => {
-      const s = await getMerchantSession();
+      const s = (await storeFor("content")) ?? (await storeFor("settings")) ?? (await storeFor("products"));
       if (!s) throw new UploadThingError("غير مصرح");
       return { storeId: s.storeId };
     })
@@ -38,8 +40,8 @@ export const fileRouter = {
   // إيصال تحويل التاجر للمنصة (صفحة الدفع): لصاحب المتجر المسجّل فقط، ويعمل والمتجر مجمّد (حين يحتاجه أكثر).
   platformReceipt: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
     .middleware(async () => {
-      const s = await getMerchantSession();
-      if (!s?.store) throw new UploadThingError("سجّل الدخول بحساب صاحب المتجر أولاً");
+      const s = await ownerStore();
+      if (!s?.store) throw new UploadThingError("الدفع لصاحب المتجر فقط. ادخل بحسابه.");
       if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) {
         throw new UploadThingError("محاولات كثيرة، حاول بعد دقائق");
       }

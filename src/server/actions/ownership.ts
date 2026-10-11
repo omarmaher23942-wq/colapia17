@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { stores } from "@/db/schema";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { log } from "@/lib/logger";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { ownerStore } from "@/server/merchant-guard";
 import { allow } from "@/lib/ratelimit";
 import { issueTransferCode, latestTransfer, purgeStore } from "@/server/ownership/transfer";
 
@@ -20,7 +20,7 @@ export type OwnershipLive = {
 };
 
 export async function issueTransferCodeAction(): Promise<Result<{ code: string; expiresAt: string }>> {
-  const s = await getMerchantStoreOrNull();
+  const s = await ownerStore();
   if (!s) return { ok: false, error: "غير مصرح" };
   if (s.store.status !== "active") return { ok: false, error: "فعّل متجرك أولاً من صفحة الفوترة." };
   if (s.store.ownedAt) return { ok: false, error: "استلمت متجرك بالفعل." };
@@ -30,7 +30,7 @@ export async function issueTransferCodeAction(): Promise<Result<{ code: string; 
 }
 
 export async function ownershipLiveAction(): Promise<Result<OwnershipLive>> {
-  const s = await getMerchantStoreOrNull();
+  const s = await ownerStore();
   if (!s) return { ok: false, error: "غير مصرح" };
   const t = await latestTransfer(s.storeId);
   if (s.store.ownedAt) revalidatePath("/dashboard", "layout");
@@ -51,7 +51,7 @@ export async function ownershipLiveAction(): Promise<Result<OwnershipLive>> {
 // ولا يلغيان اشتراكه: إن أوقف نسخته أو حذف بياناته يبقى اشتراكه سارياً حتى نهاية سنته ولا يُستردّ منه شيء.
 
 async function transferred() {
-  const s = await getMerchantStoreOrNull();
+  const s = await ownerStore();
   if (!s) return { error: "غير مصرح" as const };
   if (!s.store.ownedAt || !s.store.ownedUrl) return { error: "هذا الإجراء بعد أن تنقل متجرك لموقعك وتتأكد أنه يعمل." as const };
   if (s.store.purgedAt) return { error: "حُذفت بيانات متجرك من المنصة بالفعل." as const };

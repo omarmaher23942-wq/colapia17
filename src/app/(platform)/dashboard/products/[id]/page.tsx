@@ -1,6 +1,7 @@
 // dashboard/products/[id]/page.tsx — إضافة منتج (/new) وتعديله. يحمّل المنتج وتركيباته وإحصاءاته الحقيقية (مشاهدات،
 // قطع مبيعة، تقييم) وشارة «المميز» بنص المتجر نفسه، ويسلّمها للمحرر.
 import type { Metadata } from "next";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { getMerchantSession } from "@/server/auth";
@@ -20,6 +21,7 @@ async function load(id: string) {
   const session = await getMerchantSession();
   if (!session) redirect(`/login?redirect=/dashboard/products/${id}`);
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("products");
   const store = session.store;
   const db = await getTenantDb(store.id);
   if (id === "new") return { store, db, product: null };

@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeBlueprints, storeSnapshots, stores } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { z } from "zod";
 import { blueprintSchema, validateBlueprint, type StoreBlueprint } from "@/blueprint/schema";
@@ -37,7 +37,7 @@ const changesSchema = z
  */
 export async function saveBlueprintChangesAction(raw: unknown, label: string): Promise<ActionResult<{ version: number; blueprint: StoreBlueprint }>> {
   try {
-    const s = await getMerchantStoreOrNull();
+    const s = await storeFor("content");
     if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
     const parsed = changesSchema.safeParse(raw);
     if (!parsed.success) return { ok: false, error: "تغييرات غير صالحة" };
@@ -61,7 +61,7 @@ export async function saveBlueprintAction(
   label: string
 ): Promise<ActionResult<{ version: number }>> {
   try {
-    const s = await getMerchantStoreOrNull();
+    const s = await storeFor("content");
     if (!s) return { ok: false, error: "غير مصرح" };
 
     const parsed = blueprintSchema.safeParse(next);
@@ -145,7 +145,7 @@ export async function revertSnapshotAction(
   snapshotId: string
 ): Promise<ActionResult<{ version: number }>> {
   try {
-    const s = await getMerchantStoreOrNull();
+    const s = await storeFor("content");
     if (!s) return { ok: false, error: "غير مصرح" };
 
     if (!z.string().uuid().safeParse(snapshotId).success) {

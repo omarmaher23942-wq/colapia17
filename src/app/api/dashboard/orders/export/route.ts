@@ -1,7 +1,7 @@
 // GET /api/dashboard/orders/export?status=&from=&to= — تصدير طلبات المتجر (بأصنافها) إلى ملف يفتح في Excel.
 import { NextResponse } from "next/server";
 import { and, desc, eq, gte, inArray, lte } from "drizzle-orm";
-import { getMerchantSession } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { getTenantDb } from "@/db/tenant";
 import { orderItems, orders } from "@/db/schema";
 import { GOVERNORATES } from "@/lib/egypt";
@@ -15,7 +15,7 @@ const PAY_STATUS: Record<string, string> = { pending: "بانتظار الدفع
 const GOV = new Map(GOVERNORATES.map((g) => [g.code as string, g.name as string]));
 
 export async function GET(req: Request) {
-  const session = await getMerchantSession();
+  const session = await storeFor("orders", "view");
   if (!session?.storeId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const storeId = session.storeId;
   const url = new URL(req.url);

@@ -9,7 +9,8 @@ import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { merchants, platformPayments } from "@/db/schema";
-import { getMerchantSession, getMerchantStoreOrNull } from "@/server/auth";
+import { getMerchantSession } from "@/server/auth";
+import { ownerStore } from "@/server/merchant-guard";
 import { isHostedImage } from "@/lib/media-hosts";
 import { transition } from "@/lifecycle/machine";
 import { purgeStore } from "@/server/ownership/transfer";
@@ -49,8 +50,8 @@ const deleteInput = z.object({ confirm: z.string().trim().min(1).max(80) });
  * يتطلب كتابة اسم المتجر كما هو، ويُرفض إن كان عنده إيصال دفع قيد المراجعة.
  */
 export async function deleteStoreAction(raw: unknown): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
-  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
+  const s = await ownerStore();
+  if (!s) return { ok: false, error: "حذف المتجر لصاحبه فقط." };
   const p = deleteInput.safeParse(raw);
   if (!p.success || p.data.confirm !== s.store.name.trim()) return { ok: false, error: "اكتب اسم المتجر كما هو بالضبط للتأكيد" };
   if (!(DELETABLE as readonly string[]).includes(s.store.status)) {

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeBlueprints } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, returnsSchema } from "@/blueprint/schema";
 import { saveBlueprintAction } from "./blueprint";
 
@@ -23,7 +23,7 @@ const input = z.object({
 export type PoliciesInput = z.input<typeof input>;
 
 export async function savePoliciesAction(raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("settings");
   if (!s) return { ok: false, error: "غير مصرح" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "بيانات غير صالحة" };

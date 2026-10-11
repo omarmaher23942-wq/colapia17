@@ -7,6 +7,8 @@ import { getMerchantSession } from "@/server/auth";
 import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { attentionCounts } from "@/server/repos/attention";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
+import { memberPerms } from "@/server/merchant-guard";
+import { areaForPath } from "@/lib/store-perms";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
@@ -105,6 +107,7 @@ export default async function DashboardLayout({
                 : null
             }
             allStores={session.stores.map((s) => ({ id: s.id, name: s.name, subdomain: s.subdomain, status: s.status }))}
+            perms={memberPerms(session)}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -122,13 +125,23 @@ export default async function DashboardLayout({
               className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
             >
               {!onBilling && (hosting.phase === "renew_soon" || hosting.phase === "grace" || hosting.phase === "paused") ? <HostingBanner state={hosting} /> : null}
+              {(() => {
+                // عضو فريق بصلاحية «عرض» فقط في هذه الصفحة: نوضح ذلك بدل أن يكتشفه من رفض الحفظ.
+                const mp = memberPerms(session);
+                const area = areaForPath(path);
+                return mp && area && mp[area] === "view" ? (
+                  <p role="note" className="mb-4 rounded-xl border border-warn/30 bg-warn/[0.06] px-4 py-2.5 text-[13px] font-bold text-warn">
+                    صلاحيتك هنا «عرض فقط». أي تعديل يحتاج صلاحية من صاحب المتجر.
+                  </p>
+                ) : null;
+              })()}
               {children}
             </main>
           </div>
         </div>
 
         {/* Command Palette — متاح عالمياً بـ ⌘K */}
-        <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} />
+        <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} perms={memberPerms(session)} />
 
         {/* Onboarding Tour — للتاجر الجديد فقط */}
         <OnboardingTour autoOpen={showTour} />

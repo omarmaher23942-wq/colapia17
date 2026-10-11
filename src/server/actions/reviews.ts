@@ -12,7 +12,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { orderItems, orders, products, reviews } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { allow, clientIp } from "@/lib/ratelimit";
 import { getStoreBySubdomain, invalidateStoreCache, isStorePubliclyVisible } from "@/lib/tenant";
 import { hasOrderAccess, validReviewToken } from "@/lib/order-access";
@@ -103,7 +103,7 @@ export async function submitOrderReviewsAction(raw: unknown): Promise<{ ok: true
 const ids = z.array(z.string().uuid()).min(1).max(200);
 
 async function merchant() {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("reviews");
   return s ? { s, db: await getTenantDb(s.storeId) } : null;
 }
 

@@ -17,9 +17,11 @@ import {
   Truck,
   Users,
   Wand2,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
+import { allows, areaForPath, type StorePerms } from "@/lib/store-perms";
 
 export type BadgeKey = "orders" | "reviews" | "products";
 
@@ -74,6 +76,7 @@ const ALL: NavSection[] = [
     title: "الحساب",
     items: [
       { label: "الإعدادات", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر والتواصل والدفع", keywords: ["settings", "اعدادات"] },
+      { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "ادعُ موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات", "فريق"] },
       { label: "الدفع والتفعيل", href: "/dashboard/billing", icon: CreditCard, hint: "ادفع مرة واحدة وفعّل متجرك", keywords: ["billing", "فوترة", "اشتراك", "دفع"] },
     ],
   },
@@ -85,6 +88,14 @@ export const NAV_SECTIONS: NavSection[] = ALL.map((s) => ({
 })).filter((s) => s.items.length > 0);
 
 export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
+
+/** القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر. */
+export function navSectionsFor(perms?: StorePerms | null): NavSection[] {
+  if (!perms) return NAV_SECTIONS;
+  return NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => allows(perms, areaForPath(i.href) ?? "analytics", "view")) })).filter((s) => s.items.length > 0);
+}
+
+export const navItemsFor = (perms?: StorePerms | null): NavItem[] => navSectionsFor(perms).flatMap((s) => s.items);
 
 /** الشريط السفلي على الموبايل: أكثر 4 صفحات استخداماً، والباقي في «المزيد». */
 export const MOBILE_NAV_HREFS = ["/dashboard", "/dashboard/orders", "/dashboard/products", "/dashboard/analytics"] as const;

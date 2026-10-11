@@ -1,5 +1,6 @@
 // dashboard/categories/page.tsx — أقسام المتجر بترتيبها وعدد منتجات كل قسم.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { getMerchantSession } from "@/server/auth";
 import { listCategories } from "@/server/repos/categories-list";
 import { CategoriesManager } from "@/components/dashboard/categories/CategoriesManager";
@@ -12,6 +13,7 @@ export default async function CategoriesPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/categories");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("products");
   const rows = await listCategories(session.storeId);
   return (
     <div className="mx-auto max-w-4xl">

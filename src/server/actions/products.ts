@@ -5,7 +5,7 @@ import { z } from "zod";
 import { and, eq, inArray, isNull, sql, type AnyColumn } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { products, productVariants, categories } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { buildSearchText, slugify } from "@/lib/arabic";
 import { invalidateStoreCache } from "@/lib/tenant";
 
@@ -86,7 +86,7 @@ async function uniqueSlug(storeId: string, name: string, excludeId?: string) {
 }
 
 export async function duplicateProductAction(id: string): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "المنتج غير موجود" };
   const db = await getTenantDb(s.storeId);
@@ -168,7 +168,7 @@ export type SaveProductResult = { ok: true; id: string; slug: string } | { ok: f
 const cleanList = (xs: string[], max: number, len: number) => [...new Set(xs.map((x) => x.trim().slice(0, len)).filter(Boolean))].slice(0, max);
 
 export async function saveProductAction(raw: unknown): Promise<SaveProductResult> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const db = await getTenantDb(s.storeId);
 
@@ -291,7 +291,7 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
 }
 
 export async function deleteProductAction(id: string): Promise<{ ok: boolean; error?: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   const db = await getTenantDb(s.storeId);
 
@@ -319,7 +319,7 @@ export async function bulkUpdateProductsAction(
   ids: string[],
   op: BulkUpdateProductsOp
 ): Promise<{ ok: boolean; error?: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   const db = await getTenantDb(s.storeId);
   const parsedIds = idList.safeParse(ids);

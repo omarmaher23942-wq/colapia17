@@ -1,6 +1,6 @@
 // /api/dashboard/analytics/export — تقرير التحليلات ملف CSV يفتح في Excel (نفس أرقام الصفحة: analyticsReport):
 // الأيام، ومصادر الزوار، ورحلة الشراء، والمحافظات، والمنتجات، والساعات.
-import { getMerchantSession } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { analyticsReport, parseRange } from "@/server/repos/analytics";
 import { csvResponse, egpCell, toCsv } from "@/server/csv";
 
@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const session = await getMerchantSession();
+  const session = await storeFor("analytics", "view");
   if (!session?.store) return Response.json({ error: "unauthorized" }, { status: 401 });
   const days = parseRange(new URL(req.url).searchParams.get("days") ?? undefined);
   const r = await analyticsReport(session.store.id, days);

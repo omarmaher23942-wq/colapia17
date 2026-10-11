@@ -7,7 +7,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { slugify } from "@/lib/arabic";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { CATEGORY_DESCRIPTION_MAX, CATEGORY_NAME_MAX } from "@/lib/catalog-limits";
@@ -34,7 +34,7 @@ async function done(store: Parameters<typeof invalidateStoreCache>[0]) {
 }
 
 export async function saveCategoryAction(raw: unknown): Promise<{ ok: true; id: string } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
@@ -87,7 +87,7 @@ export async function saveCategoryAction(raw: unknown): Promise<{ ok: true; id: 
 }
 
 export async function setCategoryVisibilityAction(id: string, isVisible: boolean): Promise<{ ok: true } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "القسم غير موجود" };
   const db = await getTenantDb(s.storeId);
@@ -101,7 +101,7 @@ export async function setCategoryVisibilityAction(id: string, isVisible: boolean
 
 /** يحفظ الترتيب كما رتّبه التاجر: ids بالترتيب الجديد (كل أقسام المتجر). */
 export async function reorderCategoriesAction(ids: string[]): Promise<{ ok: true } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = z.array(z.string().uuid()).max(500).safeParse(ids);
   if (!parsed.success || new Set(parsed.data).size !== parsed.data.length) return { ok: false, error: "ترتيب غير صالح" };
@@ -121,7 +121,7 @@ export async function reorderCategoriesAction(ids: string[]): Promise<{ ok: true
 }
 
 export async function deleteCategoryAction(id: string): Promise<{ ok: true } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "القسم غير موجود" };
   const db = await getTenantDb(s.storeId);

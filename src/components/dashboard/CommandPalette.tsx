@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 import { arCount, NOUN } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone, TONE_CHIP } from "@/lib/order-status";
 import type { SearchHit } from "@/server/repos/dashboard-search";
-import { NAV_ITEMS } from "./nav";
+import { navItemsFor } from "./nav";
+import type { StorePerms } from "@/lib/store-perms";
 import { useDashboardPulse } from "./DashboardPulse";
 
 type Cmd = {
@@ -60,7 +61,7 @@ function matches(c: Cmd, q: string): boolean {
   return q.split(" ").every((w) => hay.includes(w));
 }
 
-export function CommandPalette({ storeHref, hasStore }: { storeHref: string | null; hasStore: boolean }) {
+export function CommandPalette({ storeHref, hasStore, perms }: { storeHref: string | null; hasStore: boolean; perms?: StorePerms | null }) {
   const router = useRouter();
   const { soundOn, toggleSound } = useDashboardPulse();
   const [open, setOpen] = useState(false);
@@ -138,7 +139,7 @@ export function CommandPalette({ storeHref, hasStore }: { storeHref: string | nu
   );
 
   const pages: Cmd[] = useMemo(
-    () => NAV_ITEMS.map((n) => ({ id: `nav:${n.href}`, label: n.label, hint: n.hint, icon: n.icon, keywords: n.keywords, run: () => go(n.href) })),
+    () => navItemsFor(perms).map((n) => ({ id: `nav:${n.href}`, label: n.label, hint: n.hint, icon: n.icon, keywords: n.keywords, run: () => go(n.href) })),
     [go]
   );
 

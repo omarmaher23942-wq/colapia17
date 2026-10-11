@@ -20,7 +20,9 @@ import {
   platformUsers,
   customers,
   magicLinks,
+  storeMembers,
 } from "@/db/schema";
+import { NO_PERMS, OWNER_PERMS, permsFor, type StorePerms } from "@/lib/store-perms";
 import { secureToken, sha256 } from "@/lib/ids";
 import { clientEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/utils";
@@ -202,6 +204,7 @@ export async function signInMerchantWithGoogle(
     isNew = true;
   }
 
+  await linkMemberships(merchant.id, email);
   const token = await createSession("merchant", merchant.id, null);
   await clearLegacySharedCookie(MERCHANT_COOKIE);
   await writeCookie(MERCHANT_COOKIE, token);
@@ -212,7 +215,45 @@ export async function signInMerchantWithGoogle(
   return { merchant, isNew };
 }
 
-/** كل متاجر التاجر غير المحذوفة، الأحدث أولاً. */
+/** دعوات فريق المتجر بهذا البريد تُربط بهوية التاجر عند دخوله (Google أو رمز البريد). */
+async function linkMemberships(merchantId: string, email: string) {
+  await db
+    .update(storeMembers)
+    .set({ merchantId, updatedAt: new Date() })
+    .where(and(eq(storeMembers.email, email.trim().toLowerCase()), isNull(storeMembers.merchantId), eq(storeMembers.status, "active")))
+    .catch((e) => log.warn("auth", "link_memberships_failed", {}, String(e)));
+}
+
+/**
+ * يبدأ جلسة تاجر لبريد تحقق منه رمز لمرة واحدة (بديل Google لمن لا يملك حساباً). يُسمح فقط لبريد تاجر موجود
+ * (صاحب متجر من الاستمارة) أو عضو فريق مدعو؛ لا إنشاء حسابات جديدة من هنا. يعيد null إن لم يكن البريد معروفاً.
+ */
+export async function signInMerchantByEmail(rawEmail: string): Promise<{ merchant: Merchant } | null> {
+  const email = rawEmail.trim().toLowerCase();
+  const now = new Date();
+  let [merchant] = await db.select().from(merchants).where(eq(merchants.email, email)).limit(1);
+  if (!merchant) {
+    const [invite] = await db
+      .select({ id: storeMembers.id })
+      .from(storeMembers)
+      .where(and(eq(storeMembers.email, email), eq(storeMembers.status, "active")))
+      .limit(1);
+    if (!invite) return null;
+    [merchant] = await db.insert(merchants).values({ email, displayName: email.split("@")[0] || "عضو فريق", isActivated: true, lastLoginAt: now }).returning();
+    if (!merchant) return null;
+  } else {
+    [merchant] = await db.update(merchants).set({ isActivated: true, lastLoginAt: now, updatedAt: now }).where(eq(merchants.id, merchant.id)).returning();
+    if (!merchant) return null;
+  }
+  await linkMemberships(merchant.id, email);
+  const token = await createSession("merchant", merchant.id, null);
+  await clearLegacySharedCookie(MERCHANT_COOKIE);
+  await writeCookie(MERCHANT_COOKIE, token);
+  log.info("auth", "merchant_login_email_ok", { reqId: await readRequestId(), merchantId: merchant.id });
+  return { merchant };
+}
+
+/** كل متاجر التاجر غير المحذوفة (التي يملكها)، الأحدث أولاً. */
 export async function listMerchantStores(merchantId: string): Promise<Store[]> {
   return db
     .select()
@@ -221,21 +262,41 @@ export async function listMerchantStores(merchantId: string): Promise<Store[]> {
     .orderBy(desc(stores.updatedAt));
 }
 
+type Membership = { storeId: string; memberId: string; role: string; perms: StorePerms };
+
+/** المتاجر التي هو عضو في فريقها (عضوية نشطة) بصلاحياتها. */
+async function listMemberships(merchantId: string): Promise<{ stores: Store[]; byStore: Map<string, Membership> }> {
+  const rows = await db
+    .select({ store: stores, m: storeMembers })
+    .from(storeMembers)
+    .innerJoin(stores, eq(stores.id, storeMembers.storeId))
+    .where(and(eq(storeMembers.merchantId, merchantId), eq(storeMembers.status, "active"), isNull(stores.deletedAt)))
+    .catch(() => []);
+  return {
+    stores: rows.map((r) => r.store),
+    byStore: new Map(rows.map((r) => [r.store.id, { storeId: r.store.id, memberId: r.m.id, role: r.m.role, perms: permsFor(r.m.role, r.m.perms) }])),
+  };
+}
+
 export type MerchantSession = {
   sessionId: string;
   merchantId: string;
   merchant: Merchant;
-  /** المتجر النشط — مضمون أن التاجر يملكه. */
+  /** المتجر النشط — مضمون أن التاجر يملكه أو عضو نشط في فريقه. */
   storeId: string | null;
   store: Store | null;
-  /** كل متاجر التاجر (لمبدّل المتاجر). */
+  /** كل متاجره (يملكها أو عضو فيها) لمبدّل المتاجر. */
   stores: Store[];
+  /** علاقته بالمتجر النشط وصلاحياته فيه (صاحب المتجر = كل شيء). */
+  access: "owner" | "member";
+  perms: StorePerms;
+  memberId: string | null;
 } | null;
 
 /**
  * جلسة التاجر الحالية مع متجره النشط.
- * المتجر النشط = اختيار الجلسة إن كان التاجر يملكه، وإلا أحدث متاجره.
- * لا يمكن لأي مسار أن يجعل تاجراً يرى متجراً لا يملكه.
+ * المتجر النشط = اختيار الجلسة إن كان يملكه أو عضواً فيه، وإلا أحدث متاجره.
+ * لا يمكن لأي مسار أن يجعل تاجراً يرى متجراً لا يملكه ولا عضوية له فيه.
  */
 export async function getMerchantSession(): Promise<MerchantSession> {
   const jar = await cookies();
@@ -249,8 +310,11 @@ export async function getMerchantSession(): Promise<MerchantSession> {
     .limit(1);
   if (!merchant || !merchant.isActivated) return null;
 
-  const owned = await listMerchantStores(merchant.id);
-  const store = owned.find((x) => x.id === s.storeId) ?? owned[0] ?? null;
+  const [owned, member] = await Promise.all([listMerchantStores(merchant.id), listMemberships(merchant.id)]);
+  const all = [...owned, ...member.stores.filter((m) => !owned.some((o) => o.id === m.id))];
+  const store = all.find((x) => x.id === s.storeId) ?? all[0] ?? null;
+  const isOwner = Boolean(store && owned.some((o) => o.id === store.id));
+  const membership = store && !isOwner ? member.byStore.get(store.id) : undefined;
 
   return {
     sessionId: s.id,
@@ -258,7 +322,10 @@ export async function getMerchantSession(): Promise<MerchantSession> {
     merchant,
     storeId: store?.id ?? null,
     store,
-    stores: owned,
+    stores: all,
+    access: isOwner || !store ? "owner" : "member",
+    perms: isOwner || !store ? OWNER_PERMS : (membership?.perms ?? NO_PERMS),
+    memberId: membership?.memberId ?? null,
   };
 }
 

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { products, storeBlueprints } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { saveBlueprintAction } from "./blueprint";
 
@@ -15,7 +15,7 @@ const input = z.object({ level: z.enum(["calm", "lively", "cinematic"]), depth: 
 type Hero = Extract<StoreBlueprint["home"][number], { type: "hero" }>;
 
 export async function saveMotionAction(raw: unknown): Promise<{ ok: true; orbit?: "on" | "off" | "needs_images" } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("content");
   if (!s) return { ok: false, error: "غير مصرح" };
   const p = input.safeParse(raw);
   if (!p.success) return { ok: false, error: "اختيار غير صالح" };

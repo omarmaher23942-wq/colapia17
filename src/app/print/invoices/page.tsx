@@ -2,6 +2,7 @@
 // الخادم يجهّز البيانات فقط؛ الرسم وإعدادات الفاتورة (المقاس واللون والشعار والملاحظة ورمز QR) في المتصفح،
 // فيظهر أي تعديل على الفاتورة فوراً ويُحفظ في الخلفية.
 import type { Metadata } from "next";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
 import QRCode from "qrcode";
@@ -24,6 +25,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const ids = (sp.ids ?? "").split(",").map((s) => s.trim()).filter((s) => UUID.test(s)).slice(0, 100);
   const session = await getMerchantSession();
   if (!session?.store) redirect(`/login?redirect=${encodeURIComponent(`/print/invoices?ids=${ids.join(",")}`)}`);
+  await requireStoreArea("orders");
   const store = session.store;
   if (!ids.length) redirect("/dashboard/orders");
 

@@ -5,6 +5,7 @@
 //  - بيانات محذوفة بطلب التاجر بعد نقله: لا شيء مطلوب.
 // السعر من platformPricing (نفس الهبوط والتحقق من الإيصال)، وأرقام التحويل من متغيرات المنصة.
 import Link from "next/link";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { AlertTriangle, ArrowLeft, CalendarCheck, Check, CheckCircle2, Clock, ExternalLink, Hourglass, Lock, PauseCircle, Receipt, RefreshCw, Snowflake, XCircle } from "lucide-react";
@@ -46,6 +47,7 @@ export default async function BillingPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/billing");
   if (!session.store) redirect("/start");
+  await requireStoreArea("billing");
   const store = session.store;
 
   const payments = (await db

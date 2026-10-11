@@ -64,6 +64,13 @@
       "when": 1791755263627,
       "tag": "0008_store_price_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791757001859,
+      "tag": "0009_store_team",
+      "breakpoints": true
     }
   ]
 }

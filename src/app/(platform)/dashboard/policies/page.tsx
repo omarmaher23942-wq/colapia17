@@ -1,5 +1,6 @@
 // dashboard/policies — سياسات المتجر (الاستبدال، المعيب، المعاينة، الشحن المجاني، الاستلام) بمعاينة حية.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { getMerchantSession } from "@/server/auth";
 import { getBlueprint } from "@/lib/tenant";
 import { storeUrl } from "@/lib/utils";
@@ -13,6 +14,7 @@ export default async function PoliciesPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/policies");
   if (!session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("settings");
   const bp = await getBlueprint(session.store.id);
 
   return (

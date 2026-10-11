@@ -3,12 +3,12 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeBlueprints } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, invoiceSchema } from "@/blueprint/schema";
 import { saveBlueprintAction } from "./blueprint";
 
 export async function saveInvoiceSettingsAction(raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("orders");
   if (!s) return { ok: false, error: "غير مصرح" };
   const parsed = invoiceSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "إعدادات غير صالحة" };

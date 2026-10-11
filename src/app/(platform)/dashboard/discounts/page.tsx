@@ -1,5 +1,6 @@
 // dashboard/discounts/page.tsx — أكواد الخصم وأثر كل كود من الطلبات.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { getMerchantSession } from "@/server/auth";
 import { listDiscounts } from "@/server/repos/discounts-list";
 import { DiscountsManager } from "@/components/dashboard/discounts/DiscountsManager";
@@ -12,6 +13,7 @@ export default async function DiscountsPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/discounts");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("discounts");
   const rows = await listDiscounts(session.storeId);
   return (
     <div className="mx-auto max-w-5xl">

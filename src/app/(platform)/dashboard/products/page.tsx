@@ -1,6 +1,7 @@
 // dashboard/products/page.tsx — المنتجات: تبويبات الحالة بأعدادها، وفلاتر المخزون وما ينقص كل منتج (صورة، تكلفة، وصف)،
 // وبحث بالعربي والفرانكو والكود، وقسم وترتيب، وصفحات حقيقية، واستيراد من ملف، وكتابة الأوصاف الناقصة بالذكاء الاصطناعي.
 import Link from "next/link";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, ImageOff, Layers, PackageMinus, PackageOpen, PackageX, Plus, ReceiptText, SearchX, TextCursorInput, X } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
@@ -48,6 +49,7 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/products");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("products");
   const store = session.store;
   const query = parseProductsQuery(await searchParams);
   const [data, bp] = await Promise.all([listProducts(store.id, query), getBlueprintOrNull(store.id)]);

@@ -44,7 +44,7 @@ const ENTRY_FILES = [
 /** صفحات تخص المنصة داخل مجلدات الدخول. */
 const EXCLUDED_ENTRIES = [
   /^src\/app\/s\/\[store\]\/(admin|account|frozen)\//,
-  /^src\/app\/\(platform\)\/dashboard\/(billing|onboarding|store|growth|own|design)\//,
+  /^src\/app\/\(platform\)\/dashboard\/(billing|onboarding|store|growth|own|design|team|requests)\//,
 ];
 /** حارس: لو وصل التتبع لأي من هذه فهناك استيراد منصة تسرب للمتجر، فيفشل التوليد بدل أن يتسرب. */
 export const FORBIDDEN_IN_TEMPLATE = [
@@ -68,6 +68,11 @@ export const FORBIDDEN_IN_TEMPLATE = [
   /^src\/server\/platform-guard\.ts$/,
   // خط الإنتاج وأدوار فريق الوكالة (المرحلة 3).
   /^src\/agency\//,
+  /^src\/db\/schema\/members\.ts$/,
+  /^src\/server\/actions\/store-team\.ts$/,
+  /^src\/server\/actions\/merchant-login\.ts$/,
+  /^src\/server\/login-code\.ts$/,
+  /^src\/components\/dashboard\/team\//,
   /^src\/server\/actions\/agency-/,
 ];
 

@@ -1,6 +1,7 @@
 // dashboard/content — محرر محتوى المتجر: يجلب إعدادات المتجر وأسماء أقسامه ومنتجاته (للاختيار بالاسم) والخطوط
 // المحمّلة فيه، ويمرّرها لـ ContentEditor.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { eq } from "drizzle-orm";
 import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
@@ -22,6 +23,7 @@ export default async function ContentEditorPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/content");
   if (!session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("content");
 
   const store = session.store;
 

@@ -14,3 +14,4 @@ export * from "./growth";
 export * from "./ownership";
 export * from "./outreach";
 export * from "./agency";
+export * from "./members";

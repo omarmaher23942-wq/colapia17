@@ -1,6 +1,7 @@
 // dashboard/page.tsx — «نظرة عامة»: ما ينتظر التاجر الآن، ثم أداء الفترة المختارة (7/30/90 يوماً) مقارنةً
 // بالفترة المساوية قبلها، والأرباح، وأحدث الطلبات، وجاهزية المتجر، والسلات المتروكة، وملاحظات من أرقامه.
 import { Suspense } from "react";
+import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { ArrowLeft, Eye, Percent, Plus, ShoppingCart, Sparkles, Wallet } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
@@ -36,6 +37,7 @@ type SearchParams = { onboarding?: string; reason?: string; range?: string };
 export default async function DashboardHomePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await getMerchantSession();
   if (!session) return null;
+  await requireStoreArea("analytics");
   const params = await searchParams;
 
   if (!session.store) {

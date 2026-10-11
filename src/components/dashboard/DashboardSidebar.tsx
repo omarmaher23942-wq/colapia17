@@ -10,7 +10,8 @@ import { cn, storeUrl, storeHost } from "@/lib/utils";
 import { arCount, NOUN } from "@/lib/format";
 import { useDashboardPulse } from "./DashboardPulse";
 import { StoreSwitcher, type SwitcherStore } from "./StoreSwitcher";
-import { MOBILE_NAV_HREFS, NAV_ITEMS, NAV_SECTIONS, isNavActive, type BadgeKey, type NavItem } from "./nav";
+import { MOBILE_NAV_HREFS, isNavActive, navItemsFor, navSectionsFor, type BadgeKey, type NavItem } from "./nav";
+import type { StorePerms } from "@/lib/store-perms";
 
 const SW = 1.75;
 
@@ -28,6 +29,8 @@ type Props = {
   } | null;
   /** كل متاجر التاجر (المبدّل يظهر من متجرين فأكثر). */
   allStores: SwitcherStore[];
+  /** صلاحيات عضو الفريق في المتجر النشط (بلا قيمة = صاحب المتجر). */
+  perms?: StorePerms | null;
 };
 
 const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
@@ -36,7 +39,10 @@ const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
   products: (n) => `نفد مخزون ${arCount(n, NOUN.product)}`,
 };
 
-const MOBILE_NAV: NavItem[] = MOBILE_NAV_HREFS.map((href) => NAV_ITEMS.find((i) => i.href === href)!).filter(Boolean);
+const mobileNav = (perms?: StorePerms | null): NavItem[] => {
+  const items = navItemsFor(perms);
+  return MOBILE_NAV_HREFS.map((href) => items.find((i) => i.href === href)).filter((i): i is NavItem => Boolean(i));
+};
 const MORE = { label: "المزيد", icon: Menu };
 const MOBILE_LABEL: Record<string, string> = { "/dashboard": "الرئيسية" };
 
@@ -106,7 +112,7 @@ export function DashboardSidebar(props: Props) {
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
       >
         <ul className="flex items-stretch justify-around gap-1 px-1 py-1.5">
-          {MOBILE_NAV.map((item) => {
+          {mobileNav(props.perms).map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href, item.exact);
             const badgeCount = badgeOf(item.badgeKey);
@@ -221,6 +227,7 @@ function SidebarContent({
   merchant,
   store,
   allStores,
+  perms,
   pathname,
   badgeOf,
   close,
@@ -282,7 +289,7 @@ function SidebarContent({
         aria-label="القائمة الرئيسية"
         className="hide-scrollbar flex-1 space-y-5 overflow-y-auto p-3"
       >
-        {NAV_SECTIONS.map((section) => (
+        {navSectionsFor(perms).map((section) => (
           <div key={section.title}>
             <p className="mb-1.5 px-2.5 text-[10px] font-black uppercase tracking-wider text-ink-3/70">
               {section.title}

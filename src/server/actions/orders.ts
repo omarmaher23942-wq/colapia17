@@ -10,7 +10,7 @@ import { z } from "zod";
 import { notifyCustomerOfStatus } from "@/server/order-notify";
 import { getTenantDb } from "@/db/tenant";
 import { orders, payments, orderItems } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { stockMovement } from "@/server/inventory";
 import { emitOrderStatusChanged, emitPaymentConfirmed } from "@/server/realtime/emitters";
 import { dbErrorInfo, PG_CHECK } from "@/lib/db-errors";
@@ -23,7 +23,7 @@ const uuid = z.string().uuid();
 const CLOSED = new Set<Status>(["cancelled", "returned"]);
 
 async function own() {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("orders");
   if (!s) return null;
   return { ...s, db: await getTenantDb(s.storeId) };
 }

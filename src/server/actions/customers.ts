@@ -7,13 +7,13 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { customers } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 
 type Result = { ok: true } | { ok: false; error: string };
 const id = z.string().uuid();
 
 async function update(customerId: string, set: Partial<typeof customers.$inferInsert>): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("customers");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   if (!id.safeParse(customerId).success) return { ok: false, error: "العميل غير موجود" };
   const db = await getTenantDb(s.storeId);

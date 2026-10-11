@@ -2,6 +2,7 @@
 // ومن أين يأتي زوارك وطلباتك، ومتى يطلب عملاؤك، والأجهزة، والمحافظات، والمنتجات الأكثر مبيعاً، والعملاء الجدد والعائدون.
 // كل رقم من قاعدة المتجر؛ ما لا بيانات له يظهر فارغاً بشرح، لا رقماً مخترعاً.
 import { Suspense } from "react";
+import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Download, Monitor, Smartphone } from "lucide-react";
@@ -24,6 +25,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/analytics");
   if (!session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("analytics");
   const days = parseRange((await searchParams).days);
 
   return (

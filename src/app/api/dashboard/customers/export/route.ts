@@ -1,7 +1,7 @@
 // GET /api/dashboard/customers/export — تصدير عملاء المتجر إلى ملف يفتح في Excel، بنفس أرقام صفحة العملاء
 // (محسوبة من الطلبات: المستلَم ومجموعه والجاري والمرتجع؛ بلا طلبات التجربة).
 import { NextResponse } from "next/server";
-import { getMerchantSession } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { customersForExport } from "@/server/repos/customers-list";
 import { GOVERNORATES } from "@/lib/egypt";
 import { csvResponse, egpCell, toCsv } from "@/server/csv";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 const GOV = new Map(GOVERNORATES.map((g) => [g.code as string, g.name as string]));
 
 export async function GET() {
-  const session = await getMerchantSession();
+  const session = await storeFor("customers", "view");
   if (!session?.storeId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const rows = await customersForExport(session.storeId);
 

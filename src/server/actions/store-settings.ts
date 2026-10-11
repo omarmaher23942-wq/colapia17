@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { storeBlueprints, stores } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { draftFrom, validateSettings, type SettingsDraft, type SettingsField } from "@/lib/store-settings";
@@ -34,7 +34,7 @@ const input = z.object({
 type Result = { ok: true; data: SettingsDraft } | { ok: false; error: string; errors?: Partial<Record<SettingsField, string>> };
 
 export async function saveStoreSettingsAction(raw: unknown): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("settings");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "بيانات غير صالحة" };

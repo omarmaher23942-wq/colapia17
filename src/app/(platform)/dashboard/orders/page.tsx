@@ -1,6 +1,7 @@
 // dashboard/orders/page.tsx — الطلبات: تبويبات الحالة بأعدادها، وفلتر الدفع، وبحث بالكود أو الموبايل أو الاسم،
 // وعرض قائمة (بصفحات) أو لوحة مراحل للطلبات الجارية، وتصدير Excel بنفس الفلتر.
 import Link from "next/link";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Download, Inbox, Kanban, List, Search, SearchX } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
@@ -36,6 +37,7 @@ export default async function DashboardOrdersPage({ searchParams }: { searchPara
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/orders");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("orders");
   const store = session.store;
   const sp = await searchParams;
   const view: "list" | "board" = sp.view === "board" || sp.view === "kanban" ? "board" : "list";

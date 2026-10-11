@@ -1,5 +1,6 @@
 // dashboard/design — تصميم المتجر: ما صممه الذكاء الاصطناعي لمتجرك، وإعادة التصميم بضغطة، واستعادة أي تصميم سابق.
 import { redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { and, desc, eq, like } from "drizzle-orm";
 import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
@@ -28,6 +29,7 @@ export default async function DesignPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/design");
   if (!session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("content");
   const store = session.store;
 
   const [[row], previous, state] = await Promise.all([

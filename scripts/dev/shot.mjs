@@ -27,7 +27,7 @@ for (const s of mode === "both" ? ["mobile", "desktop"] : [mode]) {
   const ctx = await browser.newContext({ viewport: { width, height: s === "mobile" ? 812 : 900 }, isMobile: s === "mobile", hasTouch: s === "mobile", locale: "ar-EG" });
   await ctx.addCookies(
     [
-      ["clp_m", "dev-merchant-session-token-0000000000000000"],
+      ["clp_m", rest.includes("--member") ? "dev-member-orders-token-000000000000000000" : "dev-merchant-session-token-0000000000000000"],
       ["clp_p", ptoken],
       ["clp_dash_theme", theme],
       ["clp_tour_v2_seen", "1"],

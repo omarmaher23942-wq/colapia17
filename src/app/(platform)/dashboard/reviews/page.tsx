@@ -1,6 +1,7 @@
 // dashboard/reviews/page.tsx — التقييمات: بانتظار الاعتماد أولاً، ومتوسط التقييم المعتمد، وفلتر النجوم، وصفحات، وشرح
 // صادق لكيف تصل التقييمات (رابط في بريد «وصل طلبك»، وزر في «طلباتي»، ورسالة واتساب من صفحة الطلب).
 import Link from "next/link";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, MessageSquareHeart, Star } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
@@ -27,6 +28,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/reviews");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("reviews");
   const q = parseReviewsQuery(await searchParams);
   const data = await listReviews(session.storeId, q);
   const { counts } = data;

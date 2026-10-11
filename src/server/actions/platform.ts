@@ -2,7 +2,7 @@
 
 import { db } from "@/db/client";
 import { platformPayments, systemEvents } from "@/db/schema";
-import { getMerchantSession } from "@/server/auth";
+import { ownerStore } from "@/server/merchant-guard";
 import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
@@ -27,10 +27,11 @@ export async function submitPlatformPaymentAction(input: {
 }) {
   try {
     // الإيصال يُرفع من صاحب المتجر نفسه، وعلى متجره النشط في الجلسة.
-    const session = await getMerchantSession();
+    // الدفع لصاحب المتجر وحده (لا لعضو في فريقه).
+    const session = await ownerStore();
     const store = session?.store;
     if (!session || !store) {
-      return { ok: false as const, error: "سجّل الدخول بحساب صاحب المتجر أولاً" };
+      return { ok: false as const, error: "الدفع لصاحب المتجر فقط. ادخل بحسابه." };
     }
     // متجر مفعّل = تجديد سنة استضافة (قبل الانتهاء بشهرين، أو في السماح أو الإيقاف). غير ذلك = الباقة الأولى.
     let kind: PaymentKind = "setup";

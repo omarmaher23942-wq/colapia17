@@ -222,6 +222,17 @@ async function main() {
 
   await seedAgency(db, owner!.id, now);
 
+  // عضو فريق في متجر nova بدور «موظف طلبات» (المرحلة 6): كوكي clp_m ثابت (shot.mjs --member).
+  const [staff] = await db
+    .insert(merchants)
+    .values({ displayName: "موظف الطلبات (تطوير)", email: "staff.dev@example.com", isActivated: true })
+    .onConflictDoUpdate({ target: merchants.email, set: { isActivated: true } })
+    .returning();
+  await db.insert(schema.storeMembers).values({ storeId, email: "staff.dev@example.com", merchantId: staff!.id, role: "orders", name: "موظف الطلبات", invitedBy: m!.id });
+  const mtoken = "dev-member-orders-token-000000000000000000";
+  await db.delete(sessions).where(eq(sessions.tokenHash, sha(mtoken)));
+  await db.insert(sessions).values({ tokenHash: sha(mtoken), subjectType: "merchant", subjectId: staff!.id, storeId, expiresAt: new Date(now + 30 * DAY) });
+
   console.log(`✓ متجر atelier (${atelier}) بتخصيصات stores/atelier/ (مكوّن خاص، هيدر، صفحة /craft)`);
   console.log(`clp_p=${ptoken}`);
   console.log(`clp_m=${token}`);

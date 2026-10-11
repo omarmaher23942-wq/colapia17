@@ -12,7 +12,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { products, storeBlueprints } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { blueprintSchema } from "@/blueprint/schema";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { saveBlueprintAction } from "./blueprint";
@@ -20,7 +20,7 @@ import { saveBlueprintAction } from "./blueprint";
 export type InventoryResult = { ok: true; tracking: boolean; withoutQuantity: number } | { ok: false; error: string };
 
 export async function setInventoryTrackingAction(tracking: unknown): Promise<InventoryResult> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("products");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = z.boolean().safeParse(tracking);
   if (!parsed.success) return { ok: false, error: "اختيار غير صالح" };

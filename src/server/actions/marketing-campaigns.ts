@@ -4,12 +4,12 @@ import { unstable_rethrow } from "next/navigation";
 import { eq, and } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { marketingCampaigns, abandonedCarts, products, discounts } from "@/db/schema";
-import { getMerchantSession } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { storeUrl } from "@/lib/utils";
 
 export async function triggerCartRecoveryWaveAction(cartId: string, wave: 1 | 2 | 3) {
   try {
-    const s = await getMerchantSession();
+    const s = await storeFor("discounts");
     if (!s || !s.storeId || !s.store) throw new Error("غير مصرح");
     const db = await getTenantDb(s.storeId);
 
@@ -65,7 +65,7 @@ export async function triggerCartRecoveryWaveAction(cartId: string, wave: 1 | 2 
 
 export async function generateSocialCardAction(productId: string) {
   try {
-    const s = await getMerchantSession();
+    const s = await storeFor("discounts");
     if (!s || !s.storeId || !s.store) throw new Error("غير مصرح");
     const db = await getTenantDb(s.storeId);
 

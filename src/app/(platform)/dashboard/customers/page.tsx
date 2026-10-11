@@ -1,6 +1,7 @@
 // dashboard/customers/page.tsx — العملاء: شرائح بتعريفات معلنة وأعداد حقيقية (متكرر، جديد، طلب جارٍ، لم يعودوا، أرجعوا،
 // محظور)، وبحث بالاسم أو الموبايل، وترتيب، وصفحات. كل رقم محسوب من الطلبات نفسها (customers-list.ts).
 import Link from "next/link";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { ChevronLeft, ChevronRight, Download, MessageCircle, Search, SearchX, Users } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
@@ -87,6 +88,7 @@ export default async function DashboardCustomersPage({ searchParams }: { searchP
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/customers");
   if (!session.storeId || !session.store) redirect(NO_STORE_HREF);
+  await requireStoreArea("customers");
   const query = parseCustomersQuery(await searchParams);
   const data = await listCustomers(session.storeId, query);
   const repeatRate = data.buyers ? Math.round((data.repeaters / data.buyers) * 100) : null;

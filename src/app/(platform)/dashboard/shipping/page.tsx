@@ -1,5 +1,6 @@
 // dashboard/shipping/page.tsx — الشحن: طريقة الحساب، والشحن المجاني، وجدول المحافظات (كما يحسبه الدفع فعلاً).
 import { eq } from "drizzle-orm";
+import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
 import { getMerchantSession } from "@/server/auth";
 import { getTenantDb } from "@/db/tenant";
@@ -19,6 +20,7 @@ export default async function ShippingPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/shipping");
   if (!session.storeId) redirect(NO_STORE_HREF);
+  await requireStoreArea("shipping");
   await ensureShippingZones(session.storeId);
   const db = await getTenantDb(session.storeId);
   const [rows, bp] = await Promise.all([db.select().from(shippingZones).where(eq(shippingZones.storeId, session.storeId)), getBlueprint(session.storeId)]);

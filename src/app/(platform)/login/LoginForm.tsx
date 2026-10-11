@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { GoogleAuthCta } from "@/components/landing/GoogleAuthCta";
+import { EmailCodeLogin } from "./EmailCodeLogin";
 
 type Variant = "login" | "signup";
 
@@ -48,12 +49,12 @@ export function LoginForm({
             {isSignup ? "إنشاء حساب جديد" : "تسجيل الدخول"}
           </span>
           <h1 className="mt-3 text-2xl font-black leading-snug text-[#eaf0ff] sm:text-3xl">
-            {isSignup ? "أنشئ متجرك في دقيقتين" : "أهلاً بك من جديد"}
+            {isSignup ? "لوحة متجرك" : "دخول لوحة متجرك"}
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-[#c3cdf0]/70">
             {isSignup
               ? "ادخل بحساب Google للوصول إلى لوحة متجرك."
-              : "سجّل الدخول بحساب Google لمتابعة إدارة متجرك من لوحة التحكم."}
+              : "ادخل بحساب Google المسجّل بالبريد الذي كتبته في استمارة طلب متجرك، أو برمز يصلك على البريد نفسه."}
           </p>
         </div>
 
@@ -75,6 +76,10 @@ export function LoginForm({
             label="متابعة بحساب Google"
             className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-white text-[15px] font-bold text-[#0b0f1e] transition-all hover:bg-[#eaf0ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07091a] disabled:cursor-not-allowed disabled:opacity-70"
           />
+        </div>
+
+        <div className="relative mt-3">
+          <EmailCodeLogin redirectTo={redirectTo} />
         </div>
 
         {/* ملاحظة الخصوصية */}

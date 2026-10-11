@@ -8,7 +8,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { discounts } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { dbErrorInfo, PG_UNIQUE } from "@/lib/db-errors";
 import { arCount, NOUN } from "@/lib/format";
 
@@ -48,7 +48,7 @@ const schema = z
   });
 
 export async function saveDiscountAction(raw: unknown): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("discounts");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   const parsed = schema.safeParse(raw);
   if (!parsed.success) {
@@ -103,7 +103,7 @@ export async function saveDiscountAction(raw: unknown): Promise<Result> {
 }
 
 export async function setDiscountActiveAction(id: string, isActive: boolean): Promise<{ ok: true } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("discounts");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "الكود غير موجود" };
   const db = await getTenantDb(s.storeId);
@@ -113,7 +113,7 @@ export async function setDiscountActiveAction(id: string, isActive: boolean): Pr
 }
 
 export async function deleteDiscountAction(id: string): Promise<{ ok: true } | Fail> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("discounts");
   if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "الكود غير موجود" };
   const db = await getTenantDb(s.storeId);

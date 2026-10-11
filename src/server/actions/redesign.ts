@@ -1,13 +1,13 @@
 "use server";
 // إعادة تصميم المتجر بالذكاء الاصطناعي من لوحة التاجر.
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 import { allow } from "@/lib/ratelimit";
 import { getRedesignState, startRedesign, type RedesignState } from "@/server/redesign";
 
 type Result<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
 export async function startRedesignAction(): Promise<Result> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("content");
   if (!s) return { ok: false, error: "غير مصرح" };
   if (s.store.ownedUrl) return { ok: false, error: "متجرك انتقل لموقعك الخاص؛ أعد التصميم من لوحته هناك." };
   const state = await getRedesignState(s.storeId);
@@ -22,7 +22,7 @@ export async function startRedesignAction(): Promise<Result> {
 }
 
 export async function redesignStatusAction(): Promise<RedesignState | null> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("content");
   if (!s) return null;
   return getRedesignState(s.storeId);
 }

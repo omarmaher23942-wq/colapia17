@@ -7,12 +7,12 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { abandonedCarts } from "@/db/schema";
-import { getMerchantStoreOrNull } from "@/server/auth";
+import { storeFor } from "@/server/merchant-guard";
 
 const input = z.object({ cartId: z.string().uuid(), contacted: z.boolean() });
 
 export async function markCartContactedAction(raw: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
-  const s = await getMerchantStoreOrNull();
+  const s = await storeFor("orders");
   if (!s) return { ok: false, error: "غير مصرح" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "بيانات غير صالحة" };

@@ -1,6 +1,7 @@
 // dashboard/orders/[id]/page.tsx — تفاصيل الطلب: الحالة وخطوتها التالية، ومراجعة التحويل، والأصناف والمبالغ
 // (بما فيها رسوم التحصيل)، والعميل وسجله مع المتجر، وبيانات الشحن للنسخ، ورسائل واتساب جاهزة، وسجل الطلب.
 import { notFound, redirect } from "next/navigation";
+import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { ArrowRight, Mail, MapPin, Package, Phone, Printer } from "lucide-react";
@@ -53,6 +54,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const session = await getMerchantSession();
   if (!session?.storeId || !session.store) redirect("/dashboard");
+  await requireStoreArea("orders");
   if (!UUID.test(id)) notFound();
   const store = session.store;
   const db = await getTenantDb(store.id);

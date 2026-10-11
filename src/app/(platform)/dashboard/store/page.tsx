@@ -1,5 +1,6 @@
 // dashboard/store/page.tsx — صفحة "متجري".
 import { Suspense } from "react";
+import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { eq, sql, desc } from "drizzle-orm";
@@ -45,6 +46,7 @@ export default async function StoreDetailPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/store");
   if (!session.store) redirect("/start");
+  await requireStoreArea("billing");
 
   const store = session.store;
   const meta = STATUS_LABEL[store.status] ?? {
