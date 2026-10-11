@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function PlatformEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requirePlatformPage();
   const { id } = await params;
   if (!id) redirect("/admin/stores");
   redirect(`/admin/stores/${id}`);

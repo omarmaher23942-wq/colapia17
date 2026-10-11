@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { conversations, messages, stores, intakes } from "@/db/schema";
 import { ConversationView } from "@/components/platform/ConversationView";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const STAGE_LABEL: Record<string, string> = {
 const FILTERS = ["", "human", "persuasion", "products", "proof", "building", "trial", "lost"];
 
 export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ id?: string; stage?: string; q?: string }> }) {
+  await requirePlatformPage();
   const { id, stage = "", q = "" } = await searchParams;
 
   const list = await db

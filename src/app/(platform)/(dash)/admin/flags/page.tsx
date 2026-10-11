@@ -4,6 +4,7 @@ import { DEFAULT_CAPACITY_PER_DAY } from "@/intake/eta";
 import { platformPricing } from "@/lib/platform-pricing";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; confi
 ];
 
 export default async function FlagsPage() {
+  await requirePlatformPage();
   const existing = await db.select().from(featureFlags);
   // أي إعداد افتراضي جديد (مثل «intake») يُضاف للقاعدة القائمة أيضاً، لا عند أول تشغيل فقط.
   const missing = FLAG_DEFAULTS.filter((f) => !existing.some((r) => r.key === f.key));

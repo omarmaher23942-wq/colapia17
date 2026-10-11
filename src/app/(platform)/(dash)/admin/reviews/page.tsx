@@ -17,6 +17,7 @@ import { db } from "@/db/client";
 import { platformReviews } from "@/db/schema/platform";
 import { cn } from "@/lib/utils";
 import { ReviewsList } from "@/components/platform/ReviewsList";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
+  await requirePlatformPage();
   const { tab: tabParam } = await searchParams;
   const tab: Tab =
     tabParam === "approved" || tabParam === "featured" || tabParam === "all"

@@ -10,6 +10,7 @@ import { REQUEST_STAGES, STAGE_INFO } from "@/intake/stages";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { ago, isLate } from "@/components/platform/requests/format";
 import { cn } from "@/lib/utils";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ const VIEWS = {
 type View = keyof typeof VIEWS;
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await requirePlatformPage();
   const sp = await searchParams;
   const view: View = sp.view === "delivered" || sp.view === "spam" ? sp.view : "active";
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";

@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { stores, merchants } from "@/db/schema";
 import { KanbanPipeline } from "@/components/platform/KanbanPipeline";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export default async function PipelinePage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
+  await requirePlatformPage();
   const { q = "" } = await searchParams;
 
   const rows = await db

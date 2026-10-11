@@ -8,6 +8,7 @@ import { PaymentDecision } from "@/components/platform/PaymentDecision";
 import { RevokePayment } from "@/components/platform/RevokePayment";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { cn } from "@/lib/utils";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ function safeDateStr(d: unknown): string {
 }
 
 export default async function PaymentsReviewPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
+  await requirePlatformPage();
   const { view = "pending" } = await searchParams;
 
   const rows = await db

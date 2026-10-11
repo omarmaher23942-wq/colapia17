@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { aiCalls, systemEvents, buildJobs, stores, scheduledJobs } from "@/db/schema";
 import { CostLiveCounter } from "@/components/platform/CostLiveCounter";
 import { ProviderCostComparison } from "@/components/platform/ProviderCostComparison";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ const PRICE: Record<string, [number, number]> = { morpheus: [3, 15], groq: [0, 0
 const usd = (p: string, tin: number, tout: number) => ((PRICE[p]?.[0] ?? 0) * tin + (PRICE[p]?.[1] ?? 0) * tout) / 1e6;
 
 export default async function CostsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  await requirePlatformPage();
   const { days = "7" } = await searchParams; 
   const since = new Date(Date.now() - Number(days) * 864e5);
   

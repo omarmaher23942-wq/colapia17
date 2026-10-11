@@ -9,12 +9,14 @@ import { formatEgp } from "@/lib/money";
 import { StoreAdminActions } from "@/components/platform/StoreAdminActions";
 import { StoreRiskAuditCard } from "@/components/platform/StoreRiskAuditCard";
 import { getBlueprint } from "@/lib/tenant";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
 const fmt = (d: Date | null | undefined) => d ? d.toLocaleString("ar-EG", { timeZone: "Africa/Cairo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export default async function StoreDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePlatformPage();
   const { id } = await params;
   const [s] = await db.select().from(stores).where(eq(stores.id, id));
   if (!s) notFound();

@@ -11,6 +11,7 @@ import { PlatformHealthScore } from "@/components/platform/PlatformHealthScore";
 import { BuildQueueVisualizer } from "@/components/platform/BuildQueueVisualizer";
 import { HotLeadsWidget } from "@/components/platform/HotLeadsWidget";
 import { storeRequests } from "@/db/schema/agency";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ async function platformGmv(since: Date): Promise<[{ n: number; v: number }]> {
 }
 
 export default async function AdminCommandCenter() {
+  await requirePlatformPage();
   const d30 = new Date(Date.now() - 30 * 864e5);
   const d1 = new Date(Date.now() - 864e5);
 

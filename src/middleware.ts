@@ -24,6 +24,9 @@ const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000").toLowerCa
 const STORE_HEADER = "x-store-subdomain";
 const PATH_HEADER = "x-pathname";
 const MERCHANT_COOKIE = "clp_m";
+const PLATFORM_COOKIE = "clp_p";
+/** صفحات دخول المالك لا تحتاج جلسة. */
+const ADMIN_PUBLIC = ["/admin/login", "/admin/bootstrap"];
 
 /** ملفات بيانات وصفية تُخدم من مسارات الجذر نفسها بهوية المتجر (بدون إعادة كتابة). */
 const STORE_METADATA_PATHS = new Set(["/robots.txt", "/sitemap.xml", "/manifest.webmanifest"]);
@@ -118,6 +121,11 @@ export function middleware(req: NextRequest) {
       loginUrl.searchParams.set("redirect", `${pathname}${url.search}`);
       loginUrl.searchParams.set("reason", "no_session_cookie");
       return NextResponse.redirect(loginUrl);
+    }
+    // لوحة المالك: بلا كوكي جلسة لا يصل الطلب لأي صفحة. هذا الحاجز الأول فقط (وجود الكوكي)، والتحقق الفعلي
+    // يتكرر في أول كل صفحة (requirePlatformPage) لأن التخطيط وحده يُتجاوز بطلب RSC مصنوع.
+    if (isUnder(pathname, "/admin") && !ADMIN_PUBLIC.some((p) => isUnder(pathname, p)) && !req.cookies.get(PLATFORM_COOKIE)?.value) {
+      return NextResponse.redirect(new URL("/admin/login", req.url));
     }
     return NextResponse.next({ request: { headers: trustedHeaders(req, null) } });
   }

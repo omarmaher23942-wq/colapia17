@@ -10,10 +10,12 @@ import { desc, eq, isNull, and, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { stores, merchants } from "@/db/schema";
 import { StoresDirectoryClient } from "./StoresDirectoryClient";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminStoresPage() {
+  await requirePlatformPage();
   // ─── جلب قائمة المتاجر مع بيانات التاجر ──────────────────────────────
   const rows = await db
     .select({

@@ -5,11 +5,13 @@ import { db } from "@/db/client";
 import { outreachCampaigns } from "@/db/schema";
 import { loadAudience, SEGMENTS } from "@/server/outreach";
 import { AudienceCenter } from "@/components/platform/AudienceCenter";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "الجمهور والبريد" };
 
 export default async function AudiencePage() {
+  await requirePlatformPage();
   const [people, campaigns] = await Promise.all([
     loadAudience(),
     db.select().from(outreachCampaigns).orderBy(desc(outreachCampaigns.createdAt)).limit(30),

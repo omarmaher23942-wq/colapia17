@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import { conversations, stores } from "@/db/schema";
 import { Users, Download, Flame, Clock, AlertTriangle, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ function heat(c: { leadScore: number; stage: string; lastUserMessageAt: Date | n
 }
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ sort?: string; f?: string }> }) {
+  await requirePlatformPage();
   const { sort = "heat", f = "open" } = await searchParams;
   
   const where = f === "lost" ? eq(conversations.stage, "lost") : 

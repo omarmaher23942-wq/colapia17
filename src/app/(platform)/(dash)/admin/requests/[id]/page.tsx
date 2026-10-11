@@ -13,7 +13,7 @@ import { STAGE_INFO } from "@/intake/stages";
 import { DELIVERY_OPTIONS, PAYMENT_OPTIONS, safeUrl, socialUrl } from "@/intake/schema";
 import { paletteById } from "@/intake/palettes";
 import { renderBrief } from "@/intake/brief";
-import { platformUser } from "@/server/platform-guard";
+import { requirePlatformPage } from "@/server/platform-guard";
 import { waLink } from "@/lib/whatsapp";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { CopyBrief, NoteForm, SpamToggle, StageMover } from "@/components/platform/requests/RequestActions";
@@ -48,10 +48,9 @@ function ExtLink({ href, children }: { href: string; children: React.ReactNode }
 const card = "rounded-3xl border border-white/10 bg-[#0b0f2a] p-4 sm:p-5";
 
 export default async function RequestDetail({ params }: { params: Promise<{ id: string }> }) {
+  const me = await requirePlatformPage();
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
-  const me = await platformUser();
-  if (!me) notFound();
   const canWrite = me.role !== "reviewer";
 
   let row: typeof storeRequests.$inferSelect | undefined;
