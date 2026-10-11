@@ -1,0 +1,41 @@
+# CI — بوابة الجودة على كل طلب دمج وكل رفع إلى main. لا يحتاج أي سر: البناء يتخطى التحقق من المتغيرات.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+
+      - name: سجل المتاجر وحارس العزل (stores/**)
+        run: npm run stores:check
+      - name: فحص الأنواع
+        run: npx tsc --noEmit
+      - name: ESLint
+        run: npx next lint --quiet
+      - name: الاختبارات
+        run: npx vitest run
+      - name: مشروع التاجر المستقل
+        run: npx tsx scripts/store-template.ts --out ../store-check --check
+      - name: البناء
+        run: npm run build
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_PUBLIC_ROOT_DOMAIN: colapia.com
+          NEXT_PUBLIC_APP_URL: https://colapia.com
+          NEXT_TELEMETRY_DISABLED: "1"

@@ -1,0 +1,5 @@
+# أي تعديل خارج stores/ (النواة والمنصة والقاعدة) يحتاج مراجعة المالك عند تفعيل
+# «Require review from Code Owners» في إعدادات حماية فرع main على GitHub.
+*                 @omarmaher23942-wq
+# مجلدات المتاجر: يضاف هنا لاحقاً مراجعو الوكالة (مثال: /stores/ @reviewer-username).
+/stores/          @omarmaher23942-wq
