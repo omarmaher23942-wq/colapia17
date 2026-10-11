@@ -10,11 +10,14 @@
 //   blocks/<name>.tsx       مكوّن جديد يوضع في الصفحة بقسم { type: "store_block", name }
 //   slots/Header.tsx | Footer.tsx | Home.tsx
 //   pages/<name>.tsx        صفحة جديدة على /<name> (ومجلدات فرعية: pages/a/b.tsx = /a/b)
+//   blueprint.json          الواجهة والأقسام والنصوص (تُفحص بمخطط النواة، وكل store_block فيها يجب أن يكون له ملف)
+//   seed.json               الأقسام والمنتجات الأولى (src/stores/seed.ts)
 // أي ملف في هذه المجلدات لا يطابق القواعد يوقف التوليد برسالة واضحة، فلا يصل خطأ تسمية إلى الإنتاج صامتاً.
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { z } from "zod";
-import { sectionSchema } from "../../src/blueprint/schema";
+import { blueprintSchema, sectionSchema } from "../../src/blueprint/schema";
+import { storeSeedSchema } from "../../src/stores/seed";
 
 const ROOT = process.cwd();
 const STORES_DIR = join(ROOT, "stores");
@@ -114,6 +117,37 @@ function scanStore(slug: string): Found | null {
     if (!parts.every((p) => NAME_RE.test(p))) fail(`${rel(f)}: أجزاء المسار حروف إنجليزية صغيرة وأرقام وشرطة فقط`);
     else if (RESERVED_PAGE_ROOTS.has(parts[0]!)) fail(`${rel(f)}: "/${parts[0]}" محجوز لصفحات النواة؛ اختر اسماً آخر`);
     else pages.push([route, importPath(f)]);
+  }
+
+  const issues = (label: string, list: { path: (string | number)[]; message: string }[]) =>
+    list.slice(0, 8).forEach((i) => fail(`stores/${slug}/${label}: ${i.path.join(".") || "(الجذر)"} — ${i.message}`));
+  const readJson = (file: string): unknown => {
+    try {
+      return JSON.parse(readFileSync(join(dir, file), "utf8"));
+    } catch (e) {
+      fail(`stores/${slug}/${file}: JSON غير صالح (${(e as Error).message})`);
+      return undefined;
+    }
+  };
+  if (existsSync(join(dir, "blueprint.json"))) {
+    const raw = readJson("blueprint.json");
+    if (raw !== undefined) {
+      const bp = blueprintSchema.safeParse(raw);
+      if (!bp.success) issues("blueprint.json", bp.error.issues);
+      else {
+        const known = new Set(blocks.map(([n]) => n));
+        for (const s of [...bp.data.home]) {
+          if (s.type === "store_block" && !known.has(s.name)) fail(`stores/${slug}/blueprint.json: القسم "${s.id}" يطلب المكوّن "${s.name}" ولا يوجد blocks/${s.name}.tsx`);
+        }
+      }
+    }
+  }
+  if (existsSync(join(dir, "seed.json"))) {
+    const raw = readJson("seed.json");
+    if (raw !== undefined) {
+      const seed = storeSeedSchema.safeParse(raw);
+      if (!seed.success) issues("seed.json", seed.error.issues);
+    }
   }
 
   return { slug, name: meta.name, theme, sections, blocks, slots, pages };

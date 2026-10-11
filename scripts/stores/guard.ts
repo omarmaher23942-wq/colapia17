@@ -76,7 +76,8 @@ function walk(dir: string): string[] {
 export function checkAllStores(root = process.cwd()): Violation[] {
   return walk(join(root, "stores"))
     .map((abs) => relative(root, abs).split("\\").join("/"))
-    .filter((f) => !f.startsWith("stores/README") && !f.split("/")[1]?.startsWith("."))
+    // ملفات التوثيق في جذر stores/ (CLAUDE.md، QUALITY.md، README.md) ليست كود متجر.
+    .filter((f) => !(f.split("/").length === 2 && f.endsWith(".md")) && !f.split("/")[1]?.startsWith("."))
     .flatMap((f) => checkStoreFile(f, ALLOWED_FILES.test(f) && CODE.test(f) ? readFileSync(join(root, f), "utf8") : ""));
 }
 

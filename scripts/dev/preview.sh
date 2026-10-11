@@ -6,6 +6,7 @@
 #   bash scripts/dev/preview.sh dev       # setup ثم خادم التطوير على http://localhost:3100
 #   bash scripts/dev/preview.sh seed      # إعادة البيانات التجريبية من الصفر
 #   bash scripts/dev/preview.sh run <cmd> # أي أمر داخل البيئة المعزولة نفسها
+#   bash scripts/dev/preview.sh store <slug>   # يزرع stores/<slug>/ (blueprint.json + seed.json) ← http://<slug>.localhost:3100
 #   bash scripts/dev/preview.sh shot /dashboard/orders orders both dark --full   # لقطات (والخادم يعمل)
 #
 # الدخول للوحة: كوكي clp_m بالقيمة التي يطبعها seed (dev-merchant-session-token-...) على localhost.
@@ -84,8 +85,9 @@ ensure_playwright() {
 case "${1:-dev}" in
   setup) setup ;;
   seed) ensure_pg_module; ensure_postgres; isolated npx tsx scripts/dev/seed.ts ;;
+  store) shift; ensure_pg_module; ensure_postgres; isolated npx tsx scripts/dev/seed-store.ts "$@" ;;
   dev) setup; isolated npx next dev -p 3100 ;;
   run) shift; ensure_pg_module; ensure_postgres; isolated "$@" ;;
   shot) shift; ensure_playwright; DEVSTACK_HOME="$CACHE" node "$DEV/shot.mjs" "$@" ;;
-  *) echo "الاستخدام: preview.sh [setup|seed|dev|run <cmd>|shot <path> ...]"; exit 1 ;;
+  *) echo "الاستخدام: preview.sh [setup|seed|store <slug>|dev|run <cmd>|shot <path> ...]"; exit 1 ;;
 esac

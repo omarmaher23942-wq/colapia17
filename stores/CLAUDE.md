@@ -1,0 +1,87 @@
+# CLAUDE.md — بناء متاجر عملاء Colapia
+
+> هذا الملف دليلك الكامل لبناء متجر عميل أو تعديله. اقرأه كله قبل أي تعديل. المرجع الأعلى للمعايير: `stores/QUALITY.md`.
+> أنت تعمل لصالح وكالة Colapia: العميل (تاجر مصري غالباً) ملأ استمارة، والفريق يبني له متجراً مخصصاً احترافياً يبيع فعلاً.
+
+## 1) الفكرة في ثلاثة أسطر
+- **كل المتاجر تطبيق واحد ونشر واحد.** النواة المشتركة (محرك المتجر، السلة، الدفع، الطلبات، لوحة التاجر) تخدم كل المتاجر.
+- **ما يخص متجراً واحداً يعيش في `stores/<slug>/` فقط** (`slug` = النطاق الفرعي: `<slug>.colapia.com`). أي ملف هنا يظهر في هذا المتجر وحده.
+- **قاعدة البيانات واحدة لكل التجار.** كود المتجر لا يلمسها أبداً. يحصل على بيانات متجره فقط من `kit` (StoreKit).
+
+## 2) مجلد المتجر
+| الملف | ما هو | من يغيّره لاحقاً |
+|---|---|---|
+| `store.json` | `{ "slug", "name" }`. الـ slug يطابق اسم المجلد | الفريق |
+| `BRIEF.md` + `brief/` | الاستمارة وملاحظات المالك وصور التاجر (`brief/assets/`). **مصدر الحقيقة الوحيد عن العميل** | الفريق |
+| `blueprint.json` | الواجهة: الهوية، الألوان، الخطوط، نظام التصميم، ترتيب الأقسام ونصوصها، الهيدر والفوتر، السياسات. مخططها في `src/blueprint/schema.ts` (`blueprintSchema`) | **التاجر يعدّل نصوصه وصوره من لوحته** بعد التسليم |
+| `seed.json` | الأقسام والمنتجات الأولى (`src/stores/seed.ts`): الأسعار بالجنيه | التاجر يدير منتجاته من لوحته بعد التسليم |
+| `theme.css` | جلد المتجر: CSS حر يُحقن بعد تصميم النواة. **كل قاعدة تبدأ بـ `.storefront`** | الفريق |
+| `sections/<type>.tsx` | يستبدل قسم نواة من نفس النوع (`hero`، `product_grid`، `faq`…) في هذا المتجر | الفريق |
+| `blocks/<name>.tsx` | مكوّن جديد كلياً. يُوضع في الصفحة بقسم `{ "type": "store_block", "name": "<name>", "id": "...", "title": "...", "props": {...} }` في `blueprint.json` | الفريق (التاجر يخفيه ويرتبه فقط) |
+| `slots/Header.tsx` `slots/Footer.tsx` `slots/Home.tsx` | الهيدر/الفوتر (تستلم `core` = النسخة الافتراضية)، وترتيب الرئيسية كاملاً | الفريق |
+| `pages/<name>.tsx` | صفحة جديدة على `/<name>` (مجلد فرعي = مسار أعمق). تصدّر `meta: PageMeta` للعنوان والوصف | الفريق |
+| `components/` `lib/` | مكوّناتك المساعدة ومكوّنات `"use client"` التفاعلية | الفريق |
+| `DELIVERY.md` | ختام كل جلسة: ما تغيّر، النتيجة على `QUALITY.md`، ما يحتاج قرار المالك | أنت |
+
+**قاعدة الاختيار:** ما قد يريد التاجر تغييره بنفسه (نص، صورة، ترتيب، إظهار) يوضع في `blueprint.json` بأقسام النواة. وما يميز المتجر شكلاً أو سلوكاً ولا تقدمه النواة يُكتب كوداً في `blocks/` أو `sections/`. لا تكتب كوداً لما تقدمه النواة بإعداد.
+
+## 3) خطوات بناء متجر جديد (بالترتيب، لا تتخطَّ خطوة)
+1. **افهم العميل:** اقرأ `BRIEF.md` وكل ما في `brief/` (صور المنتجات، الشعار، الرسالة الصوتية المفرغة، موقع الإلهام). اكتب لنفسك في `DELIVERY.md` ثلاثة أسطر: من الزبون المستهدف، ولماذا يشتري، وما الإحساس المطلوب.
+2. **ابحث الاتجاه البصري:** كيف تبدو أفضل متاجر هذا النشاط عالمياً ومحلياً؟ (الألوان، كثافة الصور، إيقاع الصفحة، نبرة الكلام). اختر مفهوماً واحداً واضحاً واكتبه في `design.concept` و`design.mood`.
+3. **نظام التصميم أولاً:** `blueprint.json` ← `theme` (الألوان والخطوط من `AVAILABLE_FONTS` في `src/lib/fonts.ts`) و`design` (الشكل، البطاقة، الأزرار، الحركة). ثم `theme.css` لما لا يغطيه المخطط فقط.
+4. **البيانات:** `seed.json` من منتجات التاجر الحقيقية بأسعاره. الصور من `brief/assets/` أو روابطها. منتج بلا سعر من التاجر = اسأل في `DELIVERY.md`، لا تخترع.
+5. **الصفحة:** رتّب `home` في `blueprint.json`: واجهة قوية، ثم ما يجعل الزبون يثق ويشتري بأقل تمرير. اكتب كل النصوص بصوت المتجر (لهجة مصرية مهذبة أو فصحى بسيطة حسب الاستمارة).
+6. **ما يميزه:** مكوّنات خاصة في `blocks/` و`sections/` و`pages/` عند الحاجة الحقيقية فقط (مثال: دليل مقاسات لمتجر ملابس، مراحل الصنع لمنتج يدوي، حاسبة كمية لمتجر خامات).
+7. **شغّل وشاهد بنفسك** (القسم 6): الموبايل 375px أولاً ثم سطح المكتب، كل الصفحات (الرئيسية، منتج، قسم، السلة، الدفع، صفحاتك).
+8. **قيّم نفسك بـ `QUALITY.md`** بصدق، أصلح أضعف بند، وكرر حتى تتجاوز **90**. ثم اكتب `DELIVERY.md`.
+
+## 4) واجهة StoreKit (كل ما يصل لكودك)
+```tsx
+import { SectionShell, SectionHeading, ProductCard, Icon, Price, Reveal, Cta, formatEgp, waLink, cn, type BlockProps } from "@/stores-kit";
+
+export default async function SizeGuide({ s, props, kit }: BlockProps<{ category?: string }>) {
+  const products = await kit.data.products({ source: { type: "category", slug: props.category ?? "" }, limit: 8 });
+  return <SectionShell s={s}>…</SectionShell>;
+}
+```
+- `kit.data.products({ source, limit })`: المصادر `featured | newest | best_sellers | on_sale | category(slug) | manual(slugs) | tag(tag)`، حتى 24.
+- `kit.data.product(slug)` و`kit.data.categories(slugs?)` و`kit.data.reviews(limit)` (تقييمات معتمدة حقيقية فقط).
+- `kit.bp`: الـ Blueprint بعد حذف أي ادعاء لم يعد صحيحاً. `kit.facts`: حقائق المتجر (الشحن، الدفع عند الاستلام، الاستبدال). **لا تكتب وعداً ليس في `facts`.**
+- `kit.section(s)`: يعرض أي قسم نواة ببيانات هذا المتجر (للتركيب داخل مكوّنك).
+- `kit.store`: `{ id, name, subdomain }`.
+- الأنواع: `SectionProps<"faq">` (`s`، `kit`، `core` = ما كانت النواة ستعرضه وقد يكون `null`)، `BlockProps<P>`، `SlotProps`، `HomeProps`، `PageProps`، `PageMeta`.
+- في مكوّنات `"use client"` (داخل `components/`): `useStore()` و`useCopy()` و`useCart()` من `@/stores-kit`.
+
+## 5) قواعد لا تُكسر (CI يرفض أغلبها آلياً)
+1. **العزل:** داخل `stores/**` تستورد فقط من: ملفات المتجر نفسه، و`@/stores-kit`، و`react`، `next/link`، `next/image`، `next/navigation`، `lucide-react`، `motion/react`، `clsx`، `zod`. ممنوع: `@/db` وأي مسار نواة آخر، وملفات متجر آخر، و`process.env`، و`require`، و`"use server"`، و`eval`، و`dangerouslySetInnerHTML`. الحارس: `scripts/stores/guard.ts`.
+2. **ملفات `sections/` و`blocks/` و`slots/` و`pages/` مكوّنات خادم** (تستلم `kit` بدوال لا تعبر للمتصفح). التفاعل في مكوّن `"use client"` داخل `components/` تستورده منها وتمرر له بيانات بسيطة فقط.
+3. **الصدق:** لا تقييمات مخترعة، ولا أرقام مبيعات أو عملاء، ولا «الأكثر مبيعاً» بلا بيانات، ولا عدّاد تنازلي وهمي، ولا شحن مجاني أو استبدال لم يذكره التاجر. ما لا تعرفه يُترك أو يُسأل عنه في `DELIVERY.md`.
+4. **لا أسرار ولا مفاتيح** في أي ملف. لا خدمات خارجية جديدة دون قرار المالك.
+5. **العربية واتجاه RTL أولاً،** والموبايل أولاً: لا تمرير أفقي على 375px، وأهداف لمس 44px فأكثر.
+6. **الأداء:** `next/image` لكل صورة بأبعاد أو `fill` + `sizes`، ولا مكتبات ثقيلة، ولا فيديو تلقائي ثقيل في أول الشاشة.
+7. **لا تعدّل النواة (`src/**`) لمتجر واحد.** إن احتجت فعلاً تعديلاً عاماً (ميزة تفيد كل المتاجر)، اكتبه بحيث لا يغيّر شكل أي متجر آخر، وعلّمه في `DELIVERY.md` تحت «تعديل نواة يحتاج اعتماد المالك».
+8. **لا تغيّر `slug` متجر قائم** ولا تحذف مجلد متجر.
+
+## 6) الأوامر
+```bash
+npm run stores:registry                  # بعد إضافة/حذف أي ملف في stores/ (يحدث تلقائياً قبل dev وbuild)
+npm run stores:check                     # السجل مطابق + حارس العزل (ما يشغّله CI)
+npx tsc --noEmit                         # فحص الأنواع
+bash scripts/dev/preview.sh setup        # مرة واحدة: قاعدة محلية معزولة + بيانات تجريبية
+bash scripts/dev/preview.sh store <slug> # يزرع blueprint.json وseed.json لمتجرك محلياً (أعده بعد كل تعديل فيهما)
+bash scripts/dev/preview.sh dev          # الخادم على 3100 ← افتح http://<slug>.localhost:3100
+bash scripts/dev/preview.sh shot / home both light --full --store=<slug>   # لقطات 375px وسطح مكتب + تمرير أفقي + أخطاء المتصفح
+```
+لا تشغّل أي أمر قاعدة بيانات أو خادم خارج `scripts/dev/preview.sh` (البيئة قد تحتوي مفاتيح إنتاج).
+
+## 7) خطافات التصميم (لتكتب `theme.css` ومكوّناتك بلغة النواة)
+`.s-card` `.s-media` `.s-price` `.s-badge` `.s-btn` `.s-btn-ghost` `.s-title` `.s-display` `.s-eyebrow` `.s-sub` `.s-head` `.s-section[data-tone]` `.s-icon` `.s-chip` `.s-input` `.s-hero` `.s-hero-media` `.s-trust` `.s-faq` `.s-story` `.s-header` `.s-announce`، وحاوية `.container-x`.
+متغيرات الثيم على `.storefront`: `--background` `--foreground` `--card` `--card-foreground` `--muted` `--muted-foreground` `--border` `--primary` `--primary-foreground` `--radius` `--font-heading` `--font-body` وغيرها (القائمة الكاملة في `themeStyleSheet` بملف `src/blueprint/theme.ts`). استخدمها بدل ألوان ثابتة حتى يبقى المتجر متسقاً إن غيّر التاجر ألوانه.
+
+## 8) فخاخ معروفة
+- **لون العناوين يأتي من نبرة القسم** (`data-tone`). بطاقة فاتحة داخل قسم داكن تحتاج لون نصها وعناوينها صراحة في `theme.css`.
+- `core` في `sections/*` و`slots/*` قد يكون `null` (لا منتجات أو لا بيانات). تعامل معه.
+- اسم `store_block` في `blueprint.json` بلا ملف في `blocks/` يوقف السجل برسالة واضحة. والعكس (ملف لا يستخدمه القسم) لا يظهر.
+- النصوص التي يريد التاجر تعديلها من لوحته ضعها في أقسام النواة أو في `title` قسم `store_block`. `props` يغيّرها الفريق فقط.
+- صفحة جديدة لا تأخذ اسماً محجوزاً: `account admin c cart checkout frozen order p pages review search track api dashboard login`.
+- صور `brief/assets/` تظهر محلياً فقط. للإنتاج تُرفع (لوحة الإنتاج) ويوضع رابطها في `seed.json`.
