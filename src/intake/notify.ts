@@ -64,6 +64,18 @@ function teamRows(r: RequestRow, d: IntakeData): TeamAlertRow[] {
   return rows;
 }
 
+/** سبب فشل البريد مقروءاً للفريق (رسالة Resend بدل JSON خام). */
+function emailError(e: string | undefined): string {
+  if (!e) return "سبب غير معروف";
+  try {
+    const j = JSON.parse(e) as { message?: unknown };
+    if (typeof j.message === "string") return j.message.slice(0, 120);
+  } catch {
+    /* نص عادي */
+  }
+  return e.slice(0, 120);
+}
+
 async function logEvent(requestId: string, internalNote: string) {
   await db.insert(storeRequestEvents).values({ requestId, type: "email", internalNote, actor: "system" }).catch(() => {});
 }
@@ -106,7 +118,7 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
         tracking: false,
         entityId: r.id,
       });
-      await logEvent(r.id, res.ok ? `تنبيه الفريق أُرسل إلى ${to.length} بريد` : `تعذر إرسال تنبيه الفريق (${res.error ?? "unknown"})`);
+      await logEvent(r.id, res.ok ? `تنبيه الفريق أُرسل إلى ${to.length} بريد` : `تعذر إرسال تنبيه الفريق: ${emailError(res.error)}`);
     }
     await notifyAdmin(`طلب متجر جديد: ${name} (${r.code})`, { requestId: r.id, code: r.code });
   }
@@ -143,7 +155,7 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
     tracking: false,
     entityId: r.id,
   });
-  await logEvent(r.id, res.ok ? "بريد التأكيد أُرسل للعميل" : `تعذر إرسال بريد التأكيد للعميل (${res.error ?? "unknown"})`);
+  await logEvent(r.id, res.ok ? "بريد التأكيد أُرسل للعميل" : `تعذر إرسال بريد التأكيد للعميل: ${emailError(res.error)}`);
 }
 
 /** عند نقل المرحلة مع اختيار «أبلغ العميل»: بريد قصير بالمرحلة وملاحظة الفريق (إن كان للعميل بريد). */

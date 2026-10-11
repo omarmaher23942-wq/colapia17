@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs, stores, platformPayments } from "@/db/schema";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
+import { purgeExpiredDrafts } from "@/intake/purge";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -28,6 +29,12 @@ export async function GET(req: Request) {
     .from(platformPayments)
     .where(sql`status = 'under_review' AND created_at < now() - interval '24 hours'`);
 
+  // استمارات طلب متجر بدأها أصحابها ولم تُرسل حتى انتهت مهلتها: تُحذف مع ملفاتها (لا نحتفظ ببيانات لم تُرسل).
+  const purged = await purgeExpiredDrafts().catch((e) => {
+    console.error("[ops/tick] intake purge failed", e);
+    return { requests: 0, files: 0 };
+  });
+
   const alerts: string[] = [];
   if ((stuck?.c ?? 0) > 5) alerts.push(`${stuck!.c} مهمة QStash متأخرة`);
   if ((overdueReview?.c ?? 0) > 0) alerts.push(`${overdueReview!.c} متجر مراجعته متأخرة`);
@@ -47,6 +54,7 @@ export async function GET(req: Request) {
     stuck: stuck?.c ?? 0,
     overdueReview: overdueReview?.c ?? 0,
     stalePayments: stalePayments?.c ?? 0,
+    purgedDrafts: purged,
   });
 }
 

@@ -13,7 +13,7 @@ import { buildSearchText, slugify } from "../../src/lib/arabic";
 
 const {
   merchants, stores, storeBlueprints, categories, products, productVariants, shippingZones,
-  customers, orders, orderItems, reviews, abandonedCarts, analyticsEvents, sessions, discounts,
+  customers, orders, orderItems, reviews, abandonedCarts, analyticsEvents, sessions, discounts, platformUsers,
 } = schema;
 
 const DAY = 864e5;
@@ -210,7 +210,18 @@ async function main() {
   await db.delete(sessions).where(eq(sessions.tokenHash, sha(token)));
   await db.insert(sessions).values({ tokenHash: sha(token), subjectType: "merchant", subjectId: m!.id, storeId, expiresAt: new Date(now + 30 * DAY) });
   console.log(`✓ متجر nova (${storeId}) بـ ${prods.length} منتجات و46 طلباً و${events.length} حدث زيارة`);
+  // مالك المنصة للمعاينة (لوحة /admin): كوكي clp_p بالقيمة المطبوعة.
+  const ptoken = "dev-platform-session-token-00000000000000";
+  const [owner] = await db
+    .insert(platformUsers)
+    .values({ email: "owner.dev@example.com", name: "المالك (تطوير)", passwordHash: "dev-only-no-password", role: "owner" })
+    .onConflictDoUpdate({ target: platformUsers.email, set: { isActive: true, role: "owner" } })
+    .returning();
+  await db.delete(sessions).where(eq(sessions.tokenHash, sha(ptoken)));
+  await db.insert(sessions).values({ tokenHash: sha(ptoken), subjectType: "platform", subjectId: owner!.id, storeId: null, expiresAt: new Date(now + 30 * DAY) });
+
   console.log(`✓ متجر atelier (${atelier}) بتخصيصات stores/atelier/ (مكوّن خاص، هيدر، صفحة /craft)`);
+  console.log(`clp_p=${ptoken}`);
   console.log(`clp_m=${token}`);
 }
 

@@ -25,6 +25,7 @@ for (const s of mode === "both" ? ["mobile", "desktop"] : [mode]) {
   await ctx.addCookies(
     [
       ["clp_m", "dev-merchant-session-token-0000000000000000"],
+      ["clp_p", "dev-platform-session-token-00000000000000"],
       ["clp_dash_theme", theme],
       ["clp_tour_v2_seen", "1"],
     ].map(([n, v]) => ({ name: n, value: v, domain: "localhost", path: "/" }))

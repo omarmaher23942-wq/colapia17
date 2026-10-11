@@ -101,7 +101,15 @@ export async function saveDraft(row: RequestRow, version: number, input: IntakeD
   const data = normalizeIntake(input);
   const [saved] = await db
     .update(storeRequests)
-    .set({ data, ...copies(data), draftVersion: sql`${storeRequests.draftVersion} + 1`, updatedAt: new Date(), lastSeenAt: new Date() })
+    // كل حفظ يمد مهلة المسودة (تُحذف بعد 21 يوماً من آخر تعديل، كما في سياسة الخصوصية).
+    .set({
+      data,
+      ...copies(data),
+      draftVersion: sql`${storeRequests.draftVersion} + 1`,
+      expiresAt: sql`now() + make_interval(days => ${DRAFT_TTL_DAYS})`,
+      updatedAt: new Date(),
+      lastSeenAt: new Date(),
+    })
     .where(and(eq(storeRequests.id, row.id), eq(storeRequests.draftVersion, version), eq(storeRequests.status, "draft"), gt(storeRequests.expiresAt, new Date())))
     .returning({ version: storeRequests.draftVersion });
   if (saved) return { ok: true, version: saved.version };

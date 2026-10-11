@@ -16,6 +16,7 @@ import {
   LogOut,
   Star,
   Mail,
+  Inbox,
   type LucideIcon,
 } from "lucide-react";
 import { getPlatformSession } from "@/server/auth";
@@ -27,6 +28,7 @@ import {
   stores,
   platformReviews,
 } from "@/db/schema";
+import { storeRequests } from "@/db/schema/agency";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +36,7 @@ const SW = 1.75;
 
 const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
+  ["/admin/requests", "طلبات المتاجر", Inbox],
   ["/admin/pipeline", "خط الإنتاج", Workflow],
   ["/admin/conversations", "المحادثات", MessagesSquare],
   ["/admin/payments", "التحويلات", Wallet],
@@ -64,7 +67,7 @@ export default async function PlatformAdminLayout({
   const h = await headers();
   const path = (h.get("x-pathname") ?? "").toLowerCase();
 
-  const [reviewRows, payRows, unreadRows, reviewsPendingRows] =
+  const [reviewRows, payRows, unreadRows, reviewsPendingRows, newRequestRows] =
     await Promise.all([
       db
         .select({ review: sql<number>`count(*)`.mapWith(Number) })
@@ -88,6 +91,12 @@ export default async function PlatformAdminLayout({
         .from(platformReviews)
         .where(eq(platformReviews.isApproved, false))
         .catch(() => [{ c: 0 }]),
+      // طلبات متاجر جديدة لم يفتحها أحد من الفريق (catch: قبل تشغيل migration 0006 الجدول غير موجود).
+      db
+        .select({ c: sql<number>`count(*)`.mapWith(Number) })
+        .from(storeRequests)
+        .where(and(eq(storeRequests.status, "submitted"), sql`${storeRequests.seenAt} is null`))
+        .catch(() => [{ c: 0 }]),
     ]);
 
   const badge: Record<string, number> = {
@@ -95,6 +104,7 @@ export default async function PlatformAdminLayout({
     "/admin/payments": payRows[0]?.pay ?? 0,
     "/admin/conversations": unreadRows[0]?.unread ?? 0,
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
+    "/admin/requests": newRequestRows[0]?.c ?? 0,
   };
 
   const links = NAV.map(([href, label, Icon]) => ({

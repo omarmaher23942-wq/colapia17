@@ -44,7 +44,7 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
   const current = stageIndex(row.stage);
   const notesByStage = new Map<string, { note: string; at: Date }[]>();
   for (const e of events) {
-    if (e.type === "stage" && e.toStage && e.clientNote) notesByStage.set(e.toStage, [...(notesByStage.get(e.toStage) ?? []), { note: e.clientNote, at: e.createdAt }]);
+    if ((e.type === "stage" || e.type === "note") && e.toStage && e.clientNote) notesByStage.set(e.toStage, [...(notesByStage.get(e.toStage) ?? []), { note: e.clientNote, at: e.createdAt }]);
   }
   const wa = agencyWhatsappUrl(`أهلاً، بخصوص طلب متجر «${row.storeName ?? ""}» (${row.code})`);
   const delivered = row.stage === "delivery";

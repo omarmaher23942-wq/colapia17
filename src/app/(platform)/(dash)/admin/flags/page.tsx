@@ -1,4 +1,6 @@
 import { db } from "@/db/client";
+import { DEFAULT_INTAKE_LIMITS } from "@/intake/rules";
+import { DEFAULT_CAPACITY_PER_DAY } from "@/intake/eta";
 import { platformPricing } from "@/lib/platform-pricing";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
@@ -16,15 +18,21 @@ const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; confi
   { key: "pricing", enabled: true, description: "أسعار الباقة والتجديد (من المتغيرات PLATFORM_*_EGP)", config: { ...platformPricing() } },
   { key: "sla", enabled: true, description: "مدد التشغيل والتجربة", config: { deliveryMinutes: 5, demoActiveMinutes: 180, graceDays: 7 } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
+  {
+    key: "intake",
+    enabled: true,
+    description: "استمارة طلب المتجر (/start): الإيقاف يغلق استقبال الطلبات. capacityPerDay = متاجر يسلّمها الفريق يومياً (لحساب موعد التسليم الصادق)، والباقي حدود الحماية من الإساءة",
+    config: { capacityPerDay: DEFAULT_CAPACITY_PER_DAY, ...DEFAULT_INTAKE_LIMITS },
+  },
 ];
 
 export default async function FlagsPage() {
-  const rows = await db.select().from(featureFlags);
-  
-  if (!rows.length) {
-    await db.insert(featureFlags).values(FLAG_DEFAULTS).onConflictDoNothing();
-  }
-  
+  const existing = await db.select().from(featureFlags);
+  // أي إعداد افتراضي جديد (مثل «intake») يُضاف للقاعدة القائمة أيضاً، لا عند أول تشغيل فقط.
+  const missing = FLAG_DEFAULTS.filter((f) => !existing.some((r) => r.key === f.key));
+  if (missing.length) await db.insert(featureFlags).values(missing).onConflictDoNothing();
+  const rows = missing.length ? await db.select().from(featureFlags) : existing;
+
   const all = rows.length ? rows : FLAG_DEFAULTS.map((f) => ({ ...f, config: f.config ?? null, updatedAt: new Date() }));
 
   return (

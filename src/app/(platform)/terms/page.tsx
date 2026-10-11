@@ -6,10 +6,15 @@ export const metadata = { title: "الشروط والأحكام | Colapia" };
 export const dynamic = "force-dynamic";
 
 const body = (price: number, renewal: number) => `## Terms of Service (English summary)
-Colapia designs, hosts and operates online stores for independent merchants in Egypt. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
+Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
 
 ## 1. الخدمة
-Colapia منصة مصرية تصمم متجرك الإلكتروني بالذكاء الاصطناعي، وتستضيفه وتشغّله لك، وتوفر لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
+Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، مستعيناً بأدوات منها الذكاء الاصطناعي، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
+
+## 1.1 طلب المتجر
+- إرسال استمارة طلب المتجر مجاني ولا يلزمك بأي دفع.
+- موعد التسليم الذي يظهر لك عند الإرسال تقدير صادق من عدد الطلبات قبلك، وقد نسلّم أسرع. لا نسلّم متجراً قبل مراجعة الفريق له.
+- قد نتواصل معك على واتساب أو البريد لاستكمال تفاصيل متجرك، ويحق لنا الاعتذار عن طلب لنشاط مخالف للقانون أو لهذه الشروط.
 
 ## 2. التجربة المجانية
 تجربة مجانية بلا بطاقة بنكية لمدة نُعلمك بها عند البدء. خلالها يعمل متجرك ولوحة تحكمه بالكامل. إن لم تفعّل متجرك بعدها يُجمَّد ثم يُحذف بعد مهلة نعلنها لك بالبريد قبل الحذف.

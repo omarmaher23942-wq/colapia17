@@ -10,6 +10,7 @@ import { BroadcastEmailForm } from "@/components/platform/BroadcastEmailForm";
 import { PlatformHealthScore } from "@/components/platform/PlatformHealthScore";
 import { BuildQueueVisualizer } from "@/components/platform/BuildQueueVisualizer";
 import { HotLeadsWidget } from "@/components/platform/HotLeadsWidget";
+import { storeRequests } from "@/db/schema/agency";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,16 @@ export default async function AdminCommandCenter() {
     db.select({ total: sql<number>`count(*)`.mapWith(Number) }).from(merchants),
   ]);
 
+  // طلبات متاجر من الاستمارة: الجديدة التي لم تُفتح، وما تجاوز موعد التسليم الموعود (catch: قبل migration 0006).
+  const [requests] = await db
+    .select({
+      fresh: sql<number>`count(*) filter (where ${storeRequests.seenAt} is null)`.mapWith(Number),
+      late: sql<number>`count(*) filter (where ${storeRequests.etaTo} < now() and ${storeRequests.stage} <> 'delivery')`.mapWith(Number),
+    })
+    .from(storeRequests)
+    .where(eq(storeRequests.status, "submitted"))
+    .catch(() => [{ fresh: 0, late: 0 }]);
+
   const countFor = (st: string) => byStatus.find((x) => x.status === st)?.c ?? 0;
   const inPipeline = countFor("review") + countFor("building") + countFor("pending_review");
 
@@ -52,6 +63,17 @@ export default async function AdminCommandCenter() {
           <p className="mt-1 text-xs text-[#8d97c4]">مراقبة حية للمنصة، خط الإنتاج، والمبيعات.</p>
         </div>
       </div>
+
+      {requests && (requests.fresh > 0 || requests.late > 0) ? (
+        <Link href="/admin/requests" className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[#8fa8ff]/30 bg-[#6f86ff]/10 p-4 transition hover:bg-[#6f86ff]/15">
+          <span className="text-sm font-black text-white">
+            {requests.fresh > 0 ? `${requests.fresh} طلب متجر جديد لم يُفتح بعد` : ""}
+            {requests.fresh > 0 && requests.late > 0 ? " · " : ""}
+            {requests.late > 0 ? <span className="text-rose-300">{requests.late} تجاوز موعد التسليم</span> : null}
+          </span>
+          <span className="text-xs font-bold text-[#8fa8ff]">افتح طلبات المتاجر ←</span>
+        </Link>
+      ) : null}
 
       {/* Top Widgets Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
