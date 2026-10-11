@@ -8,6 +8,9 @@ import { customAlphabet } from "nanoid";
 const readable = customAlphabet("23456789ABCDEFGHJKLMNPQRSTUVWXYZ", 5);
 export const newOrderCode = () => `CLP-${readable()}`;
 
+/** مرجع طلب متجر في نموذج الوكالة (REQ-7K3M9)، يُذكر للعميل في البريد وواتساب. */
+export const newRequestCode = () => `REQ-${readable()}`;
+
 /** معرف زائر عشوائي للتحليلات (يُنشأ في المتصفح ويُخزن في localStorage) */
 export const newVisitorId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 21);
 
