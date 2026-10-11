@@ -31,6 +31,12 @@ import { STAGE_INFO } from "@/intake/stages";
 import { logActivity } from "@/agency/activity";
 import { emailMembers } from "@/agency/notify";
 import { dbErrorInfo, PG_UNIQUE } from "@/lib/db-errors";
+import { prepareFolder, provisionStore } from "@/agency/provision";
+import { githubConfigured, writeBranch } from "@/agency/github";
+import { branchFor } from "@/agency/prompt";
+import { suggestSlug } from "@/agency/slug";
+import { socialUrl } from "@/intake/schema";
+import { readData } from "@/intake/repo";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 type Row = typeof storeRequests.$inferSelect;
@@ -329,4 +335,80 @@ export async function editRequestDataAction(raw: z.input<typeof editSchema>): Pr
   await event(row.id, a, { type: "edited", internalNote: `عدّل: ${changed.map((k) => SECTION_LABELS[k]).join("، ")}` });
   refresh(row.id);
   return { ok: true, version: done.updatedAt.toISOString() };
+}
+
+// ─── التجهيز الآلي (المرحلة 4) ──────────────────────────────────────────────
+
+const provisionSchema = z.object({ id: z.string().uuid() });
+
+/**
+ * «جهّز المتجر»: المتجر على <slug>.colapia.com خلف بوابة «قيد التجهيز» بمسودة أولى من الاستمارة، ومجلد
+ * stores/<slug>/ في فرع build/<slug>-<round> (إن ضُبط توكن GitHub؛ وإلا ZIP من صفحة الطلب).
+ */
+export async function provisionRequestAction(raw: z.input<typeof provisionSchema>): Promise<Result<{ storeId: string; branchUrl: string | null; missingPrice: number }>> {
+  const a = await actor();
+  if (!a) return DENIED;
+  const p = provisionSchema.safeParse(raw);
+  if (!p.success) return { ok: false, error: "بيانات غير صالحة." };
+  const row = await load(p.data.id, a);
+  if (!row) return { ok: false, error: "الطلب غير موجود أو ليس لك." };
+  if (!(can(a.role, "requests.assign") || (row.builderId === a.id && can(a.role, "requests.work")))) return DENIED;
+  if (row.storeId) return { ok: false, error: "جُهِّز هذا الطلب بالفعل." };
+  if (row.production !== "assigned" && row.production !== "building") return { ok: false, error: "التجهيز بعد الإسناد وقبل المراجعة." };
+
+  let slug = row.slug;
+  if (!slug) {
+    const taken = new Set((await db.select({ s: stores.subdomain }).from(stores)).map((x) => x.s));
+    const d = readData(row.data);
+    slug = suggestSlug({ storeName: d.store.name, socialUrl: socialUrl(d.social.url), code: row.code }, (s) => taken.has(s));
+  }
+  if (!isValidSubdomain(slug)) return { ok: false, error: "النطاق غير صالح. صحّحه أولاً." };
+
+  const res = await provisionStore(row, slug);
+  if (!res.ok) return res;
+
+  let branchUrl: string | null = null;
+  let ghError: string | null = null;
+  if (githubConfigured()) {
+    branchUrl = await writeBranch(branchFor(slug, row.round), res.files, `تجهيز متجر ${slug} (${row.code}): مسودة أولى من الاستمارة`).catch((e) => {
+      ghError = e instanceof Error ? e.message.slice(0, 160) : "github";
+      console.error("[agency] github branch failed", e);
+      return null;
+    });
+  }
+  await event(row.id, a, {
+    type: "provision",
+    internalNote: [
+      `جُهِّز المتجر على ${slug}.colapia.com خلف بوابة «قيد التجهيز»: ${res.draft.seed.products.length} منتج مسعّر`,
+      res.draft.missingPrice.length ? `، و${res.draft.missingPrice.length} بلا سعر (أسئلة في DELIVERY.md)` : "",
+      branchUrl ? `. الفرع: ${branchUrl}` : ghError ? `. تعذر إنشاء الفرع (${ghError}): نزّل المجلد ZIP` : ". نزّل المجلد ZIP (لا توكن GitHub)",
+    ].join(""),
+  });
+  await logActivity(a.id, "request.provision", `request:${row.id}`, { storeId: res.storeId, slug, branch: Boolean(branchUrl) });
+  refresh(row.id);
+  revalidatePath("/admin/stores");
+  return { ok: true, storeId: res.storeId, branchUrl, missingPrice: res.draft.missingPrice.length };
+}
+
+/** إعادة كتابة مجلد المتجر في الفرع من بيانات الطلب الحالية (بعد تعديل البيانات). لا يمس القاعدة. */
+export async function resyncBranchAction(raw: z.input<typeof provisionSchema>): Promise<Result<{ branchUrl: string }>> {
+  const a = await actor();
+  if (!a) return DENIED;
+  const p = provisionSchema.safeParse(raw);
+  if (!p.success) return { ok: false, error: "بيانات غير صالحة." };
+  const row = await load(p.data.id, a);
+  if (!row?.slug || !row.storeId) return { ok: false, error: "جهّز المتجر أولاً." };
+  if (!(can(a.role, "requests.assign") || (row.builderId === a.id && can(a.role, "requests.work")))) return DENIED;
+  if (!githubConfigured()) return { ok: false, error: "توكن GitHub غير مضبوط (STORES_GITHUB_TOKEN)؛ نزّل ZIP." };
+  const { files } = await prepareFolder(row, row.slug);
+  // BRIEF.md وassets فقط: لا نكتب فوق عمل المنفّذ في blueprint/seed/DELIVERY.
+  const only = Object.fromEntries(Object.entries(files).filter(([k]) => k.endsWith("/BRIEF.md") || k.endsWith("/brief/assets.json")));
+  try {
+    const branchUrl = await writeBranch(branchFor(row.slug, row.round), only, `تحديث brief متجر ${row.slug} من بيانات الطلب`);
+    await event(row.id, a, { type: "note", internalNote: "حُدِّث BRIEF.md في الفرع من بيانات الطلب الحالية" });
+    return { ok: true, branchUrl };
+  } catch (e) {
+    console.error("[agency] resync failed", e);
+    return { ok: false, error: "تعذر الكتابة في GitHub. راجع صلاحية التوكن." };
+  }
 }

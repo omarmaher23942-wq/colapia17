@@ -17,6 +17,7 @@ const TENANT_QUERY = new RegExp(
 );
 
 const REVIEWED_MIXED = new Set([
+  "src/agency/provision.ts",
   "src/app/(platform)/(dash)/admin/page.tsx",
   "src/app/(platform)/(dash)/admin/stores/[id]/page.tsx",
   "src/app/(platform)/dashboard/content/page.tsx",

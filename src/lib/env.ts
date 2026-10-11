@@ -102,6 +102,9 @@ const serverSchema = z.object({
   AGENCY_WHATSAPP: optionalWhatsapp,
   // عنوان الرد على بريد العميل (اختياري؛ بدونه لا يُضبط Reply-To ولا يظهر بريد المالك الشخصي للعميل).
   INTAKE_REPLY_TO: optionalEmail,
+  // التجهيز الآلي: كتابة stores/<slug>/ في فرع بناء (اختياري؛ بدونه ZIP).
+  STORES_GITHUB_TOKEN: z.string().min(20).optional().or(z.literal("").transform(() => undefined)),
+  STORES_GITHUB_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/).optional().or(z.literal("").transform(() => undefined)),
 
 });
 

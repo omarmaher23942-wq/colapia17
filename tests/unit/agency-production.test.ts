@@ -139,3 +139,42 @@ describe("البرومبت", () => {
     expect(p).toContain("build/nova-2");
   });
 });
+
+import { buildDraft, parseProductLine, storeFolderFiles } from "@/agency/draft";
+import { emptyIntake } from "@/intake/schema";
+import { blueprintSchema } from "@/blueprint/schema";
+
+describe("تحليل سطر المنتج", () => {
+  it("الاسم والألوان والمقاسات والسعر", () => {
+    expect(parseProductLine("تيشيرت قطن، أسود/أبيض، M L XL، 350")).toEqual({ name: "تيشيرت قطن", price: 350, options: { اللون: ["أسود", "أبيض"], المقاس: ["M", "L", "XL"] } });
+  });
+  it("أرقام هندية وكلمة جنيه", () => {
+    expect(parseProductLine("طقم صيفي، ٤٢٠ جنيه").price).toBe(420);
+    expect(parseProductLine("ساعة، 1,250 ج").price).toBe(1250);
+  });
+  it("بلا سعر = null، والباقي وصف", () => {
+    const p = parseProductLine("بيجامة قطن، مريحة للصيف");
+    expect(p.price).toBeNull();
+    expect(p.note).toBe("مريحة للصيف");
+  });
+});
+
+describe("المسودة الأولى", () => {
+  it("المسعّر في seed، وبلا سعر في أسئلة DELIVERY.md", () => {
+    const d = emptyIntake();
+    d.store.name = "بيبي كوتون";
+    d.colors = { mode: "preset", preset: "soft-rose" };
+    d.payment = { methods: ["wallet"], unsure: false };
+    d.products = { mode: "list", items: [{ id: "a", line: "بيجامة، 350" }, { id: "b", line: "طقم بلا سعر" }] };
+    const draft = buildDraft({ slug: "baby", code: "REQ-1", data: d, imageUrl: () => null });
+    expect(draft.seed.products.map((p) => p.name)).toEqual(["بيجامة"]);
+    expect(draft.missingPrice).toEqual(["طقم بلا سعر"]);
+    expect(draft.blueprint.brand.name).toBe("بيبي كوتون");
+    expect(draft.blueprint.payments.cod.enabled).toBe(false);
+    expect(blueprintSchema.safeParse(draft.blueprint).success).toBe(true);
+    const files = storeFolderFiles({ slug: "baby", code: "REQ-1", name: "بيبي كوتون", brief: "# B", draft, assets: [] });
+    expect(Object.keys(files)).toContain("stores/baby/blueprint.json");
+    expect(files["stores/baby/DELIVERY.md"]).toContain("طقم بلا سعر");
+    expect(JSON.parse(files["stores/baby/store.json"]!)).toEqual({ slug: "baby", name: "بيبي كوتون" });
+  });
+});

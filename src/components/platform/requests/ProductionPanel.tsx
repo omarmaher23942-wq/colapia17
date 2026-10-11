@@ -4,11 +4,11 @@
 // الخادم من src/agency/production.ts)، «بانتظار العميل»، النطاق الفرعي، قائمة الفحص، والبرومبت بزر نسخ.
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ClipboardCopy, Clock3, Hammer, Loader2, PauseCircle, PlayCircle, RotateCcw, Send, ShieldCheck } from "lucide-react";
+import { Check, ClipboardCopy, Clock3, Download, ExternalLink, Hammer, Loader2, PauseCircle, PlayCircle, RefreshCw, Rocket, RotateCcw, Send, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { PRODUCTION_INFO, PRODUCTION_STATES, QA_ITEMS, canMove, canTickQa, type ProductionState, type QaState } from "@/agency/production";
 import { can, ROLE_INFO, type PlatformRole } from "@/agency/roles";
-import { assignRequestAction, moveProductionAction, setRequestSlugAction, setWaitingAction, tickQaAction } from "@/server/actions/agency-production";
+import { assignRequestAction, moveProductionAction, provisionRequestAction, resyncBranchAction, setRequestSlugAction, setWaitingAction, tickQaAction } from "@/server/actions/agency-production";
 import { cn } from "@/lib/utils";
 
 export type Member = { id: string; name: string; role: PlatformRole };
@@ -29,6 +29,11 @@ type Props = {
   round: number;
   hasEmail: boolean;
   overdue: number;
+  /** المرحلة 4: المتجر المجهَّز (أو null) وروابطه. */
+  storeId: string | null;
+  storeUrl: string;
+  previewUrl: string | null;
+  github: boolean;
 };
 
 const btn = "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-black disabled:cursor-not-allowed disabled:opacity-50";
@@ -238,6 +243,71 @@ export function ProductionPanel(p: Props) {
         ) : null}
       </div>
       {p.slugLocked ? <p className="text-[12px] text-[#8d97c4]">النطاق ثابت: جُهِّز المتجر عليه.</p> : null}
+
+      {/* التجهيز */}
+      {p.production !== "new" && p.production !== "delivered" ? (
+        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+          <h3 className="text-[13px] font-black text-white">المتجر</h3>
+          {p.storeId ? (
+            <>
+              <p className="text-[12.5px] leading-6 text-[#c3cdf0]">
+                مُجهَّز على <code dir="ltr">{p.storeUrl.replace(/^https?:\/\//, "")}</code> خلف بوابة «قيد التجهيز»: العميل لا يراه حتى التسليم، والفريق يراه برابط المعاينة.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a href={p.previewUrl ?? p.storeUrl} target="_blank" rel="noopener" className={cn(btn, "bg-white/[0.06] text-white")}>
+                  <ExternalLink className="size-4" aria-hidden="true" /> افتح المعاينة
+                </a>
+                <a href={`/admin/stores/${p.storeId}`} className={cn(btn, "border border-white/15 text-white")}>
+                  صفحة المتجر في اللوحة
+                </a>
+                {manager || mine ? (
+                  <a href={`/admin/requests/${p.id}/bundle`} className={cn(btn, "border border-white/15 text-white")}>
+                    <Download className="size-4" aria-hidden="true" /> نزّل المجلد ZIP
+                  </a>
+                ) : null}
+                {(manager || mine) && p.github ? (
+                  <button type="button" disabled={pending} onClick={() => run(() => resyncBranchAction({ id: p.id }), "حُدِّث BRIEF.md في الفرع")} className={cn(btn, "border border-white/15 text-white")}>
+                    <RefreshCw className="size-4" aria-hidden="true" /> حدّث الـ brief في الفرع
+                  </button>
+                ) : null}
+              </div>
+              {!p.previewUrl ? <p className="text-[12px] text-[#8d97c4]">لرؤيته خلف البوابة على النطاق الحقيقي اضبط STORE_PREVIEW_KEY في Vercel، أو افتحه من نشرة Preview بـ ?store={p.slug}.</p> : null}
+            </>
+          ) : manager || mine ? (
+            <>
+              <p className="text-[12.5px] leading-6 text-[#c3cdf0]">
+                ينشئ المتجر على <code dir="ltr">{slug}.colapia.com</code> خلف البوابة بمسودة أولى من الاستمارة (الاسم، الألوان، القنوات، المنتجات المسعّرة)
+                {p.github ? "، ويكتب مجلد stores/ في فرع البناء" : "، ثم نزّل المجلد ZIP وافكّه في جذر المستودع"}. راجع النطاق أولاً: يثبت بعد التجهيز.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={pending || slug !== p.slug}
+                  title={slug !== p.slug ? "احفظ النطاق أولاً" : undefined}
+                  onClick={() =>
+                    start(async () => {
+                      const r = await provisionRequestAction({ id: p.id });
+                      if (!r.ok) return void toast.error(r.error);
+                      toast.success(r.branchUrl ? "جُهِّز المتجر وكُتب الفرع" : "جُهِّز المتجر. نزّل المجلد ZIP");
+                      if (r.missingPrice) toast.message(`${r.missingPrice} منتج بلا سعر: مكتوبة كأسئلة في DELIVERY.md`);
+                      router.refresh();
+                    })
+                  }
+                  className={cn(btn, "bg-emerald-400 text-[#07091a]")}
+                >
+                  {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Rocket className="size-4" aria-hidden="true" />}
+                  جهّز المتجر
+                </button>
+                <a href={`/admin/requests/${p.id}/bundle`} className={cn(btn, "border border-white/15 text-white")}>
+                  <Download className="size-4" aria-hidden="true" /> معاينة المجلد ZIP
+                </a>
+              </div>
+            </>
+          ) : (
+            <p className="text-[12.5px] text-[#8d97c4]">لم يُجهَّز بعد.</p>
+          )}
+        </div>
+      ) : null}
 
       {/* قائمة الفحص */}
       <div className="grid gap-4 lg:grid-cols-2">
