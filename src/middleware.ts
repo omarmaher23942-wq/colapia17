@@ -5,10 +5,19 @@
 //  2) /s/* محظور مباشرة على كل النطاقات: المتجر يُفتح من نطاقه فقط، فلا يشترك متجران
 //     في origin واحد (localStorage/كوكيز) ولا تظهر بيانات متجر داخل نطاق المنصة.
 //  3) ملفات الهوية (robots/sitemap/manifest/favicon) على نطاق المتجر تُخدم بهوية المتجر.
-//  4) x-store-subdomain و x-pathname و x-req-id تُكتب من هنا فقط (ونحذف أي نسخة من العميل).
+//  4) x-store-subdomain و x-pathname و x-req-id و x-store-preview تُكتب من هنا فقط (ونحذف أي نسخة من العميل).
+//  5) معاينة الفريق (lib/store-preview.ts): ?store=<slug> على نشرات المعاينة، و?preview=<مفتاح> على نطاق المتجر.
 import { NextRequest, NextResponse } from "next/server";
 import { RESERVED_SUBDOMAINS } from "@/lib/subdomains";
 import { REQ_ID_HEADER, newRequestId, isWellFormedRequestId } from "@/lib/correlation";
+import {
+  PREVIEW_HEADER,
+  PREVIEW_KEY_COOKIE,
+  PREVIEW_STORE_COOKIE,
+  isPreviewDeployment,
+  isPreviewSlug,
+  previewKeyMatches,
+} from "@/lib/store-preview";
 
 const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000").toLowerCase();
 
@@ -31,11 +40,13 @@ function extractSubdomain(hostHeader: string): string | null {
 }
 
 /** هيدرات موثوقة: نحذف أي نسخة أرسلها العميل من الهيدرات الحساسة ثم نضع قيمنا. */
-function trustedHeaders(req: NextRequest, sub: string | null): Headers {
+function trustedHeaders(req: NextRequest, sub: string | null, preview = false): Headers {
   const h = new Headers(req.headers);
   h.delete(STORE_HEADER);
   h.delete(PATH_HEADER);
   h.delete(REQ_ID_HEADER);
+  h.delete(PREVIEW_HEADER);
+  if (preview) h.set(PREVIEW_HEADER, "1");
 
   const incoming = req.headers.get(REQ_ID_HEADER);
   h.set(REQ_ID_HEADER, isWellFormedRequestId(incoming) ? incoming : newRequestId());
@@ -48,13 +59,57 @@ const notFound = () => new NextResponse("Not found", { status: 404 });
 const isUnder = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
+const PREVIEW_COOKIE_OPTS = { httpOnly: true, sameSite: "lax" as const, secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 12 };
+
+/** يحذف معامل المعاينة من الرابط ويعيد التوجيه إليه نظيفاً (حتى لا يُنسخ المفتاح مع الرابط). */
+function cleanRedirect(url: URL, param: string): NextResponse {
+  const clean = new URL(url);
+  clean.searchParams.delete(param);
+  if (param === "store") clean.searchParams.delete("key");
+  return NextResponse.redirect(clean, 307);
+}
+
+/** معاينة متجر على نشرة معاينة: ?store=<slug> يُحفظ في كوكي، و?store=off يلغيه. */
+function previewStore(req: NextRequest): { sub: string | null; response?: NextResponse } {
+  if (!isPreviewDeployment()) return { sub: null };
+  const key = process.env.STORE_PREVIEW_KEY;
+  const param = req.nextUrl.searchParams.get("store");
+  if (param !== null) {
+    const res = cleanRedirect(req.nextUrl, "store");
+    if (param === "off" || !isPreviewSlug(param)) {
+      res.cookies.delete(PREVIEW_STORE_COOKIE);
+      return { sub: null, response: res };
+    }
+    const given = req.nextUrl.searchParams.get("key");
+    if (key && !previewKeyMatches(given ?? req.cookies.get(PREVIEW_KEY_COOKIE)?.value, key)) return { sub: null, response: notFound() };
+    res.cookies.set(PREVIEW_STORE_COOKIE, param, PREVIEW_COOKIE_OPTS);
+    if (key && given) res.cookies.set(PREVIEW_KEY_COOKIE, given, PREVIEW_COOKIE_OPTS);
+    return { sub: null, response: res };
+  }
+  const chosen = req.cookies.get(PREVIEW_STORE_COOKIE)?.value;
+  if (!isPreviewSlug(chosen)) return { sub: null };
+  if (key && !previewKeyMatches(req.cookies.get(PREVIEW_KEY_COOKIE)?.value, key)) return { sub: null };
+  return { sub: chosen };
+}
+
 export function middleware(req: NextRequest) {
-  const sub = extractSubdomain(req.headers.get("host") ?? "");
+  let sub = extractSubdomain(req.headers.get("host") ?? "");
   const url = req.nextUrl.clone();
   const { pathname } = url;
 
   // مسار المتاجر الداخلي لا يُطلب مباشرة من أي نطاق.
   if (isUnder(pathname, "/s")) return notFound();
+
+  // نشرة معاينة بلا نطاق متجر: المتجر المختار بـ ?store= (للفريق فقط) يُعرض كأنه على نطاقه.
+  let preview = false;
+  if (!sub) {
+    const picked = previewStore(req);
+    if (picked.response) return picked.response;
+    if (picked.sub) {
+      sub = picked.sub;
+      preview = true;
+    }
+  }
 
   // ─── نطاق المنصة ──────────────────────────────────────────────────────
   if (!sub) {
@@ -73,7 +128,18 @@ export function middleware(req: NextRequest) {
   }
   if (RESERVED_SUBDOMAINS.has(sub)) return notFound();
 
-  const headers = trustedHeaders(req, sub);
+  // نطاق المتجر قبل التسليم: ?preview=<STORE_PREVIEW_KEY> يحفظ كوكي يرى به الفريق المتجر خلف بوابة «قيد التجهيز».
+  const key = process.env.STORE_PREVIEW_KEY;
+  const previewParam = url.searchParams.get("preview");
+  if (previewParam !== null && key) {
+    const res = cleanRedirect(req.nextUrl, "preview");
+    if (previewKeyMatches(previewParam, key)) res.cookies.set(PREVIEW_KEY_COOKIE, previewParam, PREVIEW_COOKIE_OPTS);
+    else res.cookies.delete(PREVIEW_KEY_COOKIE);
+    return res;
+  }
+  if (!preview && key && previewKeyMatches(req.cookies.get(PREVIEW_KEY_COOKIE)?.value, key)) preview = true;
+
+  const headers = trustedHeaders(req, sub, preview);
 
   if (pathname === "/favicon.ico") {
     url.pathname = STORE_ICON_PATH;

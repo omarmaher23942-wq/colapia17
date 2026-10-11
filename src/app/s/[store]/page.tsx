@@ -6,6 +6,7 @@ import { getStoreFacts } from "@/server/repos/facts";
 import { truthfulBlueprint } from "@/blueprint/facts";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot } from "@/stores/resolve";
+import { isTeamPreview } from "@/server/store-preview";
 
 export default async function Home({
   params,
@@ -15,12 +16,8 @@ export default async function Home({
   const { store: sub } = await params;
   const store = await requireStore(sub);
 
-  if (
-    store.status === "frozen" ||
-    store.status === "intake" ||
-    store.status === "building"
-  ) {
-    return <FrozenGate status={store.status} />;
+  if ((store.status === "frozen" || store.status === "intake" || store.status === "building") && !(await isTeamPreview())) {
+    return <FrozenGate status={store.status} name={store.name} />;
   }
 
   const bp = await getBlueprint(store.id);

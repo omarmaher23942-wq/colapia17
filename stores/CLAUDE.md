@@ -74,6 +74,8 @@ bash scripts/dev/preview.sh shot / home both light --full --store=<slug>   # ل�
 ```
 لا تشغّل أي أمر قاعدة بيانات أو خادم خارج `scripts/dev/preview.sh` (البيئة قد تحتوي مفاتيح إنتاج).
 
+**المعاينة للمراجع:** كل فرع يُرفع له نشرة Vercel Preview؛ افتحها بـ `?store=<slug>` (و`&key=<STORE_PREVIEW_KEY>` إن ضُبط) فيُعرض المتجر ويُحفظ اختياره للتنقل، و`?store=off` يلغيه. وعلى نطاق المتجر الحقيقي قبل التسليم: `<slug>.colapia.com/?preview=<STORE_PREVIEW_KEY>`. في الحالتين يرى الفريق المتجر خلف بوابة «قيد التجهيز» مع شارة «معاينة الفريق»، والزوار يرون البوابة.
+
 ## 7) خطافات التصميم (لتكتب `theme.css` ومكوّناتك بلغة النواة)
 `.s-card` `.s-media` `.s-price` `.s-badge` `.s-btn` `.s-btn-ghost` `.s-title` `.s-display` `.s-eyebrow` `.s-sub` `.s-head` `.s-section[data-tone]` `.s-icon` `.s-chip` `.s-input` `.s-hero` `.s-hero-media` `.s-trust` `.s-faq` `.s-story` `.s-header` `.s-announce`، وحاوية `.container-x`.
 متغيرات الثيم على `.storefront`: `--background` `--foreground` `--card` `--card-foreground` `--muted` `--muted-foreground` `--border` `--primary` `--primary-foreground` `--radius` `--font-heading` `--font-body` وغيرها (القائمة الكاملة في `themeStyleSheet` بملف `src/blueprint/theme.ts`). استخدمها بدل ألوان ثابتة حتى يبقى المتجر متسقاً إن غيّر التاجر ألوانه.

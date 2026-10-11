@@ -19,8 +19,8 @@ export function FrozenGate({ status, name, activateHref = "/admin/activate" }: {
   }
   const frozen = status === "frozen";
   return (
-    <Gate icon={frozen ? Lock : Wrench} title={frozen ? "المتجر محجوز لصاحبه" : "المتجر قيد التجهيز"}>
-      {frozen ? "لو أنت صاحب المتجر، أكمل التفعيل من لوحة التحكم ليعود المتجر للعمل فورًا." : "هنكون جاهزين قريبًا جدًا."}
+    <Gate icon={frozen ? Lock : Wrench} title={frozen ? "المتجر محجوز لصاحبه" : name ? `${name} قيد التجهيز` : "المتجر قيد التجهيز"}>
+      {frozen ? "لو أنت صاحب المتجر، أكمل التفعيل من لوحة التحكم ليعود المتجر للعمل فورًا." : "نجهّز المتجر الآن ونفتح قريباً جداً. شكراً لزيارتك."}
       {frozen ? (
         <span className="mt-6 block">
           <Link href={activateHref} className="btn-brand">
@@ -39,8 +39,8 @@ function Gate({ icon: Icon, title, children }: { icon: typeof Lock; title: strin
         <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20" aria-hidden="true">
           <Icon strokeWidth={SW} className="size-7" />
         </span>
-        <h1 className="mt-5 text-2xl">{title}</h1>
-        <p className="mt-2 text-muted-foreground">{children}</p>
+        <h1 className="mt-5 text-2xl font-bold text-slate-900">{title}</h1>
+        <p className="mt-2 text-slate-500">{children}</p>
       </div>
     </div>
   );

@@ -24,6 +24,7 @@ import { getCustomerSession } from "@/server/auth";
 import { notFound } from "next/navigation";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot, storeTheme } from "@/stores/resolve";
+import { isTeamPreview } from "@/server/store-preview";
 
 type Props = {
   children: React.ReactNode;
@@ -87,9 +88,12 @@ export default async function StoreLayout({ children, params }: Props) {
   // هذا يمنع 404 لو المتجر قيد البناء (blueprint قد يكون غير موجود).
   // ═════════════════════════════════════════════════════════════════════
   const hosting = hostingState(store);
-  if (GATED_STATUSES.has(store.status) || !hostingServes(hosting)) {
+  const gated = GATED_STATUSES.has(store.status) || !hostingServes(hosting);
+  // الفريق يرى المتجر خلف البوابة (نشرة معاينة بـ ?store=، أو مفتاح المعاينة على نطاقه) لمراجعته قبل التسليم.
+  const teamPreview = await isTeamPreview();
+  if (gated && !teamPreview) {
     return (
-      <div className="min-h-dvh bg-[#07091a]">
+      <div className="min-h-dvh bg-[#f8fafc] text-slate-900">
         <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : hosting.phase === "offline" ? "offline" : "paused"} name={store.name} />
       </div>
     );
@@ -180,6 +184,11 @@ export default async function StoreLayout({ children, params }: Props) {
           data-depth={bp.design.motion.depth ? "on" : "off"}
         >
           <div className="s-progress" aria-hidden="true" />
+          {teamPreview ? (
+            <p role="status" className="fixed bottom-3 start-3 z-[60] rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-bold text-amber-950 shadow-lg" data-team-preview>
+              معاينة الفريق{gated ? " — لا يراه العملاء بعد" : ""}
+            </p>
+          ) : null}
           {bp.design.motion.depth ? <DepthController /> : null}
           {!store.acceptingOrders ? (
             // وضع الإجازة: يعرفه الزائر من أول صفحة، لا عند الدفع بعد أن يملأ سلته.
