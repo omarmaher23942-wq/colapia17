@@ -44,8 +44,8 @@ export default async function DashboardOrdersPage({ searchParams }: { searchPara
   const query = parseOrdersQuery(sp);
   const filtered = Boolean(query.q) || query.pay !== "all";
 
-  const list = view === "list" ? await listOrders(store.id, query) : null;
-  const board = view === "board" ? await boardOrders(store.id, query) : null;
+  const list = view === "list" ? await listOrders(store.id, query, store.subdomain) : null;
+  const board = view === "board" ? await boardOrders(store.id, query, store.subdomain) : null;
   const exportHref = `/api/dashboard/orders/export${query.status !== "all" && view === "list" ? `?status=${query.status}` : ""}`;
 
   return (

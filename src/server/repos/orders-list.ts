@@ -3,6 +3,10 @@
 // للدفع عند الاستلام، ولوحة مراحل للطلبات الجارية.
 import "server-only";
 import { and, desc, eq, gte, ilike, inArray, ne, or, sql, type SQL } from "drizzle-orm";
+import { riskForOrders, type RiskHistory } from "@/server/repos/order-risk";
+import type { RiskLevel } from "@/lib/order-risk";
+import { confirmToken } from "@/lib/order-access";
+import { storeUrl } from "@/lib/utils";
 import { getTenantDb } from "@/db/tenant";
 import { orderItems, orders } from "@/db/schema";
 import { normalizeArabic } from "@/lib/arabic";
@@ -64,15 +68,18 @@ export type OrderRow = {
   trackingNumber: string | null;
   items: { first: string | null; lines: number; pieces: number };
   /** طلبات هذا الرقم الأخرى في المتجر (بلا الطلب نفسه). */
-  history: { total: number; delivered: number; returned: number };
+  history: RiskHistory;
+  /** تقدير مخاطرة الطلب (`lib/order-risk.ts`). */
+  risk: { level: RiskLevel; reasons: string[] };
+  /** رابط «أكّد طلبك» الموقّع (للطلب الجديد فقط). */
+  confirmUrl: string | null;
 };
 
-async function decorate(storeId: string, rows: (typeof orders.$inferSelect)[]): Promise<OrderRow[]> {
+async function decorate(storeId: string, rows: (typeof orders.$inferSelect)[], subdomain: string): Promise<OrderRow[]> {
   if (!rows.length) return [];
   const db = await getTenantDb(storeId);
   const ids = rows.map((r) => r.id);
-  const phones = [...new Set(rows.map((r) => r.customerPhone))];
-  const [items, hist] = await Promise.all([
+  const [items, risks] = await Promise.all([
     db
       .select({
         orderId: orderItems.orderId,
@@ -83,22 +90,11 @@ async function decorate(storeId: string, rows: (typeof orders.$inferSelect)[]): 
       .from(orderItems)
       .where(and(eq(orderItems.storeId, storeId), inArray(orderItems.orderId, ids)))
       .groupBy(orderItems.orderId),
-    db
-      .select({
-        phone: orders.customerPhone,
-        total: sql<number>`count(*)`.mapWith(Number),
-        delivered: sql<number>`count(*) filter (where ${orders.status} = 'delivered')`.mapWith(Number),
-        returned: sql<number>`count(*) filter (where ${orders.status} = 'returned')`.mapWith(Number),
-      })
-      .from(orders)
-      .where(and(eq(orders.storeId, storeId), eq(orders.isTest, false), inArray(orders.customerPhone, phones)))
-      .groupBy(orders.customerPhone),
+    riskForOrders(storeId, rows),
   ]);
   const im = new Map(items.map((i) => [i.orderId, i]));
-  const hm = new Map(hist.map((h) => [h.phone, h]));
   return rows.map((r) => {
-    const h = hm.get(r.customerPhone);
-    const self = r.isTest ? 0 : 1;
+    const rk = risks.get(r.id)!;
     return {
       id: r.id,
       code: r.code,
@@ -118,16 +114,14 @@ async function decorate(storeId: string, rows: (typeof orders.$inferSelect)[]): 
       courierName: r.courierName,
       trackingNumber: r.trackingNumber,
       items: { first: im.get(r.id)?.first ?? null, lines: im.get(r.id)?.lines ?? 0, pieces: im.get(r.id)?.pieces ?? 0 },
-      history: {
-        total: Math.max(0, (h?.total ?? 0) - self),
-        delivered: Math.max(0, (h?.delivered ?? 0) - (self && r.status === "delivered" ? 1 : 0)),
-        returned: Math.max(0, (h?.returned ?? 0) - (self && r.status === "returned" ? 1 : 0)),
-      },
+      history: rk.history,
+      risk: { level: rk.risk.level, reasons: rk.risk.reasons },
+      confirmUrl: r.status === "new" ? storeUrl(subdomain, `/confirm?o=${encodeURIComponent(r.code)}&t=${confirmToken(storeId, r.id)}`) : null,
     };
   });
 }
 
-export async function listOrders(storeId: string, query: OrdersQuery) {
+export async function listOrders(storeId: string, query: OrdersQuery, subdomain: string) {
   const db = await getTenantDb(storeId);
   const base = and(eq(orders.storeId, storeId), payCond(query.pay), searchCond(query.q));
   const where = and(base, query.status === "all" ? undefined : eq(orders.status, query.status));
@@ -149,11 +143,11 @@ export async function listOrders(storeId: string, query: OrdersQuery) {
   const byStatus = Object.fromEntries(counts.map((c) => [c.status, c.n])) as Partial<Record<OrderStatus, number>>;
   const all = counts.reduce((a, c) => a + c.n, 0);
   const total = query.status === "all" ? all : (byStatus[query.status] ?? 0);
-  return { rows: await decorate(storeId, rows), byStatus, all, total, pages: Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE)) };
+  return { rows: await decorate(storeId, rows, subdomain), byStatus, all, total, pages: Math.max(1, Math.ceil(total / ORDERS_PAGE_SIZE)) };
 }
 
 /** لوحة المراحل: كل الطلبات الجارية (حتى 200) والمسلَّمة في آخر 3 أيام، بنفس فلتر الدفع والبحث. */
-export async function boardOrders(storeId: string, query: Pick<OrdersQuery, "pay" | "q">) {
+export async function boardOrders(storeId: string, query: Pick<OrdersQuery, "pay" | "q">, subdomain: string) {
   const db = await getTenantDb(storeId);
   const base = and(eq(orders.storeId, storeId), payCond(query.pay), searchCond(query.q));
   const [active, delivered] = await Promise.all([
@@ -170,5 +164,5 @@ export async function boardOrders(storeId: string, query: Pick<OrdersQuery, "pay
       .orderBy(desc(orders.deliveredAt))
       .limit(30),
   ]);
-  return decorate(storeId, [...active, ...delivered]);
+  return decorate(storeId, [...active, ...delivered], subdomain);
 }

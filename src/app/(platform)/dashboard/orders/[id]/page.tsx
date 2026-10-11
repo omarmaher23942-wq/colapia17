@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { and, eq, ne, sql } from "drizzle-orm";
-import { ArrowRight, Mail, MapPin, Package, Phone, Printer } from "lucide-react";
+import { ArrowRight, Mail, MapPin, Package, Phone, Printer, ShieldAlert } from "lucide-react";
+import { RISK_ADVICE, RISK_LABEL } from "@/lib/order-risk";
+import { riskForOrders } from "@/server/repos/order-risk";
 import { getMerchantSession } from "@/server/auth";
 import { getTenantDb } from "@/db/tenant";
 import { orders, orderItems, payments } from "@/db/schema";
@@ -13,7 +15,7 @@ import { arCount, fmtNum, NOUN } from "@/lib/format";
 import { governorateName } from "@/lib/egypt";
 import { cn } from "@/lib/utils";
 import { collectNote, shippingLabelText, type MessageOrder } from "@/lib/order-messages";
-import { reviewToken } from "@/lib/order-access";
+import { confirmToken, reviewToken } from "@/lib/order-access";
 import { storeUrl } from "@/lib/utils";
 import {
   orderStatusLabel,
@@ -66,7 +68,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .limit(1);
   if (!o) notFound();
 
-  const [items, [paymentRecord], history] = await Promise.all([
+  const [items, [paymentRecord], history, risks] = await Promise.all([
     db
       .select()
       .from(orderItems)
@@ -84,7 +86,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       .from(orders)
       .where(and(eq(orders.storeId, store.id), eq(orders.customerPhone, o.customerPhone), ne(orders.id, o.id), eq(orders.isTest, false)))
       .groupBy(orders.status),
+    riskForOrders(store.id, [o]),
   ]);
+  const risk = ["new", "confirmed", "preparing"].includes(o.status) ? risks.get(o.id)?.risk : undefined;
 
   const prev = Object.fromEntries(history.map((h) => [h.status, h.n])) as Partial<Record<OrderStatus, number>>;
   const prevTotal = history.reduce((a, h) => a + h.n, 0);
@@ -103,6 +107,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     paymentStatus: o.paymentStatus,
     courierName: o.courierName,
     trackingNumber: o.trackingNumber,
+    confirmUrl: o.status === "new" ? storeUrl(store.subdomain, `/confirm?o=${encodeURIComponent(o.code)}&t=${confirmToken(store.id, o.id)}`) : null,
     reviewUrl: o.status === "delivered" ? storeUrl(store.subdomain, `/review?o=${encodeURIComponent(o.code)}&t=${reviewToken(store.id, o.id)}`) : null,
   };
   const collect = collectNote(o);
@@ -280,6 +285,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 </div>
               ) : null}
             </dl>
+
+            {risk && risk.level !== "none" ? (
+              <div
+                className={cn(
+                  "mt-4 rounded-xl border p-3 text-[12.5px]",
+                  risk.level === "high" ? "border-bad/25 bg-bad/[0.06]" : risk.level === "medium" ? "border-warn/25 bg-warn/[0.06]" : risk.level === "trusted" ? "border-ok/25 bg-ok/[0.06]" : "border-edge/10 bg-edge/[0.02]"
+                )}
+              >
+                <p className={cn("flex items-center gap-1.5 font-black", risk.level === "high" ? "text-bad" : risk.level === "medium" ? "text-warn" : risk.level === "trusted" ? "text-ok" : "text-ink")}>
+                  <ShieldAlert className="size-4" aria-hidden="true" />
+                  {RISK_LABEL[risk.level]}
+                </p>
+                <ul className="mt-1.5 list-disc space-y-0.5 ps-5 text-ink-2">
+                  {risk.reasons.map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+                <p className="mt-1.5 font-bold text-ink">{RISK_ADVICE[risk.level]}</p>
+              </div>
+            ) : null}
 
             <div className="mt-4 rounded-xl border border-edge/[0.07] bg-edge/[0.02] p-3 text-[12.5px]">
               {prevTotal === 0 ? (

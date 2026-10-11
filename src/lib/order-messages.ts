@@ -19,6 +19,8 @@ export type MessageOrder = {
   trackingNumber?: string | null;
   /** رابط «قيّم مشترياتك» الموقّع (للطلب المُسلَّم فقط). */
   reviewUrl?: string | null;
+  /** رابط «أكّد طلبك» الموقّع (للطلب الجديد فقط). */
+  confirmUrl?: string | null;
 };
 
 const first = (name: string) => name.trim().split(/\s+/)[0] ?? name;
@@ -75,7 +77,9 @@ export function orderMessage(kind: MessageKind, o: MessageOrder, storeName: stri
   const collect = amountToCollect(o);
   switch (kind) {
     case "confirm":
-      return `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. نرجو تأكيد العنوان: ${where}. هل البيانات صحيحة لنبدأ التجهيز؟`;
+      return o.confirmUrl
+        ? `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)} على العنوان: ${where}. أكّد طلبك بضغطة من هنا لنبدأ التجهيز فوراً: ${o.confirmUrl} ولو في أي تعديل رد علينا هنا.`
+        : `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. نرجو تأكيد العنوان: ${where}. هل البيانات صحيحة لنبدأ التجهيز؟`;
     case "preparing":
       return `${hi} تأكد طلبك ${o.code} ونجهّزه الآن، وسنبلغك فور خروجه للشحن.`;
     case "shipped": {

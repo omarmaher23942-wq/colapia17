@@ -103,7 +103,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
                       {r.customerPhone}
                     </p>
                     <div className="mt-1">
-                      <HistoryBadge h={r.history} />
+                      <HistoryBadge h={r.history} risk={r.status === "new" || r.status === "confirmed" ? r.risk : undefined} />
                     </div>
                   </td>
                   <td className="hidden max-w-[14rem] p-3 align-top text-ink-2 lg:table-cell">
@@ -187,7 +187,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
                     <StatusChip status={r.status} />
                     <PaymentChip row={r} />
-                    <HistoryBadge h={r.history} />
+                    <HistoryBadge h={r.history} risk={r.status === "new" || r.status === "confirmed" ? r.risk : undefined} />
                     {r.isTest ? <span className="rounded-full bg-warn/12 px-2 py-0.5 text-[10.5px] font-black text-warn">تجريبي</span> : null}
                   </div>
                 </div>

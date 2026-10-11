@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { notifyCustomerOfStatus } from "@/server/order-notify";
+import { applyOrderStatus } from "@/server/order-status-change";
 import { getTenantDb } from "@/db/tenant";
 import { orders, payments, orderItems } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
@@ -30,71 +30,8 @@ async function own() {
 
 type Ctx = NonNullable<Awaited<ReturnType<typeof own>>>;
 
-async function changeStatus(s: Ctx, orderId: string, status: Status, note?: string): Promise<OrderActionResult> {
-  const { db } = s;
-  const [o] = await db
-    .select()
-    .from(orders)
-    .where(and(eq(orders.id, orderId), eq(orders.storeId, s.storeId)))
-    .limit(1);
-  if (!o) return { ok: false, error: "الطلب غير موجود" };
-  if (o.status === status) return { ok: true };
-
-  const closing = CLOSED.has(status) && !CLOSED.has(o.status);
-  const reopening = !CLOSED.has(status) && CLOSED.has(o.status);
-  // الطلب التجريبي لم يخصم مخزوناً عند إنشائه، فلا يعيده ولا يخصمه عند تغيير حالته.
-  const items =
-    (closing || reopening) && !o.isTest
-      ? await db
-          .select({ productId: orderItems.productId, variantId: orderItems.variantId, quantity: orderItems.quantity })
-          .from(orderItems)
-          .where(and(eq(orderItems.orderId, orderId), eq(orderItems.storeId, s.storeId)))
-      : [];
-
-  const now = new Date();
-  const cleanNote = note?.trim().slice(0, 500) || undefined;
-  try {
-    await db.batch([
-      db
-        .update(orders)
-        .set({
-          status,
-          updatedAt: now,
-          ...(status === "shipped" && !o.shippedAt ? { shippedAt: now } : {}),
-          ...(status === "delivered"
-            ? { deliveredAt: now, paymentStatus: o.paymentMethod === "cod" ? "confirmed" : o.paymentStatus }
-            : {}),
-          statusHistory: [...o.statusHistory, { status, at: now.toISOString(), note: cleanNote }],
-        })
-        .where(and(eq(orders.id, orderId), eq(orders.storeId, s.storeId))),
-      ...(closing ? stockMovement(db, s.storeId, items, 1) : []),
-      ...(reopening ? stockMovement(db, s.storeId, items, -1) : []),
-    ] as never);
-  } catch (e) {
-    const info = dbErrorInfo(e);
-    if (reopening && info.code === PG_CHECK && info.constraint?.includes("stock")) {
-      return { ok: false, error: `لا يمكن إعادة فتح ${o.code}: المخزون الحالي لا يكفي لأصنافه. زِد الكمية أولاً.` };
-    }
-    throw e;
-  }
-
-  void emitOrderStatusChanged(s.storeId, o.code, {
-    orderId,
-    code: o.code,
-    fromStatus: o.status,
-    toStatus: status,
-    note: cleanNote,
-    changedBy: `merchant:${s.merchantId}`,
-    changedAt: now.toISOString(),
-  });
-
-  after(() =>
-    notifyCustomerOfStatus({ id: s.storeId, subdomain: s.store.subdomain }, o, status).catch((e) =>
-      console.error("[orders] customer notify failed:", e)
-    )
-  );
-  return { ok: true };
-}
+const changeStatus = (s: Ctx, orderId: string, status: Status, note?: string) =>
+  applyOrderStatus({ db: s.db, storeId: s.storeId, subdomain: s.store.subdomain, actor: `merchant:${s.merchantId}` }, orderId, status, note);
 
 /** تغيير حالة طلب واحد مع تسجيلها في سجل الطلب وإبلاغ العميل بالبريد إن كتبه. */
 export async function setOrderStatusAction(orderId: string, status: string, note?: string): Promise<OrderActionResult> {

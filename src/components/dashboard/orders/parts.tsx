@@ -2,6 +2,7 @@
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { orderStatusLabel, orderStatusTone, TONE_CHIP } from "@/lib/order-status";
+import { RISK_LABEL } from "@/lib/order-risk";
 import type { OrderRow } from "@/server/repos/orders-list";
 
 export function timeAgo(iso: string): string {
@@ -34,7 +35,16 @@ export function PaymentChip({ row }: { row: Pick<OrderRow, "paymentMethod" | "pa
 }
 
 /** سجل العميل مع المتجر: أوضح إشارة مخاطرة للدفع عند الاستلام (من رفض الاستلام قبل ذلك). */
-export function HistoryBadge({ h }: { h: OrderRow["history"] }) {
+export function HistoryBadge({ h, risk }: { h: OrderRow["history"]; risk?: OrderRow["risk"] }) {
+  if (risk && (risk.level === "high" || risk.level === "medium"))
+    return (
+      <span
+        className={`inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-black ${risk.level === "high" ? "bg-bad/12 text-bad" : "bg-warn/12 text-warn"}`}
+        title={risk.reasons.join("\n")}
+      >
+        {RISK_LABEL[risk.level]}
+      </span>
+    );
   if (h.returned > 0)
     return (
       <span className="inline-flex rounded-full bg-bad/12 px-2 py-0.5 text-[10.5px] font-black text-bad" title="رفض الاستلام أو أرجع طلباً سابقاً">

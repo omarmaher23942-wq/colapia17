@@ -71,7 +71,7 @@ export function OrdersBoard({ rows }: { rows: OrderRow[] }) {
                     <p className="truncate text-[11.5px] text-ink-2">{itemsSummary(r.items)}</p>
                     <div className="flex flex-wrap items-center gap-1">
                       <PaymentChip row={r} />
-                      <HistoryBadge h={r.history} />
+                      <HistoryBadge h={r.history} risk={r.status === "new" || r.status === "confirmed" ? r.risk : undefined} />
                     </div>
                     {NEXT[r.status] ? (
                       <button

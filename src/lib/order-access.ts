@@ -72,3 +72,15 @@ export function validReviewToken(storeId: string, orderId: string, token: string
   const received = Buffer.from(token);
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
+
+/** رمز رابط «أكّد طلبك» الذي يرسله التاجر على واتساب: يفتح تأكيد هذا الطلب وحده أو إلغاءه، دون كشف غيره. */
+export function confirmToken(storeId: string, orderId: string): string {
+  return createHmac("sha256", env.AUTH_SECRET).update(`confirm:${storeId}:${orderId}`).digest("base64url").slice(0, 32);
+}
+
+export function validConfirmToken(storeId: string, orderId: string, token: string | null | undefined): boolean {
+  if (!token) return false;
+  const expected = Buffer.from(confirmToken(storeId, orderId));
+  const received = Buffer.from(token);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
