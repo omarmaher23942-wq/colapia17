@@ -275,7 +275,7 @@ export async function getMerchantStoreOrNull(): Promise<MerchantStoreSession | n
 
 export async function requireMerchantStore(): Promise<MerchantStoreSession> {
   const session = await getMerchantStoreOrNull();
-  if (!session) redirect("/dashboard/onboarding");
+  if (!session) redirect("/start");
   return session;
 }
 

@@ -1,20 +1,15 @@
 // Landing — صفحة Colapia الرئيسية. تُرسم على الخادم بالكامل (سرعة وظهور في البحث)، والتفاعل في جزر صغيرة:
-// الهيدر، وزر Google، وعرض المتاجر المتبدلة. كل جملة هنا صحيحة حرفياً عن المنتج كما هو اليوم.
+// الهيدر، وزر Google، وعرض المتاجر المتبدلة. كل جملة هنا يجب أن تكون صحيحة عن الخدمة: بلا إشارة إلى أدوات الذكاء الاصطناعي ولا تقنيات التشغيل (لا قيمة للعميل فيها).
 import Link from "next/link";
 import {
-  Wand2,
+  Palette,
   PenLine,
   Clapperboard,
   Wallet,
   PackageCheck,
   LayoutDashboard,
-  Bot,
   ShieldCheck,
-  Github,
   Server,
-  Database,
-  Image as ImageIcon,
-  Cpu,
   Check,
   X,
   ArrowLeft,
@@ -22,14 +17,13 @@ import {
   BadgePercent,
   KeyRound,
   ClipboardList,
-  Sparkles,
+  Users,
   Rocket,
   ChevronDown,
 } from "lucide-react";
 import { CosmicBackdrop } from "./CosmicBackdrop";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
-import { GoogleAuthCta } from "./GoogleAuthCta";
 import { TestimonialsSection } from "./TestimonialsSection";
 import { StoreMorph } from "./StoreMorph";
 import { MINI_STORES, StoreMini } from "./StoreMini";
@@ -42,13 +36,16 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
   const merchant = session === "merchant";
   const discount = Math.max(0, Math.round(100 - (pricing.price / pricing.basePrice) * 100));
 
+  // كل الطرق تبدأ من استمارة الطلب (لا تسجيل ولا حساب قبلها). من لديه متجر يفتح لوحته من الهيدر.
   const Primary = ({ label }: { label: string }) =>
     merchant ? (
       <Link href="/dashboard" className={CTA_PRIMARY}>
         <LayoutDashboard className="size-5" aria-hidden="true" /> افتح لوحة متجرك
       </Link>
     ) : (
-      <GoogleAuthCta redirectTo="/dashboard" label={label} className={CTA_PRIMARY} />
+      <Link href="/start" className={CTA_PRIMARY}>
+        <ClipboardList className="size-5" aria-hidden="true" /> {label}
+      </Link>
     );
 
   return (
@@ -64,25 +61,25 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section className="container-x grid items-center gap-12 pb-20 pt-8 sm:pt-14 lg:grid-cols-[1.15fr_1fr] lg:gap-8 lg:pb-28">
           <div className="land-rise flex flex-col items-start gap-6">
             <Eyebrow>
-              <Sparkles className="size-3.5 text-[#8fa8ff]" aria-hidden="true" /> متاجر يصممها الذكاء الاصطناعي، لمصر
+              <Users className="size-3.5 text-[#8fa8ff]" aria-hidden="true" /> فريق Colapia يبني متجرك، لمصر
             </Eyebrow>
             <h1 className="text-[2.2rem] font-black leading-[1.15] tracking-tight sm:text-5xl lg:text-[3.6rem]">
-              متجر يُصمَّم ويُكتب <span className="land-gradient-text">لك وحدك</span>
+              نبني لك متجراً <span className="land-gradient-text">على مقاس نشاطك</span>
               <br />
               ونستضيفه ونشغّله لك
             </h1>
             <p className="max-w-xl text-base leading-8 text-[#c3cdf0]/85 sm:text-lg">
-              اوصف نشاطك ومنتجاتك في 5 خطوات قصيرة. مدير فني بالذكاء الاصطناعي يصمم هوية متجرك، وكاتب محتوى يكتب كل كلمة فيه من سياساتك الحقيقية.
-              جرّبه {trialHours} ساعة مجاناً، وإن أعجبك فباقة واحدة تشمل متجرك وسنة استضافة كاملة علينا، بلا عمولة على مبيعاتك.
+              احكيلنا عن نشاطك في استمارة من دقيقتين. فريقنا يصمم متجرك ويبنيه ويراجعه، ويسلّمه لك جاهزاً خلال 12 ساعة إلى 4 أيام. تجرّبه {trialHours} ساعة قبل أي دفع،
+              وإن أعجبك فباقة واحدة تشمل متجرك وسنة استضافة كاملة، بلا عمولة على مبيعاتك.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <Primary label="ابدأ متجرك مجاناً" />
+              <Primary label="اطلب متجرك" />
               <a href="#how" className={CTA_GHOST}>
                 شاهد كيف يعمل
               </a>
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[#c3cdf0]/75">
-              {["بلا بطاقة بنكية", "سنة استضافة مشمولة", "بلا عمولة على مبيعاتك"].map((t) => (
+              {["الطلب مجاني بلا التزام", "سنة استضافة مشمولة", "بلا عمولة على مبيعاتك"].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
                   <Check className="size-4 text-emerald-400" aria-hidden="true" /> {t}
                 </li>
@@ -99,7 +96,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               { icon: BadgePercent, big: "0%", small: "عمولة على أي بيعة" },
               { icon: Server, big: "سنة كاملة", small: "استضافة وتشغيل مشمولان" },
               { icon: Timer, big: `${trialHours} ساعة`, small: "تجربة كاملة قبل الدفع" },
-              { icon: KeyRound, big: "نسختك متى شئت", small: "تصدير اختياري لحساباتك" },
+              { icon: Users, big: "12 ساعة – 4 أيام", small: "مدة التسليم بعد إرسال الطلب" },
             ].map(({ icon: Icon, big, small }) => (
               <li key={small} className="flex flex-col gap-1 bg-[#0a0e24] p-5 sm:p-6">
                 <Icon className="size-5 text-[#8fa8ff]" aria-hidden="true" />
@@ -112,13 +109,13 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
 
         {/* ─── كيف يعمل ─── */}
         <section id="how" className="container-x scroll-mt-24 py-24 sm:py-32">
-          <Heading eyebrow="كيف يعمل" title="من فكرة في رأسك إلى متجر يبيع، في جلسة واحدة" />
+          <Heading eyebrow="كيف يعمل" title="من فكرة في رأسك إلى متجر جاهز، بدون ما تلمس أي شيء تقني" />
           <ol className="relative mt-14 grid gap-4 md:grid-cols-4">
             {[
-              { icon: ClipboardList, t: "اوصف متجرك", d: "اسمك ونشاطك ومنتجاتك بصورها وأسعارها ومقاساتها، وسياسة الشحن والاستبدال. 5 خطوات تعمل من الموبايل." },
-              { icon: Wand2, t: "يُبنى أمامك", d: "تتابع البناء خطوة بخطوة: الاتجاه الفني، ثم النصوص، ثم الكتالوج، ثم التصميم والصفحات." },
-              { icon: Timer, t: `جرّبه ${trialHours} ساعة`, d: "متجرك ولوحة تحكمه يعملان بالكامل: أضف منتجات، استقبل طلبات، وأعد التصميم إن أردت." },
-              { icon: Rocket, t: "فعّله وانطلق", d: "بعد تحويل الباقة ومراجعة الإيصال يُفتح متجرك لعملائك على رابطه، ونستضيفه ونشغّله لك سنة كاملة." },
+              { icon: ClipboardList, t: "احكيلنا عن متجرك", d: "اسم المتجر ووسيلة تواصل، وبعدها صور منتجاتك وألوانك وأي ملاحظة، أو رسالة صوتية بدل الكتابة. كل سؤال تقدر تقول عليه «سيبها للفريق»." },
+              { icon: Palette, t: "فريقنا يصمم ويبني", d: "نختار هوية تناسب نشاطك، ونبني الصفحات ونجهّز منتجاتك، وتتابع المرحلة اللي وصلنا لها من صفحة خاصة بطلبك." },
+              { icon: Timer, t: `جرّبه ${trialHours} ساعة`, d: "نراجع المتجر ثم يوصلك رابطه ولوحة تحكمه. تجرّب وتطلب الطلبات وتقرر، بدون أي دفع قبلها." },
+              { icon: Rocket, t: "فعّله وانطلق", d: "لو أعجبك تحوّل الباقة ونراجع الإيصال ويُفتح متجرك لعملائك على رابطه، ونستضيفه ونشغّله لك سنة كاملة." },
             ].map(({ icon: Icon, t, d }, i) => (
               <li key={t} className="land-card group relative flex flex-col gap-3 rounded-3xl p-6">
                 <span className="flex items-center justify-between">
@@ -138,9 +135,9 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section id="designs" className="scroll-mt-24 border-y border-white/5 bg-gradient-to-b from-transparent via-[#0b1030]/60 to-transparent py-24 sm:py-32">
           <div className="container-x">
             <Heading
-              eyebrow="لا قوالب"
-              title="كل متجر يُصمَّم من الصفر لنشاطه"
-              subtitle="الألوان والخطوط وشكل البطاقات والأزرار وحتى نبرة الكلام يقررها مدير فني بالذكاء الاصطناعي لكل متجر على حدة. لا يوجد متجران متشابهان."
+              eyebrow="لا قوالب جاهزة"
+              title="كل متجر يُصمَّم لنشاطه"
+              subtitle="الألوان والخطوط وشكل البطاقات والأزرار ونبرة الكلام يقررها فريق التصميم لكل متجر على حدة. هذه أمثلة على اتجاهات مختلفة، ومتجرك يُصمَّم لنشاطك أنت."
             />
             <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {MINI_STORES.map((s) => (
@@ -162,13 +159,12 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section id="features" className="container-x scroll-mt-24 py-24 sm:py-32">
           <Heading eyebrow="ما تحصل عليه" title="متجر احترافي ولوحة تحكم كاملة، لا نسخة مبسطة" />
           <div className="mt-14 grid gap-4 md:grid-cols-6">
-            <Feature className="md:col-span-3" icon={Wand2} title="مدير فني لمتجرك" text="يختار لوحة ألوان عالية التباين وخطوطاً عربية وشكل كل بطاقة وزر وقسم، ويكتب لمسات تصميم خاصة بمتجرك وحده." />
-            <Feature className="md:col-span-3" icon={PenLine} title="نصوص لا تكذب على عملائك" text="كل شارة ثقة أو سؤال شائع يُفحص مقابل سياستك الحالية عند كل عرض: لو غيّرت الشحن أو الاستبدال يتغير الكلام معه تلقائياً." />
-            <Feature className="md:col-span-2" icon={Clapperboard} title="حركة سينمائية وعمق ثلاثي الأبعاد" text="عناوين تتكشف، وصور تتنفس، وبطاقات تميل مع المؤشر. تختار المستوى: هادئ أو حيوي أو سينمائي." />
-            <Feature className="md:col-span-2" icon={Wallet} title="شراء واحد ذكي" text="العميل يختار متى يدفع: عند الاستلام برسومها الحقيقية، أو مقدماً بفودافون كاش وإنستاباي بالمبلغ المطلوب بالضبط." />
-            <Feature className="md:col-span-2" icon={PackageCheck} title="«طلباتي» بلا حسابات" text="كل طلب يُحفظ على جهاز العميل؛ يرى حالته في أي وقت دون تسجيل ولا حفظ رقم، ويصله بريد مع كل خطوة إن كتب بريده." />
-            <Feature className="md:col-span-4" icon={LayoutDashboard} title="لوحة تحكم تدير بها كل شيء" text="منتجات بمقاسات وألوان ومخزون، وطلبات بحالاتها، وعملاء، وأكواد خصم، ومناطق شحن، وفواتير للطباعة وPDF برمز تتبع، وتصدير Excel، وتحليلات زيارات حقيقية تحسب كل جهاز مرة واحدة في اليوم." />
-            <Feature className="md:col-span-2" icon={Bot} title="نوفا، مساعدك الذكي" text="اسأله عن مبيعاتك ومنتجاتك فيجيب من بيانات متجرك، ويكتب لك أوصاف المنتجات." />
+            <Feature className="md:col-span-3" icon={Palette} title="هوية خاصة بنشاطك" text="لوحة ألوان وخطوط عربية وشكل لكل بطاقة وزر وقسم يختارها فريق التصميم لنشاطك وزبونك." />
+            <Feature className="md:col-span-3" icon={PenLine} title="كلام صادق مع عملائك" text="كل شارة ثقة أو سؤال شائع يُفحص مقابل سياستك الحالية عند كل عرض: لو غيّرت الشحن أو الاستبدال يتغير الكلام معه." />
+            <Feature className="md:col-span-2" icon={Clapperboard} title="حركة بمستوى تختاره" text="عناوين تتكشف وبطاقات تميل مع المؤشر. تختار المستوى: هادئ أو حيوي أو سينمائي." />
+            <Feature className="md:col-span-2" icon={Wallet} title="شراء بسيط" text="العميل يختار متى يدفع: عند الاستلام برسومها الحقيقية، أو مقدماً بفودافون كاش وإنستاباي بالمبلغ المطلوب بالضبط." />
+            <Feature className="md:col-span-2" icon={PackageCheck} title="«طلباتي» بلا حسابات" text="كل طلب يُحفظ على جهاز العميل؛ يرى حالته في أي وقت دون تسجيل، ويصله بريد مع كل خطوة إن كتب بريده." />
+            <Feature className="md:col-span-6" icon={LayoutDashboard} title="لوحة تحكم تدير بها كل شيء" text="منتجات بمقاسات وألوان ومخزون، وطلبات بحالاتها، وعملاء، وأكواد خصم، ومناطق شحن، وفواتير للطباعة برمز تتبع، وتصدير Excel، وإحصاءات زيارات حقيقية." />
           </div>
         </section>
 
@@ -177,35 +173,15 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
           <div className="container-x">
             <div className="land-card relative overflow-hidden rounded-[2rem] p-7 sm:p-12">
               <div aria-hidden="true" className="absolute -end-24 -top-24 size-72 rounded-full bg-emerald-400/15 blur-3xl" />
-              <div className="relative grid items-center gap-10 lg:grid-cols-2">
-                <div className="space-y-5">
-                  <Eyebrow>
-                    <ShieldCheck className="size-3.5 text-emerald-400" aria-hidden="true" /> بياناتك بيدك دائماً
-                  </Eyebrow>
-                  <h2 className="text-3xl font-black leading-tight sm:text-4xl">نسخة من متجرك على حساباتك، متى أردت</h2>
-                  <p className="text-[15px] leading-8 text-[#c3cdf0]/80">
-                    متجرك يعمل عندنا ولا تحتاج أي خطوة تقنية. وإن أحببت، تنقل نسخة كاملة منه ومن لوحة تحكمه بكل منتجاتك وطلباتك وعملائك وصورك إلى حسابات باسمك،
-                    بخطوات مشروحة من الموبايل. لا مهلة ولا استعجال: لن يتوقف متجرك ولن يُحذف شيء إلا بطلبك أنت، ولا نحتفظ بأي مفتاح لحساباتك.
-                  </p>
-                </div>
-                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {[
-                    { icon: Github, n: "GitHub", d: "كود متجرك" },
-                    { icon: Server, n: "Vercel", d: "تشغيل الموقع" },
-                    { icon: Database, n: "Neon", d: "قاعدة البيانات" },
-                    { icon: ImageIcon, n: "UploadThing", d: "الصور" },
-                    { icon: Cpu, n: "Groq", d: "الذكاء الاصطناعي" },
-                    { icon: KeyRound, n: "مفاتيحك", d: "معك وحدك" },
-                  ].map(({ icon: Icon, n, d }) => (
-                    <li key={n} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                      <Icon className="size-5 text-emerald-300" aria-hidden="true" />
-                      <p className="mt-2 text-[14px] font-black" dir="auto">
-                        {n}
-                      </p>
-                      <p className="text-[12px] text-[#c3cdf0]/65">{d}</p>
-                    </li>
-                  ))}
-                </ul>
+              <div className="relative max-w-2xl space-y-5">
+                <Eyebrow>
+                  <ShieldCheck className="size-3.5 text-emerald-400" aria-hidden="true" /> بياناتك بيدك دائماً
+                </Eyebrow>
+                <h2 className="text-3xl font-black leading-tight sm:text-4xl">متجرك وبياناتك ملكك</h2>
+                <p className="text-[15px] leading-8 text-[#c3cdf0]/80">
+                  نستضيف متجرك ونشغّله ولا تحتاج أي خطوة تقنية. بياناتك (منتجاتك وطلباتك وعملاؤك) ملكك، وتقدر تطلب نسخة منها في أي وقت.
+                  ولو تأخرت في التجديد يتوقف متجرك عن الظهور فقط ولا نحذف شيئاً.
+                </p>
               </div>
             </div>
           </div>
@@ -230,11 +206,11 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               </p>
               <ul className="mt-8 space-y-3 text-[14px]">
                 {[
-                  "متجر كامل صممه وكتبه الذكاء الاصطناعي لنشاطك",
-                  "لوحة تحكم كاملة بالطلبات والفواتير والتحليلات",
-                  "سنة استضافة كاملة: السيرفر والقاعدة والصور والتحديثات",
+                  "متجر كامل يصممه ويبنيه ويراجعه فريقنا لنشاطك",
+                  "لوحة تحكم كاملة بالطلبات والفواتير والإحصاءات",
+                  "سنة استضافة وتشغيل كاملة وتحديثات",
                   "بلا عمولة على مبيعاتك",
-                  "مساعد ذكي في لوحتك، ونسخة تصدّرها لحساباتك متى أردت",
+                  "متابعة معك بعد التسليم",
                 ].map((b) => (
                   <li key={b} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4.5 shrink-0 text-emerald-400" aria-hidden="true" /> {b}
@@ -242,7 +218,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
                 ))}
               </ul>
               <div className="mt-9">
-                <Primary label={`ابدأ تجربة ${trialHours} ساعة مجاناً`} />
+                <Primary label="اطلب متجرك الآن" />
               </div>
               <p className="mt-4 text-[11.5px] leading-6 text-[#c3cdf0]/55">
                 الدفع بتحويل فودافون كاش أو إنستاباي، ونفعّل متجرك فور مراجعة الإيصال. إن تأخرت في التجديد يتوقف متجرك عن الظهور فقط ويعود فور التجديد، ولا تُحذف بياناتك.
@@ -264,7 +240,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
                     ["الدفع", "سنوي بسعر معلن", "كل شهر"],
                     ["عمولة المبيعات", "لا يوجد", "غالباً نسبة"],
                     ["التصميم", "مصمم لمتجرك", "قالب مشترك"],
-                    ["بياناتك", "تصدّرها متى شئت", "على المنصة"],
+                    ["بياناتك", "ملكك وتطلبها متى شئت", "على المنصة"],
                     ["لو تأخرت في الدفع", "يتوقف دون حذف", "قد تفقد المتجر"],
                   ].map(([k, a, b]) => (
                     <tr key={k}>
@@ -309,12 +285,12 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section className="container-x pb-28">
           <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-gradient-to-l from-[#6f86ff]/25 via-[#0d1230] to-emerald-400/10 px-6 py-14 text-center sm:px-12 sm:py-20">
             <div aria-hidden="true" className="land-orb absolute -bottom-24 start-1/2 size-80 -translate-x-1/2 rounded-full bg-[#6f86ff]/30 blur-3xl rtl:translate-x-1/2" />
-            <h2 className="relative text-3xl font-black leading-tight sm:text-5xl">متجرك القادم يبدأ بوصف بسيط</h2>
+            <h2 className="relative text-3xl font-black leading-tight sm:text-5xl">متجرك القادم يبدأ باستمارة من دقيقتين</h2>
             <p className="relative mx-auto mt-4 max-w-xl text-[15px] leading-8 text-[#c3cdf0]/80">
-              5 خطوات، ثم تتابع متجرك يُبنى أمامك. تجربة {trialHours} ساعة كاملة قبل أن تدفع أي شيء.
+              نبدأ العمل على متجرك، وتتابع كل مرحلة من صفحة طلبك. وتجربة {trialHours} ساعة كاملة قبل أن تدفع أي شيء.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-              <Primary label="ابدأ الآن مجاناً" />
+              <Primary label="اطلب متجرك" />
               <a href="#designs" className={CTA_GHOST}>
                 شاهد أمثلة <ArrowLeft className="size-4" aria-hidden="true" />
               </a>
@@ -338,7 +314,7 @@ function Heading({ eyebrow, title, subtitle }: { eyebrow: string; title: string;
   );
 }
 
-function Feature({ icon: Icon, title, text, className }: { icon: typeof Wand2; title: string; text: string; className?: string }) {
+function Feature({ icon: Icon, title, text, className }: { icon: typeof Palette; title: string; text: string; className?: string }) {
   return (
     <article className={`land-card land-spot group relative overflow-hidden rounded-3xl p-6 sm:p-7 ${className ?? ""}`}>
       <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-[#6f86ff]/30 to-emerald-400/10 text-[#c9d4ff] transition group-hover:scale-110">
@@ -352,15 +328,15 @@ function Feature({ icon: Icon, title, text, className }: { icon: typeof Wand2; t
 
 function faq(h: number, pricing: LandingPricing): [string, string][] {
   return [
-    ["كم يستغرق بناء متجري؟", "الاستمارة 5 خطوات قصيرة، وبعدها يُبنى متجرك خلال دقائق وأنت تتابع كل مرحلة على الشاشة. لو تعثر الذكاء الاصطناعي في أي جزء، يُكمل البناء ببديل مشتق من بياناتك، لا بنص عام."],
-    ["هل التجربة مجانية فعلاً؟", `نعم. ${h} ساعة كاملة بمتجرك ولوحة تحكمه، بلا بطاقة بنكية. لو لم يعجبك لا تدفع شيئاً.`],
+    ["كم يستغرق تسليم متجري؟", "من 12 ساعة إلى 4 أيام من وقت إرسال الطلب، وقد يطول قليلاً لو عندنا طلبات كثيرة قبلك، وبنقول لك الموعد الفعلي عند الإرسال. وتتابع المرحلة من صفحة طلبك."],
+    ["ماذا أحتاج لأطلب متجري؟", "اسم المتجر ووسيلة تواصل فقط. الباقي (الألوان والشعار والمنتجات وطرق الدفع والشحن) اختياري أو تقول عليه «سيبها للفريق». تقدر تسجّل رسالة صوتية بدل الكتابة."],
+    ["هل التجربة مجانية فعلاً؟", `نعم. بعد التسليم تجرّب متجرك ولوحة تحكمه ${h} ساعة بلا بطاقة بنكية. لو لم يعجبك لا تدفع شيئاً.`],
     ["كيف أدفع، ومتى يتفعّل متجري؟", "تحوّل المبلغ بفودافون كاش أو إنستاباي وترفع صورة الإيصال من لوحتك. نراجع الإيصال بأنفسنا ونفعّل متجرك، ويصلك بريد فور التفعيل."],
-    ["هل أقدر أخذ متجري معي لو أردت؟", "نعم، وبلا أي مهلة. من لوحتك تنقل نسخة كاملة من متجرك ولوحة تحكمه (كود وبيانات وصور) إلى مستودع GitHub باسمك، وتنشرها على حساباتك. النقل اختياري تماماً: متجرك يبقى يعمل عندنا حتى تقرر أنت إيقافه أو حذف بياناتك، واشتراكك يبقى سارياً كما هو."],
-    ["هل أحتاج خبرة تقنية؟", "لا. متجرك يعمل عندنا بلا أي خطوة منك. وإن اخترت نقل نسخة لحساباتك فكل خطوة مشروحة بالعربي وتعمل من الموبايل."],
-    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (عرض إطلاق لفترة محدودة بدل ${fmtEGP(pricing.basePrice)} ج.م)` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه متى شئت قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
-    ["ماذا لو لم أجدد؟", "بعد انتهاء السنة يبقى متجرك يعمل أسبوعين إضافيين، ثم يتوقف عن الظهور للزوار. لا نحذف أي شيء بسبب التأخر: بياناتك محفوظة، وبمجرد التجديد يعود متجرك فوراً بنفس الرابط. ونذكّرك بالبريد قبل الانتهاء بشهر وأسبوع ويوم."],
-    ["هل أقدر أربط نطاقي الخاص (دومين)؟", "غير متاح حالياً. كل متجر يعمل على رابط باسمه مثل اسمك.colapia.com. وإن نقلت نسخة لحساباتك تربط عليها أي نطاق تملكه."],
-    ["هل أقدر أغيّر التصميم؟", "نعم. من «تصميم المتجر» تعيد التصميم بالذكاء الاصطناعي بضغطة وتستعيد أي تصميم سابق، وتختار مستوى الحركة، وتعدّل الألوان والنصوص والسياسات من لوحة التحكم."],
+    ["هل أحتاج خبرة تقنية؟", "لا. نحن نبني متجرك ونستضيفه ونشغّله. وتدير منتجاتك وطلباتك من لوحة تحكم مكتوبة بالعربي وتعمل من الموبايل."],
+    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (عرض إطلاق لفترة محدودة بدل ${fmtEGP(pricing.basePrice)} ج.م)` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
+    ["ماذا لو لم أجدد؟", "بعد انتهاء السنة يبقى متجرك يعمل أسبوعين إضافيين، ثم يتوقف عن الظهور للزوار. لا نحذف أي شيء بسبب التأخر، وبمجرد التجديد يعود متجرك بنفس الرابط. ونذكّرك بالبريد قبل الانتهاء."],
+    ["هل أقدر أربط نطاقي الخاص (دومين)؟", "غير متاح حالياً. كل متجر يعمل على رابط باسمه مثل اسمك.colapia.com."],
+    ["هل أقدر أطلب تعديلات بعد التسليم؟", "نعم، تعديلات متجرك تطلبها منا ونتابعها معك، ومن لوحتك تعدّل الألوان والنصوص والسياسات والمنتجات بنفسك."],
     ["هل يحتاج عملائي لإنشاء حساب؟", "لا. العميل يطلب باسمه ورقمه، ويجد طلباته محفوظة على جهازه في «طلباتي» بحالتها الحية، ويصله بريد مع كل خطوة إن كتب بريده."],
   ];
 }

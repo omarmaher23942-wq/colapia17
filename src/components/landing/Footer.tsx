@@ -1,4 +1,4 @@
-// فوتر غني بأربعة أعمدة، شعارات شركاء تقنيين، وروابط قانونية كاملة.
+// فوتر بأعمدة وروابط قانونية.
 import Link from "next/link";
 import { Mail, MapPin } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
@@ -17,7 +17,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "الشركة",
     links: [
       { label: "الملكية", href: "#ownership" },
-      { label: "تواصل معنا", href: "mailto:omarmaher23942@gmail.com" },
+      { label: "تواصل معنا", href: "mailto:support@colapia.com" },
     ],
   },
   {
@@ -30,14 +30,6 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   },
 ];
 
-function PartnerBadge({ name }: { name: string }) {
-  return (
-    <span className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-[#c3cdf0]/60">
-      {name}
-    </span>
-  );
-}
-
 export function Footer() {
   return (
     <footer className="border-t border-white/10 py-16">
@@ -46,8 +38,8 @@ export function Footer() {
           <div className="lg:col-span-2">
             <ColapiaLogo size={32} />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#c3cdf0]/60">
-              منصة مصرية تصمم متجرك الإلكتروني بالذكاء الاصطناعي وتستضيفه
-              وتشغّله لك، بلا عمولة على مبيعاتك.
+              فريق مصري يبني متجرك الإلكتروني ويستضيفه ويشغّله لك،
+              بلا عمولة على مبيعاتك.
             </p>
             <div className="mt-5 flex flex-col gap-2 text-sm text-[#c3cdf0]/60">
               <span className="inline-flex items-center gap-2">
@@ -55,12 +47,12 @@ export function Footer() {
                 مصر
               </span>
               <a
-                href="mailto:omarmaher23942@gmail.com"
+                href="mailto:support@colapia.com"
                 className="inline-flex items-center gap-2 transition-colors hover:text-[#8fa8ff]"
                 dir="ltr"
               >
                 <Mail className="size-4 text-[#8fa8ff]" aria-hidden="true" />
-                omarmaher23942@gmail.com
+                support@colapia.com
               </a>
             </div>
           </div>
@@ -82,15 +74,7 @@ export function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-8 sm:flex-row">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#c3cdf0]/50">مبني باستخدام</span>
-            <div className="flex items-center gap-2">
-              <PartnerBadge name="Railway" />
-              <PartnerBadge name="Cloudflare" />
-              <PartnerBadge name="Neon" />
-              <PartnerBadge name="Upstash" />
-            </div>
-          </div>
+          <div />
 
           <div className="flex items-center gap-4">
             <select

@@ -9,7 +9,7 @@ const body = (price: number, renewal: number) => `## Terms of Service (English s
 Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
 
 ## 1. الخدمة
-Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، مستعيناً بأدوات منها الذكاء الاصطناعي، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
+Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
 
 ## 1.1 طلب المتجر
 - إرسال استمارة طلب المتجر مجاني ولا يلزمك بأي دفع.
@@ -42,8 +42,8 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 2. يُمنع بيع أي منتجات مخالفة للقانون أو معتدية على الملكية الفكرية أو خادعة للعملاء.
 3. أنت مسؤول عن سرية حسابك، وعن صحة ما تكتبه من سياسات (الشحن والاستبدال) لأن متجرك يعرضها لعملائك.
 
-## 8. الذكاء الاصطناعي
-نستخدم الذكاء الاصطناعي لتصميم متجرك وكتابة نصوصه ومساعدتك في لوحتك. نبذل جهدنا ليكون كل ادعاء في متجرك مطابقاً لبياناتك وسياساتك، لكن عليك مراجعة المحتوى المولَّد قبل الاعتماد عليه.
+## 8. مراجعة محتوى متجرك
+نبذل جهدنا ليكون كل ما في متجرك من نصوص وأسعار وسياسات مطابقاً للبيانات التي أعطيتنا إياها، لكن عليك مراجعته عند التسليم وإبلاغنا بأي تعديل. أنت المسؤول عن صحة المعلومات التي تقدمها لنا.
 
 ## 9. الإيقاف والمخالفات
 يحق لنا تجميد أو إيقاف أي متجر يخالف هذه الشروط أو القانون، بعد إبلاغك بالسبب متى أمكن.

@@ -1,17 +1,7 @@
-// dashboard/onboarding/[token]/page.tsx — redirect للـ onboarding الجذري.
-//
-// السبب الجذري:
-// الـ dashboard له base path /dashboard، لكن الاستمارة تعيش على /onboarding.
-// هذا الملف يعمل كـ convenience redirect للحالات القديمة.
+// البناء الذاتي (التسجيل ثم استمارة الخطوات الخمس) أُوقف: Colapia تبني المتجر بفريقها، والبداية الوحيدة استمارة /start.
+// الكود القديم يُحذف مع تنظيف المرحلة 8 (الوكيل ما زال يصدر روابط قديمة تصل هنا فتُحوَّل).
 import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function OnboardingTokenRedirectPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const { token } = await params;
-  redirect(`/onboarding/${encodeURIComponent(token)}`);
+export default function Page() {
+  redirect("/start");
 }

@@ -9,7 +9,7 @@ export const EDITION = "platform" as "platform" | "store";
 export const INTEGRATIONS_NAV = { label: "امتلك متجرك", href: "/dashboard/own" } as const;
 
 /** وجهة التاجر الذي لا متجر له بعد. */
-export const NO_STORE_HREF = "/dashboard/onboarding";
+export const NO_STORE_HREF = "/start";
 
 /** حسابات العملاء (دخول Google/رابط بالبريد) ميزة على المنصة؛ في مشروع التاجر يُتتبع الطلب بالكود. */
 export const CUSTOMER_ACCOUNTS = true as boolean;

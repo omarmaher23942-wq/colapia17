@@ -45,7 +45,7 @@ function inTime(d: Date, now: number): string {
 export default async function BillingPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/billing");
-  if (!session.store) redirect("/dashboard/onboarding");
+  if (!session.store) redirect("/start");
   const store = session.store;
 
   const payments = (await db
@@ -182,11 +182,11 @@ function Offer({ price, basePrice, renewal }: { price: number; basePrice: number
       <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
         {[
           "متجرك بتصميمه الحالي ولوحة تحكمه، مفتوح لعملائك على رابطه نفسه.",
-          "سنة استضافة كاملة علينا: السيرفر والقاعدة والصور والتحديثات والمساعد الذكي في لوحتك.",
+          "سنة استضافة وتشغيل كاملة علينا، مع التحديثات.",
           "بلا عمولة لنا على أي طلب.",
           `بعد السنة الأولى: ${fmtNum(renewal)} ج.م للسنة، تجدد متى شئت قبل الانتهاء.`,
           "متجرك لا يُحذف بسبب التأخر في التجديد: يتوقف عن الظهور فقط ويعود فور التجديد.",
-          "نسخة من متجرك على حساباتك الخاصة متى أردت («امتلك متجرك»، اختياري).",
+          "بياناتك ملكك، وتطلب نسخة منها متى أردت.",
         ].map((t) => (
           <li key={t} className="flex gap-2">
             <Check className="mt-1 size-4 shrink-0 text-ok" aria-hidden="true" />

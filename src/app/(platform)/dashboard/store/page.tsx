@@ -44,7 +44,7 @@ const STATUS_LABEL: Record<
 export default async function StoreDetailPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/store");
-  if (!session.store) redirect("/dashboard/onboarding");
+  if (!session.store) redirect("/start");
 
   const store = session.store;
   const meta = STATUS_LABEL[store.status] ?? {

@@ -1,7 +1,7 @@
 "use client";
 
 // هيدر لاصق. جلسة-واعي بالكامل:
-// - guest  → "تسجيل الدخول" + "ابدأ بحساب Google"
+// - guest  → "دخول لوحة متجرك" + "ابدأ بحساب Google"
 // - merchant → زر واحد فقط "افتح الداشبورد"
 // زر Google يستدعي Server Action مباشرة عبر GoogleAuthCta (لا رابط /api مكسور).
 import { useEffect, useState } from "react";
@@ -10,15 +10,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { CTA_PRIMARY } from "./shared";
-import { GoogleAuthCta } from "./GoogleAuthCta";
 import type { SessionState } from "./types";
 
 const NAV = [
   { href: "#how", label: "كيف يعمل" },
   { href: "#designs", label: "أمثلة" },
   { href: "#features", label: "المميزات" },
-  { href: "#ownership", label: "الملكية" },
-  { href: "#pricing", label: "السعر" },
+    { href: "#pricing", label: "السعر" },
   { href: "#faq", label: "الأسئلة" },
 ];
 
@@ -86,13 +84,11 @@ export function Header({ session }: { session: SessionState }) {
                 href={LOGIN_URL}
                 className="text-sm font-semibold text-[#eaf0ff]/90 transition-colors hover:text-[#8fa8ff]"
               >
-                تسجيل الدخول
+                دخول لوحة متجرك
               </Link>
-              <GoogleAuthCta
-                redirectTo={DASHBOARD_URL}
-                label="ابدأ بحساب Google"
-                className={CTA_PRIMARY}
-              />
+              <Link href="/start" className={CTA_PRIMARY}>
+                اطلب متجرك
+              </Link>
             </>
           )}
         </div>
@@ -157,13 +153,11 @@ export function Header({ session }: { session: SessionState }) {
                       className="text-center text-sm font-semibold text-[#eaf0ff]/90"
                       onClick={() => setOpen(false)}
                     >
-                      تسجيل الدخول
+                      دخول لوحة متجرك
                     </Link>
-                    <GoogleAuthCta
-                      redirectTo={DASHBOARD_URL}
-                      label="ابدأ بحساب Google"
-                      className={`${CTA_PRIMARY} w-full`}
-                    />
+                    <Link href="/start" className={`${CTA_PRIMARY} w-full`} onClick={() => setOpen(false)}>
+                      اطلب متجرك
+                    </Link>
                   </>
                 )}
               </div>

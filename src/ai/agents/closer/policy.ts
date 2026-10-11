@@ -5,7 +5,7 @@
 export const DISCLOSURE_GAP_MS = 24 * 36e5;
 
 export const DISCLOSURE =
-  "أنا المساعد الآلي لـ Colapia (ذكاء اصطناعي)، ولست موظفاً بشرياً. لو حبيت تكلم موظف اكتب «موظف» في أي وقت.";
+  "أنا المساعد الآلي لـ Colapia ولست موظفاً بشرياً. لو حبيت تكلم موظف اكتب «موظف» في أي وقت.";
 
 export function needsDisclosure(input: { lastBotMessageAt: Date | null; hasAnyBotMessage: boolean; resumedFromHuman?: boolean }, now = Date.now()): boolean {
   if (input.resumedFromHuman) return true;

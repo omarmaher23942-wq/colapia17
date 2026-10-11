@@ -56,23 +56,6 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
-      {ai?.mode === "needs_key" ? (
-        <Link
-          href={INTEGRATIONS_NAV.href}
-          className="dash-card group flex items-center gap-4 border-nova/30 p-4 transition hover:border-nova/50"
-        >
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-nova to-aurora text-white shadow-lg">
-            <Sparkles className="size-5" aria-hidden="true" />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-black text-ink">فعّل الذكاء الاصطناعي في لوحتك</span>
-            <span className="block text-[12px] leading-6 text-ink-2">
-              أضف مفتاح Groq المجاني (دقيقة واحدة) ليكتب لك أوصاف المنتجات ويجيبك مساعدك نوفا من بيانات متجرك.
-            </span>
-          </span>
-          <ArrowLeft className="size-4 shrink-0 text-ink-3 transition group-hover:-translate-x-1" aria-hidden="true" />
-        </Link>
-      ) : null}
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>

@@ -19,7 +19,7 @@ import {
   Wand2,
   type LucideIcon,
 } from "lucide-react";
-import { EDITION, INTEGRATIONS_NAV, PLATFORM_ONLY_NAV } from "@/lib/edition";
+import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
 
 export type BadgeKey = "orders" | "reviews" | "products";
 
@@ -66,7 +66,7 @@ const ALL: NavSection[] = [
   {
     title: "التصميم",
     items: [
-      { label: "تصميم المتجر", href: "/dashboard/design", icon: Wand2, hint: "إعادة التصميم بالذكاء الاصطناعي والحركة", keywords: ["design", "ثيم", "الوان"] },
+      { label: "تصميم المتجر", href: "/dashboard/design", icon: Wand2, hint: "هوية المتجر ومستوى الحركة", keywords: ["design", "ثيم", "الوان"] },
       { label: "محرر المحتوى", href: "/dashboard/content", icon: Palette, hint: "نصوص وصور وأقسام الصفحة الرئيسية", keywords: ["content", "محتوى", "الصفحه الرئيسيه"] },
     ],
   },
@@ -74,7 +74,6 @@ const ALL: NavSection[] = [
     title: "الحساب",
     items: [
       { label: "الإعدادات", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر والتواصل والدفع", keywords: ["settings", "اعدادات"] },
-      { label: INTEGRATIONS_NAV.label, href: INTEGRATIONS_NAV.href, icon: KeyRound, hint: EDITION === "store" ? "مفاتيح الخدمات المربوطة بمتجرك" : "انقل متجرك لحساباتك بعد الدفع", keywords: ["integrations", "مفاتيح", "github", "vercel"] },
       { label: "الدفع والتفعيل", href: "/dashboard/billing", icon: CreditCard, hint: "ادفع مرة واحدة وفعّل متجرك", keywords: ["billing", "فوترة", "اشتراك", "دفع"] },
     ],
   },

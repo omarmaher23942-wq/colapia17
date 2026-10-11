@@ -204,19 +204,6 @@ export function CommandPalette({ storeHref, hasStore }: { storeHref: string | nu
         },
       }
     );
-    if (hasStore) {
-      list.push({
-        id: "nova",
-        label: "اسأل نوفا",
-        hint: "مساعدك يجيب من بيانات متجرك (Ctrl+J)",
-        icon: Sparkles,
-        keywords: ["ai", "ذكاء", "مساعد", "nova"],
-        run: () => {
-          setOpen(false);
-          window.dispatchEvent(new Event("clp:open-copilot"));
-        },
-      });
-    }
     list.push({
       id: "tour",
       label: "جولة سريعة في اللوحة",

@@ -90,7 +90,7 @@ export function DesignStudio({ storeUrl, current, previous, initialState }: { st
           <p className="text-[12px] font-black text-nova-2">تصميم المتجر</p>
           <h1 className="mt-1 text-2xl font-black text-ink md:text-3xl">متجرك مصمم خصيصاً لك</h1>
           <p className="mt-2 max-w-2xl text-[13.5px] leading-7 text-ink-2">
-            المدير الفني بالذكاء الاصطناعي اختار ألوان متجرك وخطوطه وشكل كل بطاقة وزر وقسم من نشاطك ومنتجاتك، وكاتب المحتوى كتب كل نصوصه من سياساتك الفعلية.
+            فريق التصميم اختار ألوان متجرك وخطوطه وشكل كل بطاقة وزر وقسم من نشاطك ومنتجاتك، ونصوصه مبنية على سياساتك الفعلية.
           </p>
         </div>
         <a href={storeUrl} target="_blank" rel="noopener" className="inline-flex h-11 items-center gap-2 rounded-xl border border-edge/10 px-4 text-[13px] font-black text-ink transition hover:bg-edge/[0.05]">
@@ -175,7 +175,7 @@ export function DesignStudio({ storeUrl, current, previous, initialState }: { st
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-[15px] font-black text-ink">تريد شكلاً مختلفاً تماماً؟</p>
-              <p className="mt-1 text-[13px] text-ink-2">يصمم الذكاء الاصطناعي هوية جديدة كلياً لمتجرك، بعيدة عن التصميم الحالي.</p>
+              <p className="mt-1 text-[13px] text-ink-2">اطلب من فريقنا هوية جديدة لمتجرك، ونحتفظ بتصميمك الحالي لتستعيده متى أردت.</p>
               {state?.status === "failed" ? (
                 <p className="mt-2 flex items-center gap-1.5 text-[12px] font-bold text-rose-400">
                   <AlertTriangle className="size-3.5" /> آخر محاولة لم تكتمل، ومتجرك لم يتغير.

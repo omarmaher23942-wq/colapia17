@@ -10,7 +10,6 @@ import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
-import { Copilot } from "@/components/dashboard/Copilot";
 import { DASH_THEME_COOKIE } from "@/lib/dash-theme";
 import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
@@ -130,9 +129,6 @@ export default async function DashboardLayout({
 
         {/* Command Palette — متاح عالمياً بـ ⌘K */}
         <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} />
-
-        {/* المساعد الذكي نوفا — يجيب من بيانات المتجر (Ctrl+J) */}
-        {session.store ? <Copilot storeName={session.store.name} /> : null}
 
         {/* Onboarding Tour — للتاجر الجديد فقط */}
         <OnboardingTour autoOpen={showTour} />

@@ -34,7 +34,7 @@ export function StoreMorph() {
         </div>
       </div>
 
-      {/* بطاقة الفكرة التصميمية: ما قرره المدير الفني لهذا المتجر */}
+      {/* بطاقة الفكرة التصميمية: ما قرره فريق التصميم لهذا المتجر */}
       <div key={s.name} className="land-pop absolute -start-2 bottom-16 rounded-2xl border border-white/10 bg-[#0d1230]/90 px-3.5 py-2.5 text-start shadow-2xl backdrop-blur-md sm:-start-8">
         <p className="text-[10px] font-bold text-[#8d97c4]">فكرة التصميم</p>
         <p className="text-[13px] font-black text-white">«{s.concept}»</p>
@@ -45,7 +45,7 @@ export function StoreMorph() {
         </span>
       </div>
       <div key={`${s.name}-t`} className="land-pop absolute -end-1 top-20 rounded-2xl border border-white/10 bg-[#0d1230]/90 px-3 py-2 text-[11px] font-bold text-[#c9d4ff] shadow-2xl backdrop-blur-md sm:-end-6" style={{ animationDelay: "120ms" }}>
-        ✦ نصوص كتبها الذكاء الاصطناعي لهذا المتجر
+        ✦ هوية ونصوص خاصة بهذا النشاط
       </div>
 
       <div className="mt-6 flex justify-center gap-2" role="tablist" aria-label="أمثلة متاجر">

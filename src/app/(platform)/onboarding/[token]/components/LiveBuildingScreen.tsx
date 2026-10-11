@@ -169,7 +169,7 @@ export function LiveBuildingScreen({
 
           <div className="space-y-1.5">
             <h2 className="text-lg font-black text-white">
-              جاري بناء متجر {storeName} بالذكاء الاصطناعي
+              جاري بناء متجر {storeName}
             </h2>
             <p className="text-[12.5px] leading-relaxed text-[#8d97c4]">
               لا تغلق الصفحة. سيتم تحديث الحالة تلقائياً عند الجاهزية.

@@ -52,7 +52,7 @@ export function LoginForm({
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-[#c3cdf0]/70">
             {isSignup
-              ? "سجّل بحساب Google، وابدأ تجربتك المجانية 8 ساعات — بدون بطاقة بنكية."
+              ? "ادخل بحساب Google للوصول إلى لوحة متجرك."
               : "سجّل الدخول بحساب Google لمتابعة إدارة متجرك من لوحة التحكم."}
           </p>
         </div>
@@ -102,12 +102,12 @@ export function LoginForm({
             </>
           ) : (
             <>
-              جديد على Colapia؟{" "}
+              ما عندكش متجر معانا؟{" "}
               <Link
-                href="/signup"
+                href="/start"
                 className="font-semibold text-[#8fa8ff] transition-colors hover:text-[#eaf0ff]"
               >
-                ابدأ مجاناً
+                اطلب متجرك
               </Link>
             </>
           )}

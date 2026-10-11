@@ -14,7 +14,6 @@ import { formatEgp } from "@/lib/money";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
 import { slugify } from "@/lib/arabic";
 import { deleteProductAction, duplicateProductAction, saveProductAction } from "@/server/actions/products";
-import { AiWriteButton } from "../AiWriteButton";
 import { VariantMatrix } from "../VariantMatrix";
 import { requestPulse } from "../DashboardPulse";
 import { ConfirmDialog } from "../ui/DashDialog";
@@ -296,22 +295,6 @@ export function ProductEditor({
           <Section
             title="الأساسيات"
             hint="الاسم كما يبحث عنه العميل، وسطر يقنعه، ووصف يجيب أسئلته."
-            action={
-              <AiWriteButton
-                input={{ name: f.name, priceEgp: price && !Number.isNaN(price) ? price : undefined, category, attributes: f.attributes, description: f.description }}
-                current={{ shortDescription: f.shortDescription, description: f.description, seoTitle: f.seoTitle, seoDescription: f.seoDescription, tags: f.tags }}
-                onApply={(c) =>
-                  setF((s) => ({
-                    ...s,
-                    shortDescription: c.shortDescription.slice(0, LIMITS.shortDescription),
-                    description: c.description.slice(0, LIMITS.description),
-                    seoTitle: c.seoTitle.slice(0, LIMITS.seoTitle),
-                    seoDescription: c.seoDescription.slice(0, LIMITS.seoDescription),
-                    tags: [...new Set(c.tags.map((t) => t.trim()).filter(Boolean))].slice(0, 20),
-                  }))
-                }
-              />
-            }
           >
             <div data-field="name">
               <Field label="اسم المنتج" error={errors.name} count={f.name.length} max={LIMITS.name}>

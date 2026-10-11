@@ -69,7 +69,7 @@ export const FIELD_LABELS: Record<string, FieldMeta> = {
   bundleDiscountPercent: { label: "خصم الطقم (%)" },
   // مفاتيح عامة
   enabled: { label: "مفعّل" },
-  voice: { label: "نبرة الكتابة", hint: "يكتب بها مساعد الذكاء الاصطناعي نصوص متجرك" },
+  voice: { label: "نبرة الكتابة", hint: "نبرة كلام متجرك مع عملائه" },
   showCategoriesMenu: { label: "قائمة الأقسام في الهيدر" },
   showChannels: { label: "قنوات التواصل" },
   showPaymentIcons: { label: "أيقونات طرق الدفع" },
