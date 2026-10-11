@@ -2,7 +2,7 @@
 
 // IntakeForm.tsx — استمارة طلب المتجر: صفحة واحدة تُملأ في دقيقتين من الموبايل. الإلزامي اسم المتجر ووسيلة تواصل
 // واحدة فقط، وكل سؤال تصميم فيه «سيبها للفريق». حفظ تلقائي من أول حرف، وزر الإرسال ظاهر دائماً في الشريط السفلي.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -12,6 +12,7 @@ import { completion, DELIVERY_OPTIONS, PAYMENT_OPTIONS, validateSubmission, type
 import { revealFirstError } from "@/lib/reveal-error";
 import { cn } from "@/lib/utils";
 import { Card, Choice, Field, SaveBadge, TeamToggle, inputCls } from "./ui";
+import { ContactHelp } from "./ContactHelp";
 import { DRAFT_STORAGE_KEY, useIntakeDraft } from "./useIntakeDraft";
 import { PhotoLines } from "./PhotoLines";
 import { ColorChoice, LogoPicker } from "./LogoAndColors";
@@ -40,13 +41,16 @@ export function IntakeForm({
   closedMessage: string | null;
 }) {
   const router = useRouter();
-  const { data, update, state, online, problem, ensureToken, flush, forget, token } = useIntakeDraft(initial);
+  const { data, getData, update, state, online, problem, ensureToken, flush, forget, token } = useIntakeDraft(initial);
   const [urls, setUrls] = useState<Record<string, string>>(initialUrls);
   const setUrl = (k: string, u: string) => setUrls((m) => ({ ...m, [k]: u }));
   const [showErrors, setShowErrors] = useState(false);
   const [serverErrors, setServerErrors] = useState<IntakeErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  /** رفع صورة أو شعار أو تسجيل جارٍ: الإرسال ينتظره (وإلا يخرج الطلب بلا ما رفعه العميل ولا يعرف). */
+  const [uploading, setUploading] = useState(0);
+  const onBusy = useCallback((delta: 1 | -1) => setUploading((n) => Math.max(0, n + delta)), []);
   const hp = useRef<HTMLInputElement>(null);
   const tokenSince = useRef<number>(initial.token ? 0 : Number.POSITIVE_INFINITY);
 
@@ -79,9 +83,13 @@ export function IntakeForm({
   const submit = async () => {
     setShowErrors(true);
     setSubmitError(null);
-    const errs = validateSubmission(data);
+    const errs = validateSubmission(getData());
     if (Object.keys(errs).length) {
       revealFirstError();
+      return;
+    }
+    if (uploading > 0) {
+      setSubmitError("لسه فيه صور أو تسجيل بيترفع، استنى ثواني وابعت تاني.");
       return;
     }
     setSending(true);
@@ -95,7 +103,8 @@ export function IntakeForm({
         fetch("/api/intake/submit", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: t, data, hp: hp.current?.value ?? "" }),
+          // أحدث ما على الشاشة وقت الإرسال الفعلي (بعد انتظار الحفظ والمهلة)، لا نسخة لحظة الضغط.
+          body: JSON.stringify({ token: t, data: getData(), hp: hp.current?.value ?? "" }),
         });
       let res = await send();
       let j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; followUrl?: string; errors?: IntakeErrors; message?: string; retryAfterMs?: number };
@@ -114,10 +123,10 @@ export function IntakeForm({
         setServerErrors(j.errors);
         revealFirstError();
       } else {
-        setSubmitError(j.message ?? "حصل خطأ أثناء الإرسال. بياناتك محفوظة، جرّب تاني.");
+        setSubmitError(j.message ?? "حصل خطأ أثناء الإرسال. لسه ما اتبعتش، سيب الصفحة مفتوحة وجرّب تاني.");
       }
     } catch {
-      setSubmitError("النت فيه مشكلة. بياناتك محفوظة، جرّب تاني بعد شوية.");
+      setSubmitError("النت فيه مشكلة. لسه ما اتبعتش، سيب الصفحة مفتوحة وجرّب تاني بعد شوية.");
     }
     setSending(false);
   };
@@ -128,11 +137,7 @@ export function IntakeForm({
         <div className="dash-card mx-auto mt-10 max-w-lg space-y-3 p-6 text-center">
           <h1 className="text-[22px] font-black text-ink">استقبال الطلبات متوقف مؤقتاً</h1>
           <p className="text-[14px] leading-7 text-ink-2">{closedMessage}</p>
-          {whatsappUrl ? (
-            <a href={whatsappUrl} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#25D366] px-5 text-[14px] font-black text-[#062b15]">
-              <MessageCircle className="size-4" aria-hidden="true" /> كلّمنا على واتساب
-            </a>
-          ) : null}
+          <ContactHelp whatsappUrl={whatsappUrl} />
         </div>
       </Shell>
     );
@@ -143,21 +148,22 @@ export function IntakeForm({
 
   return (
     <Shell state={state} online={online}>
-      <div className="mx-auto max-w-2xl space-y-5 px-4 pb-40 pt-6 sm:pt-10">
+      <fieldset disabled={sending} className="m-0 mx-auto block min-w-0 max-w-2xl space-y-5 border-0 px-4 pb-52 pt-6 sm:pt-10">
         <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-nova/25 bg-nova/10 px-3.5 py-1.5 text-[12.5px] font-black text-nova-2">
-            <Clock className="size-3.5" aria-hidden="true" /> التسليم {etaText}
+            <Clock className="size-3.5" aria-hidden="true" /> التسليم {etaText} من وقت إرسال الطلب
           </span>
           <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">احكيلنا عن متجرك، وإحنا نبنيه</h1>
           <p className="text-[15px] leading-8 text-ink-2">
-            دقيقتين بس. فريق Colapia يصمم متجرك ويبنيه ويراجعه صفحةً صفحة قبل ما يوصلك. المطلوب اسم المتجر ووسيلة تواصل، والباقي اختياري أو «سيبها للفريق».
+            دقيقتين بس. فريق Colapia بيصمم متجرك وبيبنيه وبيراجعه قبل ما يوصلك. المطلوب اسم المتجر ووسيلة تواصل، والباقي اختياري أو «سيبها للفريق».
           </p>
         </motion.header>
 
         {problem && problem.kind !== "submitted" ? (
-          <p role="status" className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-[13.5px] font-bold leading-6 text-amber-200">
-            {problem.message || "الاستمارة بتتجهز، جرّب بعد قليل."}
-          </p>
+          <div role="status" className="space-y-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-[13.5px] font-bold leading-6 text-amber-200">
+            <p>{problem.message || "الاستمارة بتتجهز، جرّب بعد قليل."}</p>
+            {problem.kind === "closed" || problem.kind === "limited" ? <ContactHelp whatsappUrl={whatsappUrl} className="text-[13px]" /> : null}
+          </div>
         ) : null}
 
         <Card n={1} icon={Store} title="متجرك">
@@ -186,7 +192,7 @@ export function IntakeForm({
         </Card>
 
         <Card n={2} icon={MessageCircle} title="نتواصل معاك إزاي؟" sub="واحدة منهم كفاية، والاتنين أحسن.">
-          <Field label="رقم واتساب" htmlFor="wa" error={errors["contact.whatsapp"]} hint="هنكلمك عليه لو احتجنا تفصيلة، ونبعتلك متجرك.">
+          <Field label="رقم واتساب" htmlFor="wa" error={errors["contact.whatsapp"]} hint="هنراسلك عليه لو احتجنا تفصيلة، ونبعتلك متجرك.">
             <input
               id="wa"
               value={data.contact.whatsapp ?? ""}
@@ -200,7 +206,7 @@ export function IntakeForm({
               className={cn(inputCls, "text-end font-mono")}
             />
           </Field>
-          <Field label="بريدك (Gmail)" htmlFor="email" error={errors["contact.email"]} hint="هيكون حساب دخولك للوحة تحكم متجرك.">
+          <Field label="بريدك الإلكتروني" htmlFor="email" error={errors["contact.email"]} hint="يفضّل بريد Google: هتدخل به لوحة تحكم متجرك، وهنبعتلك عليه تأكيد الطلب وأي تنبيه مهم.">
             <input
               id="email"
               type="email"
@@ -247,7 +253,7 @@ export function IntakeForm({
             />
             <span className="text-[14px] font-bold leading-6 text-ink">
               خلّوا الفريق يجمع منتجاتي من الصفحة
-              <span className="block text-[12.5px] font-medium text-ink-3">الصور والأسماء والأسعار، وأنت تراجعها قبل التسليم.</span>
+              <span className="block text-[12.5px] font-medium text-ink-3">الصور والأسماء والأسعار، وهتشوفها في متجرك أول ما يوصلك وتقدر تطلب تعديل.</span>
             </span>
           </label>
         </Card>
@@ -257,14 +263,14 @@ export function IntakeForm({
           icon={Palette}
           title="الشكل"
           sub="ألوان متجرك وشعارك."
-          action={<TeamToggle on={data.colors.mode === "team"} onChange={(v) => set((d) => ({ ...d, colors: v ? { mode: "team" } : {} }))} />}
+          action={<TeamToggle on={data.colors.mode === "team"} ariaLabel="سيبها للفريق: الألوان" onChange={(v) => set((d) => ({ ...d, colors: v ? { mode: "team" } : {} }))} />}
         >
           {data.colors.mode !== "team" ? <ColorChoice data={data} update={set} error={errors["colors.mode"]} /> : <p className="text-[13.5px] leading-7 text-ink-2">تمام، فريق التصميم هيختار ألوان تناسب نشاطك وزبونك.</p>}
           <div className="border-t border-edge/[0.07] pt-4">
             <p className="mb-3 text-[14px] font-black text-ink">
               الشعار <span className="text-[12px] font-bold text-ink-3">(اختياري)</span>
             </p>
-            <LogoPicker data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} />
+            <LogoPicker data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} onBusy={onBusy} />
           </div>
         </Card>
 
@@ -283,9 +289,9 @@ export function IntakeForm({
             }
           />
           {productMode === "list" ? (
-            <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} />
+            <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
           ) : productMode === "team" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من صفحتك{data.social.url ? "" : "؛ اكتب رابطها في الخطوة 3"}.</p>
+            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من صفحتك{data.social.url ? "" : "؛ اكتب رابطها في خانة إنستجرام أو فيسبوك فوق"}.</p>
           ) : productMode === "later" ? (
             <p className="text-[13.5px] leading-7 text-ink-2">تمام، هتضيفها من لوحة التحكم بعد التسليم، وهي سهلة جداً.</p>
           ) : null}
@@ -296,14 +302,13 @@ export function IntakeForm({
             <div className="flex flex-wrap items-center gap-2">
               <Choice
                 label="طرق الدفع"
-                multi
                 options={PAYMENT_OPTIONS}
                 value={data.payment.unsure ? [] : paymentValue}
                 onToggle={(id) =>
                   set((d) => ({ ...d, payment: { unsure: false, methods: d.payment.methods.includes(id) ? d.payment.methods.filter((m) => m !== id) : [...d.payment.methods, id] } }))
                 }
               />
-              <TeamToggle on={data.payment.unsure} onChange={(v) => set((d) => ({ ...d, payment: { methods: v ? [] : d.payment.methods, unsure: v } }))} label="مش متأكد" />
+              <TeamToggle on={data.payment.unsure} ariaLabel="مش متأكد: طرق الدفع" onChange={(v) => set((d) => ({ ...d, payment: { methods: v ? [] : d.payment.methods, unsure: v } }))} label="مش متأكد" />
             </div>
           </Field>
           <Field label="بتوصّل فين؟">
@@ -333,7 +338,7 @@ export function IntakeForm({
           icon={Globe}
           title="موقع عاجبك شكله"
           sub="أي متجر أو موقع (حتى لو أجنبي) عايز روحه في متجرك."
-          action={<TeamToggle on={data.inspiration.team} onChange={(v) => set((d) => ({ ...d, inspiration: { url: v ? undefined : d.inspiration.url, team: v } }))} />}
+          action={<TeamToggle on={data.inspiration.team} ariaLabel="سيبها للفريق: موقع الإلهام" onChange={(v) => set((d) => ({ ...d, inspiration: { url: v ? undefined : d.inspiration.url, team: v } }))} />}
         >
           {!data.inspiration.team ? (
             <Field label="رابط الموقع" htmlFor="insp" error={errors["inspiration.url"]} optional>
@@ -356,7 +361,7 @@ export function IntakeForm({
         </Card>
 
         <Card n={8} icon={Mic} title="عايز تقول حاجة؟" sub="سجّل رسالة صوتية بدل الكتابة، أو اكتب أي تفصيلة تحبها.">
-          <VoiceNote data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} whatsappUrl={whatsappUrl} />
+          <VoiceNote data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} whatsappUrl={whatsappUrl} onBusy={onBusy} />
           <Field label="ملاحظات" htmlFor="notes" optional>
             <textarea
               id="notes"
@@ -365,7 +370,7 @@ export function IntakeForm({
               rows={4}
               onChange={(e) => set((d) => ({ ...d, notes: e.target.value }))}
               placeholder="أي حاجة عايز الفريق يعرفها: ستايل معين، ألوان مش بتحبها، عروض…"
-              className="w-full rounded-xl border border-edge/10 bg-edge/[0.04] p-3 text-base leading-7 text-ink outline-none placeholder:text-ink-3/60 focus:border-nova focus:ring-2 focus:ring-nova/25 sm:text-[15px]"
+              className="w-full rounded-xl border border-edge/10 bg-edge/[0.04] p-3 text-[16px] leading-7 text-ink outline-none placeholder:text-ink-3/60 focus:border-nova focus:ring-2 focus:ring-nova/25 sm:text-[15px]"
             />
           </Field>
         </Card>
@@ -373,8 +378,8 @@ export function IntakeForm({
         {/* فخ للبرامج الآلية: لا يراه الإنسان ولا يصله بالتبويب. */}
         <div aria-hidden="true" className="pointer-events-none absolute -start-[9999px] h-0 w-0 overflow-hidden">
           <label>
-            Website
-            <input ref={hp} type="text" name="website" tabIndex={-1} autoComplete="off" defaultValue="" />
+            Leave this field empty
+            <input ref={hp} type="text" name="hp_cf7x" tabIndex={-1} autoComplete="off" data-1p-ignore data-lpignore="true" data-form-type="other" defaultValue="" />
           </label>
         </div>
 
@@ -389,13 +394,19 @@ export function IntakeForm({
           </Link>
           . الطلب مجاني ولا يلزمك بأي دفع.
         </p>
-      </div>
+      </fieldset>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-edge/[0.07] bg-space/85 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl">
-        {submitError ? (
-          <p role="alert" className="border-b border-rose-400/20 bg-rose-500/10 px-4 py-2 text-center text-[13px] font-bold text-rose-300">
-            {submitError}
-          </p>
+        {submitError || problem ? (
+          <div role="alert" className="space-y-2 border-b border-rose-400/20 bg-rose-500/10 px-4 py-2 text-center text-[13px] font-bold text-rose-300">
+            <p>{submitError ?? problem?.message}</p>
+            {!submitError && problem?.href ? (
+              <a href={problem.href} className="inline-flex min-h-11 items-center rounded-xl bg-rose-500/20 px-4 font-black text-rose-100 underline">
+                افتح متابعة طلبك
+              </a>
+            ) : null}
+            {submitError || problem?.kind === "limited" || problem?.kind === "closed" ? <ContactHelp whatsappUrl={whatsappUrl} className="mx-auto text-[13px]" /> : null}
+          </div>
         ) : null}
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -410,11 +421,11 @@ export function IntakeForm({
           <button
             type="button"
             onClick={() => void submit()}
-            disabled={sending}
+            disabled={sending || uploading > 0}
             className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-2xl bg-gradient-to-l from-[#6f86ff] to-[#8fa8ff] px-5 text-[15px] font-black text-[#07091a] shadow-[0_0_30px_-8px_rgba(111,134,255,0.75)] transition active:scale-95 disabled:opacity-70"
           >
-            {sending ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
-            {sending ? "بنرسل…" : "ابعت الطلب"}
+            {sending || uploading > 0 ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
+            {sending ? "بنرسل…" : uploading > 0 ? "بنرفع الملفات…" : "ابعت الطلب"}
           </button>
         </div>
       </div>

@@ -8,10 +8,11 @@ import { uploadFiles } from "@/lib/uploadthing-client-direct";
 const ACCEPTED = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
+// بلا Web Worker: العامل يحمّل سكربته من CDN خارجي (jsdelivr) وسياسة CSP عندنا تمنعه، فيتأخر الضغط حتى يفشل ثم يعود للخيط الرئيسي.
 export async function prepareImage(f: File): Promise<File> {
   const target = ACCEPTED.has(f.type) ? f.type : "image/jpeg";
   try {
-    const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2000, useWebWorker: true, fileType: target });
+    const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2000, useWebWorker: false, fileType: target });
     const type = ACCEPTED.has(c.type) ? c.type : target;
     return new File([c], `${f.name.replace(/\.[^.]+$/, "") || "image"}.${EXT[type] ?? "jpg"}`, { type });
   } catch {

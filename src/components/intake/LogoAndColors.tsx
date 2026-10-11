@@ -5,7 +5,6 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import { ImagePlus, Loader2, Palette, Trash2 } from "lucide-react";
-import { toast } from "sonner";
 import { INTAKE_PALETTES } from "@/intake/palettes";
 import type { IntakeData } from "@/intake/schema";
 import { cn } from "@/lib/utils";
@@ -14,24 +13,35 @@ import { prepareImage, uploadErrorMessage, uploadIntakeImage } from "./upload";
 
 type Base = { data: IntakeData; update: (fn: (d: IntakeData) => IntakeData) => void };
 
-export function LogoPicker({ data, update, urls, setUrl, ensureToken }: Base & { urls: Record<string, string>; setUrl: (k: string, u: string) => void; ensureToken: () => Promise<string | null> }) {
+export function LogoPicker({
+  data,
+  update,
+  urls,
+  setUrl,
+  ensureToken,
+  onBusy,
+}: Base & { urls: Record<string, string>; setUrl: (k: string, u: string) => void; ensureToken: () => Promise<string | null>; onBusy: (delta: 1 | -1) => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const src = data.logo.key ? urls[data.logo.key] : undefined;
 
   const pick = async (f: File | undefined) => {
     if (!f) return;
+    setError(null);
     const token = await ensureToken();
-    if (!token) return void toast.error("ما قدرناش نجهز الرفع. تأكد من النت وجرّب تاني.");
+    if (!token) return void setError("ما قدرناش نجهز الرفع. تأكد من النت وجرّب تاني.");
     setBusy(true);
+    onBusy(1);
     try {
       const { key, url } = await uploadIntakeImage(token, await prepareImage(f), "logo");
       setUrl(key, url);
       update((d) => ({ ...d, logo: { key, team: false } }));
     } catch (e) {
-      toast.error(uploadErrorMessage(e, "فشل رفع الشعار، جرّب تاني."));
+      setError(uploadErrorMessage(e, "فشل رفع الشعار، جرّب تاني."));
     } finally {
       setBusy(false);
+      onBusy(-1);
     }
   };
 
@@ -56,15 +66,16 @@ export function LogoPicker({ data, update, urls, setUrl, ensureToken }: Base & {
           <p className="text-[13px] leading-6 text-ink-2">{src ? "الشعار وصل. تقدر تغيّره بضغطة." : "ارفع الشعار لو عندك (PNG بخلفية شفافة أفضل)."}</p>
           <div className="flex flex-wrap gap-2">
             {src ? (
-              <button type="button" onClick={() => update((d) => ({ ...d, logo: { team: false } }))} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-[12.5px] font-bold text-ink-3 hover:text-rose-400">
+              <button type="button" onClick={() => update((d) => ({ ...d, logo: { team: false } }))} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[12.5px] font-bold text-ink-3 hover:text-rose-400">
                 <Trash2 className="size-3.5" aria-hidden="true" /> احذف الشعار
               </button>
             ) : (
-              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="مافيش شعار؟ الفريق يعمله" />
+              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="مافيش شعار؟ شعار نصي من الفريق" ariaLabel="سيبها للفريق: الشعار" />
             )}
           </div>
         </div>
       </div>
+      <ErrorText>{error}</ErrorText>
       <input ref={input} type="file" accept="image/*" hidden onChange={(e) => (void pick(e.target.files?.[0]), (e.target.value = ""))} />
     </div>
   );

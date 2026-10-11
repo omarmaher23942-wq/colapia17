@@ -6,18 +6,27 @@ import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
 import { intakeDataSchema, normalizeEmail, referencedKeys, validateSubmission } from "@/intake/schema";
 import { draftIsOpen, findByDraftToken, isMissingTable, openQueueLength, requestAssets, submitRequest } from "@/intake/repo";
-import { filledHoneypot, hit, intakeSettings, json, requestIp, reserveIntake, sameOrigin, submitWaitMs } from "@/intake/guard";
+import { checkIntake, commitIntake, filledHoneypot, hit, intakeSettings, json, requestIp, sameOrigin, submitWaitMs } from "@/intake/guard";
 import { estimateEta, etaText } from "@/intake/eta";
 import { readJson } from "@/intake/http";
 import { derivedToken, randomToken } from "@/intake/tokens";
-import { notifySubmitted } from "@/intake/notify";
+import { notifyIfPending, notifySubmitted } from "@/intake/notify";
+import { pruneUnreferencedAssets } from "@/intake/purge";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { log } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
+// بريد الفريق والعميل يعمل داخل after() بعد الرد (مع إعادة محاولات)، فنعطيه وقتاً كافياً حتى لا تُقتل الدالة قبل الإرسال.
+export const maxDuration = 30;
 
 const followPath = (id: string) => `/follow/${derivedToken("track", id)}?new=1`;
+
+/** إرسال مكرر: نفس النتيجة بلا طلب جديد، وإن كان تنبيه الفريق أو تأكيد العميل معلقاً (فشل بريد سابق) يُعاد الآن. */
+function already(row: Parameters<typeof notifyIfPending>[0]) {
+  after(() => notifyIfPending(row).catch((e) => console.error("[intake] notify retry failed", e)));
+  return json({ ok: true, already: true, code: row.code, followUrl: followPath(row.id) });
+}
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
@@ -35,7 +44,7 @@ export async function POST(req: Request) {
     const row = await findByDraftToken(token);
     if (!row) return json({ error: "not_found", message: "الرابط غير صحيح. حدّث الصفحة." }, 404);
     // إرسال مكرر (ضغطتان، أو شبكة ضعيفة أعادت الطلب): نفس النتيجة بلا طلب جديد.
-    if (row.status === "submitted" || row.status === "converted") return json({ ok: true, already: true, code: row.code, followUrl: followPath(row.id) });
+    if (row.status === "submitted" || row.status === "converted") return already(row);
     if (!draftIsOpen(row)) return json({ error: "expired", message: "انتهت مهلة المسودة. ابدأ استمارة جديدة." }, 410);
 
     const settings = await intakeSettings();
@@ -66,27 +75,33 @@ export async function POST(req: Request) {
 
     const email = normalizeEmail(data.contact.email);
     const whatsapp = normalizeEgyptianPhone(data.contact.whatsapp ?? null);
-    const decision = await reserveIntake({ ip, email, whatsapp, limits: settings.limits });
-    if (!decision.ok) return json({ error: "limited", reason: decision.reason, message: decision.message }, 429);
+    // الفحص أولاً دون حجز: العدّادات لا ترتفع إلا بعد حفظ الطلب (خطأ مؤقت في القاعدة لا يحرق حصة العميل).
+    const check = await checkIntake({ ip, email, whatsapp, limits: settings.limits });
+    if (!check.decision.ok) return json({ error: "limited", reason: check.decision.reason, message: check.decision.message }, 429);
 
     const eta = estimateEta(await openQueueLength(), settings.capacityPerDay);
     const now = Date.now();
     const done = await submitRequest(row, { data, etaFrom: new Date(now + eta.fromHours * 3_600_000), etaTo: new Date(now + eta.toHours * 3_600_000) });
     if (!done) {
       const again = await findByDraftToken(token);
-      if (again && again.status !== "draft") return json({ ok: true, already: true, code: again.code, followUrl: followPath(again.id) });
+      if (again && again.status !== "draft") return already(again);
       return json({ error: "expired", message: "انتهت مهلة المسودة. ابدأ استمارة جديدة." }, 410);
     }
+    await commitIntake(check.counters);
 
     if (done.conversationId) {
       await db.update(conversations).set({ stage: "form_submitted" }).where(eq(conversations.id, done.conversationId)).catch(() => {});
     }
-    after(() => notifySubmitted(done, data, assets).catch((e) => console.error("[intake] notify failed", e)));
+    after(async () => {
+      await notifySubmitted(done, data, assets).catch((e) => console.error("[intake] notify failed", e));
+      // ملفات حذفها العميل أو استبدلها قبل الإرسال: لا نحتفظ بها (سياسة الخصوصية).
+      await pruneUnreferencedAssets(done.id, data).catch((e) => console.error("[intake] prune failed", e));
+    });
 
     return json({ ok: true, code: done.code, followUrl: followPath(done.id), eta: { ...eta, text: etaText(eta) } });
   } catch (e) {
     if (isMissingTable(e)) return json({ error: "unavailable", message: "الاستمارة بتتجهز، جرّب بعد قليل." }, 503);
     console.error("[intake/submit]", e);
-    return json({ error: "server", message: "حصل خطأ أثناء الإرسال. بياناتك محفوظة، جرّب تاني." }, 500);
+    return json({ error: "server", message: "حصل خطأ أثناء الإرسال. لسه ما اتبعتش. سيب الصفحة مفتوحة وجرّب تاني." }, 500);
   }
 }

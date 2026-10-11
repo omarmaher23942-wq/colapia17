@@ -94,7 +94,12 @@ export async function findByTrackToken(token: unknown): Promise<RequestRow | nul
   return row ?? null;
 }
 
-export type SaveResult = { ok: true; version: number } | { ok: false; reason: "conflict"; version: number; data: IntakeData } | { ok: false; reason: "closed" };
+export type SaveResult =
+  | { ok: true; version: number }
+  | { ok: false; reason: "conflict"; version: number; data: IntakeData }
+  /** الطلب أُرسل (أو أُغلق) بعد أن بدأ هذا الحفظ: لا يُنشأ بديل عنه. */
+  | { ok: false; reason: "submitted" }
+  | { ok: false; reason: "closed" };
 
 /** حفظ تلقائي بنسخة متفائلة: ينجح فقط إن لم يحفظ أحد غيره منذ قرأ (تبويبان مفتوحان مثلاً). */
 export async function saveDraft(row: RequestRow, version: number, input: IntakeData): Promise<SaveResult> {
@@ -114,7 +119,9 @@ export async function saveDraft(row: RequestRow, version: number, input: IntakeD
     .returning({ version: storeRequests.draftVersion });
   if (saved) return { ok: true, version: saved.version };
   const [now] = await db.select().from(storeRequests).where(eq(storeRequests.id, row.id)).limit(1);
-  if (!now || !draftIsOpen(now)) return { ok: false, reason: "closed" };
+  if (!now) return { ok: false, reason: "closed" };
+  if (now.status !== "draft") return { ok: false, reason: "submitted" };
+  if (!draftIsOpen(now)) return { ok: false, reason: "closed" };
   return { ok: false, reason: "conflict", version: now.draftVersion, data: readData(now.data) };
 }
 
@@ -163,7 +170,11 @@ export async function submitRequest(
     .where(and(eq(storeRequests.id, row.id), eq(storeRequests.status, "draft"), gt(storeRequests.expiresAt, new Date())))
     .returning();
   if (!done) return null;
-  await db.insert(storeRequestEvents).values({ requestId: done.id, type: "submitted", toStage: stage, actor: "client" });
+  // سجل المالك ثانوي: فشله لا يجوز أن يُفشل الإرسال بعد أن اكتمل فعلاً (وإلا يُترك الطلب بلا بريد للفريق).
+  await db
+    .insert(storeRequestEvents)
+    .values({ requestId: done.id, type: "submitted", toStage: stage, actor: "client" })
+    .catch((e) => console.error("[intake] submitted event failed", e));
   return done;
 }
 

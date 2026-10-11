@@ -4,11 +4,13 @@ import "server-only";
 // رابط المحادثة مشتق من معرّفها (HMAC)، فإعادة إرساله تعطي نفس الرابط ونفس المسودة (لا يلغي رابطاً قديماً في
 // المحادثة). البيانات المسبقة تملأ الحقول الفارغة فقط ولا تكتب فوق ما كتبه العميل، ولا تمر في الرابط نفسه أبداً
 // (روابط الرسائل تظهر في المعاينات والسجلات). تحويل الوكيل لهذا الرابط بدل رابط البناء الذاتي يتم في المرحلة 8.
+import { isDeepStrictEqual } from "node:util";
 import { clientEnv } from "@/lib/env";
+import { dbErrorInfo, PG_UNIQUE } from "@/lib/db-errors";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { stripEmoji } from "@/lib/emoji";
-import { createDraft, draftIsOpen, findByDraftToken, reopenDraft, saveDraft, readData } from "./repo";
-import { emptyIntake, socialUrl, type IntakeData } from "./schema";
+import { createDraft, draftIsOpen, findByDraftToken, reopenDraft, saveDraft, readData, type RequestRow } from "./repo";
+import { emptyIntake, normalizeIntake, socialUrl, type IntakeData } from "./schema";
 import { derivedToken } from "./tokens";
 import type { RequestSource } from "@/db/schema/agency";
 
@@ -34,28 +36,42 @@ export function applyPrefill(d: IntakeData, p: IntakePrefill): IntakeData {
 
 /**
  * رابط استمارة لمحادثة (أو بلا محادثة لرابط عام من الفريق). يعيد نفس المسودة ما دامت مفتوحة.
- * submitted = العميل أرسل الطلب بالفعل من هذه المحادثة (المستدعي يرسل له رابط المتابعة بدل الاستمارة).
+ * submitted = العميل أرسل الطلب بالفعل من هذه المحادثة (المستدعي يرسل له رابط المتابعة بدل الاستمارة)، وclosed =
+ * الطلب سبام أو مسحوب (لا رابط متابعة له ولا استمارة جديدة بنفس الرابط: المستدعي يحيل للفريق).
  */
 export async function issueIntakeLink(input: {
   conversationId: string | null;
   source: RequestSource;
   prefill?: IntakePrefill;
-}): Promise<{ url: string; requestId: string; status: "new" | "resumed" | "submitted" }> {
+}): Promise<{ url: string; requestId: string; status: "new" | "resumed" | "submitted" | "closed" }> {
   if (input.conversationId) {
     const token = derivedToken("agent-draft", input.conversationId);
-    const existing = await findByDraftToken(token);
-    if (existing) {
-      if (existing.status !== "draft") return { url: intakeUrl(token), requestId: existing.id, status: "submitted" };
+    const resume = async (existing: RequestRow) => {
+      if (existing.status === "submitted" || existing.status === "converted") return { url: intakeUrl(token), requestId: existing.id, status: "submitted" as const };
+      if (existing.status !== "draft") return { url: intakeUrl(token), requestId: existing.id, status: "closed" as const };
       if (!draftIsOpen(existing)) await reopenDraft(existing.id);
       if (input.prefill) {
         const fresh = (await findByDraftToken(token)) ?? existing;
-        await saveDraft(fresh, fresh.draftVersion, applyPrefill(readData(fresh.data), input.prefill));
+        const current = readData(fresh.data);
+        const merged = applyPrefill(current, input.prefill);
+        // لا نكتب (ولا نرفع نسخة المسودة) إن لم يتغير شيء: العميل قد يكون يكتب الآن ولا نريد أن نتسبب في تعارض حفظه.
+        if (!isDeepStrictEqual(normalizeIntake(merged), normalizeIntake(current))) await saveDraft(fresh, fresh.draftVersion, merged);
       }
-      return { url: intakeUrl(token), requestId: existing.id, status: "resumed" };
-    }
+      return { url: intakeUrl(token), requestId: existing.id, status: "resumed" as const };
+    };
+    const existing = await findByDraftToken(token);
+    if (existing) return resume(existing);
     // لا مسودة لهذه المحادثة (أو حُذفت بعد انتهاء مهلتها): مسودة جديدة بنفس الرابط المشتق.
-    const { row } = await createDraft({ data: applyPrefill(emptyIntake(), input.prefill ?? {}), source: input.source, conversationId: input.conversationId, token });
-    return { url: intakeUrl(token), requestId: row.id, status: "new" };
+    try {
+      const { row } = await createDraft({ data: applyPrefill(emptyIntake(), input.prefill ?? {}), source: input.source, conversationId: input.conversationId, token });
+      return { url: intakeUrl(token), requestId: row.id, status: "new" };
+    } catch (e) {
+      // طلبان متزامنان لنفس المحادثة (إعادة إرسال webhook): الثاني يجد مسودة الأول.
+      if (dbErrorInfo(e).code !== PG_UNIQUE) throw e;
+      const raced = await findByDraftToken(token);
+      if (!raced) throw e;
+      return resume(raced);
+    }
   }
   const { row, token } = await createDraft({ data: applyPrefill(emptyIntake(), input.prefill ?? {}), source: input.source, conversationId: null });
   return { url: intakeUrl(token), requestId: row.id, status: "new" };

@@ -11,7 +11,8 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       rules: {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/dashboard/", "/api/", "/follow/", "/start"],
+        // /start غير محجوب هنا عمداً: كاشف روابط ميتا يحترم robots.txt، فحجبه يمنع بطاقة المعاينة في رسائل إنستجرام. الصفحة نفسها noindex.
+        disallow: ["/admin/", "/dashboard/", "/api/", "/follow/"],
       },
       sitemap: `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/sitemap.xml`,
     };

@@ -6,7 +6,7 @@ const BODY = `## Data Deletion Instructions
 If you wish to request the deletion of your personal or business data processed by Colapia via our Facebook Page or Instagram integration, you may do so easily:
 
 1. **Via Messenger:** Send a message to our Page stating "حذف بياناتي" or "Delete my data".
-2. **Via Email:** Send an email to **privacy@colapia.com** containing your Page name and profile link.
+2. **Via Email:** Send an email to **privacy@colapia.com** containing your request code (REQ-…) if you used our web form, or your Page name and profile link if you contacted us through Facebook or Instagram.
 
 Merchants with an active store can also delete all of their store data themselves from the dashboard (Own your store → Delete my data) after exporting a copy.
 

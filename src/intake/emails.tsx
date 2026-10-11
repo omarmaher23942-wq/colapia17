@@ -21,7 +21,7 @@ export function RequestReceivedClientEmail(p: {
         شكراً لثقتك. وصلنا طلب متجر «{p.storeName}» برقم {p.code}، وفريق Colapia هيراجع معلوماتك ويبدأ التصميم.
       </EmailParagraph>
       <EmailInfoBox tone="info">
-        <strong>موعد التسليم المتوقع:</strong> {p.etaText}، بعد مراجعة الفريق للمتجر صفحةً صفحة. لو احتجنا أي تفصيلة هنكلمك.
+        <strong>موعد التسليم المتوقع:</strong> {p.etaText} من وقت إرسال الطلب، بعد ما الفريق يراجع المتجر. لو احتجنا أي تفصيلة هنراسلك.
       </EmailInfoBox>
       <EmailParagraph>من صفحة المتابعة تقدر تشوف المرحلة اللي فيها متجرك دلوقتي وملاحظات الفريق أول بأول.</EmailParagraph>
       <p style={{ margin: "18px 0" }}>
@@ -33,7 +33,7 @@ export function RequestReceivedClientEmail(p: {
         <>
           <EmailDivider />
           <EmailParagraph>
-            البريد ده هيكون حساب دخولك للوحة تحكم متجرك. أكّده بضغطة واحدة عشان نتأكد إنه وصلك:
+            أكّد بريدك بضغطة واحدة عشان نتأكد إنه وصلك، وهنستخدمه في التواصل معاك وفي الدخول للوحة تحكم متجرك:
           </EmailParagraph>
           <p style={{ margin: "12px 0" }}>
             <EmailButton href={p.confirmUrl} variant="ghost">

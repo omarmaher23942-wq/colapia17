@@ -152,7 +152,7 @@ describe("حماية الاستمارة", () => {
     expect(decideIntake({ ...zero, openForContact: 1, today: 999 })).toMatchObject({ ok: false, reason: "contact" });
     expect(decideIntake({ ...zero, email7d: 2 })).toMatchObject({ reason: "email" });
     expect(decideIntake({ ...zero, phone7d: 2 })).toMatchObject({ reason: "phone" });
-    expect(decideIntake({ ...zero, ip24h: 3 })).toMatchObject({ reason: "ip" });
+    expect(decideIntake({ ...zero, ip24h: DEFAULT_INTAKE_LIMITS.perIp })).toMatchObject({ reason: "ip" });
     expect(decideIntake({ ...zero, today: 60 })).toMatchObject({ reason: "daily", message: INTAKE_MESSAGES.daily });
   });
 

@@ -12,7 +12,9 @@ export type IntakeCounts = {
 
 export type IntakeLimits = { maxOpenPerContact: number; perEmail: number; perPhone: number; perIp: number; dailyCap: number };
 
-export const DEFAULT_INTAKE_LIMITS: IntakeLimits = { maxOpenPerContact: 1, perEmail: 2, perPhone: 2, perIp: 3, dailyCap: 60 };
+export const DEFAULT_INTAKE_LIMITS: IntakeLimits = { maxOpenPerContact: 1, perEmail: 2, perPhone: 2, perIp: 10, dailyCap: 60 };
+// perIp عالٍ عمداً: شبكات الموبايل المصرية تشارك عنواناً عاماً واحداً بين كثيرين (CGNAT) وزوار الإعلانات أغلبهم موبايل،
+// فالحدّان الحقيقيان للإساءة هما البريد والرقم والطلب المفتوح. المالك يضبطه من إعداد «intake» في اللوحة.
 
 export type IntakeBlock = "contact" | "email" | "phone" | "ip" | "daily";
 export type IntakeDecision = { ok: true } | { ok: false; reason: IntakeBlock; message: string };
@@ -21,7 +23,7 @@ export const INTAKE_MESSAGES: Record<IntakeBlock, string> = {
   contact: "عندك طلب متجر مفتوح عندنا بالفعل. تابعه من رابط المتابعة اللي وصلك، ولو عايز تعدّل حاجة كلّمنا.",
   email: "وصلتنا طلبات كتير بنفس البريد. لو فيه حاجة محتاج تعدّلها كلّمنا مباشرة.",
   phone: "وصلتنا طلبات كتير بنفس الرقم. لو فيه حاجة محتاج تعدّلها كلّمنا مباشرة.",
-  ip: "وصلتنا طلبات كتير من نفس الشبكة النهارده. جرّب بعد شوية أو كلّمنا مباشرة.",
+  ip: "الشبكة اللي بتستخدمها وصلنا منها طلبات كتير النهارده (ممكن تكون شبكة مشتركة مع ناس تانيين). جرّب بعد شوية أو كلّمنا مباشرة.",
   daily: "استلمنا طلبات كتير النهارده وعايزين نديك وقتك كامل. جرّب بكرة أو كلّمنا مباشرة.",
 };
 

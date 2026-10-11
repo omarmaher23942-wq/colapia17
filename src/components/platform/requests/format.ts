@@ -11,5 +11,10 @@ export function ago(d: Date, now = new Date()): string {
 export const at = (d: Date) =>
   new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(d);
 
+export const SOURCE_LABEL: Record<string, string> = { web: "الموقع", messenger: "ماسنجر", instagram: "إنستجرام", agent: "وكيل الرسائل" };
+
+/** بريد ليس من Google: دخول اللوحة (المرحلة 6) يكون بحساب Google، فيُسأل العميل عن حسابه. */
+export const isGoogleMail = (email: string | null | undefined) => /@(gmail|googlemail)\.com$/i.test(email ?? "");
+
 /** تأخر عن الوعد: الموعد الأقصى مرّ والطلب لم يصل للتسليم. */
 export const isLate = (r: { etaTo: Date | null; stage: string | null }, now = new Date()) => Boolean(r.etaTo && r.stage !== "delivery" && r.etaTo < now);

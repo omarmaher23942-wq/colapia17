@@ -5,10 +5,10 @@ import { REQUEST_STAGES, type RequestStage } from "./constants";
 export { REQUEST_STAGES, type RequestStage };
 
 export const STAGE_INFO: Record<RequestStage, { label: string; client: string }> = {
-  received: { label: "استلمنا طلبك", client: "الفريق يراجع معلوماتك وصورك، وهيتواصل معاك لو احتاج أي تفصيلة." },
+  received: { label: "استلمنا طلبك", client: "الفريق يراجع معلوماتك وصورك، وهيراسلك لو احتاج أي تفصيلة." },
   design: { label: "التصميم", client: "بنختار الألوان والخطوط وشكل الصفحات اللي يناسب نشاطك وزبونك." },
-  build: { label: "البناء", client: "بنبني الصفحات ونضيف منتجاتك ونكتب نصوص المتجر." },
-  review: { label: "المراجعة", client: "بنراجع كل صفحة على الموبايل والكمبيوتر ونجرب الطلب من أوله لآخره." },
+  build: { label: "البناء", client: "بنبني صفحات متجرك ونكتب نصوصه، ونجهّز المنتجات اللي اتفقنا عليها." },
+  review: { label: "المراجعة", client: "بنراجع صفحات متجرك على الموبايل والكمبيوتر ونتأكد إن الطلب بيتم صح قبل ما نسلّمه." },
   delivery: { label: "التسليم", client: "متجرك جاهز، وهيوصلك رابطه وطريقة الدخول للوحة التحكم." },
 };
 

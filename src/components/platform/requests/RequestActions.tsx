@@ -4,11 +4,12 @@
 // ونسخ الـ brief. الأخطاء تُعرض كما يعيدها الخادم ({ok:false, error}) لا رسائل مُخفاة.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ClipboardCopy, Flag, Loader2, Send, Undo2 } from "lucide-react";
+import { Check, ClipboardCopy, Flag, Loader2, Send, Trash2, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { REQUEST_STAGES, type RequestStage } from "@/intake/constants";
 import { STAGE_INFO } from "@/intake/stages";
-import { addRequestNoteAction, moveRequestStageAction, setRequestSpamAction } from "@/server/actions/platform-requests";
+import { ConfirmDialog } from "@/components/dashboard/ui/DashDialog";
+import { addRequestNoteAction, deleteRequestAction, moveRequestStageAction, setRequestSpamAction } from "@/server/actions/platform-requests";
 import { cn } from "@/lib/utils";
 
 const box = "w-full rounded-xl border border-white/10 bg-white/[0.04] p-3 text-[14px] leading-7 text-[#eaf0ff] outline-none placeholder:text-[#8d97c4]/70 focus:border-[#6f86ff]";
@@ -107,7 +108,7 @@ export function NoteForm({ id, canWrite }: { id: string; canWrite: boolean }) {
     <div className="space-y-2">
       <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={forClient ? 600 : 2000} rows={3} className={box} placeholder={forClient ? "تظهر للعميل تحت المرحلة الحالية" : "ملاحظة داخلية للفريق"} />
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={save} disabled={pending || !text.trim()} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black text-white disabled:opacity-50">
+        <button type="button" onClick={save} disabled={pending || !text.trim()} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black text-white disabled:opacity-50">
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
           أضف الملاحظة
         </button>
@@ -123,24 +124,78 @@ export function NoteForm({ id, canWrite }: { id: string; canWrite: boolean }) {
 export function SpamToggle({ id, spam, canWrite }: { id: string; spam: boolean; canWrite: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [confirming, setConfirming] = useState(false);
+  if (!canWrite) return null;
+  const apply = () =>
+    start(async () => {
+      const r = await setRequestSpamAction({ id, spam: !spam });
+      if (!r.ok) return void toast.error(r.error);
+      router.refresh();
+    });
+  return (
+    // النافذة تعتمد توكنات .dash؛ لوحة الوكالة لا تكسو صفحتها بها، فنلفّها بحاوية بلا صندوق ترث منها النافذة.
+    <div className="dash dark contents">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => (spam ? apply() : setConfirming(true))}
+        className={cn("inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-[12.5px] font-black disabled:opacity-60", spam ? "border-white/15 text-white" : "border-rose-400/30 text-rose-300 hover:bg-rose-500/10")}
+      >
+        {spam ? <Undo2 className="size-4" aria-hidden="true" /> : <Flag className="size-4" aria-hidden="true" />}
+        {spam ? "ليس سبام: أرجعه للطابور" : "سبام"}
+      </button>
+      <ConfirmDialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        title="تعليم الطلب كسبام"
+        description="يخرج الطلب من الطابور وحساب موعد التسليم، وتقدر ترجعه في أي وقت."
+        confirmLabel="علّمه سبام"
+        tone="danger"
+        onConfirm={async () => {
+          const r = await setRequestSpamAction({ id, spam: true });
+          if (!r.ok) {
+            toast.error(r.error);
+            return false;
+          }
+          router.refresh();
+          return true;
+        }}
+      />
+    </div>
+  );
+}
+
+/** حذف الطلب نهائياً (طلب العميل أو لسبب خصوصية): الملفات من UploadThing ثم كل البيانات. يشترط كتابة كود الطلب. */
+export function DeleteRequest({ id, code, canWrite }: { id: string; code: string; canWrite: boolean }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
   if (!canWrite) return null;
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() =>
-        start(async () => {
-          if (!spam && !window.confirm("تعليم الطلب كسبام يخرجه من الطابور. متأكد؟")) return;
-          const r = await setRequestSpamAction({ id, spam: !spam });
-          if (!r.ok) return void toast.error(r.error);
+    <div className="dash dark contents">
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-rose-400/30 px-3 text-[12.5px] font-black text-rose-300 hover:bg-rose-500/10">
+        <Trash2 className="size-4" aria-hidden="true" /> حذف الطلب نهائياً
+      </button>
+      <ConfirmDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="حذف الطلب نهائياً"
+        description="يُحذف الطلب وسجله وكل صوره وتسجيلاته من التخزين، ولا يمكن التراجع. استخدمه عند طلب العميل حذف بياناته."
+        confirmLabel="احذف نهائياً"
+        tone="danger"
+        noteLabel={`اكتب كود الطلب ${code} للتأكيد`}
+        onConfirm={async (typed) => {
+          const r = await deleteRequestAction({ id, confirmCode: typed });
+          if (!r.ok) {
+            toast.error(r.error);
+            return false;
+          }
+          toast.success("تم حذف الطلب نهائياً");
+          router.push("/admin/requests");
           router.refresh();
-        })
-      }
-      className={cn("inline-flex min-h-10 items-center gap-2 rounded-xl border px-3 text-[12.5px] font-black disabled:opacity-60", spam ? "border-white/15 text-white" : "border-rose-400/30 text-rose-300 hover:bg-rose-500/10")}
-    >
-      {spam ? <Undo2 className="size-4" aria-hidden="true" /> : <Flag className="size-4" aria-hidden="true" />}
-      {spam ? "ليس سبام: أرجعه للطابور" : "سبام"}
-    </button>
+          return true;
+        }}
+      />
+    </div>
   );
 }
 
@@ -153,13 +208,13 @@ export function CopyBrief({ markdown }: { markdown: string }) {
         try {
           await navigator.clipboard.writeText(markdown);
           setDone(true);
-          toast.success("الـ brief اتنسخ (BRIEF.md)");
+          toast.success("الـ brief نُسخ (BRIEF.md)");
           setTimeout(() => setDone(false), 2500);
         } catch {
           toast.error("المتصفح منع النسخ.");
         }
       }}
-      className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-white/[0.06] px-3 text-[12.5px] font-black text-white hover:bg-white/10"
+      className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-white/[0.06] px-3 text-[12.5px] font-black text-white hover:bg-white/10"
     >
       {done ? <Check className="size-4 text-emerald-400" aria-hidden="true" /> : <ClipboardCopy className="size-4" aria-hidden="true" />}
       انسخ BRIEF.md

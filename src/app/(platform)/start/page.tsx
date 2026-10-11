@@ -16,6 +16,8 @@ export const metadata: Metadata = {
   title: "اطلب متجرك | Colapia",
   description: "استمارة دقيقتين: احكيلنا عن متجرك، وفريق Colapia يصمم ويبني ويراجع متجرك قبل التسليم.",
   robots: { index: false, follow: false },
+  // الرابط السري للمسودة (?d=) لا يخرج مع Referer إلى أي موقع يفتحه العميل من الصفحة.
+  referrer: "no-referrer",
 };
 
 export const viewport: Viewport = { themeColor: "#07091a", colorScheme: "dark" };
@@ -32,7 +34,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
   try {
     const settings = await intakeSettings();
-    if (!settings.enabled) closedMessage = "بنجهز الفريق لطلبات جديدة. كلّمنا وهنرد عليك بأسرع وقت.";
+    if (!settings.enabled) closedMessage = "بنجهز الفريق لطلبات جديدة. ابعتلنا رسالة وهنرد عليك بأسرع وقت.";
     eta = etaText(estimateEta(await openQueueLength(), settings.capacityPerDay));
     if (d) {
       const row = await findByDraftToken(d);

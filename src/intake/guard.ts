@@ -16,6 +16,7 @@ import { getFlag } from "@/lib/flags";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { NextResponse } from "next/server";
 import { decideIntake, limitsFrom, type IntakeDecision, type IntakeLimits } from "./rules";
+import { canonicalEmail } from "./schema";
 import { DEFAULT_CAPACITY_PER_DAY } from "./eta";
 
 export const INTAKE_FLAG = "intake";
@@ -37,18 +38,26 @@ export async function intakeSettings(): Promise<IntakeSettings> {
   };
 }
 
-/** الطلبات المُغيّرة تأتي من صفحات المنصة نفسها فقط (حماية CSRF لمسارات الـ API). */
+/**
+ * الطلبات المُغيّرة تأتي من صفحات المنصة نفسها فقط (حماية CSRF لمسارات الـ API): المصدر (Origin ثم Referer) يطابق
+ * عنوان المنصة المعلن أو المضيف الذي وصله الطلب نفسه (نشرات المعاينة ونطاق www). صفحة غريبة لا تستطيع جعل
+ * متصفح الزائر يرسل مصدراً يطابق مضيف المنصة.
+ */
 export function sameOrigin(req: Request): boolean {
   const expected = new URL(clientEnv.NEXT_PUBLIC_APP_URL).origin;
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").split(",")[0]?.trim().toLowerCase();
+  const ok = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.origin === expected || (Boolean(host) && u.host.toLowerCase() === host && (u.protocol === "https:" || u.hostname === "localhost"));
+    } catch {
+      return false;
+    }
+  };
   const origin = req.headers.get("origin");
-  if (origin) return origin === expected;
+  if (origin) return ok(origin);
   const referer = req.headers.get("referer");
-  if (!referer) return false;
-  try {
-    return new URL(referer).origin === expected;
-  } catch {
-    return false;
-  }
+  return referer ? ok(referer) : false;
 }
 
 export const requestIp = (req: Request) => ipBucket(clientIp(req.headers));
@@ -56,7 +65,8 @@ export const requestIp = (req: Request) => ipBucket(clientIp(req.headers));
 /** عدّاد نافذة ثابتة. يُرجع false عند تجاوز الحد. */
 export async function hit(key: string, limit: number, windowS: number): Promise<boolean> {
   try {
-    const k = `rl:intake:${key}`;
+    // المفتاح مجزّأ: عنوان الشبكة والرقم لا يظهران نصاً في Redis.
+    const k = `rl:intake:${digest(key)}`;
     const p = redis.pipeline();
     p.set(k, 0, { nx: true, ex: windowS });
     p.incr(k);
@@ -80,7 +90,9 @@ export function submitWaitMs(createdAt: Date, now = new Date()): number {
 }
 
 const cairoDay = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(new Date());
-const emailKey = (email: string) => createHash("sha256").update(email).digest("hex").slice(0, 24);
+const digest = (v: string) => createHash("sha256").update(v).digest("hex").slice(0, 24);
+/** مفتاح عدّاد/إرسال لبريد بصيغته الموحّدة (a.b+x@gmail.com = ab@gmail.com). */
+export const emailKey = (email: string) => digest(canonicalEmail(email));
 
 async function readCounters(keys: string[]): Promise<number[]> {
   try {
@@ -104,13 +116,21 @@ async function bump(entries: [string, number][]): Promise<void> {
   }
 }
 
-/** يفحص الإرسال ويحجزه عند السماح. email/whatsapp بعد التطبيع (أو null). */
-export async function reserveIntake(input: { ip: string; email: string | null; whatsapp: string | null; limits: IntakeLimits }): Promise<IntakeDecision> {
+/** عدّادات تُرفع بعد نجاح الإرسال فقط (مفتاح، مدة بالثواني). */
+export type IntakeCounters = [string, number][];
+export type IntakeCheck = { decision: IntakeDecision; counters: IntakeCounters };
+
+/**
+ * يفحص الإرسال دون أن يحجز شيئاً: العدّادات لا تُرفع إلا في commitIntake بعد أن يُحفظ الطلب فعلاً، فخطأ مؤقت في
+ * القاعدة أو ضغطتان متزامنتان لا تحرقان حصة العميل ولا تمنعانه من إعادة المحاولة. email/whatsapp بعد التطبيع (أو null).
+ */
+export async function checkIntake(input: { ip: string; email: string | null; whatsapp: string | null; limits: IntakeLimits }): Promise<IntakeCheck> {
   const day = cairoDay();
+  // كل المفاتيح مجزّأة: لا عنوان شبكة ولا رقم هاتف نصاً في Redis.
   const keys = {
     email: input.email ? `intake:email:${emailKey(input.email)}` : null,
-    phone: input.whatsapp ? `intake:phone:${input.whatsapp}` : null,
-    ip: input.ip && input.ip !== "0.0.0.0" ? `intake:ip:${input.ip}` : null,
+    phone: input.whatsapp ? `intake:phone:${digest(input.whatsapp)}` : null,
+    ip: input.ip && input.ip !== "0.0.0.0" ? `intake:ip:${digest(input.ip)}` : null,
     day: `intake:day:${day}`,
   };
 
@@ -155,20 +175,23 @@ export async function reserveIntake(input: { ip: string; email: string | null; w
       const first = await redis.set(`intake:cap-alert:${day}`, 1, { nx: true, ex: 172_800 }).catch(() => null);
       if (first) await notifyAdmin(`استمارة الوكالة بلغت السقف اليومي (${input.limits.dailyCap} طلباً). ارفعه من إعدادات «intake» في اللوحة إن كان الإقبال حقيقياً.`);
     }
-    return decision;
+    return { decision, counters: [] };
   }
 
   const week = 7 * 86_400;
-  await bump(
-    [
+  return {
+    decision,
+    counters: [
       keys.email ? ([keys.email, week] as [string, number]) : null,
       keys.phone ? ([keys.phone, week] as [string, number]) : null,
       keys.ip ? ([keys.ip, 86_400] as [string, number]) : null,
       [keys.day, 129_600] as [string, number],
     ].filter((e): e is [string, number] => e !== null),
-  );
-  return decision;
+  };
 }
+
+/** يرفع عدّادات إرسال تم حفظه (بعد submitRequest). */
+export const commitIntake = (counters: IntakeCounters): Promise<void> => (counters.length ? bump(counters) : Promise.resolve());
 
 /** حدود التفريغ الصوتي (يكلف ويشارك مفتاح Groq مع وكيل الرسائل): لكل طلب ولكل شبكة وسقف يومي عام. */
 export async function allowTranscription(requestId: string, ip: string): Promise<boolean> {

@@ -1,14 +1,17 @@
 // /admin/requests — طلبات المتاجر من الاستمارة، مرتبة بالمرحلة التي يراها العميل. «جديد» = لم يفتحه أحد من
 // الفريق، و«متأخر» = تجاوز موعد التسليم الذي وُعد به العميل.
 import Link from "next/link";
-import { and, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { AlertTriangle, Inbox, Mail, MessageCircle, Search } from "lucide-react";
 import { db } from "@/db/client";
+import { normalizeEgyptianPhone } from "@/lib/phone";
 import { storeRequests } from "@/db/schema/agency";
-import { isMissingTable } from "@/intake/repo";
+import { isMissingTable, openQueueLength } from "@/intake/repo";
+import { intakeSettings } from "@/intake/guard";
+import { estimateEta, etaText } from "@/intake/eta";
 import { REQUEST_STAGES, STAGE_INFO } from "@/intake/stages";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
-import { ago, isLate } from "@/components/platform/requests/format";
+import { ago, isLate, SOURCE_LABEL } from "@/components/platform/requests/format";
 import { cn } from "@/lib/utils";
 import { requirePlatformPage } from "@/server/platform-guard";
 
@@ -27,6 +30,8 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
   const view: View = sp.view === "delivered" || sp.view === "spam" ? sp.view : "active";
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
   const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
+  // الرقم يُبحث بصيغته القياسية (01xxxxxxxxx) أياً كانت طريقة كتابته: +20 أو مسافات أو أرقام هندية.
+  const phone = q ? normalizeEgyptianPhone(q) : null;
 
   let rows: (typeof storeRequests.$inferSelect)[] = [];
   let drafts = 0;
@@ -36,14 +41,27 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       db
         .select()
         .from(storeRequests)
-        .where(and(VIEWS[view].where, q ? or(ilike(storeRequests.code, like), ilike(storeRequests.storeName, like), ilike(storeRequests.email, like), ilike(storeRequests.whatsapp, like)) : undefined))
-        .orderBy(desc(storeRequests.submittedAt))
-        .limit(300),
+        .where(and(VIEWS[view].where, q ? or(ilike(storeRequests.code, like), ilike(storeRequests.storeName, like), ilike(storeRequests.email, like), ilike(storeRequests.whatsapp, like), phone ? eq(storeRequests.whatsapp, phone) : undefined) : undefined))
+        // الطابور من الأقدم (الأقرب لتجاوز الوعد)؛ المسلَّمة والسبام من الأحدث. والسقف لا يُسقط الأقدم الأكثر تأخراً.
+        .orderBy(view === "active" ? asc(storeRequests.submittedAt) : desc(storeRequests.submittedAt))
+        .limit(500),
       db.select({ n: sql<number>`count(*)`.mapWith(Number) }).from(storeRequests).where(and(eq(storeRequests.status, "draft"), sql`${storeRequests.expiresAt} > now()`)),
     ]);
   } catch (e) {
     if (!isMissingTable(e)) throw e;
     missing = true;
+  }
+
+  // الوعد الذي سيراه عميل جديد الآن (من طول الطابور وطاقة الفريق اليومية): يعرفه الفريق قبل أن يلتزم به.
+  let promise: string | null = null;
+  let capacity = 0;
+  if (!missing) {
+    await Promise.all([openQueueLength(), intakeSettings()])
+      .then(([ahead, st]) => {
+        capacity = st.capacityPerDay;
+        promise = etaText(estimateEta(ahead, st.capacityPerDay));
+      })
+      .catch(() => {});
   }
 
   const now = new Date();
@@ -58,6 +76,11 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
             <Inbox className="size-6 text-[#8fa8ff]" strokeWidth={1.75} aria-hidden="true" /> طلبات المتاجر
           </h1>
           <p className="mt-1 text-sm text-[#8d97c4]">من استمارة /start. حرّك كل طلب لمرحلته، والعميل يراها في صفحة متابعته.{drafts ? ` (${drafts} استمارة بدأها أصحابها ولم تُرسل بعد)` : ""}</p>
+          {promise ? (
+            <p className="mt-1 text-xs text-[#8d97c4]">
+              الوعد الحالي للعملاء الجدد: <b className="text-[#c3cdf0]">{promise}</b> (طاقة الفريق المضبوطة {capacity} متاجر يومياً، وتُعدَّل من إعداد «intake» في <Link href="/admin/flags" className="underline">الإعدادات</Link>).
+            </p>
+          ) : null}
         </div>
         <form className="flex items-center gap-2" action="/admin/requests">
           <input type="hidden" name="view" value={view} />
@@ -111,7 +134,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                         <Mail className="size-3.5" aria-hidden="true" /> {r.emailConfirmedAt ? "بريد مؤكد" : "بريد"}
                       </span>
                     ) : null}
-                    {r.source !== "web" ? <span className="rounded bg-white/10 px-1.5">{r.source}</span> : null}
+                    {r.source !== "web" ? <span className="rounded bg-white/10 px-1.5">{SOURCE_LABEL[r.source] ?? r.source}</span> : null}
                     {late ? (
                       <span className="inline-flex items-center gap-1 text-rose-300">
                         <AlertTriangle className="size-3.5" aria-hidden="true" /> متأخر عن الوعد

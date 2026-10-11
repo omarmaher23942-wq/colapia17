@@ -68,7 +68,20 @@ export const emptyIntake = (): IntakeData => intakeDataSchema.parse({});
 
 // ─── التطبيع ────────────────────────────────────────────────────────────────
 
-/** رابط ويب آمن للعرض: https فقط، ويُضاف https:// لرابط مكتوب بلا بروتوكول. غير ذلك = null. */
+/**
+ * اسم مضيف عام فقط: بنقطة وامتداد حرفي، لا عنوان IP (يشمل 127.0.0.1 و10.x و169.254.169.254 و[::1] وأي صيغة مختصرة
+ * يحوّلها URL إلى رقم)، ولا .local/.internal/.localhost. الروابط تُفتح لاحقاً من أدوات الفريق والوكلاء، فلا نقبل
+ * ما يشير إلى شبكة داخلية.
+ */
+export function publicHostname(host: string): boolean {
+  const h = host.toLowerCase().replace(/\.$/, "");
+  if (h.length > 253 || !h.includes(".")) return false;
+  const tld = h.slice(h.lastIndexOf(".") + 1);
+  if (!/^[a-z][a-z0-9-]+$/.test(tld)) return false;
+  return !/\.(local|localhost|internal|lan|home|corp|intranet)$/.test(h);
+}
+
+/** رابط ويب آمن للعرض: https فقط، ويُضاف https:// لرابط مكتوب بلا بروتوكول، ومضيفه عام. غير ذلك = null. */
 export function safeUrl(raw: string | undefined | null): string | null {
   const s = (raw ?? "").trim();
   if (!s) return null;
@@ -76,7 +89,7 @@ export function safeUrl(raw: string | undefined | null): string | null {
   try {
     const u = new URL(withScheme);
     if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-    if (!u.hostname.includes(".") || u.username || u.password) return null;
+    if (u.username || u.password || !publicHostname(u.hostname)) return null;
     u.protocol = "https:";
     return u.toString().slice(0, 300);
   } catch {
@@ -98,6 +111,17 @@ export const normalizeEmail = (raw: string | undefined | null): string | null =>
   const s = (raw ?? "").trim().toLowerCase();
   return EMAIL_RE.test(s) && s.length <= 120 ? s : null;
 };
+
+/**
+ * صيغة موحّدة للبريد لحدود المعدل فقط (لا تُخزَّن ولا تُرسل إليها): تُسقط وسم `+x`، ونقاط وأسماء gmail البديلة، حتى
+ * لا تتحول الاستمارة إلى طريقة لإغراق صندوق بريد واحد بعناوين مختلفة الشكل (a.b+1@gmail.com = ab@gmail.com).
+ */
+export function canonicalEmail(email: string): string {
+  const [local = "", domain = ""] = email.trim().toLowerCase().split("@");
+  const d = domain === "googlemail.com" ? "gmail.com" : domain;
+  const base = local.split("+")[0] ?? local;
+  return `${d === "gmail.com" ? base.replace(/\./g, "") : base}@${d}`;
+}
 
 const clean = (s: string | undefined) => {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
@@ -149,7 +173,7 @@ export function validateSubmission(d: IntakeData): IntakeErrors {
   const insp = clean(d.inspiration.url);
   if (insp && !safeUrl(insp)) e["inspiration.url"] = "اكتب رابط الموقع كاملاً (مثال: example.com).";
 
-  if (d.colors.mode === "logo" && !d.logo.key) e["colors.mode"] = "ارفع الشعار عشان ناخد الألوان منه، أو اختر طريقة تانية.";
+  if (d.colors.mode === "logo" && !d.logo.key && !d.logo.team) e["colors.mode"] = "ارفع الشعار عشان ناخد الألوان منه، أو اختر طريقة تانية.";
   return e;
 }
 

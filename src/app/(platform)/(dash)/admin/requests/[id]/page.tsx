@@ -16,8 +16,8 @@ import { renderBrief } from "@/intake/brief";
 import { requirePlatformPage } from "@/server/platform-guard";
 import { waLink } from "@/lib/whatsapp";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
-import { CopyBrief, NoteForm, SpamToggle, StageMover } from "@/components/platform/requests/RequestActions";
-import { at, isLate } from "@/components/platform/requests/format";
+import { CopyBrief, DeleteRequest, NoteForm, SpamToggle, StageMover } from "@/components/platform/requests/RequestActions";
+import { at, isGoogleMail, isLate, SOURCE_LABEL } from "@/components/platform/requests/format";
 
 export const dynamic = "force-dynamic";
 
@@ -101,7 +101,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
             <p className="font-mono text-xs font-black text-[#8fa8ff]">{row.code}</p>
             <h1 className="mt-1 text-2xl font-black">{row.storeName || "بلا اسم"}</h1>
             <p className="mt-1 text-xs text-[#8d97c4]">
-              أُرسل {row.submittedAt ? at(row.submittedAt) : "—"} · المصدر {row.source}
+              أُرسل {row.submittedAt ? at(row.submittedAt) : "—"} · المصدر {SOURCE_LABEL[row.source] ?? row.source}
               {row.utm?.utm_source ? ` / ${row.utm.utm_source}` : ""}
               {row.utm?.utm_campaign ? ` / ${row.utm.utm_campaign}` : ""}
               {row.utm?.fbclid ? " · من إعلان فيسبوك" : ""}
@@ -110,13 +110,14 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
           <div className="flex flex-wrap items-center gap-2">
             <CopyBrief markdown={brief} />
             <SpamToggle id={row.id} spam={row.status === "spam"} canWrite={canWrite} />
+            <DeleteRequest id={row.id} code={row.code} canWrite={canWrite} />
           </div>
         </div>
         {row.etaFrom && row.etaTo ? (
           <p className={late ? "flex items-center gap-1.5 text-sm font-bold text-rose-300" : "text-sm text-[#c3cdf0]"}>
             {late ? <AlertTriangle className="size-4" aria-hidden="true" /> : null}
             وُعد العميل بالتسليم بين {at(row.etaFrom)} و{at(row.etaTo)}
-            {late ? " (تجاوزنا الموعد: كلّمه)" : ""}
+            {late ? " (تجاوزنا الموعد: تواصل معه)" : ""}
           </p>
         ) : null}
         {row.status === "spam" ? <p className="text-sm font-bold text-rose-300">معلَّم كسبام: خارج الطابور ولا يُحسب في موعد التسليم.</p> : null}
@@ -148,6 +149,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
                 <span className="inline-flex flex-wrap items-center gap-2" dir="ltr">
                   <Mail className="size-4 text-[#8d97c4]" aria-hidden="true" /> {row.email}
                   <span className={row.emailConfirmedAt ? "rounded-full bg-emerald-400/15 px-2 text-[11px] text-emerald-300" : "rounded-full bg-amber-400/15 px-2 text-[11px] text-amber-300"}>{row.emailConfirmedAt ? "مؤكد" : "غير مؤكد"}</span>
+                  {!isGoogleMail(row.email) ? <span className="rounded-full bg-white/10 px-2 text-[11px] text-[#c3cdf0]">ليس Gmail: اسأله عن حساب Google للدخول</span> : null}
                 </span>
               ) : (
                 <Muted>—</Muted>
@@ -163,7 +165,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
         <section className={card}>
           <h2 className="mb-2 text-sm font-black">المتجر والهوية</h2>
           <dl>
-            <Row label="بيبيع">{d.store.oneLine ?? <Muted>—</Muted>}</Row>
+            <Row label="النشاط">{d.store.oneLine ?? <Muted>—</Muted>}</Row>
             <Row label="الألوان">
               {d.colors.mode === "team" ? (
                 <Team />

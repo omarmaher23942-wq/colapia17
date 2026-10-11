@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (token === undefined || token === null) {
       const settings = await intakeSettings();
       if (!settings.enabled) return json({ error: "closed", message: "استقبال الطلبات متوقف مؤقتاً. كلّمنا مباشرة." }, 503);
-      if (!(await hit(`create:ip:${ip}`, 20, 3600))) return json({ error: "rate_limited", message: "محاولات كتير من نفس الشبكة، جرّب بعد شوية." }, 429);
+      if (!(await hit(`create:ip:${ip}`, 60, 3600))) return json({ error: "rate_limited", message: "محاولات كتير من نفس الشبكة، جرّب بعد شوية." }, 429);
       const { row, token: newToken } = await createDraft({
         data: data.data,
         utm: cleanUtm(utm),
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     const saved = await saveDraft(row, version as number, data.data);
     if (saved.ok) return json({ ok: true, version: saved.version });
     if (saved.reason === "conflict") return json({ error: "conflict", version: saved.version, data: saved.data }, 409);
+    if (saved.reason === "submitted") return json({ error: "submitted" }, 409);
     return json({ error: "expired" }, 410);
   } catch (e) {
     if (isMissingTable(e)) return json({ error: "unavailable", message: "الاستمارة بتتجهز، جرّب بعد قليل." }, 503);

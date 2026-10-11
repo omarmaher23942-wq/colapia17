@@ -2,13 +2,14 @@
 // للقراءة فقط برابط سري مشتق من معرّف الطلب (لا بيانات شخصية تظهر هنا غير اسم المتجر).
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Check, CircleDashed, MailCheck, MessageCircle, PartyPopper } from "lucide-react";
+import { Check, CircleDashed, MailCheck, PartyPopper } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { FollowActions } from "@/components/intake/FollowActions";
 import { findByTrackToken, isMissingTable, requestEvents, touch } from "@/intake/repo";
 import { REQUEST_STAGES, STAGE_INFO, stageIndex } from "@/intake/stages";
 import { agencyWhatsappUrl } from "@/intake/notify";
+import { ContactHelp } from "@/components/intake/ContactHelp";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +41,8 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
   if (!row) notFound();
 
   const isNew = sp.new === "1";
-  const confirmed = sp.confirmed === "1";
+  // «تم تأكيد بريدك» تُعرض من حالة الطلب نفسها لا من ?confirmed=1 وحده (يستطيع أي أحد كتابته في الرابط).
+  const confirmed = sp.confirmed === "1" && Boolean(row.emailConfirmedAt);
   const current = stageIndex(row.stage);
   const notesByStage = new Map<string, { note: string; at: Date }[]>();
   for (const e of events) {
@@ -48,6 +50,8 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
   }
   const wa = agencyWhatsappUrl(`أهلاً، بخصوص طلب متجر «${row.storeName ?? ""}» (${row.code})`);
   const delivered = row.stage === "delivery";
+  const overdue = !delivered && Boolean(row.etaTo) && row.etaTo!.getTime() < Date.now();
+  const Name = isNew ? "h2" : "h1";
 
   return (
     <div dir="rtl" className="dash dark dash-cosmos relative min-h-dvh text-ink">
@@ -66,8 +70,8 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
             </span>
             <h1 className="text-[24px] font-black leading-tight text-ink">وصلنا طلبك، شكراً لثقتك</h1>
             <p className="text-[14.5px] leading-7 text-ink-2">
-              الفريق هيبدأ يراجع معلوماتك، ولو احتاج أي تفصيلة هيكلمك. <strong className="text-ink">احفظ رابط الصفحة دي</strong>: منها تتابع متجرك مرحلة بمرحلة.
-              {row.email ? " وبعتنالك نسخة منه على بريدك." : ""}
+              الفريق هيبدأ يراجع معلوماتك، ولو احتاج أي تفصيلة هيراسلك. <strong className="text-ink">احفظ رابط الصفحة دي</strong>: منها تتابع متجرك مرحلة بمرحلة.
+              {row.email ? " وهنبعتلك نسخة منه على بريدك." : ""}
             </p>
             <FollowActions code={row.code} storeName={row.storeName ?? ""} />
           </section>
@@ -75,16 +79,20 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
 
         {confirmed ? (
           <p role="status" className="flex items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-[13.5px] font-bold text-emerald-200">
-            <MailCheck className="size-4 shrink-0" aria-hidden="true" /> تم تأكيد بريدك. هيكون حساب دخولك للوحة متجرك.
+            <MailCheck className="size-4 shrink-0" aria-hidden="true" /> تم تأكيد بريدك. شكراً.
           </p>
         ) : null}
 
         <section className="dash-card space-y-2 p-5 sm:p-6">
           <p className="text-[12.5px] font-black text-nova-2">طلب {row.code}</p>
-          <h2 className="text-[24px] font-black leading-tight text-ink">{row.storeName || "متجرك"}</h2>
-          {!delivered && row.etaFrom && row.etaTo ? (
+          <Name className="text-[24px] font-black leading-tight text-ink">{row.storeName || "متجرك"}</Name>
+          {overdue ? (
+            <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[14px] font-bold leading-7 text-amber-200">
+              اتأخرنا عن الموعد اللي قلناه لك. الفريق شغال على متجرك وهنبلغك أول ما يجهز.
+            </p>
+          ) : !delivered && row.etaFrom && row.etaTo ? (
             <p className="text-[14px] leading-7 text-ink-2">
-              التسليم المتوقع بين <strong className="text-ink">{day(row.etaFrom)}</strong> و<strong className="text-ink">{day(row.etaTo)}</strong>، وغالباً أسرع. المتجر مش هيوصلك قبل ما الفريق يراجعه صفحةً صفحة.
+              التسليم المتوقع بين <strong className="text-ink">{day(row.etaFrom)}</strong> و<strong className="text-ink">{day(row.etaTo)}</strong>، وممكن نخلّصه أسرع. والفريق بيراجع المتجر قبل ما يسلّمه لك.
             </p>
           ) : null}
         </section>
@@ -93,9 +101,10 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
           <ol className="relative space-y-6">
             {REQUEST_STAGES.map((s, i) => {
               const state = i < current ? "done" : i === current ? "now" : "next";
+              const final = i === REQUEST_STAGES.length - 1;
               const notes = notesByStage.get(s) ?? [];
               return (
-                <li key={s} className="relative flex gap-4">
+                <li key={s} aria-current={state === "now" ? "step" : undefined} className="relative flex gap-4">
                   {i < REQUEST_STAGES.length - 1 ? (
                     <span aria-hidden="true" className={cn("absolute start-[17px] top-10 h-[calc(100%-8px)] w-0.5", i < current ? "bg-nova/60" : "bg-edge/10")} />
                   ) : null}
@@ -107,12 +116,13 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
                       state === "next" && "border-edge/15 text-ink-3",
                     )}
                   >
-                    {state === "done" ? <Check className="size-4" aria-hidden="true" /> : state === "now" ? <CircleDashed className="size-4 animate-spin [animation-duration:3s]" aria-hidden="true" /> : i + 1}
+                    {state === "done" || (state === "now" && final) ? <Check className="size-4" aria-hidden="true" /> : state === "now" ? <CircleDashed className="size-4 animate-spin motion-reduce:animate-none [animation-duration:3s]" aria-hidden="true" /> : i + 1}
                   </span>
                   <div className="min-w-0 flex-1 pt-1">
                     <p className={cn("text-[15px] font-black", state === "next" ? "text-ink-3" : "text-ink")}>
                       {STAGE_INFO[s].label}
-                      {state === "now" ? <span className="ms-2 rounded-full bg-nova/15 px-2 py-0.5 text-[11.5px] text-nova-2">دلوقتي</span> : null}
+                      {state === "done" ? <span className="sr-only"> (تمت)</span> : null}
+                      {state === "now" ? <span className="ms-2 rounded-full bg-nova/15 px-2 py-0.5 text-[11.5px] text-nova-2">{final ? "تم" : "دلوقتي"}</span> : null}
                     </p>
                     {state !== "next" ? <p className="mt-1 text-[13.5px] leading-7 text-ink-2">{STAGE_INFO[s].client}</p> : null}
                     {notes.map((n) => (
@@ -129,12 +139,9 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
         </section>
 
         <section className="space-y-2 px-1 text-[13px] leading-7 text-ink-3">
-          <p>عند التسليم هيوصلك رابط متجرك وطريقة الدخول للوحة التحكم، وتقدر تشوفه وتجربه قبل أي دفع.</p>
-          {wa ? (
-            <a href={wa} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge/15 px-4 text-[14px] font-black text-ink hover:border-edge/30">
-              <MessageCircle className="size-4 text-[#25D366]" aria-hidden="true" /> عندك سؤال؟ كلّمنا على واتساب
-            </a>
-          ) : null}
+          <p>عند التسليم هيوصلك رابط متجرك وطريقة الدخول للوحة التحكم، وهنشرح لك وقتها خطوات التجربة والتفعيل.</p>
+          <p className="font-bold text-ink-2">عندك سؤال؟</p>
+          <ContactHelp whatsappUrl={wa} />
         </section>
       </main>
     </div>
