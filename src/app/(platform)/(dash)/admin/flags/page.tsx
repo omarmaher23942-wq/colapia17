@@ -28,7 +28,7 @@ const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; confi
 ];
 
 export default async function FlagsPage() {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "settings" });
   const existing = await db.select().from(featureFlags);
   // أي إعداد افتراضي جديد (مثل «intake») يُضاف للقاعدة القائمة أيضاً، لا عند أول تشغيل فقط.
   const missing = FLAG_DEFAULTS.filter((f) => !existing.some((r) => r.key === f.key));

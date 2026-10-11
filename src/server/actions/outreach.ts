@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
 import { outreachCampaigns } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { sendTemplatedEmail } from "@/lib/email";
 import { GenericEmail } from "@/lib/email-templates/GenericEmail";
 import { loadAudience, personalize, unsubscribeUrl, SEGMENTS, type AudienceRow } from "@/server/outreach";
@@ -23,9 +23,7 @@ const draftSchema = z.object({
 type Draft = z.infer<typeof draftSchema>;
 
 async function owner() {
-  const u = await getPlatformSession();
-  if (!u) throw new Error("غير مصرح");
-  return u;
+  return requirePlatformCap("audience", "غير مصرح");
 }
 
 function element(d: Draft, r: Pick<AudienceRow, "name" | "storeName" | "email">) {

@@ -12,7 +12,7 @@ const PRICE: Record<string, [number, number]> = { morpheus: [3, 15], groq: [0, 0
 const usd = (p: string, tin: number, tout: number) => ((PRICE[p]?.[0] ?? 0) * tin + (PRICE[p]?.[1] ?? 0) * tout) / 1e6;
 
 export default async function CostsPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "costs" });
   const { days = "7" } = await searchParams; 
   const since = new Date(Date.now() - Number(days) * 864e5);
   

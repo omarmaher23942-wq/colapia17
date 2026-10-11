@@ -8,13 +8,19 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { storeRequestEvents, storeRequests } from "@/db/schema/agency";
 import { platformUser } from "@/server/platform-guard";
+import { can } from "@/agency/roles";
+import { canViewRequest } from "@/agency/production";
 import { REQUEST_STAGES } from "@/intake/constants";
 import { notifyStageChange } from "@/intake/notify";
 import { deleteRequestPermanently } from "@/intake/purge";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-const DENIED = { ok: false as const, error: "غير مصرح: هذا الإجراء للمالك والمدير." };
+const DENIED = { ok: false as const, error: "غير مصرح لهذا الدور." };
+
+/** العضو يرى الطلب (المنفّذ: المسند إليه فقط). */
+const sees = (row: { builderId: string | null; reviewerId: string | null }, u: { id: string; role: string }) =>
+  canViewRequest(row, { id: u.id, role: u.role as never });
 const clientNote = z.string().trim().max(600).optional();
 const internalNote = z.string().trim().max(2000).optional();
 
@@ -33,14 +39,16 @@ const moveSchema = z.object({
 });
 
 export async function moveRequestStageAction(raw: z.input<typeof moveSchema>): Promise<Result<{ notified: boolean }>> {
-  const u = await platformUser({ write: true });
+  const u = await platformUser({ cap: "requests.client_stage" });
   if (!u) return DENIED;
   const p = moveSchema.safeParse(raw);
   if (!p.success) return { ok: false, error: "بيانات غير صالحة (الملاحظة للعميل حتى 600 حرف)." };
   const { id, stage } = p.data;
 
   const [row] = await db.select().from(storeRequests).where(eq(storeRequests.id, id)).limit(1);
-  if (!row || row.status !== "submitted") return { ok: false, error: "الطلب غير موجود أو ليس طلباً نشطاً." };
+  if (!row || row.status !== "submitted" || !sees(row, u)) return { ok: false, error: "الطلب غير موجود أو ليس طلباً نشطاً." };
+  // المنفّذ يكتب للعميل عن متجره المسند إليه فقط.
+  if (u.role === "builder" && row.builderId !== u.id) return DENIED;
   if (row.stage === stage) return { ok: false, error: "الطلب في هذه المرحلة بالفعل. أضف ملاحظة بدل النقل." };
 
   const note = p.data.clientNote || null;
@@ -72,13 +80,15 @@ const noteSchema = z.object({ id: z.string().uuid(), clientNote, internalNote })
 
 /** ملاحظة داخلية للفريق، و/أو ملاحظة تظهر للعميل تحت المرحلة الحالية في صفحة المتابعة. */
 export async function addRequestNoteAction(raw: z.input<typeof noteSchema>): Promise<Result> {
-  const u = await platformUser({ write: true });
+  const u = await platformUser({ cap: "requests.note" });
   if (!u) return DENIED;
   const p = noteSchema.safeParse(raw);
   if (!p.success) return { ok: false, error: "بيانات غير صالحة." };
   if (!p.data.clientNote && !p.data.internalNote) return { ok: false, error: "اكتب الملاحظة أولاً." };
   const [row] = await db.select().from(storeRequests).where(eq(storeRequests.id, p.data.id)).limit(1);
-  if (!row || row.status === "draft") return { ok: false, error: "الطلب غير موجود." };
+  if (!row || row.status === "draft" || !sees(row, u)) return { ok: false, error: "الطلب غير موجود." };
+  // ملاحظة للعميل = كلام باسم الوكالة: لمن يملك صلاحية مخاطبته (والمنفّذ لمتجره فقط).
+  if (p.data.clientNote && (!can(u.role, "requests.client_stage") || (u.role === "builder" && row.builderId !== u.id))) return DENIED;
   if (p.data.clientNote) {
     await db.update(storeRequests).set({ stageNote: p.data.clientNote, updatedAt: new Date() }).where(eq(storeRequests.id, row.id));
   }
@@ -98,7 +108,7 @@ const spamSchema = z.object({ id: z.string().uuid(), spam: z.boolean() });
 
 /** «سبام»: يخرج الطلب من الطابور وحساب موعد التسليم وحد «طلب مفتوح». قابل للتراجع. */
 export async function setRequestSpamAction(raw: z.input<typeof spamSchema>): Promise<Result> {
-  const u = await platformUser({ write: true });
+  const u = await platformUser({ cap: "requests.spam" });
   if (!u) return DENIED;
   const p = spamSchema.safeParse(raw);
   if (!p.success) return { ok: false, error: "بيانات غير صالحة." };
@@ -121,7 +131,7 @@ const deleteSchema = z.object({ id: z.string().uuid(), confirmCode: z.string().t
  * ولا يحذف الصفوف إن تعذر حذف الملفات (يبقى الطلب ليُعاد، فلا ملفات يتيمة بلا سجل).
  */
 export async function deleteRequestAction(raw: z.input<typeof deleteSchema>): Promise<Result> {
-  const u = await platformUser({ write: true });
+  const u = await platformUser({ cap: "requests.delete" });
   if (!u) return DENIED;
   const p = deleteSchema.safeParse(raw);
   if (!p.success) return { ok: false, error: "بيانات غير صالحة." };

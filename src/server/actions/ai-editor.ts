@@ -11,7 +11,7 @@ import {
   categories,
   products,
 } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { platformUser } from "@/server/platform-guard";
 import { aiObject } from "@/ai/providers";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { setPath } from "@/editor/useDraft";
@@ -39,7 +39,7 @@ export async function aiEditProposeAction(
   instruction: string,
   current: StoreBlueprint
 ) {
-  if (!(await getPlatformSession())) return { error: "غير مصرح" };
+  if (!(await platformUser({ write: true }))) return { error: "غير مصرح" };
 
   const tdb = await getTenantDb(storeId);
   const [cats, prods] = await Promise.all([
@@ -129,7 +129,7 @@ export async function platformSaveBlueprintAction(
   bp: StoreBlueprint,
   label: string
 ) {
-  const u = await getPlatformSession();
+  const u = await platformUser({ write: true });
   if (!u) return { error: "غير مصرح" };
   const v = blueprintSchema.safeParse(bp);
   if (!v.success) return { error: v.error.issues[0]!.message };

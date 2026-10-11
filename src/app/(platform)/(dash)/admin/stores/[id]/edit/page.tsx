@@ -13,7 +13,7 @@ export default async function PlatformEditPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "stores.manage" });
   const { id } = await params;
   if (!id) redirect("/admin/stores");
   redirect(`/admin/stores/${id}`);

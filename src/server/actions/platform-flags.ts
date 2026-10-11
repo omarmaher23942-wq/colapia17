@@ -5,18 +5,13 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { setFlag } from "@/lib/flags";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 
 const keyField = z.string().min(1).max(80).regex(/^[a-z0-9._-]+$/i);
 const configField = z.string().max(20_000).optional();
 
 async function requireOwner() {
-  const user = await getPlatformSession();
-  if (!user) throw new Error("غير مصرح");
-  if (user.role === "reviewer") {
-    throw new Error("هذه العملية مخصصة لمالك المنصة أو الأدمن فقط");
-  }
-  return user;
+  return requirePlatformCap("settings", "هذه العملية مخصصة لمالك المنصة أو المدير فقط");
 }
 
 export async function setFlagAction(

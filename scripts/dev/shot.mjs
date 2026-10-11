@@ -14,6 +14,9 @@ const click = rest.find((r) => r.startsWith("--click="))?.slice(8);
 // --store=atelier: صفحة متجر على نطاقه (atelier.localhost:3100)، كما يراها الزائر.
 const store = rest.find((r) => r.startsWith("--store="))?.slice(8);
 const origin = store ? `http://${store}.localhost:3100` : "http://localhost:3100";
+// --as=builder|reviewer|sales: لوحة الوكالة بجلسة عضو بذلك الدور (من seed) بدل المالك.
+const as = rest.find((r) => r.startsWith("--as="))?.slice(5);
+const ptoken = as ? `dev-platform-${as}-token-`.padEnd(41, "0") : "dev-platform-session-token-00000000000000";
 const wait = Number(rest.find((r) => r.startsWith("--wait="))?.slice(7) ?? 600);
 const out = process.env.DEVSTACK_SHOTS ?? join(cache, "shots");
 mkdirSync(out, { recursive: true });
@@ -25,7 +28,7 @@ for (const s of mode === "both" ? ["mobile", "desktop"] : [mode]) {
   await ctx.addCookies(
     [
       ["clp_m", "dev-merchant-session-token-0000000000000000"],
-      ["clp_p", "dev-platform-session-token-00000000000000"],
+      ["clp_p", ptoken],
       ["clp_dash_theme", theme],
       ["clp_tour_v2_seen", "1"],
     ].map(([n, v]) => ({ name: n, value: v, domain: "localhost", path: "/" }))

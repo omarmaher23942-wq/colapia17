@@ -24,7 +24,7 @@ function safeDateStr(d: unknown): string {
 }
 
 export default async function PaymentsReviewPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "payments.decide" });
   const { view = "pending" } = await searchParams;
 
   const rows = await db

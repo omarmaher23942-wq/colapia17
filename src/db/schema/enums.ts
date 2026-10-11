@@ -30,7 +30,7 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 export const discountTypeEnum = pgEnum("discount_type", ["percentage", "fixed", "free_shipping"]);
 
 /** أدوار مستخدمي المنصة (أنت وفريقك) */
-export const platformRoleEnum = pgEnum("platform_role", ["owner", "admin", "reviewer"]);
+export const platformRoleEnum = pgEnum("platform_role", ["owner", "admin", "reviewer", "builder", "sales"]);
 
 /** حالة المنتج */
 export const productStatusEnum = pgEnum("product_status", ["active", "draft", "hidden", "archived"]);

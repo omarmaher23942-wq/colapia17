@@ -40,10 +40,9 @@ export default async function PlatformLoginPage({
         </div>
 
         <div>
-          <h1 className="text-2xl font-black text-white">مركز قيادة المنصة</h1>
+          <h1 className="text-2xl font-black text-white">لوحة فريق Colapia</h1>
           <p className="mt-2 text-xs font-medium leading-relaxed text-slate-400">
-            تسجيل دخول آمن لإدارة متاجر كولابيا، متابعة التحويلات، وخط إنتاج
-            الذكاء الاصطناعي.
+            ادخل بحساب Google المسجّل لك في الفريق. البريد الذي أضافه المالك هو مفتاح دخولك.
           </p>
         </div>
 

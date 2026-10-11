@@ -21,7 +21,7 @@ const STAGE_LABEL: Record<string, string> = {
 const FILTERS = ["", "human", "persuasion", "products", "proof", "building", "trial", "lost"];
 
 export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ id?: string; stage?: string; q?: string }> }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "conversations" });
   const { id, stage = "", q = "" } = await searchParams;
 
   const list = await db

@@ -220,9 +220,74 @@ async function main() {
   await db.delete(sessions).where(eq(sessions.tokenHash, sha(ptoken)));
   await db.insert(sessions).values({ tokenHash: sha(ptoken), subjectType: "platform", subjectId: owner!.id, storeId: null, expiresAt: new Date(now + 30 * DAY) });
 
+  await seedAgency(db, owner!.id, now);
+
   console.log(`✓ متجر atelier (${atelier}) بتخصيصات stores/atelier/ (مكوّن خاص، هيدر، صفحة /craft)`);
   console.log(`clp_p=${ptoken}`);
   console.log(`clp_m=${token}`);
+}
+
+/**
+ * فريق الوكالة وطلبات متاجر بحالات إنتاج مختلفة (لوحة /admin/requests). كل عضو له كوكي clp_p ثابت:
+ * dev-platform-<role>-token... (shot.mjs --as=builder|reviewer|sales).
+ */
+async function seedAgency(db: ReturnType<typeof drizzle<typeof schema>>, ownerId: string, now: number) {
+  const { storeRequests, storeRequestEvents } = schema;
+  const members: Record<string, string> = {};
+  for (const [role, name] of [["builder", "منفّذ (تطوير)"], ["reviewer", "مراجع (تطوير)"], ["sales", "مبيعات (تطوير)"]] as const) {
+    const [u] = await db
+      .insert(platformUsers)
+      .values({ email: `${role}.dev@example.com`, name, passwordHash: "dev-only-no-password", role, invitedBy: ownerId })
+      .onConflictDoUpdate({ target: platformUsers.email, set: { isActive: true, role } })
+      .returning();
+    members[role] = u!.id;
+    const tok = `dev-platform-${role}-token-`.padEnd(41, "0");
+    await db.delete(sessions).where(eq(sessions.tokenHash, sha(tok)));
+    await db.insert(sessions).values({ tokenHash: sha(tok), subjectType: "platform", subjectId: u!.id, storeId: null, expiresAt: new Date(now + 30 * DAY) });
+  }
+  await db.delete(storeRequests).where(sql`${storeRequests.code} like 'REQ-DEV%'`);
+  const base = (n: number, name: string, extra: Partial<typeof storeRequests.$inferInsert>) => ({
+    code: `REQ-DEV${n}`,
+    status: "submitted" as const,
+    stage: "received" as const,
+    draftTokenHash: sha(`dev-draft-${n}`),
+    trackTokenHash: sha(`dev-track-${n}`),
+    storeName: name,
+    whatsapp: `0101234567${n}`,
+    email: `client${n}.dev@gmail.com`,
+    data: {
+      v: 1,
+      store: { name, oneLine: "ملابس قطن للأطفال من سنة لعشر سنين" },
+      contact: { email: `client${n}.dev@gmail.com`, whatsapp: `0101234567${n}` },
+      social: { url: `https://www.instagram.com/${name === "بيبي كوتون" ? "baby.cotton" : `dev.store${n}`}/`, teamCollects: n === 2 },
+      colors: { mode: "preset", preset: "soft-rose" },
+      logo: { team: true },
+      products: { mode: "list", items: [{ id: "a", line: "بيجامة قطن، وردي/سماوي، 2-8 سنين، 350" }, { id: "b", line: "طقم صيفي، أبيض، 1-5 سنين، 420" }] },
+      payment: { methods: ["cod", "wallet"], unsure: false },
+      delivery: { scope: "all" },
+      inspiration: { team: true },
+      voice: {},
+      notes: "عايز الموقع بسيط وألوانه هادية.",
+    },
+    source: "web" as const,
+    submittedAt: new Date(now - n * 9 * 3_600_000),
+    productionChangedAt: new Date(now - n * 7 * 3_600_000),
+    etaFrom: new Date(now + 12 * 3_600_000),
+    etaTo: new Date(now + (n === 4 ? -5 : 60) * 3_600_000),
+    expiresAt: new Date(now + 21 * DAY),
+    ...extra,
+  });
+  const rows = await db
+    .insert(storeRequests)
+    .values([
+      base(1, "بيبي كوتون", {}),
+      base(2, "عطور ليان", { production: "assigned", builderId: members.builder, reviewerId: members.reviewer, seenAt: new Date(now) }),
+      base(3, "ورشة خشب", { production: "building", stage: "design", builderId: members.builder, reviewerId: members.reviewer, seenAt: new Date(now), qa: { brief: { by: members.builder!, at: new Date(now).toISOString() } } }),
+      base(4, "بن الصباح", { production: "review", stage: "review", builderId: ownerId, reviewerId: members.reviewer, seenAt: new Date(now) }),
+    ])
+    .returning({ id: storeRequests.id });
+  await db.insert(storeRequestEvents).values(rows.map((r) => ({ requestId: r.id, type: "submitted" as const, toStage: "received" as const, actor: "client" })));
+  console.log("✓ فريق الوكالة (منفّذ/مراجع/مبيعات) و4 طلبات متاجر بحالات إنتاج مختلفة");
 }
 
 /**

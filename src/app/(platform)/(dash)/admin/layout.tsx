@@ -30,6 +30,7 @@ import {
 } from "@/db/schema";
 import { storeRequests } from "@/db/schema/agency";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
+import { can, canSeePage, isPlatformRole, ROLE_INFO, type AdminPage } from "@/agency/roles";
 import { cn } from "@/lib/utils";
 
 const SW = 1.75;
@@ -95,7 +96,12 @@ export default async function PlatformAdminLayout({
       db
         .select({ c: sql<number>`count(*)`.mapWith(Number) })
         .from(storeRequests)
-        .where(and(eq(storeRequests.status, "submitted"), sql`${storeRequests.seenAt} is null`))
+        // من لا يرى كل الطلبات (المنفّذ): الشارة = ما بين يديه ولم يُسلَّم بعد.
+        .where(
+          can(u.role, "requests.view_all")
+            ? and(eq(storeRequests.status, "submitted"), sql`${storeRequests.seenAt} is null`)
+            : and(eq(storeRequests.status, "submitted"), sql`${storeRequests.production} in ('assigned','building')`, sql`(${storeRequests.builderId} = ${u.id} or ${storeRequests.reviewerId} = ${u.id})`)
+        )
         .catch(() => [{ c: 0 }]),
     ]);
 
@@ -107,7 +113,8 @@ export default async function PlatformAdminLayout({
     "/admin/requests": newRequestRows[0]?.c ?? 0,
   };
 
-  const links = NAV.map(([href, label, Icon]) => ({
+  // القائمة حسب الدور (الخادم يحرس كل صفحة بنفسه؛ هذا لإخفاء ما لا يخصه فقط).
+  const links = NAV.filter(([href]) => canSeePage(u.role, href as AdminPage)).map(([href, label, Icon]) => ({
     href,
     label,
     Icon,
@@ -128,7 +135,7 @@ export default async function PlatformAdminLayout({
               <ColapiaLogo size={32} priority />
             </Link>
             <p className="mt-2 text-xs font-bold text-[#8d97c4]">
-              لوحة تحكم الأونر · {u.name}
+              {u.name} · {isPlatformRole(u.role) ? ROLE_INFO[u.role].label : u.role}
             </p>
           </div>
 

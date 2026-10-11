@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { can } from "@/agency/roles";
 import Link from "next/link";
 import { sql, gte, desc, eq, and, inArray } from "drizzle-orm";
 import { Workflow, MessagesSquare, Wallet, Store, TrendingUp, Flame, Activity, Mail, Star } from "lucide-react";
@@ -30,7 +32,9 @@ async function platformGmv(since: Date): Promise<[{ n: number; v: number }]> {
 }
 
 export default async function AdminCommandCenter() {
-  await requirePlatformPage();
+  const me = await requirePlatformPage();
+  // لوحة القيادة فيها الإيرادات والمدفوعات: للمالك والمدير. باقي الفريق يبدأ من لوحة الإنتاج.
+  if (!can(me.role, "stores.manage")) redirect("/admin/requests");
   const d30 = new Date(Date.now() - 30 * 864e5);
   const d1 = new Date(Date.now() - 864e5);
 

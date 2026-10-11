@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 const fmt = (d: Date | null | undefined) => d ? d.toLocaleString("ar-EG", { timeZone: "Africa/Cairo", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export default async function StoreDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "stores.manage" });
   const { id } = await params;
   const [s] = await db.select().from(stores).where(eq(stores.id, id));
   if (!s) notFound();

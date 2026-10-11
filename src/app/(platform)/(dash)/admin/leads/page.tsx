@@ -17,7 +17,7 @@ function heat(c: { leadScore: number; stage: string; lastUserMessageAt: Date | n
 }
 
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ sort?: string; f?: string }> }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "leads" });
   const { sort = "heat", f = "open" } = await searchParams;
   
   const where = f === "lost" ? eq(conversations.stage, "lost") : 

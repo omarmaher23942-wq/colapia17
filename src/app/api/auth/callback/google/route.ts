@@ -57,6 +57,7 @@ async function resolvePlatformAdmin(params: {
   email: string;
   name: string;
   googleId: string;
+  picture?: string | null;
   reqId: string;
 }): Promise<typeof platformUsers.$inferSelect | null> {
   const email = params.email.toLowerCase().trim();
@@ -67,7 +68,15 @@ async function resolvePlatformAdmin(params: {
     .from(platformUsers)
     .where(and(eq(platformUsers.email, email), eq(platformUsers.isActive, true)))
     .limit(1);
-  if (active) return active;
+  if (active) {
+    // عضو أضافه المالك بالبريد: أول دخول بـ Google يكمل حسابه (الصورة وآخر دخول).
+    await db
+      .update(platformUsers)
+      .set({ lastLoginAt: new Date(), avatarUrl: params.picture ?? active.avatarUrl, updatedAt: new Date() })
+      .where(eq(platformUsers.id, active.id))
+      .catch(() => {});
+    return active;
+  }
 
   // 2) هل الإيميل في قائمة المالكين المُفَوَّضين تلقائياً؟
   const ownerEmails = getPlatformOwnerEmails();
@@ -181,6 +190,7 @@ export async function GET(req: Request) {
         email: user.email,
         name: user.name ?? "",
         googleId: user.id,
+        picture: user.picture,
         reqId,
       });
 

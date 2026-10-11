@@ -3,17 +3,13 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { merchants, systemEvents } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { sendEmail } from "@/lib/email";
 import { revalidatePath } from "next/cache";
 import { sleep } from "@/lib/utils";
 
 async function requireAdmin() {
-  const session = await getPlatformSession();
-  if (!session) {
-    throw new Error("غير مصرح: هذه العملية مخصصة لإدارة منصة كولابيا فقط");
-  }
-  return session;
+  return requirePlatformCap("audience", "غير مصرح: هذه العملية مخصصة لإدارة منصة كولابيا فقط");
 }
 
 /** إرسال إيميل رسمي فردي لتاجر محدد */

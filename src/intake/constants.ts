@@ -15,5 +15,9 @@ export type RequestAssetKind = (typeof REQUEST_ASSET_KINDS)[number];
 export const TRANSCRIPT_STATUSES = ["none", "pending", "done", "failed"] as const;
 export type TranscriptStatus = (typeof TRANSCRIPT_STATUSES)[number];
 
-export const REQUEST_EVENT_TYPES = ["submitted", "stage", "note", "edited", "spam", "restored", "email", "link"] as const;
+export const REQUEST_EVENT_TYPES = ["submitted", "stage", "note", "edited", "spam", "restored", "email", "link", "production", "assign", "qa", "slug", "provision", "delivered"] as const;
 export type RequestEventType = (typeof REQUEST_EVENT_TYPES)[number];
+
+/** حالات الإنتاج الداخلية (يراها الفريق فقط؛ القواعد في src/agency/production.ts). */
+export const PRODUCTION_STATES = ["new", "assigned", "building", "review", "ready", "delivered"] as const;
+export type ProductionStateValue = (typeof PRODUCTION_STATES)[number];

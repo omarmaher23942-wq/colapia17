@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { stores } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { transition, type StoreStatus } from "@/lifecycle/machine";
 import { deliverStore } from "@/ai/lifecycle/deliver";
 import { extendAction } from "@/server/actions/platform-ops";
@@ -13,8 +13,7 @@ import { redis } from "@/lib/redis";
 import { env } from "@/lib/env";
 
 async function requireOwner() {
-  const u = await getPlatformSession();
-  if (!u || u.role === "reviewer") throw new Error("غير مصرح");
+  const u = await requirePlatformCap("stores.manage", "غير مصرح");
   return u;
 }
 

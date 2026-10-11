@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
-import { db } from "@/db/client"; import { conversations, stores } from "@/db/schema"; import { getPlatformSession } from "@/server/auth";
+import { db } from "@/db/client"; import { conversations, stores } from "@/db/schema"; import { platformUser } from "@/server/platform-guard";
 export async function GET() {
-  if (!(await getPlatformSession())) return new Response("غير مصرح", { status: 401 });
+  if (!(await platformUser({ cap: "leads" }))) return new Response("غير مصرح", { status: 401 });
   const rows = await db.select({ c: conversations, s: stores.subdomain }).from(conversations).leftJoin(stores, eq(stores.id, conversations.storeId)).orderBy(desc(conversations.createdAt)).limit(5000);
   const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const head = ["name", "channel", "stage", "lead_score", "industry", "pain_points", "store", "created_at", "last_user_message_at", "lost_reason"];

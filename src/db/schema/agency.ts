@@ -11,6 +11,8 @@ import { stores } from "./stores";
 import { conversations } from "./ai";
 
 import {
+  PRODUCTION_STATES,
+  type ProductionStateValue,
   REQUEST_ASSET_KINDS,
   REQUEST_EVENT_TYPES,
   REQUEST_SOURCES,
@@ -78,6 +80,28 @@ export const storeRequests = pgTable(
     clientEmailedAt: timestamp("client_emailed_at", { withTimezone: true }),
     teamNotifiedAt: timestamp("team_notified_at", { withTimezone: true }),
 
+    // ─── الإنتاج الداخلي (المرحلة 3، migration 0007): يراه الفريق فقط ───
+    /** src/agency/production.ts: new ← assigned ← building ← review ← ready ← delivered. */
+    production: text("production").$type<ProductionStateValue>().notNull().default("new"),
+    productionChangedAt: timestamp("production_changed_at", { withTimezone: true }),
+    builderId: uuid("builder_id").references(() => platformUsers.id, { onDelete: "set null" }),
+    reviewerId: uuid("reviewer_id").references(() => platformUsers.id, { onDelete: "set null" }),
+    /** النطاق الفرعي المقترح/المعتمد للمتجر (يُثبَّت عند التجهيز). */
+    slug: text("slug"),
+    /** قائمة فحص الجودة: { بند: { by, at } } (QA_ITEMS). */
+    qa: jsonb("qa").$type<Record<string, { by: string; at: string }>>().notNull().default({}),
+    approvedBy: uuid("approved_by").references(() => platformUsers.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    /** جولة البناء (تزيد كلما أعاده المراجع): اسم الفرع build/<slug>-<round>. */
+    round: integer("round").notNull().default(1),
+    /** بانتظار العميل (معلومة ناقصة): سبب ظاهر للفريق، والطلب لا يُحسب متأخراً داخلياً أثناءه. */
+    waitingReason: text("waiting_reason"),
+    waitingSince: timestamp("waiting_since", { withTimezone: true }),
+    /** نسخة ما أرسله العميل قبل أول تعديل من الفريق (data يصبح نسخة الفريق المعتمدة). */
+    clientData: jsonb("client_data").$type<Record<string, unknown>>(),
+    /** آخر تنبيه تأخر داخلي أُرسل للفريق (لا يتكرر لنفس الحالة). */
+    slaAlertedAt: timestamp("sla_alerted_at", { withTimezone: true }),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
@@ -95,6 +119,11 @@ export const storeRequests = pgTable(
     index("store_requests_whatsapp_idx").on(t.whatsapp),
     index("store_requests_conversation_idx").on(t.conversationId),
     index("store_requests_expires_idx").on(t.expiresAt),
+    index("store_requests_production_idx").on(t.production),
+    index("store_requests_builder_idx").on(t.builderId),
+    index("store_requests_reviewer_idx").on(t.reviewerId),
+    uniqueIndex("store_requests_slug_uq").on(t.slug),
+    check("store_requests_production_chk", sql`${t.production} IN (${inList(PRODUCTION_STATES)})`),
     check("store_requests_status_chk", sql`${t.status} IN (${inList(REQUEST_STATUSES)})`),
     check("store_requests_stage_chk", sql`${t.stage} IS NULL OR ${t.stage} IN (${inList(REQUEST_STAGES)})`),
     check("store_requests_source_chk", sql`${t.source} IN (${inList(REQUEST_SOURCES)})`),
@@ -145,4 +174,19 @@ export const storeRequestEvents = pgTable(
     index("store_request_events_request_idx").on(t.requestId, t.createdAt),
     check("store_request_events_type_chk", sql`${t.type} IN (${inList(REQUEST_EVENT_TYPES)})`),
   ]
+);
+
+/** سجل نشاط فريق الوكالة على مستوى اللوحة (إضافة عضو، تغيير دور، إسناد، تسليم...). سجل الطلب نفسه في store_request_events. */
+export const platformActivity = pgTable(
+  "platform_activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    actorId: uuid("actor_id").references(() => platformUsers.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    /** request:<id> | member:<id> | store:<id> */
+    target: text("target"),
+    meta: jsonb("meta").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("platform_activity_created_idx").on(t.createdAt), index("platform_activity_actor_idx").on(t.actorId, t.createdAt)]
 );

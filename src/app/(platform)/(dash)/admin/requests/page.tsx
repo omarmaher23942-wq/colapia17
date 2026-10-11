@@ -1,15 +1,20 @@
-// /admin/requests — طلبات المتاجر من الاستمارة، مرتبة بالمرحلة التي يراها العميل. «جديد» = لم يفتحه أحد من
-// الفريق، و«متأخر» = تجاوز موعد التسليم الذي وُعد به العميل.
+// /admin/requests — لوحة الإنتاج: طلبات المتاجر بأعمدة حالات الإنتاج الداخلية (جديد ← مُسند ← قيد البناء ← بانتظار
+// المراجعة ← جاهز). «جديد» على البطاقة = لم يفتحه أحد، و«متأخر عن الوعد» = تجاوز موعد التسليم الذي رآه العميل،
+// و«متأخر داخلياً» = تجاوز مهلة الحالة (من /admin/flags ← production). المنفّذ يرى ما أُسند إليه فقط.
 import Link from "next/link";
 import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
-import { AlertTriangle, Inbox, Mail, MessageCircle, Search } from "lucide-react";
+import { AlertTriangle, Clock3, Inbox, Mail, MessageCircle, PauseCircle, Search, UserRound } from "lucide-react";
 import { db } from "@/db/client";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { storeRequests } from "@/db/schema/agency";
 import { isMissingTable, openQueueLength } from "@/intake/repo";
 import { intakeSettings } from "@/intake/guard";
 import { estimateEta, etaText } from "@/intake/eta";
-import { REQUEST_STAGES, STAGE_INFO } from "@/intake/stages";
+import { STAGE_INFO } from "@/intake/stages";
+import { platformUsers } from "@/db/schema";
+import { can, isPlatformRole } from "@/agency/roles";
+import { overdueHours, PRODUCTION_INFO, type ProductionState } from "@/agency/production";
+import { productionSla } from "@/agency/settings";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { ago, isLate, SOURCE_LABEL } from "@/components/platform/requests/format";
 import { cn } from "@/lib/utils";
@@ -18,16 +23,21 @@ import { requirePlatformPage } from "@/server/platform-guard";
 export const dynamic = "force-dynamic";
 
 const VIEWS = {
-  active: { label: "قيد التنفيذ", where: and(eq(storeRequests.status, "submitted"), ne(storeRequests.stage, "delivery")) },
-  delivered: { label: "سُلِّمت", where: and(eq(storeRequests.status, "submitted"), eq(storeRequests.stage, "delivery")) },
+  active: { label: "قيد التنفيذ", where: and(eq(storeRequests.status, "submitted"), ne(storeRequests.production, "delivered")) },
+  delivered: { label: "سُلِّمت", where: and(eq(storeRequests.status, "submitted"), eq(storeRequests.production, "delivered")) },
   spam: { label: "سبام", where: eq(storeRequests.status, "spam") },
 } as const;
+const BOARD: ProductionState[] = ["new", "assigned", "building", "review", "ready"];
 type View = keyof typeof VIEWS;
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  await requirePlatformPage();
+  const me = await requirePlatformPage();
   const sp = await searchParams;
-  const view: View = sp.view === "delivered" || sp.view === "spam" ? sp.view : "active";
+  const role = isPlatformRole(me.role) ? me.role : "sales";
+  const seesAll = can(role, "requests.view_all");
+  // المنفّذ: ما أُسند إليه فقط دائماً. الباقون: «طلباتي» اختياري.
+  const onlyMine = !seesAll || sp.who === "mine";
+  const view: View = sp.view === "spam" && can(role, "requests.spam") ? "spam" : sp.view === "delivered" ? "delivered" : "active";
   const q = typeof sp.q === "string" ? sp.q.trim().slice(0, 80) : "";
   const like = `%${q.replace(/[%_\\]/g, "\\$&")}%`;
   // الرقم يُبحث بصيغته القياسية (01xxxxxxxxx) أياً كانت طريقة كتابته: +20 أو مسافات أو أرقام هندية.
@@ -41,7 +51,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       db
         .select()
         .from(storeRequests)
-        .where(and(VIEWS[view].where, q ? or(ilike(storeRequests.code, like), ilike(storeRequests.storeName, like), ilike(storeRequests.email, like), ilike(storeRequests.whatsapp, like), phone ? eq(storeRequests.whatsapp, phone) : undefined) : undefined))
+        .where(and(VIEWS[view].where, onlyMine ? or(eq(storeRequests.builderId, me.id), eq(storeRequests.reviewerId, me.id)) : undefined, q ? or(ilike(storeRequests.code, like), ilike(storeRequests.storeName, like), ilike(storeRequests.email, like), ilike(storeRequests.whatsapp, like), phone ? eq(storeRequests.whatsapp, phone) : undefined) : undefined))
         // الطابور من الأقدم (الأقرب لتجاوز الوعد)؛ المسلَّمة والسبام من الأحدث. والسقف لا يُسقط الأقدم الأكثر تأخراً.
         .orderBy(view === "active" ? asc(storeRequests.submittedAt) : desc(storeRequests.submittedAt))
         .limit(500),
@@ -65,7 +75,15 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
   }
 
   const now = new Date();
-  const groups = view === "active" ? REQUEST_STAGES.filter((s) => s !== "delivery").map((s) => ({ key: s, title: STAGE_INFO[s].label, items: rows.filter((r) => r.stage === s) })) : [{ key: view, title: VIEWS[view].label, items: rows }];
+  const [sla, team] = missing ? [null, []] : await Promise.all([productionSla(), db.select({ id: platformUsers.id, name: platformUsers.name }).from(platformUsers)]);
+  const names = new Map(team.map((t) => [t.id, t.name]));
+  const groups = view === "active" ? BOARD.map((s) => ({ key: s, title: PRODUCTION_INFO[s].label, items: rows.filter((r) => r.production === s) })) : [{ key: view, title: VIEWS[view].label, items: rows }];
+  const qs = (patch: Record<string, string | null>) => {
+    const u = new URLSearchParams();
+    const base = { view, who: onlyMine && seesAll ? "mine" : null, q: q || null, ...patch };
+    for (const [k, v] of Object.entries(base)) if (v) u.set(k, v);
+    return `/admin/requests?${u.toString()}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -73,10 +91,13 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-black">
-            <Inbox className="size-6 text-[#8fa8ff]" strokeWidth={1.75} aria-hidden="true" /> طلبات المتاجر
+            <Inbox className="size-6 text-[#8fa8ff]" strokeWidth={1.75} aria-hidden="true" /> {seesAll ? "طلبات المتاجر" : "متاجري"}
           </h1>
-          <p className="mt-1 text-sm text-[#8d97c4]">من استمارة /start. حرّك كل طلب لمرحلته، والعميل يراها في صفحة متابعته.{drafts ? ` (${drafts} استمارة بدأها أصحابها ولم تُرسل بعد)` : ""}</p>
-          {promise ? (
+          <p className="mt-1 text-sm text-[#8d97c4]">
+            {seesAll ? "من استمارة /start. أسند كل طلب لمنفّذ ومراجع، وحالة الإنتاج تدفع المرحلة التي يراها العميل." : "المتاجر المسندة إليك للبناء أو المراجعة."}
+            {seesAll && drafts ? ` (${drafts} استمارة بدأها أصحابها ولم تُرسل بعد)` : ""}
+          </p>
+          {promise && seesAll ? (
             <p className="mt-1 text-xs text-[#8d97c4]">
               الوعد الحالي للعملاء الجدد: <b className="text-[#c3cdf0]">{promise}</b> (طاقة الفريق المضبوطة {capacity} متاجر يومياً، وتُعدَّل من إعداد «intake» في <Link href="/admin/flags" className="underline">الإعدادات</Link>).
             </p>
@@ -84,6 +105,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         </div>
         <form className="flex items-center gap-2" action="/admin/requests">
           <input type="hidden" name="view" value={view} />
+          {onlyMine && seesAll ? <input type="hidden" name="who" value="mine" /> : null}
           <label className="relative">
             <span className="sr-only">ابحث</span>
             <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-[#8d97c4]" aria-hidden="true" />
@@ -92,19 +114,26 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         </form>
       </header>
 
-      <nav className="flex gap-2" aria-label="عرض">
-        {(Object.keys(VIEWS) as View[]).map((v) => (
-          <Link key={v} href={`/admin/requests?view=${v}`} aria-current={v === view ? "page" : undefined} className={cn("rounded-xl px-3.5 py-2 text-xs font-black", v === view ? "bg-[#6f86ff] text-[#07091a]" : "bg-white/5 text-[#c3cdf0]")}>
-            {VIEWS[v].label}
+      <nav className="flex flex-wrap gap-2" aria-label="عرض">
+        {(Object.keys(VIEWS) as View[])
+          .filter((v) => v !== "spam" || can(role, "requests.spam"))
+          .map((v) => (
+            <Link key={v} href={qs({ view: v })} aria-current={v === view ? "page" : undefined} className={cn("rounded-xl px-3.5 py-2 text-xs font-black", v === view ? "bg-[#6f86ff] text-[#07091a]" : "bg-white/5 text-[#c3cdf0]")}>
+              {VIEWS[v].label}
+            </Link>
+          ))}
+        {seesAll ? (
+          <Link href={qs({ who: onlyMine ? null : "mine" })} aria-pressed={onlyMine} className={cn("ms-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black", onlyMine ? "bg-emerald-400 text-[#07091a]" : "bg-white/5 text-[#c3cdf0]")}>
+            <UserRound className="size-3.5" aria-hidden="true" /> طلباتي فقط
           </Link>
-        ))}
+        ) : null}
       </nav>
 
       {missing ? (
         <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm font-bold text-amber-200">جداول الطلبات غير موجودة بعد. شغّل من جهازك: npm run db:migrate (migration 0006_agency_requests).</p>
       ) : null}
 
-      <div className={cn("grid gap-4", view === "active" && "lg:grid-cols-4")}>
+      <div className={cn("grid gap-4", view === "active" && "md:grid-cols-2 xl:grid-cols-5")}>
         {groups.map((g) => (
           <section key={g.key} className="space-y-3 rounded-3xl border border-white/10 bg-[#0b0f2a] p-3">
             <h2 className="flex items-center justify-between px-1 text-sm font-black">
@@ -114,6 +143,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
             {g.items.length === 0 ? <p className="px-1 py-6 text-center text-xs text-[#8d97c4]">لا طلبات</p> : null}
             {g.items.map((r) => {
               const late = isLate(r, now);
+              const overdue = sla && !r.waitingReason ? overdueHours(r.production as ProductionState, r.productionChangedAt, sla, now) : 0;
               return (
                 <Link key={r.id} href={`/admin/requests/${r.id}`} className="block rounded-2xl border border-white/10 bg-[#0e1424] p-3 transition hover:border-[#8fa8ff]/40">
                   <div className="flex items-start justify-between gap-2">
@@ -140,7 +170,22 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                         <AlertTriangle className="size-3.5" aria-hidden="true" /> متأخر عن الوعد
                       </span>
                     ) : null}
+                    {overdue > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-amber-300">
+                        <Clock3 className="size-3.5" aria-hidden="true" /> +{overdue} س
+                      </span>
+                    ) : null}
+                    {r.waitingReason ? (
+                      <span className="inline-flex items-center gap-1 text-amber-200" title={r.waitingReason}>
+                        <PauseCircle className="size-3.5" aria-hidden="true" /> بانتظار العميل
+                      </span>
+                    ) : null}
                   </div>
+                  <p className="mt-2 flex flex-wrap gap-x-3 text-[11px] text-[#8d97c4]">
+                    <span>منفّذ: {r.builderId ? (names.get(r.builderId) ?? "—") : <b className="text-amber-300">بلا</b>}</span>
+                    {r.reviewerId ? <span>مراجع: {names.get(r.reviewerId) ?? "—"}</span> : null}
+                    {view !== "active" ? null : <span>العميل يرى: {r.stage ? STAGE_INFO[r.stage].label : "—"}</span>}
+                  </p>
                 </Link>
               );
             })}

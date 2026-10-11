@@ -3,11 +3,11 @@ import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, messages, intakes, systemEvents } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { meta, replyMode } from "@/channels/meta";
 import { aiText } from "@/ai/providers";
 
-async function guard() { const u = await getPlatformSession(); if (!u) throw new Error("غير مصرح"); return u; }
+async function guard() { return requirePlatformCap("conversations", "غير مصرح"); }
 
 export async function togglePauseAction(id: string, paused: boolean) {
   const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return;

@@ -66,6 +66,9 @@ export const FORBIDDEN_IN_TEMPLATE = [
   // جداول طلبات الوكالة وحارس لوحة الفريق: بيانات عملاء الوكالة وصلاحيات الفريق لا تدخل مشروع أي تاجر.
   /^src\/db\/schema\/agency\.ts$/,
   /^src\/server\/platform-guard\.ts$/,
+  // خط الإنتاج وأدوار فريق الوكالة (المرحلة 3).
+  /^src\/agency\//,
+  /^src\/server\/actions\/agency-/,
 ];
 
 const CODE_EXT = [".ts", ".tsx", ".mjs", ".js", ".css"];

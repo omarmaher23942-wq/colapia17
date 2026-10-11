@@ -15,7 +15,7 @@ import { requirePlatformPage } from "@/server/platform-guard";
 export const dynamic = "force-dynamic";
 
 export default async function AdminStoresPage() {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "stores.manage" });
   // ─── جلب قائمة المتاجر مع بيانات التاجر ──────────────────────────────
   const rows = await db
     .select({

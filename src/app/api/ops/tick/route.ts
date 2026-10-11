@@ -6,6 +6,7 @@ import { scheduledJobs, stores, platformPayments } from "@/db/schema";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { purgeExpiredDrafts } from "@/intake/purge";
 import { retryPendingNotifications } from "@/intake/notify";
+import { alertOverdueRequests } from "@/agency/sla";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -41,6 +42,12 @@ export async function GET(req: Request) {
     return 0;
   });
 
+  // طلبات متأخرة داخلياً أو عن وعد العميل: بريد للمسؤول والمديرين مرة لكل حالة.
+  const overdueRequests = await alertOverdueRequests().catch((e) => {
+    console.error("[ops/tick] sla alerts failed", e);
+    return 0;
+  });
+
   const alerts: string[] = [];
   if ((stuck?.c ?? 0) > 5) alerts.push(`${stuck!.c} مهمة QStash متأخرة`);
   if ((overdueReview?.c ?? 0) > 0) alerts.push(`${overdueReview!.c} متجر مراجعته متأخرة`);
@@ -63,6 +70,7 @@ export async function GET(req: Request) {
     stalePayments: stalePayments?.c ?? 0,
     purgedDrafts: purged,
     retriedNotifications,
+    overdueRequests,
   });
 }
 

@@ -15,14 +15,13 @@ import {
   storeSnapshots,
   systemEvents,
 } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { transition } from "@/lifecycle/machine";
 import type { StoreBlueprint } from "@/blueprint/schema";
 
 async function requireOwner() {
-  const u = await getPlatformSession();
-  if (!u || u.role === "reviewer") throw new Error("غير مصرح");
+  const u = await requirePlatformCap("stores.manage", "غير مصرح");
   return u;
 }
 

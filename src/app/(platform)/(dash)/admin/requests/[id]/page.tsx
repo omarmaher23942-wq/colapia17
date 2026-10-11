@@ -17,6 +17,14 @@ import { requirePlatformPage } from "@/server/platform-guard";
 import { waLink } from "@/lib/whatsapp";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { CopyBrief, DeleteRequest, NoteForm, SpamToggle, StageMover } from "@/components/platform/requests/RequestActions";
+import { ProductionPanel, type Member } from "@/components/platform/requests/ProductionPanel";
+import { RequestDataEditor } from "@/components/platform/requests/RequestDataEditor";
+import { can, isPlatformRole } from "@/agency/roles";
+import { canViewRequest, overdueHours, readQa, PRODUCTION_INFO, type ProductionState } from "@/agency/production";
+import { branchFor, renderPrompt } from "@/agency/prompt";
+import { suggestSlug } from "@/agency/slug";
+import { productionSla } from "@/agency/settings";
+import { stores } from "@/db/schema";
 import { at, isGoogleMail, isLate, SOURCE_LABEL } from "@/components/platform/requests/format";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +59,8 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
   const me = await requirePlatformPage();
   const { id } = await params;
   if (!UUID_RE.test(id)) notFound();
-  const canWrite = me.role !== "reviewer";
+  const role = isPlatformRole(me.role) ? me.role : "sales";
+  const viewer = { id: me.id, role };
 
   let row: typeof storeRequests.$inferSelect | undefined;
   try {
@@ -61,11 +70,17 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
     throw e;
   }
   if (!row || row.status === "draft") notFound();
+  // المنفّذ يرى ما أُسند إليه فقط (الخادم يفرضه هنا وفي كل إجراء).
+  if (!canViewRequest(row, viewer)) notFound();
+  const mine = row.builderId === me.id;
+  const canManage = can(role, "requests.assign");
+  const canClient = can(role, "requests.client_stage") && (role !== "builder" || mine);
 
-  const [assets, events, team] = await Promise.all([
+  const [assets, events, team, sla] = await Promise.all([
     requestAssets(row.id),
     requestEvents(row.id),
-    db.select({ id: platformUsers.id, name: platformUsers.name }).from(platformUsers),
+    db.select({ id: platformUsers.id, name: platformUsers.name, role: platformUsers.role, isActive: platformUsers.isActive }).from(platformUsers),
+    productionSla(),
   ]);
   // فتح الطلب يزيل شارة «جديد» من اللوحة.
   if (!row.seenAt) {
@@ -89,6 +104,24 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
   const brief = renderBrief({ code: row.code, data: d, assets: assets.map((a) => ({ key: a.key, url: a.url, kind: a.kind, transcript: a.transcript })), submittedAt: row.submittedAt });
   const greet = `أهلاً، معاك فريق Colapia بخصوص طلب متجر «${row.storeName ?? ""}» (${row.code}).`;
 
+  // النطاق: المحفوظ، وإلا اقتراح لا يصطدم بمتجر قائم (التثبيت عند حفظه أو التجهيز).
+  const takenSubs = new Set((await db.select({ s: stores.subdomain }).from(stores)).map((x) => x.s));
+  const slug = row.slug ?? suggestSlug({ storeName: d.store.name, socialUrl: social, code: row.code }, (s) => takenSubs.has(s));
+  const branch = branchFor(slug, row.round);
+  const lastReturn = [...events].reverse().find((e) => e.type === "production" && e.internalNote?.includes("← قيد البناء:"));
+  const prompt = renderPrompt({
+    slug,
+    code: row.code,
+    storeName: row.storeName,
+    brief,
+    provisioned: Boolean(row.storeId),
+    branch,
+    teamNotes: events.filter((e) => e.type === "note" && e.internalNote && !e.internalNote.startsWith("بانتظار العميل") && e.internalNote !== "انتهى انتظار العميل").map((e) => e.internalNote!),
+    reviewerNote: row.round > 1 && lastReturn?.internalNote ? lastReturn.internalNote.split("← قيد البناء:")[1]?.trim() ?? null : null,
+  });
+  const members: Member[] = team.filter((t) => t.isActive && isPlatformRole(t.role)).map((t) => ({ id: t.id, name: t.name, role: t.role as Member["role"] }));
+  const imageUrls = Object.fromEntries(assets.filter((a) => isTrustedUploadUrl(a.url)).map((a) => [a.key, a.url]));
+
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <Link href="/admin/requests" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#8d97c4] hover:text-white">
@@ -109,8 +142,8 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <CopyBrief markdown={brief} />
-            <SpamToggle id={row.id} spam={row.status === "spam"} canWrite={canWrite} />
-            <DeleteRequest id={row.id} code={row.code} canWrite={canWrite} />
+            <SpamToggle id={row.id} spam={row.status === "spam"} canWrite={can(role, "requests.spam")} />
+            <DeleteRequest id={row.id} code={row.code} canWrite={can(role, "requests.delete")} />
           </div>
         </div>
         {row.etaFrom && row.etaTo ? (
@@ -123,11 +156,41 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
         {row.status === "spam" ? <p className="text-sm font-bold text-rose-300">معلَّم كسبام: خارج الطابور ولا يُحسب في موعد التسليم.</p> : null}
       </header>
 
+      {row.status === "submitted" ? (
+        <section className={`${card} space-y-3`}>
+          <h2 className="text-sm font-black">الإنتاج (داخلي): {PRODUCTION_INFO[row.production as ProductionState].label}</h2>
+          {row.waitingReason ? <p className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm font-bold text-amber-200">بانتظار العميل: {row.waitingReason}</p> : null}
+          <ProductionPanel
+            id={row.id}
+            me={viewer}
+            production={row.production as ProductionState}
+            builderId={row.builderId}
+            reviewerId={row.reviewerId}
+            qa={readQa(row.qa)}
+            slug={slug}
+            slugLocked={Boolean(row.storeId)}
+            waitingReason={row.waitingReason}
+            members={members}
+            prompt={prompt}
+            branch={branch}
+            round={row.round}
+            hasEmail={Boolean(row.email)}
+            overdue={row.waitingReason ? 0 : overdueHours(row.production as ProductionState, row.productionChangedAt, sla)}
+          />
+        </section>
+      ) : null}
+
       <section className={`${card} space-y-3`}>
         <h2 className="text-sm font-black">المرحلة التي يراها العميل: {row.stage ? STAGE_INFO[row.stage].label : "—"}</h2>
         {row.stageNote ? <p className="rounded-xl bg-white/[0.04] p-3 text-sm text-[#c3cdf0]">ملاحظة ظاهرة له الآن: {row.stageNote}</p> : null}
-        {row.status === "submitted" ? <StageMover id={row.id} stage={row.stage} canWrite={canWrite} hasEmail={Boolean(row.email)} /> : null}
+        <p className="text-[12px] text-[#8d97c4]">تتقدم تلقائياً مع حالة الإنتاج. انقلها يدوياً فقط لتفصيل أدق (مثل «التصميم» ثم «البناء») أو لتكتب له ملاحظة.</p>
+        {row.status === "submitted" ? <StageMover id={row.id} stage={row.stage} canWrite={canClient} hasEmail={Boolean(row.email)} /> : null}
       </section>
+
+      {row.status === "submitted" && (canManage || (mine && can(role, "requests.work"))) && row.production !== "delivered" ? (
+        <RequestDataEditor id={row.id} data={d} version={row.updatedAt.toISOString()} imageUrls={imageUrls} />
+      ) : null}
+      {row.clientData ? <p className="text-[12px] text-[#8d97c4]">عدّل الفريق بيانات هذا الطلب؛ نسخة العميل الأصلية محفوظة.</p> : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className={card}>
@@ -253,7 +316,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
       <div className="grid gap-5 lg:grid-cols-2">
         <section className={`${card} space-y-3`}>
           <h2 className="text-sm font-black">ملاحظة</h2>
-          <NoteForm id={row.id} canWrite={canWrite} />
+          <NoteForm id={row.id} canWrite={can(role, "requests.note")} />
         </section>
         <section className={card}>
           <h2 className="mb-3 text-sm font-black">السجل</h2>
@@ -274,7 +337,21 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
                           ? "أُعيد للطابور"
                           : e.type === "email"
                             ? "بريد"
-                            : "ملاحظة"}
+                            : e.type === "production"
+                              ? "الإنتاج"
+                              : e.type === "assign"
+                                ? "الإسناد"
+                                : e.type === "qa"
+                                  ? "قائمة الفحص"
+                                  : e.type === "edited"
+                                    ? "تعديل البيانات"
+                                    : e.type === "slug"
+                                      ? "النطاق"
+                                      : e.type === "provision"
+                                        ? "التجهيز"
+                                        : e.type === "delivered"
+                                          ? "التسليم"
+                                          : "ملاحظة"}
                 </p>
                 {e.clientNote ? <p className="text-[#c3cdf0]">للعميل: {e.clientNote}</p> : null}
                 {e.internalNote ? <p className="text-[#8d97c4]">{e.internalNote}</p> : null}

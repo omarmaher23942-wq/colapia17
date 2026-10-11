@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, stores, systemEvents } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { deliverStore } from "@/ai/lifecycle/deliver";
 import {
   cancelJobs,
@@ -17,11 +17,7 @@ import { releaseToBuild } from "@/lifecycle/release";
 import { env } from "@/lib/env";
 
 async function adminOrOwner() {
-  const u = await getPlatformSession();
-  if (!u || u.role === "reviewer") {
-    throw new Error("غير مصرح: هذا الإجراء يتطلب صلاحيات مسؤول المنصة");
-  }
-  return u;
+  return requirePlatformCap("stores.manage", "غير مصرح: هذا الإجراء يتطلب صلاحيات مسؤول المنصة");
 }
 
 export async function deliverNowAction(storeId: string) {

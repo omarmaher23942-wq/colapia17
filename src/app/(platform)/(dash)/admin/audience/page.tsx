@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "الجمهور والبريد" };
 
 export default async function AudiencePage() {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "audience" });
   const [people, campaigns] = await Promise.all([
     loadAudience(),
     db.select().from(outreachCampaigns).orderBy(desc(outreachCampaigns.createdAt)).limit(30),

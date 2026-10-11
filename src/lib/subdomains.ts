@@ -10,3 +10,10 @@ export const RESERVED_SUBDOMAINS = new Set([
 export function isReservedSubdomain(sub: string): boolean {
   return RESERVED_SUBDOMAINS.has(sub.trim().toLowerCase());
 }
+
+/** صيغة النطاق الفرعي للمتجر: 3–30 حرفاً لاتينياً صغيراً وأرقاماً وشرطات، لا تبدأ ولا تنتهي بشرطة ولا شرطتان متتاليتان. */
+export const SUBDOMAIN_RE = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
+
+export function isValidSubdomain(sub: string): boolean {
+  return SUBDOMAIN_RE.test(sub) && !sub.includes("--") && !isReservedSubdomain(sub);
+}

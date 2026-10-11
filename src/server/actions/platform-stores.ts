@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { stores, magicLinks, storeBlueprints, systemEvents, conversations } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { RESERVED_SUBDOMAINS } from "@/middleware";
 import { secureToken, sha256 } from "@/lib/ids";
@@ -13,8 +13,7 @@ import { cancelJobs } from "@/ai/lifecycle/schedule";
 import { releaseToBuild } from "@/lifecycle/release";
 
 const own = async () => {
-  const u = await getPlatformSession();
-  if (!u || u.role === "reviewer") throw new Error("غير مصرح");
+  const u = await requirePlatformCap("stores.manage", "غير مصرح");
   return u;
 };
 const log = (storeId: string, message: string, actor: string) =>

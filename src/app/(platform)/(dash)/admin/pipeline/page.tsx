@@ -13,7 +13,7 @@ export default async function PipelinePage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "stores.manage" });
   const { q = "" } = await searchParams;
 
   const rows = await db

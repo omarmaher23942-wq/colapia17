@@ -6,18 +6,13 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { platformReviews, aiDirectives, stores } from "@/db/schema";
-import { getPlatformSession } from "@/server/auth";
+import { requirePlatformCap } from "@/server/platform-guard";
 import { releaseToBuild } from "@/lifecycle/release";
 import { cancelJobs, scheduleReview } from "@/lifecycle/scheduler";
 
 // ─── Guard ────────────────────────────────────────────────────────────────
 async function requireOwner() {
-  const user = await getPlatformSession();
-  if (!user) throw new Error("غير مصرح");
-  if (user.role === "reviewer") {
-    throw new Error("هذه العملية مخصصة لمالك المنصة أو الأدمن فقط");
-  }
-  return user;
+  return requirePlatformCap("stores.manage", "هذه العملية مخصصة لمالك المنصة أو المدير فقط");
 }
 
 // ─── Approval ─────────────────────────────────────────────────────────────

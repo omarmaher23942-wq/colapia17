@@ -35,7 +35,7 @@ export default async function AdminReviewsPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requirePlatformPage();
+  await requirePlatformPage({ cap: "stores.manage" });
   const { tab: tabParam } = await searchParams;
   const tab: Tab =
     tabParam === "approved" || tabParam === "featured" || tabParam === "all"

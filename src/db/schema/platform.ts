@@ -10,6 +10,10 @@ export const platformUsers = pgTable(
     passwordHash: text("password_hash").notNull(),
     role: platformRoleEnum("role").notNull().default("admin"),
     isActive: boolean("is_active").notNull().default(true),
+    /** صورة حساب Google (تُحدَّث عند كل دخول). */
+    avatarUrl: text("avatar_url"),
+    /** من أضافه للفريق (null = المالك الأول أو PLATFORM_OWNER_EMAILS). */
+    invitedBy: uuid("invited_by"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
