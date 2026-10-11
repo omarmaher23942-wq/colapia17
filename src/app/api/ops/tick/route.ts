@@ -7,6 +7,7 @@ import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { purgeExpiredDrafts } from "@/intake/purge";
 import { retryPendingNotifications } from "@/intake/notify";
 import { alertOverdueRequests } from "@/agency/sla";
+import { checkPendingDomains } from "@/server/domains";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -48,6 +49,12 @@ export async function GET(req: Request) {
     return 0;
   });
 
+  // نطاقات التجار الخاصة التي لم تُفعَّل بعد: فحص DNS دوري يفعّلها تلقائياً متى أشارت إلينا.
+  const domainsActivated = await checkPendingDomains().catch((e) => {
+    console.error("[ops/tick] domain checks failed", e);
+    return 0;
+  });
+
   const alerts: string[] = [];
   if ((stuck?.c ?? 0) > 5) alerts.push(`${stuck!.c} مهمة QStash متأخرة`);
   if ((overdueReview?.c ?? 0) > 0) alerts.push(`${overdueReview!.c} متجر مراجعته متأخرة`);
@@ -71,6 +78,7 @@ export async function GET(req: Request) {
     purgedDrafts: purged,
     retriedNotifications,
     overdueRequests,
+    domainsActivated,
   });
 }
 

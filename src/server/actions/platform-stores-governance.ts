@@ -390,3 +390,19 @@ export async function bulkStoreGovernanceAction(
     return { ok: false, error: "فشل الإجراء الجماعي" };
   }
 }
+/**
+ * المالك أضاف النطاق الخاص لمشروع Vercel يدوياً (بلا توكن): يؤكد هنا، فيُفحص فوراً ويُفعَّل متى أشار DNS إلينا.
+ */
+export async function confirmDomainAddedAction(storeId: string): Promise<{ ok: true; status: string } | { ok: false; error: string }> {
+  try {
+    await requirePlatformCap("stores.manage", "غير مصرح");
+    const [s] = await db.select().from(stores).where(eq(stores.id, storeId)).limit(1);
+    if (!s?.customDomain) return { ok: false, error: "لا نطاق خاص لهذا المتجر." };
+    const { checkStoreDomain } = await import("@/server/domains");
+    await db.update(stores).set({ customDomainVerifiedAt: new Date(), updatedAt: new Date() }).where(eq(stores.id, storeId));
+    const r = await checkStoreDomain({ ...s, customDomainVerifiedAt: new Date() });
+    return { ok: true, status: r.status };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "تعذر التأكيد" };
+  }
+}

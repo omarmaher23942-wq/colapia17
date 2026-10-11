@@ -77,7 +77,7 @@ describe("معاينة الفريق: middleware", () => {
 
     vi.resetModules();
     const { middleware } = await import("@/middleware");
-    const forged = middleware(new NextRequest("https://atelier.colapia.com/", { headers: { host: "atelier.colapia.com", "x-store-preview": "1" } }));
+    const forged = await middleware(new NextRequest("https://atelier.colapia.com/", { headers: { host: "atelier.colapia.com", "x-store-preview": "1" } }));
     expect(forged.headers.get("x-middleware-rewrite")).toContain("/s/atelier");
     expect(forged.headers.get("x-middleware-request-x-store-preview")).toBeNull();
   });

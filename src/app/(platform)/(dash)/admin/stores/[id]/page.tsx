@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { DomainAdmin } from "@/components/platform/DomainAdmin";
+import { vercelConfigured } from "@/server/domains";
+import { storeActivity } from "@/db/schema";
 import { notFound } from "next/navigation";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { stores, merchants, orders, platformPayments, storeSnapshots, systemEvents, aiCalls } from "@/db/schema";
@@ -42,6 +45,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
       .groupBy(aiCalls.purpose)
       .orderBy(sql`sum(${aiCalls.tokensIn} + ${aiCalls.tokensOut}) desc`),
   ]);
+  const [codeReq] = await db.select().from(storeActivity).where(and(eq(storeActivity.storeId, id), eq(storeActivity.action, "code.requested"))).orderBy(desc(storeActivity.createdAt)).limit(1).catch(() => []);
   const aiTotal = aiUse.reduce((a, r) => ({ calls: a.calls + r.calls, failed: a.failed + r.failed, tokens: a.tokens + r.tin + r.tout }), { calls: 0, failed: 0, tokens: 0 });
 
   return (
@@ -60,6 +64,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          <DomainAdmin storeId={s.id} domain={s.customDomain} status={s.customDomainStatus} auto={vercelConfigured()} codeRequestedAt={codeReq?.createdAt.toISOString() ?? null} />
           <StoreAdminActions 
             store={{ id: s.id, status: s.status, subdomain: s.subdomain, customDomain: s.customDomain, showcase: s.showcaseOptIn, acceptingOrders: s.acceptingOrders }} 
             merchantActivated={!!m?.isActivated} 

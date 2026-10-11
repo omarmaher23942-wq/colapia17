@@ -1,32 +1,23 @@
-// /dashboard/own — "امتلك متجرك": نقل المتجر ولوحة التحكم إلى حسابات التاجر (GitHub + Vercel + Neon).
+// /dashboard/own — «نسخة من كود متجرك»: طلب يرسله صاحب المتجر المدفوع، ويجهّز الفريق المشروع ويسلّمه بدليل تشغيله.
+// (حل محل «امتلك متجرك» الذاتي عبر GitHub/Vercel/Neon: قرار مُراجَع في PLAN.md القسم 12.)
 import type { Metadata } from "next";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { storeActivity } from "@/db/schema";
 import { requireStoreArea } from "@/server/merchant-guard";
-import { githubEnabled } from "@/server/ownership/github";
-import { latestTransfer } from "@/server/ownership/transfer";
-import { OwnershipCenter } from "@/components/dashboard/own/OwnershipCenter";
+import { CodeHandoff } from "@/components/dashboard/own/CodeHandoff";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "امتلك متجرك" };
+export const metadata: Metadata = { title: "نسخة من كود متجرك" };
 
-export default async function OwnPage({ searchParams }: { searchParams: Promise<{ github?: string; message?: string }> }) {
+export default async function OwnPage() {
   const s = await requireStoreArea("billing");
-  const q = await searchParams;
-  const t = await latestTransfer(s.storeId);
-  return (
-    <OwnershipCenter
-      storeName={s.store.name}
-      subdomain={s.store.subdomain}
-      active={s.store.status === "active"}
-      githubEnabled={githubEnabled()}
-      repo={s.store.ownedRepo}
-      github={{ state: q.github ?? null, message: q.message ?? null }}
-      purgedAt={s.store.purgedAt?.toISOString() ?? null}
-      offlineAt={s.store.platformOfflineAt?.toISOString() ?? null}
-      live={{
-        transfer: t ? { status: t.status, siteUrl: t.siteUrl, lastSeenAt: t.lastSeenAt?.toISOString() ?? null, expiresAt: t.expiresAt.toISOString() } : null,
-        ownedUrl: s.store.ownedUrl,
-        ownedAt: s.store.ownedAt?.toISOString() ?? null,
-      }}
-    />
-  );
+  const [last] = await db
+    .select({ at: storeActivity.createdAt })
+    .from(storeActivity)
+    .where(and(eq(storeActivity.storeId, s.storeId), eq(storeActivity.action, "code.requested")))
+    .orderBy(desc(storeActivity.createdAt))
+    .limit(1)
+    .catch(() => []);
+  return <CodeHandoff active={s.store.status === "active"} requestedAt={last?.at.toISOString() ?? null} ownedUrl={s.store.ownedUrl} />;
 }

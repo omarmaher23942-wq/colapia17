@@ -10,6 +10,10 @@ export const stores = pgTable(
     merchantId: uuid("merchant_id").notNull().references(() => merchants.id, { onDelete: "cascade" }),
     subdomain: text("subdomain").notNull(),
     customDomain: text("custom_domain"),
+    /** النطاق الخاص (المرحلة 7): pending حتى تشير سجلات DNS إلينا، ثم active (الوسيط يخدم المتجر عليه). */
+    customDomainStatus: text("custom_domain_status"),
+    customDomainCheckedAt: timestamp("custom_domain_checked_at", { withTimezone: true }),
+    customDomainVerifiedAt: timestamp("custom_domain_verified_at", { withTimezone: true }),
     name: text("name").notNull(),
     status: storeStatusEnum("status").notNull().default("intake"),
     plan: text("plan").notNull().default("launch"),

@@ -34,6 +34,38 @@ const STORE_ICON_PATH = "/api/storefront/icon";
 
 export { RESERVED_SUBDOMAINS };
 
+// ─── النطاقات الخاصة (المرحلة 7) ───────────────────────────────────────────
+// خريطة النطاق ← المتجر في Redis (server/domains.ts يكتبها عند التفعيل): cd:<host> = النطاق الفرعي، وcdr:<sub> = النطاق
+// الخاص. يُقرأ بـ REST مباشرة (يعمل في Edge) مع ذاكرة قصيرة 60 ثانية لكل نسخة، وأي فشل = كأن لا نطاق خاص.
+const DOMAIN_TTL_MS = 60_000;
+const domainCache = new Map<string, { v: string | null; at: number }>();
+
+async function redisGet(key: string): Promise<string | null> {
+  const hit = domainCache.get(key);
+  if (hit && Date.now() - hit.at < DOMAIN_TTL_MS) return hit.v;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  try {
+    const r = await fetch(`${url}/get/${encodeURIComponent(key)}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+    const body = (await r.json()) as { result?: string | null };
+    const v = typeof body.result === "string" ? body.result.replace(/^"|"$/g, "") : null;
+    domainCache.set(key, { v, at: Date.now() });
+    if (domainCache.size > 2000) domainCache.clear();
+    return v;
+  } catch {
+    return null;
+  }
+}
+
+/** مضيف ليس المنصة ولا نطاقاً فرعياً لها ولا نشرة Vercel ولا تطويراً محلياً = نطاق خاص محتمل لمتجر. */
+function isCustomHost(host: string): boolean {
+  const h = host.toLowerCase().split(":")[0]!;
+  if (!h || h === ROOT.split(":")[0] || h.endsWith(`.${ROOT.split(":")[0]}`)) return false;
+  if (h.endsWith(".vercel.app") || h === "localhost" || h.endsWith(".localhost") || /^[\d.]+$/.test(h)) return false;
+  return true;
+}
+
 function extractSubdomain(hostHeader: string): string | null {
   const host = hostHeader.toLowerCase();
   if (host.endsWith(".vercel.app")) return null;
@@ -95,10 +127,19 @@ function previewStore(req: NextRequest): { sub: string | null; response?: NextRe
   return { sub: chosen };
 }
 
-export function middleware(req: NextRequest) {
-  let sub = extractSubdomain(req.headers.get("host") ?? "");
+export async function middleware(req: NextRequest) {
+  const host = req.headers.get("host") ?? "";
+  let sub = extractSubdomain(host);
   const url = req.nextUrl.clone();
   const { pathname } = url;
+  // نطاق خاص لمتجر: يُخدم المتجر نفسه كأنه على نطاقه الفرعي. نطاق غير معروف = 404 (لا نعرض المنصة على نطاق غريب).
+  let onCustomDomain = false;
+  if (!sub && isCustomHost(host)) {
+    const mapped = await redisGet(`cd:${host.toLowerCase().split(":")[0]}`);
+    if (!mapped) return notFound();
+    sub = mapped;
+    onCustomDomain = true;
+  }
 
   // مسار المتاجر الداخلي لا يُطلب مباشرة من أي نطاق.
   if (isUnder(pathname, "/s")) return notFound();
@@ -146,6 +187,12 @@ export function middleware(req: NextRequest) {
     return res;
   }
   if (!preview && key && previewKeyMatches(req.cookies.get(PREVIEW_KEY_COOKIE)?.value, key)) preview = true;
+
+  // متجر له نطاق خاص مفعّل: نطاقه الفرعي يحوّل إليه (نفس المسار)، عدا الفريق في المعاينة ومسارات الـ API.
+  if (!onCustomDomain && !preview && (req.method === "GET" || req.method === "HEAD") && !isUnder(pathname, "/api")) {
+    const custom = await redisGet(`cdr:${sub}`);
+    if (custom) return NextResponse.redirect(`https://${custom}${pathname}${url.search}`, 308);
+  }
 
   const headers = trustedHeaders(req, sub, preview);
 
