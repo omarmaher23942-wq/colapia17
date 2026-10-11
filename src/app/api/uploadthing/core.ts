@@ -8,6 +8,7 @@ import { getMerchantSession } from "@/server/auth";
 import { getStoreBySubdomain, isStorePubliclyVisible } from "@/lib/tenant";
 import { allow, clientIp } from "@/lib/ratelimit";
 import { onboardingImageRoute } from "@/onboarding/uploader";
+import { intakeImageRoute, intakeVoiceRoute } from "@/intake/uploader";
 
 const f = createUploadthing();
 
@@ -92,6 +93,10 @@ export const fileRouter = {
     })),
 
   onboardingImage: onboardingImageRoute(f),
+
+  // استمارة طلب المتجر (نموذج الوكالة): بلا تسجيل دخول، الهوية رابط المسودة السري (src/intake/uploader.ts).
+  intakeImage: intakeImageRoute(f),
+  intakeVoice: intakeVoiceRoute(f),
 } satisfies FileRouter;
 
 export type AppFileRouter = typeof fileRouter;

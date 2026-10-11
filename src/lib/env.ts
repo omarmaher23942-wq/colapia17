@@ -78,6 +78,10 @@ const serverSchema = z.object({
   PLATFORM_OWNER_EMAILS: z.string().default(""),
   // بريد تنبيهات المالك (إيصال دفع جديد يحتاج مراجعة). أكثر من بريد بفاصلة.
   OWNER_ALERT_EMAILS: z.string().default("omarmaher23942@gmail.com"),
+  // وسيلة تواصل الوكالة التي تظهر للعميل في صفحة الشكر والمتابعة والبريد (اختيارية؛ بدونها لا يظهر زر واتساب).
+  AGENCY_WHATSAPP: z.preprocess((v) => (v === "" ? undefined : v), z.string().regex(/^01[0125]\d{8}$/).optional()),
+  // عنوان الرد على بريد العميل (اختياري؛ بدونه لا يُضبط Reply-To ولا يظهر بريد المالك الشخصي للعميل).
+  INTAKE_REPLY_TO: z.preprocess((v) => (v === "" ? undefined : v), z.string().email().optional()),
 
 });
 

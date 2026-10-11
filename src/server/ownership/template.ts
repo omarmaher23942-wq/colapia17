@@ -60,6 +60,9 @@ export const FORBIDDEN_IN_TEMPLATE = [
   /^src\/app\/api\/(workflows|agents|webhooks|ops|jobs|onboarding|ownership|store-export|pusher)\//,
   /^src\/components\/(landing|platform|growth)\//,
   /^src\/onboarding\/(?!schema\.ts$)/,
+  /^src\/intake\//,
+  /^src\/app\/api\/intake\//,
+  /^src\/app\/\(platform\)\/(start|follow)\//,
 ];
 
 const CODE_EXT = [".ts", ".tsx", ".mjs", ".js", ".css"];
