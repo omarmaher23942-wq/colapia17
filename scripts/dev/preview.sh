@@ -88,6 +88,7 @@ case "${1:-dev}" in
   store) shift; ensure_pg_module; ensure_postgres; isolated npx tsx scripts/dev/seed-store.ts "$@" ;;
   dev) setup; isolated npx next dev -p 3100 ;;
   run) shift; ensure_pg_module; ensure_postgres; isolated "$@" ;;
+  job) shift; ensure_pg_module; ensure_postgres; isolated node --require ./scripts/dev/no-server-only.cjs --import tsx scripts/dev/run-job.ts "$@" ;;
   shot) shift; ensure_playwright; DEVSTACK_HOME="$CACHE" node "$DEV/shot.mjs" "$@" ;;
-  *) echo "الاستخدام: preview.sh [setup|seed|store <slug>|dev|run <cmd>|shot <path> ...]"; exit 1 ;;
+  *) echo "الاستخدام: preview.sh [setup|seed|store <slug>|dev|run <cmd>|job <sub> <kind>|shot <path> ...]"; exit 1 ;;
 esac

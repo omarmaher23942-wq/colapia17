@@ -5,6 +5,7 @@ import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
 import { env, clientEnv } from "@/lib/env";
 import { HOSTING_GRACE_DAYS } from "@/lib/hosting";
+import { timingsFrom, trialSchedule, type LifecycleTimings } from "./timings-rules";
 
 export const JOB_KINDS = [
   "delivery.auto",
@@ -157,16 +158,19 @@ export async function scheduleReview(storeId: string, deadline: Date) {
   if (remind.getTime() > Date.now()) await schedule(storeId, "review.reminder", remind);
 }
 
-/** بعد التسليم: تذكيرات وتجميد وفرصة أخيرة وحذف (كما كانت) */
-export async function scheduleTrial(storeId: string, deliveredAt: Date) {
-  const h = (n: number) => new Date(deliveredAt.getTime() + n * H);
-  const d = (n: number) => new Date(deliveredAt.getTime() + n * 24 * H);
+/**
+ * بعد التسليم (نموذج الوكالة): تذكير «أفكار» في منتصف التجربة، وتذكير الدفع قبل نهايتها بساعتين، ثم الإيقاف عند
+ * نهايتها، ثم «تنبيه أخير قبل الحذف»، ثم الحذف. المدد من lifecycle/timings.ts (قابلة للضبط من لوحة المالك).
+ */
+export async function scheduleTrial(storeId: string, deliveredAt: Date, timings?: LifecycleTimings) {
+  const t = timings ?? timingsFrom(null, env.TRIAL_HOURS);
+  const at = trialSchedule(deliveredAt, t);
   await Promise.all([
-    schedule(storeId, "trial.reminder_6h", h(6)),
-    schedule(storeId, "trial.reminder_20h", h(env.TRIAL_HOURS - 4)),
-    schedule(storeId, "trial.freeze", h(env.TRIAL_HOURS)),
-    schedule(storeId, "trial.last_chance", d(3)),
-    schedule(storeId, "trial.purge", d(env.GRACE_DAYS)),
+    schedule(storeId, "trial.reminder_6h", at.ideas),
+    schedule(storeId, "trial.reminder_20h", at.pay),
+    schedule(storeId, "trial.freeze", at.freeze),
+    schedule(storeId, "trial.last_chance", at.lastChance),
+    schedule(storeId, "trial.purge", at.purge),
   ]);
 }
 

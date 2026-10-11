@@ -10,7 +10,12 @@ import { findByTrackToken, isMissingTable, requestEvents, touch } from "@/intake
 import { REQUEST_STAGES, STAGE_INFO, stageIndex } from "@/intake/stages";
 import { agencyWhatsappUrl } from "@/intake/notify";
 import { ContactHelp } from "@/components/intake/ContactHelp";
-import { cn } from "@/lib/utils";
+import { cn, storeUrl } from "@/lib/utils";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { stores } from "@/db/schema";
+import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
+import { currentPricing } from "@/server/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +57,9 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
   const delivered = row.stage === "delivery";
   const overdue = !delivered && Boolean(row.etaTo) && row.etaTo!.getTime() < Date.now();
   const Name = isNew ? "h2" : "h1";
+  // بعد التسليم: رابط المتجر وعداد التجربة هنا أيضاً (العميل قد لا يفتح بريده).
+  const [store] = delivered && row.storeId ? await db.select().from(stores).where(eq(stores.id, row.storeId)).limit(1) : [];
+  const price = store ? (store.priceLockedEgp ?? (await currentPricing()).price) : 0;
 
   return (
     <div dir="rtl" className="dash dark dash-cosmos relative min-h-dvh text-ink">
@@ -96,6 +104,24 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
             </p>
           ) : null}
         </section>
+
+        {store && (store.status === "trial" || store.status === "active" || store.status === "frozen") ? (
+          <section className="dash-card space-y-3 border-emerald-400/25 p-5 sm:p-6">
+            <h2 className="text-[18px] font-black text-ink">{store.status === "frozen" ? "متجرك متوقف مؤقتاً" : "متجرك جاهز"}</h2>
+            <a href={storeUrl(store.subdomain)} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-xl bg-nova px-4 text-[14px] font-black text-space" dir="ltr">
+              {storeUrl(store.subdomain).replace(/^https?:\/\//, "")}
+            </a>
+            <p className="text-[13.5px] leading-7 text-ink-2">رابط لوحة التحكم وصلك على بريدك. ادخل منها لتدير منتجاتك وطلباتك.</p>
+            {store.status === "trial" && store.trialEndsAt ? (
+              <TrialCountdownCard expiresAt={store.trialEndsAt.toISOString()} startedAt={store.deliveredAt?.toISOString() ?? null} serverNow={Date.now()} planPrice={price} />
+            ) : null}
+            {store.status === "frozen" && store.purgeAt ? (
+              <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[14px] font-bold leading-7 text-amber-200">
+                انتهت التجربة. متجرك محفوظ لحد {day(store.purgeAt)} وبعدها يُحذف نهائياً. ادفع الباقة ({price} ج تشمل سنة استضافة) من لوحة التحكم ← الاشتراك، ويرجع فوراً.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="dash-card p-5 sm:p-6" aria-label="مراحل تنفيذ المتجر">
           <ol className="relative space-y-6">

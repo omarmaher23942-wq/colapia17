@@ -57,6 +57,13 @@
       "when": 1791753297897,
       "tag": "0007_agency_production",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791755263627,
+      "tag": "0008_store_price_lock",
+      "breakpoints": true
     }
   ]
 }

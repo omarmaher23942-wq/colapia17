@@ -21,6 +21,9 @@ import {
 import { deliverToMerchant } from "@/lifecycle/messenger";
 import { renderTemplate } from "@/lifecycle/templates";
 import { MAGIC_LINK_TTL_HOURS } from "@/lifecycle/config";
+import { lifecycleTimings, type LifecycleTimings } from "@/lifecycle/timings";
+import { trialSchedule } from "@/lifecycle/timings-rules";
+import { currentPricing } from "@/server/pricing";
 import { activationUrl } from "@/server/claims";
 
 export async function issueMagicLink(
@@ -56,7 +59,8 @@ async function safe(
 
 export async function deliverStore(
   storeId: string,
-  by: string
+  by: string,
+  opts: { timings?: LifecycleTimings } = {}
 ): Promise<boolean> {
   const [s] = await db
     .select()
@@ -78,9 +82,11 @@ export async function deliverStore(
     : await issueMagicLink(s);
 
   const now = new Date();
-  const demoMinutes = env.TRIAL_ACTIVE_MINUTES || 480;
-  const demoExpiresAt = new Date(now.getTime() + demoMinutes * 60_000);
-  const trialEndsAt = new Date(now.getTime() + env.TRIAL_HOURS * 36e5);
+  const timings = opts.timings ?? (await lifecycleTimings());
+  const plan = trialSchedule(now, timings);
+  const trialEndsAt = plan.freeze;
+  // السعر يُثبَّت للمتجر لحظة التسليم (سلّم الأسعار): هذا ما رآه العميل في بريد التسليم ويدفعه.
+  const { price } = await currentPricing();
 
   const r = await transition({
     storeId,
@@ -90,8 +96,10 @@ export async function deliverStore(
     set: {
       deliveredAt: now,
       demoStartedAt: now,
-      demoExpiresAt,
+      demoExpiresAt: trialEndsAt,
       trialEndsAt,
+      purgeAt: plan.purge,
+      priceLockedEgp: s.priceLockedEgp ?? price,
     },
     reason: "delivered",
   });
@@ -107,7 +115,7 @@ export async function deliverStore(
       .where(eq(conversations.storeId, storeId))
   );
   await safe("schedule", storeId, async () => {
-    await scheduleTrial(storeId, now);
+    await scheduleTrial(storeId, now, timings);
     await schedulePaymentInvite(storeId, now);
   });
 
@@ -118,11 +126,12 @@ export async function deliverStore(
       .where(eq(storeBlueprints.storeId, storeId))
       .limit(1);
     const brand = bp?.data.brand.name ?? s.name;
-    const url = storeUrl(s.subdomain, "?preview=owner");
+    const url = storeUrl(s.subdomain);
     const welcome = await renderTemplate("delivery.welcome", {
       store: brand,
       store_url: url,
       magic_url: magicUrl,
+      trial_hours: timings.trialHours,
     });
 
     await deliverToMerchant(storeId, {

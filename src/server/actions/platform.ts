@@ -6,7 +6,8 @@ import { getMerchantSession } from "@/server/auth";
 import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import { amountFor, type PaymentKind } from "@/lib/platform-pricing";
+import { type PaymentKind } from "@/lib/platform-pricing";
+import { amountForStore } from "@/server/pricing";
 import { canRenewNow, hostingState } from "@/lib/hosting";
 import { verifyPlatformPayment } from "@/ai/verify-payment";
 import { emitPaymentSubmitted } from "@/server/realtime/emitters";
@@ -61,7 +62,7 @@ export async function submitPlatformPaymentAction(input: {
     }
     const url = new URL(input.screenshotUrl);
 
-    const requiredAmountEgp = amountFor(kind);
+    const requiredAmountEgp = await amountForStore(store, kind);
     const requiredAmountPiasters = requiredAmountEgp * 100;
 
     const [paymentRecord] = await db

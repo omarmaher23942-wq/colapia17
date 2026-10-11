@@ -15,4 +15,7 @@ export interface LandingPricing {
   price: number;
   basePrice: number;
   renewal: number;
+  /** باقٍ بهذا السعر (عدّاد حقيقي من المدفوعات المؤكدة؛ null = بلا حد). */
+  remaining?: number | null;
+  nextPrice?: number | null;
 }

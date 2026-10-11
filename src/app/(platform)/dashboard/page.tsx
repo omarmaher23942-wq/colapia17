@@ -79,7 +79,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
           expiresAt={store.demoExpiresAt.toISOString()}
           startedAt={(store.demoStartedAt ?? store.deliveredAt)?.toISOString() ?? null}
           serverNow={Date.now()}
-          planPrice={platformPricing().price}
+          planPrice={store.priceLockedEgp ?? platformPricing().price}
         />
       ) : null}
 

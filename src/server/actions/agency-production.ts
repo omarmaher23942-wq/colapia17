@@ -37,6 +37,8 @@ import { branchFor } from "@/agency/prompt";
 import { suggestSlug } from "@/agency/slug";
 import { socialUrl } from "@/intake/schema";
 import { readData } from "@/intake/repo";
+import { deliverStore } from "@/ai/lifecycle/deliver";
+import { storeUrl } from "@/lib/utils";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 type Row = typeof storeRequests.$inferSelect;
@@ -411,4 +413,50 @@ export async function resyncBranchAction(raw: z.input<typeof provisionSchema>): 
     console.error("[agency] resync failed", e);
     return { ok: false, error: "تعذر الكتابة في GitHub. راجع صلاحية التوكن." };
   }
+}
+
+// ─── التسليم (المرحلة 5) ────────────────────────────────────────────────────
+
+const deliverSchema = z.object({ id: z.string().uuid() });
+
+/**
+ * «سلّم للعميل»: من «جاهز» فقط (اعتمده مراجع وقائمة الفحص كاملة). يرفع البوابة ويبدأ التجربة بمددها ويثبّت السعر
+ * ويرسل رسالة التسليم (deliverStore)، ثم الطلب «سُلِّم» والعميل يرى «التسليم» مع رابط متجره في صفحة المتابعة.
+ */
+export async function deliverRequestAction(raw: z.input<typeof deliverSchema>): Promise<Result<{ storeUrl: string; whatsapp: string | null }>> {
+  const a = await actor();
+  if (!a || !can(a.role, "requests.deliver")) return DENIED;
+  const p = deliverSchema.safeParse(raw);
+  if (!p.success) return { ok: false, error: "بيانات غير صالحة." };
+  const row = await load(p.data.id, a);
+  if (!row) return { ok: false, error: "الطلب غير موجود." };
+  if (row.production !== "ready") return { ok: false, error: "التسليم من «جاهز للتسليم» فقط (بعد اعتماد المراجع)." };
+  if (!row.storeId || !row.slug) return { ok: false, error: "جهّز المتجر أولاً." };
+  const qa = readQa(row.qa);
+  if (!QA_ITEMS.every((i) => qa[i.key])) return { ok: false, error: "قائمة الفحص غير مكتملة." };
+
+  // القفل أولاً: الطلب «سُلِّم» بشرط أنه «جاهز»، فضغطتان لا تسلّمان مرتين.
+  const [locked] = await db
+    .update(storeRequests)
+    .set({ production: "delivered", productionChangedAt: new Date(), stage: "delivery", stageChangedAt: new Date(), stageNote: null, waitingReason: null, waitingSince: null, updatedAt: new Date() })
+    .where(and(eq(storeRequests.id, row.id), eq(storeRequests.production, "ready")))
+    .returning();
+  if (!locked) return STALE;
+
+  const ok = await deliverStore(row.storeId, `platform:${a.id}`).catch((e) => {
+    console.error("[agency] deliver failed", e);
+    return false;
+  });
+  if (!ok) {
+    // لم يتغير المتجر: نعيد الطلب لـ«جاهز» ليُعاد التسليم.
+    await db.update(storeRequests).set({ production: "ready", stage: row.stage, updatedAt: new Date() }).where(eq(storeRequests.id, row.id));
+    return { ok: false, error: "تعذر التسليم: حالة المتجر لا تسمح (ربما سُلِّم من صفحة المتجر). راجع صفحة المتجر." };
+  }
+
+  const notified = await notifyStageChange(locked, "delivery", null).catch(() => false);
+  await event(row.id, a, { type: "delivered", toStage: "delivery", internalNote: "سُلِّم المتجر للعميل وبدأت التجربة", clientNotifiedAt: notified ? new Date() : null });
+  await logActivity(a.id, "request.deliver", `request:${row.id}`, { storeId: row.storeId });
+  refresh(row.id);
+  revalidatePath("/admin/stores");
+  return { ok: true, storeUrl: storeUrl(row.slug), whatsapp: row.whatsapp };
 }

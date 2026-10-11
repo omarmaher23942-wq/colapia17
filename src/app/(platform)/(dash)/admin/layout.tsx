@@ -17,6 +17,7 @@ import {
   Star,
   Mail,
   Inbox,
+  BadgeDollarSign,
   type LucideIcon,
 } from "lucide-react";
 import { getPlatformSession } from "@/server/auth";
@@ -46,6 +47,7 @@ const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin/audience", "الجمهور والبريد", Mail],
   ["/admin/stores", "المتاجر", Store],
   ["/admin/costs", "التكاليف", Activity],
+  ["/admin/pricing", "الأسعار والمدد", BadgeDollarSign],
   ["/admin/flags", "الإعدادات", SlidersHorizontal],
   ["/admin/team", "الفريق", Users],
 ];

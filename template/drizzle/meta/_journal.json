@@ -15,6 +15,13 @@
       "when": 1791665098903,
       "tag": "0001_hosting",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791755264741,
+      "tag": "0002_price_lock",
+      "breakpoints": true
     }
   ]
 }

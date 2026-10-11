@@ -2,7 +2,8 @@
 // - تقرأ كوكي clp_m مباشرة (بدون استعلام DB) لضمان LCP سريع (مبدأ الأداء).
 // - تجلب المراجعات المعتمدة عبر unstable_cache لتفادي ضرب الـ DB في كل طلب.
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
-import { platformPricing } from "@/lib/platform-pricing";
+import { currentPricing } from "@/server/pricing";
+import { lifecycleTimings } from "@/lifecycle/timings";
 import { cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { and, desc, eq } from "drizzle-orm";
@@ -56,9 +57,7 @@ export default async function Page() {
     getSessionState(),
   ]);
 
-  const { price, basePrice, renewal } = platformPricing();
+  const [{ price, basePrice, renewal, remaining, nextPrice }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
 
-  const trialHours = Number(process.env.TRIAL_HOURS ?? 24) || 24;
-
-  return <Landing session={session} reviews={reviews} pricing={{ price, basePrice, renewal }} trialHours={trialHours} />;
+  return <Landing session={session} reviews={reviews} pricing={{ price, basePrice, renewal, remaining, nextPrice }} trialHours={timings.trialHours} />;
 }

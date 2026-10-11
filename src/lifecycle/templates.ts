@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { messageTemplates } from "@/db/schema";
 import { clientEnv, env } from "@/lib/env";
-import { platformPricing } from "@/lib/platform-pricing";
+import { currentPricing } from "@/server/pricing";
 import { stripEmoji } from "@/lib/emoji";
 import { sendTemplatedEmail } from "@/lib/email";
 
@@ -29,8 +29,8 @@ export const TEMPLATE_DEFAULTS = {
   },
   "delivery.welcome": {
     label: "رسالة تسليم المتجر",
-    vars: ["store", "store_url", "magic_url"],
-    body: "مبروك! متجرك {{store}} جاهز.\nرابط المتجر للزبائن: {{store_url}}\nرابط لوحة التحكم الخاصة بك: {{magic_url}}\nتقدر تجربه وتدير طلباتك وتشوف كل حاجة بنفسك مجاناً.",
+    vars: ["store", "store_url", "magic_url", "trial_hours"],
+    body: "مبروك! فريق Colapia خلّص متجرك {{store}} وراجعه.\nرابط المتجر: {{store_url}}\nلوحة التحكم الخاصة بك: {{magic_url}}\nقدامك {{trial_hours}} ساعة تجربه فيها مجاناً: اطلب منه كأنك زبون، وعدّل منتجاتك وأسعارك، وقولنا لو عايز أي تعديل.",
   },
   "delivery.guide": {
     label: "توجيه ما بعد التسليم",
@@ -70,7 +70,7 @@ export const TEMPLATE_DEFAULTS = {
   "doom.deleted": {
     label: "بعد المسح النهائي",
     vars: ["store"],
-    body: "انتهت المهلة وتم مسح متجر {{store}}. لو حابب تبدأ متجر جديد في أي وقت، راسلنا هنا وهنجهز لك كل حاجة في دقائق.",
+    body: "انتهت المهلة وتم حذف متجر {{store}} وبياناته. لو حابب تبدأ من جديد في أي وقت، املأ الاستمارة أو راسلنا وفريقنا يجهّزه لك.",
   },
 } as const satisfies Record<string, Def>;
 
@@ -116,11 +116,13 @@ export async function renderTemplate(
 /** صفحة الدفع على المنصة: كل رسالة تدعو للدفع تشير إليها (صفحة /admin/activate في المتجر تحوّل إليها). */
 export const billingUrl = () => `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/billing`;
 
-export function paymentVars(storeName: string, activateUrl: string = billingUrl()) {
+/** متغيرات رسائل الدفع لمتجر بعينه: سعره المثبَّت عند التسليم (أو سعر السلّم الحالي) والتجديد. */
+export async function paymentVars(store: { name: string; priceLockedEgp?: number | null }, activateUrl: string = billingUrl()) {
+  const p = await currentPricing();
   return {
-    store: storeName,
-    price: platformPricing().price,
-    renewal: platformPricing().renewal,
+    store: store.name,
+    price: store.priceLockedEgp ?? p.price,
+    renewal: p.renewal,
     vodafone: env.VODAFONE_CASH_NUMBER,
     instapay: env.INSTAPAY_NUMBER,
     activate_url: activateUrl,

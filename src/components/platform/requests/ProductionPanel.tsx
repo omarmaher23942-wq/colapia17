@@ -8,8 +8,9 @@ import { Check, ClipboardCopy, Clock3, Download, ExternalLink, Hammer, Loader2, 
 import { toast } from "sonner";
 import { PRODUCTION_INFO, PRODUCTION_STATES, QA_ITEMS, canMove, canTickQa, type ProductionState, type QaState } from "@/agency/production";
 import { can, ROLE_INFO, type PlatformRole } from "@/agency/roles";
-import { assignRequestAction, moveProductionAction, provisionRequestAction, resyncBranchAction, setRequestSlugAction, setWaitingAction, tickQaAction } from "@/server/actions/agency-production";
+import { assignRequestAction, deliverRequestAction, moveProductionAction, provisionRequestAction, resyncBranchAction, setRequestSlugAction, setWaitingAction, tickQaAction } from "@/server/actions/agency-production";
 import { cn } from "@/lib/utils";
+import { waLink } from "@/lib/whatsapp";
 
 export type Member = { id: string; name: string; role: PlatformRole };
 
@@ -50,6 +51,7 @@ export function ProductionPanel(p: Props) {
   const [slug, setSlug] = useState(p.slug);
   const [waiting, setWaiting] = useState(p.waitingReason ?? "");
   const [copied, setCopied] = useState(false);
+  const [delivered, setDelivered] = useState<{ storeUrl: string; whatsapp: string | null } | null>(null);
   // علامات الفحص تظهر فوراً عند الضغط (تفاؤلياً)، وتُعاد إن رفضها الخادم.
   const [qaLocal, setQaLocal] = useState<QaState>(p.qa);
   const [qaSeen, setQaSeen] = useState(p.qa);
@@ -211,6 +213,43 @@ export function ProductionPanel(p: Props) {
         </div>
       ) : p.production === "ready" ? null : p.production === "new" && !p.builderId ? (
         <p className="text-[12.5px] text-[#8d97c4]">{manager ? "اختر منفّذاً واحفظ الإسناد ليبدأ." : "بانتظار أن يسنده مدير لمنفّذ."}</p>
+      ) : null}
+
+      {/* التسليم */}
+      {p.production === "ready" && can(p.me.role, "requests.deliver") ? (
+        <div className="space-y-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-3">
+          <p className="text-[13px] font-bold leading-6 text-emerald-100">
+            اعتمده المراجع وقائمة الفحص كاملة. التسليم يرفع بوابة «قيد التجهيز»، ويبدأ تجربة العميل بعدادها، ويثبّت سعر باقته الحالي، ويرسل له رسالة التسليم برابط المتجر واللوحة.
+          </p>
+          <button
+            type="button"
+            disabled={pending || !p.storeId}
+            onClick={() =>
+              start(async () => {
+                if (!window.confirm("تسليم المتجر للعميل الآن؟ يبدأ عداد التجربة فوراً.")) return;
+                const r = await deliverRequestAction({ id: p.id });
+                if (!r.ok) return void toast.error(r.error);
+                toast.success("سُلِّم المتجر وبدأت التجربة");
+                setDelivered({ storeUrl: r.storeUrl, whatsapp: r.whatsapp });
+                router.refresh();
+              })
+            }
+            className={cn(btn, "bg-emerald-400 text-[#07091a]")}
+          >
+            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Rocket className="size-4" aria-hidden="true" />}
+            سلّم للعميل
+          </button>
+        </div>
+      ) : null}
+      {delivered?.whatsapp ? (
+        <a
+          href={waLink(delivered.whatsapp, `أهلاً، متجرك جاهز من فريق Colapia: ${delivered.storeUrl}\nرابط لوحة التحكم وصلك على بريدك، وتقدر تجربه مجاناً دلوقتي.`) ?? "#"}
+          target="_blank"
+          rel="noopener"
+          className={cn(btn, "bg-[#25D366] text-[#07091a]")}
+        >
+          ابعت له الرابط على واتساب
+        </a>
       ) : null}
 
       {/* بانتظار العميل */}

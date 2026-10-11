@@ -1,5 +1,5 @@
 import "server-only";
-import { platformPricing } from "@/lib/platform-pricing";
+import { currentPricing } from "@/server/pricing";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
@@ -62,8 +62,8 @@ const START_INTENT_RE = new RegExp(
   "i"
 );
 
-function interpolateVars(): Record<string, string> {
-  const { price, basePrice, renewal } = platformPricing();
+async function interpolateVars(): Promise<Record<string, string>> {
+  const { price, basePrice, renewal } = await currentPricing();
   return {
     price: String(price),
     basePrice: String(basePrice),
@@ -136,7 +136,7 @@ export async function handleInbound(
 
   if (!botOn) return;
 
-  const vars = interpolateVars();
+  const vars = await interpolateVars();
   const lastUserMessage = userTexts.join(" ").trim();
   const userTriggeredLink = START_INTENT_RE.test(lastUserMessage);
 

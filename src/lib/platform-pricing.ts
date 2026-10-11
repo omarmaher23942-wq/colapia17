@@ -31,3 +31,62 @@ export function platformPricing(): PlatformPricing {
 export function amountFor(kind: PaymentKind, p: PlatformPricing = platformPricing()): number {
   return kind === "renewal" ? p.renewal : p.price;
 }
+
+// ─── سلّم الأسعار (المرحلة 5، قرار المالك): يتحكم فيه المالك من /admin/pricing ───────────────────────────────
+// المتجر رقم n (بعدد الباقات المدفوعة فعلاً) يأخذ سعر المرحلة التي يقع فيها. السعر يُثبَّت للمتجر عند تسليمه
+// (stores.price_locked_egp)، فمن وُعد بسعر يدفعه حتى لو امتلأت مرحلته قبل أن يدفع.
+
+export type PriceTier = { upTo: number | null; price: number };
+export type PriceLadder = { tiers: PriceTier[]; basePrice: number; renewal: number };
+
+export const DEFAULT_LADDER: PriceLadder = {
+  tiers: [
+    { upTo: 5, price: 2499 },
+    { upTo: 15, price: 3499 },
+    { upTo: null, price: 4999 },
+  ],
+  basePrice: 10000,
+  renewal: 1299,
+};
+
+const egp = (v: unknown, min = 1, max = 1_000_000) => {
+  const n = Number(v);
+  return Number.isFinite(n) && n >= min && n <= max ? Math.round(n) : null;
+};
+
+/** يقرأ إعداد السلّم بأمان: مراحل تصاعدية، آخرها بلا حد، والسعر «قبل» لا يقل عن أعلى مرحلة. */
+export function ladderFrom(config: unknown): PriceLadder {
+  const c = (config && typeof config === "object" ? config : {}) as Record<string, unknown>;
+  const raw = Array.isArray(c.tiers) ? c.tiers : [];
+  const tiers: PriceTier[] = [];
+  let last = 0;
+  for (const t of raw) {
+    const r = (t ?? {}) as Record<string, unknown>;
+    const price = egp(r.price);
+    const upTo = r.upTo === null || r.upTo === undefined || r.upTo === "" ? null : egp(r.upTo, 1, 100_000);
+    if (!price) continue;
+    if (upTo !== null && upTo <= last) continue;
+    tiers.push({ upTo, price });
+    if (upTo === null) break;
+    last = upTo;
+  }
+  if (!tiers.length) return DEFAULT_LADDER;
+  if (tiers[tiers.length - 1]!.upTo !== null) tiers.push({ upTo: null, price: tiers[tiers.length - 1]!.price });
+  const top = Math.max(...tiers.map((t) => t.price));
+  return { tiers, basePrice: Math.max(egp(c.basePrice) ?? DEFAULT_LADDER.basePrice, top), renewal: egp(c.renewal) ?? DEFAULT_LADDER.renewal };
+}
+
+export type LadderPosition = { price: number; tier: number; remaining: number | null; nextPrice: number | null };
+
+/** سعر المتجر التالي بعد `paid` باقة مدفوعة، وكم بقي بهذا السعر (null = بلا حد)، وسعر المرحلة التالية. */
+export function priceAt(paid: number, ladder: PriceLadder): LadderPosition {
+  const n = Math.max(0, Math.floor(paid)) + 1;
+  for (let i = 0; i < ladder.tiers.length; i++) {
+    const t = ladder.tiers[i]!;
+    if (t.upTo === null || n <= t.upTo) {
+      return { price: t.price, tier: i, remaining: t.upTo === null ? null : t.upTo - n + 1, nextPrice: ladder.tiers[i + 1]?.price ?? null };
+    }
+  }
+  const t = ladder.tiers[ladder.tiers.length - 1]!;
+  return { price: t.price, tier: ladder.tiers.length - 1, remaining: null, nextPrice: null };
+}

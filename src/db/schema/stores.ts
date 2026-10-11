@@ -31,6 +31,8 @@ export const stores = pgTable(
     buildStartedAt: timestamp("build_started_at", { withTimezone: true }),
     deliverAt: timestamp("deliver_at", { withTimezone: true }),
     deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** سعر الباقة المثبَّت عند التسليم (سلّم الأسعار، المرحلة 5): يدفعه العميل حتى لو تغيّر السلّم بعدها. */
+    priceLockedEgp: integer("price_locked_egp"),
 
     // عداد الـ 180 دقيقة التجريبية النشطة
     demoStartedAt: timestamp("demo_started_at", { withTimezone: true }),

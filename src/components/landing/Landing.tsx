@@ -202,7 +202,12 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
                 {pricing.basePrice > pricing.price ? <span className="mb-2.5 text-sm text-[#c3cdf0]/50 line-through">{fmtEGP(pricing.basePrice)} ج.م</span> : null}
               </div>
               <p className="mt-1 text-[13px] text-[#c3cdf0]/70">
-                {pricing.basePrice > pricing.price ? "عرض الإطلاق لفترة محدودة ولعدد محدود من المتاجر. " : ""}ثم {fmtEGP(pricing.renewal)} ج.م لكل سنة بعدها. بعد تجربة {trialHours} ساعة تقرر فيها بنفسك.
+                {pricing.remaining !== null && pricing.remaining !== undefined ? (
+                  <b className="text-[#c9d4ff]">
+                    باقٍ {fmtEGP(pricing.remaining)} {pricing.remaining === 1 ? "متجر" : pricing.remaining <= 10 ? "متاجر" : "متجراً"} بهذا السعر{pricing.nextPrice ? `، ثم ${fmtEGP(pricing.nextPrice)} ج.م` : ""}.{" "}
+                  </b>
+                ) : null}
+                ثم {fmtEGP(pricing.renewal)} ج.م لكل سنة بعدها. وبعد تسليم متجرك تجربه {trialHours} ساعة قبل أن تدفع.
               </p>
               <ul className="mt-8 space-y-3 text-[14px]">
                 {[
@@ -333,7 +338,7 @@ function faq(h: number, pricing: LandingPricing): [string, string][] {
     ["هل التجربة مجانية فعلاً؟", `نعم. بعد التسليم تجرّب متجرك ولوحة تحكمه ${h} ساعة بلا بطاقة بنكية. لو لم يعجبك لا تدفع شيئاً.`],
     ["كيف أدفع، ومتى يتفعّل متجري؟", "تحوّل المبلغ بفودافون كاش أو إنستاباي وترفع صورة الإيصال من لوحتك. نراجع الإيصال بأنفسنا ونفعّل متجرك، ويصلك بريد فور التفعيل."],
     ["هل أحتاج خبرة تقنية؟", "لا. نحن نبني متجرك ونستضيفه ونشغّله. وتدير منتجاتك وطلباتك من لوحة تحكم مكتوبة بالعربي وتعمل من الموبايل."],
-    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (عرض إطلاق لفترة محدودة بدل ${fmtEGP(pricing.basePrice)} ج.م)` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
+    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (بدل ${fmtEGP(pricing.basePrice)} ج.م${pricing.remaining ? `، وباقٍ ${fmtEGP(pricing.remaining)} بهذا السعر` : ""})` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
     ["ماذا لو لم أجدد؟", "بعد انتهاء السنة يبقى متجرك يعمل أسبوعين إضافيين، ثم يتوقف عن الظهور للزوار. لا نحذف أي شيء بسبب التأخر، وبمجرد التجديد يعود متجرك بنفس الرابط. ونذكّرك بالبريد قبل الانتهاء."],
     ["هل أقدر أربط نطاقي الخاص (دومين)؟", "غير متاح حالياً. كل متجر يعمل على رابط باسمه مثل اسمك.colapia.com."],
     ["هل أقدر أطلب تعديلات بعد التسليم؟", "نعم، تعديلات متجرك تطلبها منا ونتابعها معك، ومن لوحتك تعدّل الألوان والنصوص والسياسات والمنتجات بنفسك."],

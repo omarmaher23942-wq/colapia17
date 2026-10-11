@@ -244,7 +244,7 @@ export async function rejectStorePayment(
     Math.round((doomAt.getTime() - now.getTime()) / 36e5)
   );
   const { text } = await renderTemplate("payment.rejected", {
-    ...paymentVars(store.name),
+    ...(await paymentVars(store)),
     hours,
     reason_line: note ? ` السبب: ${note}` : "",
   });
@@ -311,7 +311,7 @@ export async function revokeStorePayment(
 
   const hours = Math.max(1, Math.round((doomAt.getTime() - now.getTime()) / 36e5));
   const { text } = await renderTemplate("payment.rejected", {
-    ...paymentVars(store.name),
+    ...(await paymentVars(store)),
     hours,
     reason_line: ` السبب: ${note}`,
   });

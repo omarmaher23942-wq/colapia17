@@ -1,7 +1,8 @@
 import { db } from "@/db/client";
 import { DEFAULT_INTAKE_LIMITS } from "@/intake/rules";
 import { DEFAULT_CAPACITY_PER_DAY } from "@/intake/eta";
-import { platformPricing } from "@/lib/platform-pricing";
+import { DEFAULT_LADDER } from "@/lib/platform-pricing";
+import { DEFAULT_SLA_HOURS } from "@/agency/production";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -16,8 +17,9 @@ const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; confi
   { key: "trial.enabled", enabled: true, description: "تفعيل التجربة المجانية للتاجر" },
   { key: "payments.ai_verify", enabled: true, description: "الفحص الآلي لإيصالات التحويل بـ Gemini Vision" },
   { key: "showcase.enabled", enabled: true, description: "عرض المتاجر المميزة في الصفحة الرئيسية" },
-  { key: "pricing", enabled: true, description: "أسعار الباقة والتجديد (من المتغيرات PLATFORM_*_EGP)", config: { ...platformPricing() } },
-  { key: "sla", enabled: true, description: "مدد التشغيل والتجربة", config: { deliveryMinutes: 5, demoActiveMinutes: 180, graceDays: 7 } },
+  { key: "pricing", enabled: true, description: "سلّم الأسعار والتجديد (يُعدَّل من صفحة «الأسعار»)", config: { ...DEFAULT_LADDER } },
+  { key: "lifecycle", enabled: true, description: "مدد ما بعد التسليم بالساعات: التجربة، ثم التنبيه الأخير بعد الإيقاف، ثم الحذف (يُعدَّل من صفحة «الأسعار»)", config: { trialHours: 24, noticeHours: 24, deleteHours: 24 } },
+  { key: "production", enabled: true, description: "مهلة كل حالة إنتاج بالساعات قبل تنبيه التأخر", config: { sla: { ...DEFAULT_SLA_HOURS } } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
   {
     key: "intake",

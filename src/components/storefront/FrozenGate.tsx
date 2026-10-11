@@ -18,13 +18,14 @@ export function FrozenGate({ status, name, activateHref = "/admin/activate" }: {
     );
   }
   const frozen = status === "frozen";
+  // الزائر زبون لا صاحب المتجر: نص محايد، ورابط صغير لصاحبه فقط (لا زر «فعّل» يربك الزبون).
   return (
-    <Gate icon={frozen ? Lock : Wrench} title={frozen ? "المتجر محجوز لصاحبه" : name ? `${name} قيد التجهيز` : "المتجر قيد التجهيز"}>
-      {frozen ? "لو أنت صاحب المتجر، أكمل التفعيل من لوحة التحكم ليعود المتجر للعمل فورًا." : "نجهّز المتجر الآن ونفتح قريباً جداً. شكراً لزيارتك."}
+    <Gate icon={frozen ? Lock : Wrench} title={frozen ? (name ? `${name} غير متاح حالياً` : "المتجر غير متاح حالياً") : name ? `${name} قيد التجهيز` : "المتجر قيد التجهيز"}>
+      {frozen ? "نعود قريباً بإذن الله. شكراً لزيارتك." : "نجهّز المتجر الآن ونفتح قريباً جداً. شكراً لزيارتك."}
       {frozen ? (
-        <span className="mt-6 block">
-          <Link href={activateHref} className="btn-brand">
-            تفعيل المتجر
+        <span className="mt-8 block text-[13px]">
+          <Link href={activateHref} className="text-slate-400 underline underline-offset-4 hover:text-slate-600">
+            صاحب المتجر؟ أعد تشغيله من لوحتك
           </Link>
         </span>
       ) : null}

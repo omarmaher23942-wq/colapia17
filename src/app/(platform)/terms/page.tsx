@@ -1,5 +1,5 @@
 import { Markdown } from "@/components/storefront/Markdown";
-import { platformPricing } from "@/lib/platform-pricing";
+import { currentPricing } from "@/server/pricing";
 import { fmtNum } from "@/lib/format";
 
 export const metadata = { title: "الشروط والأحكام | Colapia" };
@@ -54,8 +54,8 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 ## 11. التواصل
 privacy@colapia.com`;
 
-export default function Terms() {
-  const { price, renewal } = platformPricing();
+export default async function Terms() {
+  const { price, renewal } = await currentPricing();
   return (
     <article className="container-x max-w-3xl py-12">
       <h1 className="mb-6 text-3xl font-black">الشروط والأحكام</h1>

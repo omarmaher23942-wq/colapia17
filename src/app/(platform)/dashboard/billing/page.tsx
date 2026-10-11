@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { formatEgp } from "@/lib/money";
 import { prettyPhone } from "@/lib/phone";
-import { platformPricing } from "@/lib/platform-pricing";
+import { currentPricing } from "@/server/pricing";
 import { billingStage, type BillingPayment, type BillingStage } from "@/lib/billing-stage";
 import { canRenewNow, HOSTING_GRACE_DAYS, RENEW_OPEN_DAYS, type HostingState } from "@/lib/hosting";
 import { PayForm } from "@/components/dashboard/billing/PayForm";
@@ -69,7 +69,9 @@ export default async function BillingPage() {
 
   const now = Date.now();
   const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now));
-  const pricing = platformPricing();
+  const current = await currentPricing();
+  // سعر هذا المتجر مثبَّت عند تسليمه؛ «قبل الخصم» والتجديد من السلّم.
+  const pricing = { price: store.priceLockedEgp ?? current.price, basePrice: current.basePrice, renewal: current.renewal };
 
   const renewing = stage.kind === "active" && Boolean(stage.renewalPending);
   return (
