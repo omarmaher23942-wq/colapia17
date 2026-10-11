@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { clientIp, ipBucket } from "@/lib/client-ip";
 import { cleanUtm, readJson } from "@/intake/http";
-import { looksAutomated, sameOrigin, MIN_FILL_MS } from "@/intake/guard";
+import { filledHoneypot, sameOrigin, submitWaitMs, MIN_FILL_MS } from "@/intake/guard";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -40,12 +40,13 @@ describe("حماية API الاستمارة", () => {
     expect(sameOrigin(req({}))).toBe(false);
   });
 
-  it("فخ البرامج الآلية: حقل مخفي ممتلئ أو ملء أسرع من إنسان", () => {
+  it("فخ البرامج الآلية: الحقل المخفي فقط يُعامل كبرنامج، والإرسال السريع ينتظر ولا يُرفض", () => {
+    expect(filledHoneypot("")).toBe(false);
+    expect(filledHoneypot(undefined)).toBe(false);
+    expect(filledHoneypot("http://spam")).toBe(true);
     const now = new Date("2026-10-11T10:00:00Z");
-    const old = new Date(now.getTime() - MIN_FILL_MS - 1);
-    expect(looksAutomated({ honeypot: "", createdAt: old, now })).toBe(false);
-    expect(looksAutomated({ honeypot: "http://spam", createdAt: old, now })).toBe(true);
-    expect(looksAutomated({ createdAt: new Date(now.getTime() - 2000), now })).toBe(true);
+    expect(submitWaitMs(new Date(now.getTime() - MIN_FILL_MS - 1), now)).toBe(0);
+    expect(submitWaitMs(new Date(now.getTime() - 2000), now)).toBe(MIN_FILL_MS - 2000);
   });
 
   it("جسم الطلب: حد الحجم وJSON كائن فقط", async () => {

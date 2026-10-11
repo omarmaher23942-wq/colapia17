@@ -58,7 +58,7 @@ export const FORBIDDEN_IN_TEMPLATE = [
   /^src\/server\/actions\/(platform|platform-|onboarding|referral)/,
   /^src\/app\/\(platform\)\/(\(dash\)|admin|onboarding|design-lab|signup|claim)\//,
   /^src\/app\/api\/(workflows|agents|webhooks|ops|jobs|onboarding|ownership|store-export|pusher)\//,
-  /^src\/components\/(landing|platform|growth)\//,
+  /^src\/components\/(landing|platform|growth|intake)\//,
   /^src\/onboarding\/(?!schema\.ts$)/,
   /^src\/intake\//,
   /^src\/app\/api\/intake\//,

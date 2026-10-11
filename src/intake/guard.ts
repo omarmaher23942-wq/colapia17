@@ -68,10 +68,15 @@ export async function hit(key: string, limit: number, windowS: number): Promise<
   }
 }
 
-/** حقل مخفي ممتلئ أو إرسال أسرع من أي إنسان. */
-export function looksAutomated(input: { honeypot?: unknown; createdAt: Date; now?: Date }): boolean {
-  if (typeof input.honeypot === "string" && input.honeypot.trim()) return true;
-  return (input.now ?? new Date()).getTime() - input.createdAt.getTime() < MIN_FILL_MS;
+/** الحقل المخفي ممتلئ: برنامج آلي مؤكد (لا يراه إنسان). يُقبل بصمت حتى لا يتعلم البرنامج تجاوزه. */
+export const filledHoneypot = (honeypot: unknown): boolean => typeof honeypot === "string" && honeypot.trim().length > 0;
+
+/**
+ * كم ينتظر الإرسال بعد (0 = مسموح). إرسال أسرع من MIN_FILL_MS من إنشاء المسودة لا يُرفض ولا يُقبل بصمت: إنسان
+ * سريع (أو أعاد تحميل الصفحة) قد يفعلها، فنرد بمدة انتظار والاستمارة تعيد المحاولة وحدها.
+ */
+export function submitWaitMs(createdAt: Date, now = new Date()): number {
+  return Math.max(0, MIN_FILL_MS - (now.getTime() - createdAt.getTime()));
 }
 
 const cairoDay = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(new Date());

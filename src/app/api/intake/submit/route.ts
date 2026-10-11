@@ -1,12 +1,12 @@
-// إرسال استمارة طلب المتجر. بالترتيب: نفس المصدر ← حد المعدل ← الطلب مسودة مفتوحة ← فخ البرامج الآلية (قبول
-// صامت بلا طلب) ← شروط الاستمارة ← ملكية كل ملف مذكور ← حماية الإساءة ← إرسال مرة واحدة ← بريد بعد الرد.
+// إرسال استمارة طلب المتجر. بالترتيب: نفس المصدر ← حد المعدل ← الطلب مسودة مفتوحة ← فخ البرامج الآلية (الحقل
+// المخفي: قبول صامت بلا طلب؛ الإرسال الأسرع من إنسان: انتظار وإعادة) ← شروط الاستمارة ← ملكية كل ملف مذكور ← حماية الإساءة ← إرسال مرة واحدة ← بريد بعد الرد.
 import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
 import { intakeDataSchema, normalizeEmail, referencedKeys, validateSubmission } from "@/intake/schema";
 import { draftIsOpen, findByDraftToken, isMissingTable, openQueueLength, requestAssets, submitRequest } from "@/intake/repo";
-import { hit, intakeSettings, json, looksAutomated, requestIp, reserveIntake, sameOrigin } from "@/intake/guard";
+import { filledHoneypot, hit, intakeSettings, json, requestIp, reserveIntake, sameOrigin, submitWaitMs } from "@/intake/guard";
 import { estimateEta, etaText } from "@/intake/eta";
 import { readJson } from "@/intake/http";
 import { derivedToken, randomToken } from "@/intake/tokens";
@@ -41,10 +41,12 @@ export async function POST(req: Request) {
     const settings = await intakeSettings();
     if (!settings.enabled) return json({ error: "closed", message: "استقبال الطلبات متوقف مؤقتاً. كلّمنا مباشرة." }, 503);
 
-    if (looksAutomated({ honeypot: hp, createdAt: row.createdAt })) {
-      log.warn("security", "intake_blocked", { requestId: row.id, reason: typeof hp === "string" && hp ? "honeypot" : "too_fast" });
+    if (filledHoneypot(hp)) {
+      log.warn("security", "intake_blocked", { requestId: row.id, reason: "honeypot" });
       return json({ ok: true, code: row.code, followUrl: `/follow/${randomToken()}?new=1` });
     }
+    const wait = submitWaitMs(row.createdAt);
+    if (wait > 0) return json({ ok: false, error: "too_fast", retryAfterMs: wait + 250 }, 202);
 
     const errors = validateSubmission(data);
     if (Object.keys(errors).length) return json({ error: "invalid", errors }, 422);
