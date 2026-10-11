@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+/**
+ * متغيران اختياريان يكتبهما المالك بيده في Vercel: خطأ تنسيق فيهما لا يجوز أن يوقف التطبيق كله عند الإقلاع.
+ * نطبّعهما (+20 و010 1234 5678 و«الاسم <بريد>») وإن لم يصلحا يُعاملان كغير مضبوطين بدل رمي استثناء.
+ */
+export const optionalWhatsapp = z.preprocess((v) => {
+  if (typeof v !== "string") return undefined;
+  let d = v.replace(/[^\d+]/g, "").replace(/^\+/, "");
+  if (d.startsWith("0020")) d = d.slice(4);
+  else if (d.startsWith("20") && d.length >= 12) d = d.slice(2);
+  if (d.length === 10 && d.startsWith("1")) d = `0${d}`;
+  return /^01[0125]\d{8}$/.test(d) ? d : undefined;
+}, z.string().optional());
+
+export const optionalEmail = z.preprocess((v) => {
+  if (typeof v !== "string") return undefined;
+  const m = /<([^<>]+)>/.exec(v);
+  const e = (m?.[1] ?? v).trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : undefined;
+}, z.string().optional());
+
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
@@ -79,9 +99,9 @@ const serverSchema = z.object({
   // بريد تنبيهات المالك (إيصال دفع جديد يحتاج مراجعة). أكثر من بريد بفاصلة.
   OWNER_ALERT_EMAILS: z.string().default("omarmaher23942@gmail.com"),
   // وسيلة تواصل الوكالة التي تظهر للعميل في صفحة الشكر والمتابعة والبريد (اختيارية؛ بدونها لا يظهر زر واتساب).
-  AGENCY_WHATSAPP: z.preprocess((v) => (v === "" ? undefined : v), z.string().regex(/^01[0125]\d{8}$/).optional()),
+  AGENCY_WHATSAPP: optionalWhatsapp,
   // عنوان الرد على بريد العميل (اختياري؛ بدونه لا يُضبط Reply-To ولا يظهر بريد المالك الشخصي للعميل).
-  INTAKE_REPLY_TO: z.preprocess((v) => (v === "" ? undefined : v), z.string().email().optional()),
+  INTAKE_REPLY_TO: optionalEmail,
 
 });
 

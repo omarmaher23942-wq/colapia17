@@ -201,3 +201,21 @@ describe("الـ brief", () => {
     expect(md).toContain("> مش عنوان");
   });
 });
+
+import { optionalEmail, optionalWhatsapp } from "@/lib/env";
+
+describe("متغيرات بيئة اختيارية لا توقف التطبيق", () => {
+  it("واتساب الوكالة: كل صيغ الكتابة الشائعة تُطبَّع، وغير الصالح يصير غير مضبوط بلا رمي", () => {
+    for (const v of ["01012345678", "+201012345678", "010 1234 5678", "201012345678", "00201012345678", "1012345678"]) {
+      expect(optionalWhatsapp.parse(v), v).toBe("01012345678");
+    }
+    for (const v of ["", " ", "abc", "0123", undefined, null, 42]) expect(optionalWhatsapp.parse(v), String(v)).toBeUndefined();
+  });
+
+  it("بريد الرد: يقبل «الاسم <بريد>» والمسافات، وغير الصالح يصير غير مضبوط", () => {
+    expect(optionalEmail.parse("hi@colapia.com")).toBe("hi@colapia.com");
+    expect(optionalEmail.parse(" Hi@Colapia.com ")).toBe("hi@colapia.com");
+    expect(optionalEmail.parse("Colapia <hi@colapia.com>")).toBe("hi@colapia.com");
+    for (const v of ["", "not an email", "a@b", undefined]) expect(optionalEmail.parse(v), String(v)).toBeUndefined();
+  });
+});
