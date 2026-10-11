@@ -8,7 +8,6 @@ import { getMerchantSession } from "@/server/auth";
 import { ownerStore, storeFor } from "@/server/merchant-guard";
 import { getStoreBySubdomain, isStorePubliclyVisible } from "@/lib/tenant";
 import { allow, clientIp } from "@/lib/ratelimit";
-import { onboardingImageRoute } from "@/onboarding/uploader";
 import { intakeImageRoute, intakeVoiceRoute } from "@/intake/uploader";
 
 const f = createUploadthing();
@@ -93,8 +92,6 @@ export const fileRouter = {
       key: file.key,
       merchantId: metadata.merchantId,
     })),
-
-  onboardingImage: onboardingImageRoute(f),
 
   // استمارة طلب المتجر (نموذج الوكالة): بلا تسجيل دخول، الهوية رابط المسودة السري (src/intake/uploader.ts).
   intakeImage: intakeImageRoute(f),

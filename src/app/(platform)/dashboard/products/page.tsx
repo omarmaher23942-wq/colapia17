@@ -1,5 +1,5 @@
 // dashboard/products/page.tsx — المنتجات: تبويبات الحالة بأعدادها، وفلاتر المخزون وما ينقص كل منتج (صورة، تكلفة، وصف)،
-// وبحث بالعربي والفرانكو والكود، وقسم وترتيب، وصفحات حقيقية، واستيراد من ملف، وكتابة الأوصاف الناقصة بالذكاء الاصطناعي.
+// وبحث بالعربي والفرانكو والكود، وقسم وترتيب، وصفحات حقيقية، واستيراد من ملف.
 import Link from "next/link";
 import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
@@ -9,7 +9,6 @@ import { listProducts, parseProductsQuery, type ProductsQuery } from "@/server/r
 import { ProductsList } from "@/components/dashboard/products/ProductsList";
 import { ProductsFilters } from "@/components/dashboard/products/ProductsFilters";
 import { ImportProducts } from "@/components/dashboard/products/ImportProducts";
-import { AiFillDescriptions } from "@/components/dashboard/products/AiFillDescriptions";
 import { PendingImages } from "@/components/dashboard/products/ImageMover";
 import { InventoryMode } from "@/components/dashboard/products/InventoryMode";
 import { getBlueprintOrNull } from "@/lib/tenant";
@@ -87,7 +86,6 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
           <NewProductLink className="sm:hidden" />
         </div>
         <div className="flex flex-wrap items-center gap-2 *:flex-1 *:justify-center sm:*:flex-none">
-          <AiFillDescriptions missing={counts.noDescription} />
           <ImportProducts />
           <NewProductLink className="hidden sm:inline-flex" />
         </div>

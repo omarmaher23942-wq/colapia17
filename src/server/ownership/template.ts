@@ -75,6 +75,8 @@ export const FORBIDDEN_IN_TEMPLATE = [
   /^src\/server\/domains\.ts$/,
   /^src\/server\/actions\/custom-domain\.ts$/,
   /^src\/server\/actions\/code-handoff\.ts$/,
+  /^src\/server\/actions\/change-requests\.ts$/,
+  /^src\/components\/dashboard\/requests\//,
   /^src\/components\/dashboard\/domain\//,
   /^src\/components\/dashboard\/team\//,
   /^src\/server\/actions\/agency-/,

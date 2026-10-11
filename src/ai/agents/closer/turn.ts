@@ -12,9 +12,9 @@ function clean(value: unknown, max = 1000): string {
 }
 
 const DEFAULT_REPLY =
-  "أهلاً بيك في كولابيا. ابعتلي اسم نشاطك أو منتجك، وهجهّزلك عرض متجر إلكتروني كامل بمنتجاتك وتجربة مجانية.";
+  "أهلاً بيك في Colapia. فريقنا بيبني لك متجر إلكتروني كامل لنشاطك ويستضيفه ويشغّله، وتجربه قبل ما تدفع. قولي بتبيع إيه؟";
 
-const DEFAULT_BUTTON = "ابدأ استمارة متجرك الآن";
+const DEFAULT_BUTTON = "ابدأ استمارة متجرك";
 
 export const closerTurnSchema = z.object({
   thinking: z
@@ -38,6 +38,12 @@ export const closerTurnSchema = z.object({
     .string()
     .nullish()
     .transform((s) => clean(s, 200) || null),
+
+  // ما كتبه العميل بنفسه ويملأ الاستمارة مسبقاً (الفارغ فقط؛ intake/link.ts applyPrefill).
+  storeName: z.string().nullish().transform((s) => clean(s, 60) || null),
+  business: z.string().nullish().transform((s) => clean(s, 200) || null),
+  social: z.string().nullish().transform((s) => clean(s, 200) || null),
+  whatsapp: z.string().nullish().transform((s) => clean(s, 30) || null),
 });
 
 export type CloserTurn = z.infer<typeof closerTurnSchema>;

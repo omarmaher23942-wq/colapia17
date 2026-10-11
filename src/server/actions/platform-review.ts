@@ -7,7 +7,6 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { platformReviews, aiDirectives, stores } from "@/db/schema";
 import { requirePlatformCap } from "@/server/platform-guard";
-import { releaseToBuild } from "@/lifecycle/release";
 import { cancelJobs, scheduleReview } from "@/lifecycle/scheduler";
 
 // ─── Guard ────────────────────────────────────────────────────────────────
@@ -150,22 +149,6 @@ export async function deleteDirectiveAction(
     return { ok: true };
   } catch (err: any) {
     return { error: err?.message || "فشل حذف الحقل" };
-  }
-}
-
-export async function sendToBuildAction(
-  storeId: string
-): Promise<{ ok: true } | { error: string }> {
-  try {
-    const user = await requireOwner();
-    const r = await releaseToBuild(storeId, `owner:${user.id}`);
-    if (!r.started) {
-      return { error: r.reason || "تعذّر بدء البناء" };
-    }
-    revalidatePath("/admin/pipeline");
-    return { ok: true };
-  } catch (err: any) {
-    return { error: err?.message || "تعذّر بدء البناء" };
   }
 }
 

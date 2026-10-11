@@ -15,7 +15,6 @@ import {
 import {
   deliverNowAction,
   extendAction,
-  retryBuildAction,
   freezeNowAction,
 } from "@/server/actions/platform-ops";
 import { bindCustomDomainAction } from "@/server/actions/platform-stores-governance";
@@ -97,9 +96,6 @@ export function StoreAdminActions({
         )}
         {s.status === "suspended" && (
           <button disabled={p} onClick={() => go(() => setStoreStatusAction(s.id, "active"), "أُعيد التفعيل")} className={`${B} bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30`}>✅ إلغاء التعليق</button>
-        )}
-        {(s.status === "intake" || s.status === "building") && (
-          <button disabled={p} onClick={() => go(() => retryBuildAction(s.id), "أُعيد البناء")} className={`${B} bg-amber-500 text-black hover:bg-amber-400`}>🔁 إعادة البناء</button>
         )}
         {!merchantActivated && ["active"].includes(s.status) && (
           <button disabled={p} onClick={() => go(() => resendMagicLinkAction(s.id), "أُرسل الرابط")} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>🔗 إرسال رابط الدخول</button>

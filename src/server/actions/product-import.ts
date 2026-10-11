@@ -4,7 +4,7 @@
 // وتُربط الأقسام بأسمائها (ويُنشأ الجديد منها)، وتُولَّد روابط فريدة دون استعلام لكل منتج، ويُكتب الكل في معاملة واحدة.
 import { revalidatePath } from "next/cache";
 import { UTFile } from "uploadthing/server";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
@@ -16,7 +16,7 @@ import { IMPORT_MAX_ROWS, planImport } from "@/lib/product-import";
 import { isHostedImage } from "@/lib/media-hosts";
 import { mediaApi } from "@/server/media-host";
 import { fetchRemoteImage, REMOTE_IMAGE_ERROR } from "@/server/remote-image";
-import { externalImagesSql, noDescriptionSql } from "@/server/repos/products-list";
+import { externalImagesSql } from "@/server/repos/products-list";
 
 const input = z.object({
   csv: z.string().min(1).max(2_000_000),
@@ -204,19 +204,4 @@ export async function productsWithExternalImagesAction(): Promise<{ id: string; 
     .where(and(eq(products.storeId, s.storeId), isNull(products.deletedAt), externalImagesSql))
     .limit(500);
   return rows.filter((r) => r.images.some((i) => !isHostedImage(i.url))).map((r) => ({ id: r.id, name: r.name }));
-}
-
-/** المنتجات بلا وصف (لزر «اكتب الأوصاف الناقصة» بالذكاء الاصطناعي). */
-export async function productsMissingCopyAction(): Promise<{ id: string; name: string; priceEgp: number; category: string | null }[]> {
-  const s = await storeFor("products");
-  if (!s) return [];
-  const db = await getTenantDb(s.storeId);
-  const rows = await db
-    .select({ id: products.id, name: products.name, price: products.pricePiasters, category: categories.name })
-    .from(products)
-    .leftJoin(categories, and(eq(categories.id, products.categoryId), eq(categories.storeId, s.storeId)))
-    .where(and(eq(products.storeId, s.storeId), isNull(products.deletedAt), noDescriptionSql))
-    .orderBy(desc(products.createdAt))
-    .limit(500);
-  return rows.map((r) => ({ id: r.id, name: r.name, priceEgp: r.price / 100, category: r.category }));
 }

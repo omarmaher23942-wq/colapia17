@@ -10,7 +10,6 @@ import { formatEgp } from "@/lib/money";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { BroadcastEmailForm } from "@/components/platform/BroadcastEmailForm";
 import { PlatformHealthScore } from "@/components/platform/PlatformHealthScore";
-import { BuildQueueVisualizer } from "@/components/platform/BuildQueueVisualizer";
 import { HotLeadsWidget } from "@/components/platform/HotLeadsWidget";
 import { storeRequests } from "@/db/schema/agency";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -84,14 +83,13 @@ export default async function AdminCommandCenter() {
       {/* Top Widgets Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <PlatformHealthScore />
-        <BuildQueueVisualizer />
         <HotLeadsWidget />
       </div>
 
       {/* 4 KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard href="/admin/payments" label="إيرادات المنصة (30 يوماً)" value={formatEgp(rev?.egp ?? 0)} note={`${rev?.pending ?? 0} تحويل معلق`} tone="emerald" icon={Wallet} />
-        <KpiCard href="/admin/pipeline" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} بالخط`} tone="blue" icon={Store} />
+        <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} بالخط`} tone="blue" icon={Store} />
         <KpiCard href="/admin/conversations" label="المحادثات والليدز" value={String(conv?.total ?? 0)} note={`${conv?.hot ?? 0} تاجر مهتم جداً`} noteIcon={Flame} tone="violet" icon={MessagesSquare} />
         <KpiCard label="GMV (مبيعات التجار)" value={formatEgp(gmv?.v ?? 0)} note={`${gmv?.n ?? 0} طلب تم تنفيذه`} tone="emerald" icon={TrendingUp} />
       </div>

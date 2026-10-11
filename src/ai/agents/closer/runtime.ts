@@ -1,5 +1,6 @@
 import "server-only";
 import { currentPricing } from "@/server/pricing";
+import { lifecycleTimings } from "@/lifecycle/timings";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
@@ -7,9 +8,10 @@ import { conversations, messages } from "@/db/schema";
 import { meta as metaApi } from "@/channels/meta";
 import { aiObjectWithMeta } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
-import { env } from "@/lib/env";
 import { isOn } from "@/lib/flags";
-import { issueOnboardingSession } from "@/onboarding/sessions";
+import { issueIntakeLink, type IntakePrefill } from "@/intake/link";
+import { derivedToken } from "@/intake/tokens";
+import { clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { closerTurnSchema, type CloserTurn } from "./turn";
@@ -63,13 +65,26 @@ const START_INTENT_RE = new RegExp(
 );
 
 async function interpolateVars(): Promise<Record<string, string>> {
-  const { price, basePrice, renewal } = await currentPricing();
+  const [{ price, basePrice, renewal, remaining }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
   return {
     price: String(price),
     basePrice: String(basePrice),
     renewal: String(renewal),
-    trialHours: String(env.TRIAL_HOURS ?? 24),
+    trialHours: String(timings.trialHours),
+    // ندرة حقيقية فقط: عدّاد من المدفوعات المؤكدة (فارغ إن لم يكن للسعر حد).
+    remainingLine: remaining ? `باقٍ ${remaining} ${remaining === 1 ? "متجر" : remaining <= 10 ? "متاجر" : "متجراً"} فقط بهذا السعر. ` : "",
   };
+}
+
+/**
+ * رابط ما يحتاجه العميل الآن من هذه المحادثة: الاستمارة (مملوءة مسبقاً بما كتبه) أو صفحة متابعة طلبه إن أرسله، أو
+ * null إن كان طلبه مغلقاً (سبام/مسحوب: يحال للفريق).
+ */
+async function linkFor(conv: Conv, channel: Channel, prefill?: IntakePrefill): Promise<{ url: string; kind: "form" | "follow" } | null> {
+  const r = await issueIntakeLink({ conversationId: conv.id, source: channel, prefill });
+  if (r.status === "submitted") return { url: `${clientEnv.NEXT_PUBLIC_APP_URL}/follow/${derivedToken("track", r.requestId)}`, kind: "follow" };
+  if (r.status === "closed") return null;
+  return { url: r.url, kind: "form" };
 }
 
 function formatEgpNumber(n: number): string {
@@ -78,14 +93,14 @@ function formatEgpNumber(n: number): string {
 
 // ─── الرسالة الطارئة بدون رابط (المستوى الأخير) ────────────────────────────
 function emergencyReply(vars: Record<string, string>): string {
-  return `أهلاً بيك في كولابيا. بنبني متجرك الإلكتروني الكامل بمنتجاتك وتجربة مجانية ${vars.trialHours} ساعة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج (عرض لفترة محدودة) وتشمل سنة استضافة. ابعتلي اسم نشاطك وهجهّزلك رابط البدء فوراً.`;
+  return `أهلاً بيك في Colapia. فريقنا بيبني لك متجر إلكتروني كامل لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج وتشمل سنة استضافة. ابعتلي اسم نشاطك وأبعتلك رابط الاستمارة.`;
 }
 
 // ─── الرسالة الافتراضية مع زر الاستمارة ────────────────────────────────────
-function fallbackWithLink(vars: Record<string, string>, url: string) {
-  const text = `أهلاً بيك في كولابيا. بنبني لك متجر إلكتروني فاخر بمنتجاتك في دقائق وتجربة مجانية ${vars.trialHours} ساعة، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة، وتشمل المتجر وسنة استضافة كاملة، بلا عمولة على مبيعاتك. اضغط الزر وابدأ استمارتك في دقيقتين:`;
-  const buttonTitle = "ابدأ استمارة متجرك الآن";
-  return { text, buttonTitle, url };
+function fallbackWithLink(vars: Record<string, string>, url: string, kind: "form" | "follow" = "form") {
+  if (kind === "follow") return { text: "استمارتك وصلتنا، ومن الرابط ده تتابع متجرك مرحلة بمرحلة وموعد تسليمه:", buttonTitle: "تابع متجرك", url };
+  const text = `أهلاً بيك في Colapia. فريقنا بيصمم ويبني لك متجر إلكتروني لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج وتشمل سنة استضافة، بلا عمولة على مبيعاتك. ${vars.remainingLine ?? ""}اضغط الزر واملأ الاستمارة في دقيقتين:`;
+  return { text, buttonTitle: "ابدأ استمارة متجرك", url };
 }
 
 export async function handleInbound(
@@ -162,7 +177,7 @@ export async function handleInbound(
 
   const disclose = await shouldDisclose(conv.id);
 
-  const system = await getPrompt("closer.system", vars);
+  const system = await getPrompt("closer.agency", vars);
   const history = await buildHistory(conv.id);
 
   await metaApi.typing(channel, senderId, true);
@@ -208,18 +223,23 @@ export async function handleInbound(
 
   if (shouldSendLink) {
     try {
-      const issued = await issueOnboardingSession(conv.id);
-      const buttonTitle = turn.buttonTitle || "ابدأ استمارة متجرك الآن";
+      const issued = await linkFor(conv, channel, { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp });
+      if (!issued) {
+        await handoffToHuman(channel, senderId, conv, "طلب سابق مغلق لنفس المحادثة");
+        await metaApi.typing(channel, senderId, false);
+        return;
+      }
+      const buttonTitle = issued.kind === "follow" ? "تابع متجرك" : turn.buttonTitle || "ابدأ استمارة متجرك";
 
-      let replyText = turn.reply;
+      let replyText = issued.kind === "follow" ? `${turn.reply}\n\nاستمارتك وصلتنا، وتقدر تتابع متجرك من هنا:` : turn.reply;
 
       // إن كانت ردود النموذج عامة، عززها.
       const genericSmell = /(قولي أكتر|احكيلي أكتر|بتبيع إيه|إيه نشاطك|ايه نشاطك)/i.test(
         replyText
       );
-      if (genericSmell) {
-        replyText = `عظيم ومجال مطلوب في مصر. بنبني لك متجر كامل بالصور والمقاسات والدفع عند الاستلام، وتجربة ${vars.trialHours} ساعة مجانية، والباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج لفترة محدودة وتشمل سنة استضافة. اضغط الزر وابدأ استمارتك:`;
-      } else if (!mentionsLinkOrButton) {
+      if (genericSmell && issued.kind === "form") {
+        replyText = `تمام. فريقنا هيبني لك متجر بصور منتجاتك والمقاسات والدفع عند الاستلام، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج وتشمل سنة استضافة. ${vars.remainingLine ?? ""}املأ الاستمارة من الزر:`;
+      } else if (!mentionsLinkOrButton && issued.kind === "form") {
         replyText = `${replyText}\n\nاضغط الزر وابدأ استمارتك في دقيقتين:`;
       }
 
@@ -241,7 +261,7 @@ export async function handleInbound(
         })
         .where(eq(conversations.id, conv.id));
     } catch (e) {
-      console.error("[closer] issueOnboardingSession failed:", e);
+      console.error("[closer] intake link failed:", e);
       await sendFallbackWithLink(channel, senderId, conv, vars, disclose);
     }
   } else {
@@ -302,8 +322,9 @@ async function sendFallbackWithLink(
   disclose: boolean
 ) {
   try {
-    const issued = await issueOnboardingSession(conv.id);
-    const f = fallbackWithLink(vars, issued.url);
+    const issued = await linkFor(conv, channel);
+    if (!issued) throw new Error("closed request");
+    const f = fallbackWithLink(vars, issued.url, issued.kind);
     const text = withDisclosure(f.text, disclose);
     const { buttonTitle, url } = f;
     await metaApi.buttons(channel, senderId, text, [

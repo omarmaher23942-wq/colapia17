@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { eq, sql, gt, inArray, and } from "drizzle-orm";
 import {
   LayoutDashboard,
-  Workflow,
   MessagesSquare,
   Wallet,
   UserPlus,
@@ -18,6 +17,7 @@ import {
   Mail,
   Inbox,
   BadgeDollarSign,
+  MessageSquarePlus,
   type LucideIcon,
 } from "lucide-react";
 import { getPlatformSession } from "@/server/auth";
@@ -28,6 +28,7 @@ import {
   platformPayments,
   stores,
   platformReviews,
+  storeChangeRequests,
 } from "@/db/schema";
 import { storeRequests } from "@/db/schema/agency";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
@@ -39,7 +40,7 @@ const SW = 1.75;
 const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
   ["/admin/requests", "طلبات المتاجر", Inbox],
-  ["/admin/pipeline", "خط الإنتاج", Workflow],
+  ["/admin/changes", "طلبات التعديل", MessageSquarePlus],
   ["/admin/conversations", "المحادثات", MessagesSquare],
   ["/admin/payments", "التحويلات", Wallet],
   ["/admin/reviews", "المراجعات", Star],
@@ -70,7 +71,7 @@ export default async function PlatformAdminLayout({
   const h = await headers();
   const path = (h.get("x-pathname") ?? "").toLowerCase();
 
-  const [reviewRows, payRows, unreadRows, reviewsPendingRows, newRequestRows] =
+  const [reviewRows, payRows, unreadRows, reviewsPendingRows, newRequestRows, openChangeRows] =
     await Promise.all([
       db
         .select({ review: sql<number>`count(*)`.mapWith(Number) })
@@ -105,14 +106,19 @@ export default async function PlatformAdminLayout({
             : and(eq(storeRequests.status, "submitted"), sql`${storeRequests.production} in ('assigned','building')`, sql`(${storeRequests.builderId} = ${u.id} or ${storeRequests.reviewerId} = ${u.id})`)
         )
         .catch(() => [{ c: 0 }]),
+      db
+        .select({ c: sql<number>`count(*)`.mapWith(Number) })
+        .from(storeChangeRequests)
+        .where(eq(storeChangeRequests.status, "open"))
+        .catch(() => [{ c: 0 }]),
     ]);
 
   const badge: Record<string, number> = {
-    "/admin/pipeline": reviewRows[0]?.review ?? 0,
     "/admin/payments": payRows[0]?.pay ?? 0,
     "/admin/conversations": unreadRows[0]?.unread ?? 0,
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
     "/admin/requests": newRequestRows[0]?.c ?? 0,
+    "/admin/changes": openChangeRows[0]?.c ?? 0,
   };
 
   // القائمة حسب الدور (الخادم يحرس كل صفحة بنفسه؛ هذا لإخفاء ما لا يخصه فقط).

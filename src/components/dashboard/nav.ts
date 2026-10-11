@@ -20,6 +20,7 @@ import {
   UserCog,
   Globe,
   FileArchive,
+  MessageSquarePlus,
   type LucideIcon,
 } from "lucide-react";
 import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
@@ -78,6 +79,7 @@ const ALL: NavSection[] = [
     title: "الحساب",
     items: [
       { label: "الإعدادات", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر والتواصل والدفع", keywords: ["settings", "اعدادات"] },
+      { label: "اطلب تعديل", href: "/dashboard/requests", icon: MessageSquarePlus, hint: "اطلب من فريقنا تعديلاً في التصميم أو المحتوى", keywords: ["requests", "تعديل", "طلب", "تصميم"] },
       { label: "نطاقك الخاص", href: "/dashboard/domain", icon: Globe, hint: "اربط نطاقاً مثل mystore.com", keywords: ["domain", "دومين", "نطاق"] },
       { label: "نسخة من الكود", href: "/dashboard/own", icon: FileArchive, hint: "اطلب نسخة كاملة من كود متجرك وبياناته", keywords: ["code", "كود", "نسخة", "تسليم"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "ادعُ موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات", "فريق"] },

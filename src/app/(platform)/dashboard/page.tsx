@@ -21,7 +21,6 @@ import {
 } from "@/components/dashboard/overview/OverviewCards";
 import { buildNotes } from "@/components/dashboard/overview/notes";
 import { overviewData, pctChange, OVERVIEW_RANGES, type OverviewRange } from "@/server/repos/overview";
-import { merchantAiStatus } from "@/ai/merchant";
 import { EDITION, INTEGRATIONS_NAV } from "@/lib/edition";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
@@ -54,7 +53,6 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
   const store = session.store;
   const range = (OVERVIEW_RANGES as number[]).includes(Number(params.range)) ? (Number(params.range) as OverviewRange) : 30;
   const showTrial = store.status !== "active" && store.demoExpiresAt !== null && EDITION === "platform";
-  const ai = await merchantAiStatus(store).catch(() => null);
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">

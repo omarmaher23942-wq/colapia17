@@ -16,7 +16,6 @@ import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { purgeStore } from "@/server/ownership/transfer";
 import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
-import { releaseToBuild } from "@/lifecycle/release";
 import { POSTPONE_MS } from "@/lifecycle/config";
 import { hostingState } from "@/lib/hosting";
 import { invalidateStoreCache } from "@/lib/tenant";
@@ -102,19 +101,10 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     return { skip: s.status };
   },
 
-  "review.auto_release": async (s) => {
-    if (s.status !== "pending_review") return { skip: s.status };
-    if (!s.reviewDeadlineAt || s.reviewDeadlineAt.getTime() > Date.now() + 2 * 60_000) return { skip: "timer_moved" };
-    const r = await releaseToBuild(s.id, "timer");
-    if (!r.started && r.reason === "start_failed") throw new Error("build start failed");
-    return r;
-  },
-
-  "review.reminder": async (s) => {
-    if (s.status !== "pending_review" || !s.reviewDeadlineAt) return { skip: s.status };
-    await notifyAdmin(`باقي ساعة على الإرسال التلقائي لبناء متجر: ${s.subdomain}`, { storeId: s.id });
-    return { reminded: true };
-  },
+  // البناء الآلي القديم (مراجعة 12 ساعة ثم بناء بالذكاء الاصطناعي) أُزيل في المرحلة 8: الفريق يبني من لوحة الإنتاج.
+  // تبقى المهام المجدولة قبل الإزالة تُتجاهل بأمان.
+  "review.auto_release": async (s) => ({ skip: `retired:${s.status}` }),
+  "review.reminder": async (s) => ({ skip: `retired:${s.status}` }),
 
   "payment.invite": async (s) => {
     if (s.status !== "trial" || s.paymentInvitedAt || s.doomAt) return { skip: "not_applicable" };

@@ -1,4 +1,4 @@
-// dashboard/design — تصميم المتجر: ما صممه الذكاء الاصطناعي لمتجرك، وإعادة التصميم بضغطة، واستعادة أي تصميم سابق.
+// dashboard/design — تصميم المتجر: هويته الحالية وحركته، وطلب تعديل التصميم من الفريق، واستعادة أي تصميم سابق.
 import { redirect } from "next/navigation";
 import { requireStoreArea } from "@/server/merchant-guard";
 import { and, desc, eq, like } from "drizzle-orm";
@@ -6,7 +6,6 @@ import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
 import { storeBlueprints, storeSnapshots } from "@/db/schema";
 import { blueprintSchema } from "@/blueprint/schema";
-import { getRedesignState } from "@/server/redesign";
 import { storeUrl } from "@/lib/utils";
 import { NO_STORE_HREF } from "@/lib/edition";
 import { DesignStudio } from "@/components/dashboard/design/DesignStudio";
@@ -32,15 +31,14 @@ export default async function DesignPage() {
   await requireStoreArea("content");
   const store = session.store;
 
-  const [[row], previous, state] = await Promise.all([
+  const [[row], previous] = await Promise.all([
     db.select().from(storeBlueprints).where(eq(storeBlueprints.storeId, store.id)).limit(1),
     db
       .select({ id: storeSnapshots.id, version: storeSnapshots.version, createdAt: storeSnapshots.createdAt, data: storeSnapshots.data })
       .from(storeSnapshots)
-      .where(and(eq(storeSnapshots.storeId, store.id), like(storeSnapshots.label, "قبل إعادة التصميم%")))
+      .where(and(eq(storeSnapshots.storeId, store.id), like(storeSnapshots.label, "قبل %")))
       .orderBy(desc(storeSnapshots.version))
       .limit(6),
-    getRedesignState(store.id),
   ]);
 
   const parsed = row ? blueprintSchema.safeParse(row.data) : null;
@@ -58,7 +56,7 @@ export default async function DesignPage() {
 
   return (
     <DesignStudio
-      storeUrl={`${storeUrl(store.subdomain)}/?preview=owner`}
+      storeUrl={storeUrl(store.subdomain)}
       current={
         bp
           ? {
@@ -75,7 +73,6 @@ export default async function DesignPage() {
       previous={previous
         .map((p) => ({ id: p.id, version: p.version, at: p.createdAt.toISOString(), summary: summarize(p.data) }))
         .filter((p): p is { id: string; version: number; at: string; summary: NonNullable<ReturnType<typeof summarize>> } => Boolean(p.summary))}
-      initialState={state}
     />
   );
 }

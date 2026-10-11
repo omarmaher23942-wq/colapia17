@@ -10,7 +10,8 @@ import { requireStore } from "@/lib/tenant";
 import { customerLogout, issueCustomerMagicLink } from "@/server/auth";
 import { getGoogleAuthUrl } from "@/server/google-oauth";
 import { encodeOAuthState } from "@/server/oauth-state";
-import { rateLimit, clientIp } from "@/onboarding/guard";
+import { rateLimit } from "@/lib/rate-window";
+import { clientIp } from "@/lib/client-ip";
 import { headers } from "next/headers";
 import { log } from "@/lib/logger";
 import { readRequestId } from "@/lib/correlation";
@@ -61,7 +62,7 @@ export async function requestMagicLinkAction(
     }
 
     const h = await headers();
-    const ip = clientIp({ headers: h } as unknown as Request);
+    const ip = clientIp(h);
     if (!(await rateLimit(`ml:ip:${ip}`, 5, 600))) {
       return { ok: false, error: "محاولات كثيرة، انتظر بضع دقائق" };
     }

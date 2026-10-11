@@ -10,7 +10,6 @@ import { secureToken, sha256 } from "@/lib/ids";
 import { activationUrl } from "@/server/claims";
 import { notifyMerchant } from "@/ai/lifecycle/notify";
 import { cancelJobs } from "@/ai/lifecycle/schedule";
-import { releaseToBuild } from "@/lifecycle/release";
 
 const own = async () => {
   const u = await requirePlatformCap("stores.manage", "غير مصرح");
@@ -23,43 +22,6 @@ const reval = (id: string) => {
   revalidatePath("/admin/stores");
   revalidatePath("/admin/pipeline");
 };
-
-/**
- * إعادة بناء متجر من لوحة الأونر. تُغلّف releaseToBuild بحيث تُعيد نتيجة
- * واضحة بدل رَمي استثناء. هذا يمنع 500 error في صفحة إدارة المتجر.
- */
-export async function rebuildStoreAction(
-  storeId: string
-): Promise<
-  | { ok: true; jobId: string }
-  | { ok: false; error: string }
-> {
-  const u = await own();
-  try {
-    const result = await releaseToBuild(storeId, `platform:${u.id}`);
-    if (result.started) {
-      await log(storeId, "إعادة بناء المتجر من لوحة الأونر", `platform:${u.id}`);
-      reval(storeId);
-      return { ok: true, jobId: result.jobId };
-    }
-
-    // رسائل مفهومة لكل سبب
-    const messages: Record<typeof result.reason, string> = {
-      not_found: "المتجر غير موجود",
-      not_allowed: `حالة المتجر الحالية (${result.current}) لا تسمح بإعادة البناء`,
-      stale: "البحث توقف — حاول مرة أخرى",
-      already_running: "البناء جارٍ بالفعل — انتظر انتهاءه أو أعد المحاولة بعد قليل",
-      no_data: "لا توجد بيانات كافية للبناء (intake مفقود)",
-      start_failed: "فشل بدء البناء — أعد المحاولة بعد دقيقة",
-    };
-    return { ok: false, error: messages[result.reason] };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "خطأ غير متوقع",
-    };
-  }
-}
 
 export async function setStoreStatusAction(storeId: string, status: "suspended" | "active" | "trial") {
   const u = await own();

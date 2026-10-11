@@ -4,11 +4,9 @@ import { designStyleSheet } from "@/blueprint/design";
 import { storeFacts, groundedItems, claimedFact } from "@/blueprint/facts";
 import { blueprintSchema, designSchema } from "@/blueprint/schema";
 import { defaultBlueprint } from "@/blueprint/defaults";
-import { composeHome } from "@/ai/build/art-director";
 import { balancedColumns } from "@/components/blocks/ProductGrid";
 import { ICON_NAMES } from "@/blueprint/icons";
 import { KNOWN_ICONS } from "@/components/storefront/Icon";
-import type { StudioCopy, StudioDesign } from "@/ai/build/studio";
 
 const bp = blueprintSchema.parse(defaultBlueprint({ name: "متجر", storeId: "s" } as never));
 
@@ -79,50 +77,6 @@ describe("facts", () => {
     it("detects claims in free text", () => {
     expect(claimedFact("افحص المنتج مع المندوب")).toBe("inspection");
     expect(claimedFact("قطع مختارة بعناية")).toBeNull();
-  });
-});
-
-describe("art director", () => {
-  const copy: StudioCopy = {
-    brandTagline: "x",
-    hero: { headline: "عنوان", primaryCta: "تسوّق" },
-    announcements: [{ fact: "cod", text: "ادفع عند الاستلام" }],
-    trust: [
-      { fact: "cod", title: "الدفع عند الاستلام", icon: "banknote" },
-      { fact: "nationwide", title: "شحن لكل مصر", icon: "truck" },
-      { fact: "whatsapp", title: "واتساب", icon: "message-circle" },
-    ],
-    sections: {},
-    story: { body: "قصة طويلة بما يكفي لتظهر في الصفحة الرئيسية للمتجر بدون مشاكل على الإطلاق." },
-    faq: [
-      { q: "a", a: "b" },
-      { q: "c", a: "d" },
-      { q: "e", a: "f" },
-    ],
-    footerTagline: "",
-    microcopy: {},
-    seo: {},
-    orderMessages: {},
-  };
-  const design = { design: designSchema.parse({}), heroVariant: "split", headerVariant: "classic", footerVariant: "rich", customCss: "", theme: bp.theme } as StudioDesign;
-  const product = (i: number) => ({ slug: `p${i}`, name: `منتج ${i}`, image: `https://x.ufs.sh/f/${i}` });
-
-  it("one product becomes a spotlight, and a single category shows no categories section", () => {
-    const home = composeHome({ copy, design, stats: { products: [product(1)], categories: [{ slug: "a", name: "أ", count: 1 }] } });
-    expect(home.some((s) => s.type === "categories")).toBe(false);
-    expect(home.find((s) => s.type === "product_grid")).toMatchObject({ variant: "spotlight" });
-  });
-  it("respects features the merchant turned off", () => {
-    const home = composeHome({ copy, design, stats: { products: [1, 2, 3].map(product), categories: [] }, features: { trustBadges: false, marqueeBanner: false, faqSection: false } });
-    const types = home.map((s) => s.type);
-    expect(types).not.toContain("trust_badges");
-    expect(types).not.toContain("announcement");
-    expect(types).not.toContain("faq");
-  });
-  it("never repeats the same tone on adjacent content sections", () => {
-    const home = composeHome({ copy, design, stats: { products: Array.from({ length: 12 }, (_, i) => product(i)), categories: [{ slug: "a", name: "أ", count: 6 }, { slug: "b", name: "ب", count: 6 }] } });
-    const tones = home.filter((s) => s.type !== "announcement" && s.type !== "hero").map((s) => s.background);
-    for (let i = 1; i < tones.length; i++) expect(tones[i]).not.toBe(tones[i - 1]);
   });
 });
 

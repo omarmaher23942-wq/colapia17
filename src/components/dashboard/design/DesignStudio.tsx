@@ -1,26 +1,17 @@
 "use client";
 
-// DesignStudio — تصميم المتجر الحالي، وإعادة التصميم بالذكاء الاصطناعي مع متابعة حية، واستعادة أي تصميم سابق.
-import { useEffect, useState, useTransition } from "react";
+// DesignStudio — تصميم المتجر الحالي، والحركة، وطلب تصميم جديد من الفريق («اطلب تعديل»)، واستعادة أي تصميم سابق.
+import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Wand2, ExternalLink, Loader2, Check, History, Palette, Type, LayoutTemplate, Sparkles, RotateCcw, AlertTriangle } from "lucide-react";
+import { Wand2, ExternalLink, Loader2, History, Palette, Type, LayoutTemplate, Sparkles, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-import { startRedesignAction, redesignStatusAction } from "@/server/actions/redesign";
 import { revertSnapshotAction } from "@/server/actions/blueprint";
-import type { RedesignState } from "@/server/redesign";
 import { saveMotionAction } from "@/server/actions/motion";
-import { MotionPicker } from "@/app/(platform)/onboarding/[token]/wizard/MotionPicker";
+import { MotionPicker } from "@/components/dashboard/design/MotionPicker";
 
 type Current = { concept: string; mood: string; colors: string[]; fonts: string; card: string; hero: string | null; motion: { level: "calm" | "lively" | "cinematic"; depth: boolean } } | null;
 type Previous = { id: string; version: number; at: string; summary: { concept: string; colors: string[]; fonts: string } };
-
-const STEPS: { key: NonNullable<RedesignState["step"]>; label: string }[] = [
-  { key: "load", label: "قراءة متجرك ومنتجاته وسياساته" },
-  { key: "design", label: "المدير الفني يصمم هوية جديدة" },
-  { key: "copy", label: "كاتب المحتوى يكتب كل نصوص المتجر" },
-  { key: "save", label: "تركيب الصفحة الرئيسية وحفظ التصميم" },
-];
 
 const CARD_LABEL: Record<string, string> = {
   minimal: "بسيطة",
@@ -33,44 +24,9 @@ const CARD_LABEL: Record<string, string> = {
   brutalist: "جريئة",
 };
 
-export function DesignStudio({ storeUrl, current, previous, initialState }: { storeUrl: string; current: Current; previous: Previous[]; initialState: RedesignState | null }) {
+export function DesignStudio({ storeUrl, current, previous }: { storeUrl: string; current: Current; previous: Previous[] }) {
   const router = useRouter();
-  const [state, setState] = useState<RedesignState | null>(initialState);
-  const [confirming, setConfirming] = useState(false);
   const [pending, start] = useTransition();
-  const running = state?.status === "running";
-
-  // متابعة حية أثناء العمل، ثم تحديث الصفحة عند الانتهاء.
-  useEffect(() => {
-    if (!running) return;
-    let alive = true;
-    const t = setInterval(async () => {
-      const s = await redesignStatusAction().catch(() => null);
-      if (!alive || !s) return;
-      setState(s);
-      if (s.status === "done") {
-        toast.success(`متجرك بتصميم جديد: «${s.concept || "تصميم جديد"}»`);
-        router.refresh();
-      } else if (s.status === "failed") {
-        toast.error("تعذر إكمال إعادة التصميم. متجرك لم يتغير، أعد المحاولة.");
-      }
-    }, 3000);
-    return () => {
-      alive = false;
-      clearInterval(t);
-    };
-  }, [running, router]);
-
-  const redesign = () =>
-    start(async () => {
-      const r = await startRedesignAction();
-      if (!r.ok) {
-        toast.error(r.error);
-        return;
-      }
-      setConfirming(false);
-      setState({ status: "running", step: "load", startedAt: new Date().toISOString() });
-    });
 
   const restore = (id: string) =>
     start(async () => {
@@ -80,8 +36,6 @@ export function DesignStudio({ storeUrl, current, previous, initialState }: { st
         router.refresh();
       } else toast.error(r.error);
     });
-
-  const stepIndex = STEPS.findIndex((s) => s.key === state?.step);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6" dir="rtl">
@@ -136,57 +90,14 @@ export function DesignStudio({ storeUrl, current, previous, initialState }: { st
 
       {current ? <MotionSection initial={current.motion} /> : null}
 
-      <section className={cn("dash-card overflow-hidden p-5 md:p-6", running && "ring-1 ring-nova/40")}>
-        {running ? (
-          <div className="space-y-4" aria-live="polite">
-            <p className="flex items-center gap-2 text-[15px] font-black text-ink">
-              <Loader2 className="size-5 animate-spin text-nova-2" /> نعيد تصميم متجرك الآن
-            </p>
-            <ol className="space-y-2.5">
-              {STEPS.map((s, i) => (
-                <li key={s.key} className={cn("flex items-center gap-2.5 text-[13px] font-bold", i < stepIndex ? "text-emerald-400" : i === stepIndex ? "text-ink" : "text-ink-3")}>
-                  <span className="grid size-5 place-items-center">
-                    {i < stepIndex ? <Check className="size-4" /> : i === stepIndex ? <Loader2 className="size-4 animate-spin" /> : <span className="size-2 rounded-full bg-edge/20" />}
-                  </span>
-                  {s.label}
-                </li>
-              ))}
-            </ol>
-            <p className="text-[12px] text-ink-3">تستغرق عادة أقل من دقيقتين. يمكنك إغلاق الصفحة؛ متجرك يعمل كما هو حتى يكتمل التصميم الجديد.</p>
-          </div>
-        ) : confirming ? (
-          <div className="space-y-4">
-            <p className="text-[15px] font-black text-ink">صمّم متجري من جديد؟</p>
-            <ul className="space-y-1.5 text-[13px] leading-6 text-ink-2">
-              <li>• يتغير الشكل كله (ألوان، خطوط، بطاقات، أقسام) والنصوص التسويقية والصفحة الرئيسية.</li>
-              <li>• لا يتغير شيء في منتجاتك أو طلباتك أو أسعارك أو سياسات الدفع والشحن والاستبدال.</li>
-              <li>• نحتفظ بتصميمك الحالي، وتستعيده بضغطة من الأسفل متى أردت.</li>
-            </ul>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={redesign} disabled={pending} className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-nova to-aurora px-5 text-[13.5px] font-black text-white shadow-lg shadow-nova/30 disabled:opacity-60">
-                {pending ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />} ابدأ التصميم الجديد
-              </button>
-              <button type="button" onClick={() => setConfirming(false)} className="h-11 rounded-xl border border-edge/10 px-4 text-[13px] font-bold text-ink-2">
-                إلغاء
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <p className="text-[15px] font-black text-ink">تريد شكلاً مختلفاً تماماً؟</p>
-              <p className="mt-1 text-[13px] text-ink-2">اطلب من فريقنا هوية جديدة لمتجرك، ونحتفظ بتصميمك الحالي لتستعيده متى أردت.</p>
-              {state?.status === "failed" ? (
-                <p className="mt-2 flex items-center gap-1.5 text-[12px] font-bold text-rose-400">
-                  <AlertTriangle className="size-3.5" /> آخر محاولة لم تكتمل، ومتجرك لم يتغير.
-                </p>
-              ) : null}
-            </div>
-            <button type="button" onClick={() => setConfirming(true)} className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-nova to-aurora px-5 text-[13.5px] font-black text-white shadow-lg shadow-nova/30">
-              <Wand2 className="size-4" /> صمّم متجري من جديد
-            </button>
-          </div>
-        )}
+      <section className="dash-card flex flex-wrap items-center justify-between gap-4 p-5 md:p-6">
+        <div>
+          <p className="text-[15px] font-black text-ink">تريد شكلاً مختلفاً؟</p>
+          <p className="mt-1 text-[13px] leading-6 text-ink-2">اطلب من فريقنا تعديل التصميم أو هوية جديدة لمتجرك، ونحتفظ بتصميمك الحالي لتستعيده متى أردت.</p>
+        </div>
+        <Link href="/dashboard/requests?area=design" className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-nova to-aurora px-5 text-[13.5px] font-black text-white shadow-lg shadow-nova/30">
+          <Wand2 className="size-4" /> اطلب تعديل التصميم
+        </Link>
       </section>
 
       {previous.length ? (
@@ -208,7 +119,7 @@ export function DesignStudio({ storeUrl, current, previous, initialState }: { st
                     {p.summary.fonts} · {new Date(p.at).toLocaleDateString("ar-EG", { day: "numeric", month: "long" })}
                   </p>
                 </div>
-                <button type="button" onClick={() => restore(p.id)} disabled={pending || running} className="mt-auto inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-edge/10 text-[12.5px] font-black text-ink-2 transition hover:bg-edge/[0.05] disabled:opacity-50">
+                <button type="button" onClick={() => restore(p.id)} disabled={pending} className="mt-auto inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-edge/10 text-[12.5px] font-black text-ink-2 transition hover:bg-edge/[0.05] disabled:opacity-50">
                   <RotateCcw className="size-3.5" /> استعد هذا التصميم
                 </button>
               </li>

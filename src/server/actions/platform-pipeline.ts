@@ -1,112 +1,15 @@
 "use server";
 
 import { unstable_rethrow } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { eq, inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { stores } from "@/db/schema";
 import { requirePlatformCap } from "@/server/platform-guard";
-import { transition, type StoreStatus } from "@/lifecycle/machine";
-import { deliverStore } from "@/ai/lifecycle/deliver";
-import { extendAction } from "@/server/actions/platform-ops";
 import { redis } from "@/lib/redis";
 import { env } from "@/lib/env";
 
 async function requireOwner() {
   const u = await requirePlatformCap("stores.manage", "غير مصرح");
   return u;
-}
-
-export async function moveStoreStageAction(
-  storeId: string,
-  toStatus: StoreStatus,
-  reason: string
-) {
-  try {
-    const u = await requireOwner();
-    const r = await transition({
-      storeId,
-      to: toStatus,
-      actor: `owner:${u.id}`,
-      reason,
-    });
-
-    if (!r.ok) return { ok: false, error: r.reason };
-
-    revalidatePath("/admin/pipeline");
-    revalidatePath("/admin");
-    return { ok: true };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { ok: false, error: "فشل نقل المتجر" };
-  }
-}
-
-export async function bulkDeliverStoresAction(storeIds: string[]) {
-  try {
-    const u = await requireOwner();
-    if (!storeIds.length) return { ok: true, delivered: 0 };
-
-    let delivered = 0;
-    for (const id of storeIds) {
-      const ok = await deliverStore(id, `owner:${u.id}`);
-      if (ok) delivered++;
-    }
-
-    revalidatePath("/admin/pipeline");
-    return { ok: true, delivered };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { ok: false, error: "فشل التسليم الجماعي" };
-  }
-}
-
-export async function bulkExtendTrialAction(
-  storeIds: string[],
-  hours: number
-) {
-  try {
-    await requireOwner();
-    if (!storeIds.length) return { ok: true };
-
-    for (const id of storeIds) {
-      await extendAction(id, "trial", hours);
-    }
-
-    revalidatePath("/admin/pipeline");
-    return { ok: true };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { ok: false, error: "فشل تمديد المهلة" };
-  }
-}
-
-export async function fetchLivePipelineStatsAction() {
-  try {
-    await requireOwner();
-    const rows = await db
-      .select({
-        status: stores.status,
-        count: sql<number>`count(*)`.mapWith(Number),
-      })
-      .from(stores)
-      .where(
-        inArray(stores.status, [
-          "pending_review",
-          "building",
-          "review",
-          "trial",
-          "active",
-        ])
-      )
-      .groupBy(stores.status);
-
-    const stats = Object.fromEntries(rows.map((r) => [r.status, r.count]));
-    return { ok: true, stats };
-  } catch (e) {
-    unstable_rethrow(e);
-    return { ok: false, error: "فشل جلب الإحصائيات" };
-  }
 }
 
 export async function checkSystemHealthAction() {
@@ -137,12 +40,11 @@ export async function checkSystemHealthAction() {
     }
 
     const qstashOk = Boolean(env.QSTASH_TOKEN);
-    const qstashLatency = qstashOk
-      ? Math.round(Math.random() * 20 + 10)
-      : 0;
+    // QStash والذكاء الاصطناعي: نفحص وجود الإعداد فقط (لا قياس زمن حقيقي لهما هنا).
+    const qstashLatency = 0;
 
     const aiOk = Boolean(env.GEMINI_API_KEY || env.GROQ_API_KEY);
-    const aiLatency = aiOk ? Math.round(Math.random() * 50 + 20) : 0;
+    const aiLatency = 0;
 
     return {
       ok: true,

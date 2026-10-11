@@ -8,7 +8,7 @@ import { clientEnv } from "@/lib/env";
 
 export const requestAdminUrl = (id: string) => new URL(`/admin/requests/${id}`, clientEnv.NEXT_PUBLIC_APP_URL).toString();
 
-export async function emailMembers(ids: (string | null | undefined)[], msg: { subject: string; headline: string; lines: string[]; requestId: string }): Promise<number> {
+export async function emailMembers(ids: (string | null | undefined)[], msg: { subject: string; headline: string; lines: string[]; requestId: string; href?: string }): Promise<number> {
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];
   if (!unique.length) return 0;
   const rows = await db
@@ -23,7 +23,7 @@ export async function emailMembers(ids: (string | null | undefined)[], msg: { su
       subject: msg.subject,
       headline: msg.headline,
       paragraphs: msg.lines,
-      buttons: [{ title: "افتح الطلب", url: requestAdminUrl(msg.requestId) }],
+      buttons: [{ title: "افتح الطلب", url: msg.href ?? requestAdminUrl(msg.requestId) }],
     }).catch(() => false);
     if (ok) sent++;
   }

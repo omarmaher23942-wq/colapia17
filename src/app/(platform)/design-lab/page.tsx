@@ -4,8 +4,6 @@ import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { KpiCard } from "@/components/dashboard/KpiCard";
-import { Copilot } from "@/components/dashboard/Copilot";
-import { OwnershipCenter } from "@/components/dashboard/own/OwnershipCenter";
 import { Wallet, ShoppingCart, Users, Eye } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -35,28 +33,9 @@ export default async function DesignLab({ searchParams }: { searchParams: Promis
               </main>
             </div>
           </div>
-          <Copilot storeName="متجر نوفا" />
         </DashboardPulse>
       </div>
     );
   }
-  return (
-    <div dir="rtl" className={`dash dash-cosmos min-h-dvh p-4 text-ink md:p-8 ${theme === "light" ? "" : "dark"}`}>
-      <OwnershipCenter
-        storeName="متجر نوفا"
-        subdomain="nova"
-        active={view !== "locked"}
-        githubEnabled
-        repo={view === "repo" || view === "transfer" || view === "owned" ? "omar/nova-store" : null}
-        github={{ state: null, message: null }}
-        offlineAt={null}
-        purgedAt={view === "owned" ? new Date().toISOString() : null}
-        live={{
-          transfer: view === "transfer" ? { status: "importing", siteUrl: "https://nova-store.vercel.app", lastSeenAt: new Date().toISOString(), expiresAt: new Date().toISOString() } : null,
-          ownedUrl: view === "owned" ? "https://nova-store.vercel.app" : null,
-          ownedAt: view === "owned" ? new Date().toISOString() : null,
-        }}
-      />
-    </div>
-  );
+  notFound();
 }

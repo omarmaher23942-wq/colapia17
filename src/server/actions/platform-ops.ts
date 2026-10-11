@@ -13,7 +13,6 @@ import {
   scheduleReview,
 } from "@/lifecycle/scheduler";
 import { transition } from "@/lifecycle/machine";
-import { releaseToBuild } from "@/lifecycle/release";
 import { env } from "@/lib/env";
 
 async function adminOrOwner() {
@@ -129,40 +128,3 @@ export async function freezeNowAction(storeId: string) {
   revalidatePath("/admin/pipeline");
 }
 
-/**
- * إعادة بناء المتجر من لوحة الأونر.
- *
- * التعديل الجذري: نستخدم releaseToBuild مع معالجة شاملة للأخطاء، بحيث لا
- * يُرجَع 500 error لصفحة إدارة المتجر. كل مسار فشل له رسالة عربية مفهومة.
- */
-export async function retryBuildAction(storeId: string): Promise<{
-  ok: boolean;
-  jobId?: string;
-  error?: string;
-}> {
-  const u = await adminOrOwner();
-  try {
-    const result = await releaseToBuild(storeId, `owner:${u.id}`);
-    if (result.started) {
-      revalidatePath("/admin/pipeline");
-      revalidatePath(`/admin/stores/${storeId}`);
-      return { ok: true, jobId: result.jobId };
-    }
-
-    const messages: Record<typeof result.reason, string> = {
-      not_found: "المتجر غير موجود",
-      not_allowed: `حالة المتجر الحالية (${result.current}) لا تسمح بإعادة البناء`,
-      stale: "البحث توقف — حاول مرة أخرى",
-      already_running:
-        "البناء جارٍ بالفعل — انتظر انتهاءه أو حاول بعد 10 دقائق",
-      no_data: "لا توجد بيانات كافية للبناء (intake مفقود)",
-      start_failed: "فشل بدء البناء — حاول بعد دقيقة",
-    };
-    return { ok: false, error: messages[result.reason] };
-  } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "خطأ غير متوقع",
-    };
-  }
-}

@@ -46,3 +46,32 @@ export const storeActivity = pgTable(
   },
   (t) => [index("store_activity_store_idx").on(t.storeId, t.createdAt)]
 );
+
+/**
+ * طلبات التعديل من صاحب المتجر أو فريقه للوكالة (المرحلة 9: «اطلب تعديل»، طلبان شهرياً افتراضياً). الفريق يسندها
+ * وينفذها ويرد بملاحظة يراها العميل. تعديلات الفريق المبادِرة لا تمر من هنا ولا تُحسب.
+ */
+export const storeChangeRequests = pgTable(
+  "store_change_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "set null" }),
+    /** design | products | content | other */
+    area: text("area").notNull(),
+    body: text("body").notNull(),
+    /** open | in_progress | done | declined */
+    status: text("status").notNull().default("open"),
+    teamNote: text("team_note"),
+    assignedTo: uuid("assigned_to"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("store_change_requests_store_idx").on(t.storeId, t.createdAt),
+    index("store_change_requests_status_idx").on(t.status, t.createdAt),
+    check("store_change_requests_status_chk", sql`${t.status} IN ('open', 'in_progress', 'done', 'declined')`),
+    check("store_change_requests_area_chk", sql`${t.area} IN ('design', 'products', 'content', 'other')`),
+  ]
+);
