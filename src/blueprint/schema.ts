@@ -583,6 +583,15 @@ export const brandSchema = z.object({
   industry: z.string().max(60).default("general"),
 });
 
+export const campaignSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9][a-z0-9-]{1,39}$/),
+  name: z.string().trim().min(1).max(60),
+  platform: z.enum(["facebook", "instagram", "tiktok", "google", "whatsapp", "snapchat", "other"]).default("facebook"),
+  target: z.object({ type: z.enum(["home", "product", "category"]), slug: z.string().max(200).optional() }).default({ type: "home" }),
+  code: z.string().max(20).optional(),
+  createdAt: z.string().max(40).optional(),
+});
+
 export const seoSchema = z.object({
   title: z.string().max(70).optional(),
   description: z.string().max(160).optional(),
@@ -735,6 +744,8 @@ export const blueprintSchema = z.object({
   customCss: z.string().max(6000).default(""),
   pages: z.array(policyPageSchema).default([]),
   seo: seoSchema.default({}),
+  /** روابط الحملات (المرحلة 9.4): رابط /go/<slug> لكل إعلان بوجهة وكود خصم اختياري، وتُنسب إليه الطلبات. */
+  campaigns: z.array(campaignSchema).max(40).default([]),
   /** المخزون على مستوى المتجر: تتبع الكميات (ينفد المنتج عند صفر) أو كل المنتجات متاحة دائماً. يختاره التاجر صراحة. */
   inventory: z.object({ tracking: z.boolean().default(true) }).default({}),
 });

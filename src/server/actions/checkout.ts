@@ -37,6 +37,7 @@ import {
 } from "@/lib/email";
 import { storeUrl } from "@/lib/utils";
 import { cleanMetaPixel } from "@/lib/tracking";
+import { CAMPAIGN_COOKIE, orderSourceFrom } from "@/lib/campaigns";
 import { metaCapiToken } from "@/server/store-secrets";
 import { sendCapiPurchase } from "@/server/meta-capi";
 import { newOrderCode } from "@/lib/ids";
@@ -533,6 +534,7 @@ export async function placeOrderAction(
             transferSenderPhone: input.transferSenderPhone || null,
             transferScreenshotUrl: input.transferScreenshotUrl || null,
             statusHistory: [{ status: "new", at: now.toISOString() }],
+            source: orderSourceFrom((await cookies()).get(CAMPAIGN_COOKIE)?.value, bp.campaigns),
             visitorId: deviceId,
             idempotencyKey: input.idempotencyKey,
             isTest,

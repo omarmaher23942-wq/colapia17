@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { collectNote, shippingLabelText, type MessageOrder } from "@/lib/order-messages";
 import { confirmToken, reviewToken } from "@/lib/order-access";
 import { storeUrl } from "@/lib/utils";
+import { getBlueprintOrNull } from "@/lib/tenant";
 import {
   orderStatusLabel,
   orderStatusTone,
@@ -111,6 +112,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     reviewUrl: o.status === "delivered" ? storeUrl(store.subdomain, `/review?o=${encodeURIComponent(o.code)}&t=${reviewToken(store.id, o.id)}`) : null,
   };
   const collect = collectNote(o);
+  const campaign = o.source.startsWith("campaign:") ? (await getBlueprintOrNull(store.id))?.campaigns.find((c) => `campaign:${c.slug}` === o.source) ?? { name: o.source.slice(9) } : null;
   const timeline = [...o.statusHistory].reverse();
 
   return (
@@ -131,6 +133,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 {orderStatusLabel(o.status)}
               </span>
               {o.isTest ? <span className="rounded-full bg-warn/12 px-2.5 py-1 text-[12px] font-black text-warn">طلب تجريبي</span> : null}
+              {campaign ? (
+                <Link href="/dashboard/marketing" className="rounded-full bg-nova/12 px-2.5 py-1 text-[12px] font-black text-nova-2" title="جاء العميل من رابط هذه الحملة">
+                  من حملة «{campaign.name}»
+                </Link>
+              ) : null}
             </h1>
             <p className="mt-1 text-[12.5px] text-ink-3">
               {dateTime.format(o.createdAt)} · {paymentMethodLabel(o.paymentMethod)} ·{" "}

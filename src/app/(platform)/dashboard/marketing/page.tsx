@@ -1,5 +1,5 @@
 // dashboard/marketing — «التسويق»: ربط المتجر بحسابات الإعلانات (بكسل ميتا وواجهة التحويلات وGA4 وتيك توك وSearch
-// Console)، وكتالوج المنتجات لإعلانات ميتا الديناميكية وGoogle Merchant Center.
+// Console)، وروابط الحملات بأدائها، وكتالوج المنتجات لإعلانات ميتا الديناميكية وGoogle Merchant Center.
 import type { Metadata } from "next";
 import { requireStoreArea, sessionPerms } from "@/server/merchant-guard";
 import { getBlueprintOrNull } from "@/lib/tenant";
@@ -9,13 +9,29 @@ import { allows } from "@/lib/store-perms";
 import { storeUrl } from "@/lib/utils";
 import { TrackingPanel } from "@/components/dashboard/marketing/TrackingPanel";
 import { CopyField } from "@/components/dashboard/marketing/CopyField";
+import { CampaignsPanel } from "@/components/dashboard/marketing/CampaignsPanel";
+import { and, asc, eq, isNull } from "drizzle-orm";
+import { getTenantDb } from "@/db/tenant";
+import { categories, products } from "@/db/schema";
+import { listDiscounts } from "@/server/repos/discounts-list";
+import { discountState, discountValueLabel } from "@/lib/discounts";
+import { campaignStats } from "@/server/repos/campaigns";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "التسويق" };
 
 export default async function MarketingPage() {
   const s = await requireStoreArea("discounts");
-  const [bp, capi] = await Promise.all([getBlueprintOrNull(s.storeId), metaCapiToken(s.storeId)]);
+  const db = await getTenantDb(s.storeId);
+  const [bp, capi, prods, cats, discs] = await Promise.all([
+    getBlueprintOrNull(s.storeId),
+    metaCapiToken(s.storeId),
+    db.select({ slug: products.slug, name: products.name }).from(products).where(and(eq(products.storeId, s.storeId), eq(products.status, "active"), isNull(products.deletedAt))).orderBy(asc(products.name)).limit(300),
+    db.select({ slug: categories.slug, name: categories.name }).from(categories).where(eq(categories.storeId, s.storeId)).orderBy(asc(categories.name)),
+    listDiscounts(s.storeId).catch(() => []),
+  ]);
+  const campaigns = bp?.campaigns ?? [];
+  const stats = await campaignStats(s.storeId, campaigns.map((c) => c.slug));
   const ids = trackingFrom(bp?.seo);
   const canEdit = allows(sessionPerms(s), "discounts", "manage") && allows(sessionPerms(s), "content", "manage");
   const feed = storeUrl(s.store.subdomain, "/feed.xml");
@@ -36,6 +52,16 @@ export default async function MarketingPage() {
           tiktokPixelId: ids.tiktokPixelId ?? "",
           googleVerification: ids.googleVerification ?? "",
         }}
+      />
+
+      <CampaignsPanel
+        campaigns={campaigns}
+        stats={stats}
+        baseUrl={storeUrl(s.store.subdomain)}
+        products={prods}
+        categories={cats}
+        codes={discs.filter((d) => discountState(d) === "active").map((d) => ({ code: d.code, label: discountValueLabel(d) }))}
+        canEdit={canEdit}
       />
 
       <section className="dash-card space-y-3 p-5">
