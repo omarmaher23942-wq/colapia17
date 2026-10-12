@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { stores } from "@/db/schema";
 import { ownerStore } from "@/server/merchant-guard";
 import { normalizeDomain } from "@/lib/custom-domain";
-import { addToVercel, checkStoreDomain, removeFromVercel, unmapDomain, vercelConfigured } from "@/server/domains";
+import { addToVercel, checkStoreDomain, removeFromVercel, unmapDomain } from "@/server/domains";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { allow } from "@/lib/ratelimit";
 
@@ -33,7 +33,9 @@ export async function setCustomDomainAction(raw: string): Promise<Result> {
   if (!added.ok && added.error === "manual") {
     await notifyAdmin(`نطاق خاص جديد بانتظار إضافته في Vercel: ${domain} لمتجر ${s.store.subdomain}. أضفه من Settings ← Domains ثم «أكّد الإضافة» في صفحة المتجر.`, { storeId: s.storeId }).catch(() => {});
   } else if (!added.ok) {
-    return { ok: false, error: `تعذر تسجيل النطاق: ${added.error}` };
+    // لا نترك النطاق محجوزاً لهذا المتجر بعد فشل التسجيل.
+    await db.update(stores).set({ customDomain: null, customDomainStatus: null, updatedAt: new Date() }).where(eq(stores.id, s.storeId)).catch(() => {});
+    return { ok: false, error: "تعذر تسجيل النطاق الآن، حاول لاحقاً أو تواصل معنا." };
   }
   const [fresh] = await db.select().from(stores).where(eq(stores.id, s.storeId)).limit(1);
   const r = fresh ? await checkStoreDomain(fresh) : null;
@@ -60,4 +62,3 @@ export async function removeCustomDomainAction(): Promise<Result> {
   return { ok: true };
 }
 
-export const domainMode = async () => (vercelConfigured() ? "auto" : "manual");

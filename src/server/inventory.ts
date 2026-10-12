@@ -4,7 +4,7 @@
 // التركيبة بلا كمية (null) لا حد لها، فإن وُجدت متاحةً صار مخزون المنتج null (متاح دائماً).
 // التركيبة التي أخفاها التاجر («غير متاحة») لا تدخل المجموع لأن العميل لا يستطيع شراءها (نفس قاعدة حفظ المنتج).
 import "server-only";
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, sql, type SQL } from "drizzle-orm";
 import type { getTenantDb } from "@/db/tenant";
 import { products, productVariants } from "@/db/schema";
 
@@ -32,9 +32,10 @@ export function syncVariantTotals(db: DB, storeId: string, productIds: string[])
 /**
  * استعلامات حركة مخزون أصناف طلب: direction = +1 يعيد الكمية للمخزون (إلغاء/ارتجاع)، و-1 يخصمها (إعادة فتح الطلب).
  * المخزون غير المتتبَّع (null) لا يُلمس، وعدد مرات الطلب على المنتج يتحرك بالاتجاه المعاكس.
+ * `guard` شرط SQL اختياري يُضاف لكل استعلام (يمنع تنفيذ الحركة إن لم يطابق تحديث الحالة السابق لها في الـ batch).
  * الخصم قد يصطدم بقيد «المخزون لا يقل عن صفر» فتفشل المعاملة كلها بلا أثر جزئي.
  */
-export function stockMovement(db: DB, storeId: string, items: Line[], direction: 1 | -1) {
+export function stockMovement(db: DB, storeId: string, items: Line[], direction: 1 | -1, guard?: SQL) {
   const lines = items.filter((i): i is Line & { productId: string } => Boolean(i.productId) && i.quantity > 0);
   const queries = lines.flatMap((i) => {
     const qty = i.quantity * direction;
@@ -44,12 +45,12 @@ export function stockMovement(db: DB, storeId: string, items: Line[], direction:
         orderCount: sql`greatest(${products.orderCount} - ${qty}, 0)`,
         ...(i.variantId ? {} : { stock: sql`case when ${products.stock} is null then null else ${products.stock} + ${qty} end` }),
       })
-      .where(and(eq(products.id, i.productId), eq(products.storeId, storeId)));
+      .where(and(eq(products.id, i.productId), eq(products.storeId, storeId), guard));
     if (!i.variantId) return [product];
     const variant = db
       .update(productVariants)
       .set({ stock: sql`${productVariants.stock} + ${qty}` })
-      .where(and(eq(productVariants.id, i.variantId), eq(productVariants.storeId, storeId), isNotNull(productVariants.stock)));
+      .where(and(eq(productVariants.id, i.variantId), eq(productVariants.storeId, storeId), isNotNull(productVariants.stock), guard));
     return [variant, product];
   });
   const withVariants = [...new Set(lines.filter((l) => l.variantId).map((l) => l.productId))];

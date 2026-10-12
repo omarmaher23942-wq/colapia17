@@ -29,6 +29,7 @@ export async function verifyLoginCodeAction(rawEmail: string, code: string, redi
   const email = normalizeLoginEmail(p.data);
   const ip = clientIp(await headers());
   if (!(await limits.login.limit(`verify-ip:${ip}`)).success) return { ok: false, error: "محاولات كثيرة. انتظر دقائق." };
+  if (!(await limits.login.limit(`verify-email:${email}`)).success) return { ok: false, error: "محاولات كثيرة. انتظر دقائق." };
   const r = await verifyLoginCode(email, code);
   if (r === "expired") return { ok: false, error: "الرمز انتهى أو لم يُطلب. اطلب رمزاً جديداً." };
   if (r === "locked") return { ok: false, error: "محاولات كثيرة خاطئة. اطلب رمزاً جديداً." };

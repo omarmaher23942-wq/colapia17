@@ -6,6 +6,7 @@
 //     وينسخ الصور إلى حساب UploadThing الخاص به.
 //  3) يؤكد الاستلام بأعداد الصفوف؛ نطابقها مع ما عندنا، ثم يصبح نطاق المتجر على المنصة تحويلاً
 //     لموقعه الجديد، وتُحذف بيانات التجربة من المنصة (القاعدة والصور) بعد مهلة أمان.
+import { unmapDomain, removeFromVercel } from "@/server/domains";
 import "server-only";
 import { and, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
@@ -235,6 +236,12 @@ export async function purgeStore(store: Store): Promise<boolean> {
     for (const spec of deletable) await db.delete(spec.table).where(spec.scope(store.id, store.merchantId));
     // أسرار التكاملات (رمز Conversions API) ليست من بيانات المتجر المنقولة، لكنها تُحذف معه.
     await db.delete(storeSecrets).where(eq(storeSecrets.storeId, store.id)).catch(() => {});
+    // النطاق الخاص: يتوقف التوجيه إليه ويتحرر لغيره.
+    if (store.customDomain) {
+      await unmapDomain(store, store.customDomain).catch(() => {});
+      await removeFromVercel(store.customDomain).catch(() => {});
+      await db.update(stores).set({ customDomain: null, customDomainStatus: null }).where(eq(stores.id, store.id)).catch(() => {});
+    }
     if (keys.size) {
       const ut = new UTApi();
       const list = [...keys];

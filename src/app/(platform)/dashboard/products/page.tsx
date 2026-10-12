@@ -207,7 +207,7 @@ function FirstProduct() {
       </span>
       <p className="text-[15px] font-black text-ink">أضف أول منتج في متجرك</p>
       <p className="max-w-md text-[12.5px] leading-6 text-ink-3">
-        اكتب الاسم والسعر وارفع الصور، ويكتب لك مساعد المتجر الوصف وكلمات البحث. وإن كانت منتجاتك في ملف Excel فاستوردها كلها مرة واحدة من «استيراد من ملف».
+        اكتب الاسم والسعر والوصف وارفع الصور. وإن كانت منتجاتك في ملف Excel فاستوردها كلها مرة واحدة من «استيراد من ملف».
       </p>
       <Link
         href="/dashboard/products/new"

@@ -38,10 +38,10 @@ export async function addToVercel(domain: string): Promise<{ ok: boolean; error?
   const names = isApex(domain) ? [domain, `www.${domain}`] : [domain];
   for (const name of names) {
     const r = await vercel(`/v10/projects/${env.VERCEL_PROJECT_ID}/domains`, { method: "POST", body: JSON.stringify({ name }) }).catch(() => null);
-    if (!r) return { ok: false, error: "تعذر الوصول لـ Vercel" };
+    if (!r) return { ok: false, error: "تعذرت إضافة النطاق الآن، سنتولى الأمر" };
     if (!r.ok && r.status !== 409) {
       const body = (await r.json().catch(() => ({}))) as { error?: { code?: string; message?: string } };
-      if (body.error?.code !== "domain_already_in_use_by_project" && body.error?.code !== "domain_already_exists") return { ok: false, error: body.error?.message?.slice(0, 160) ?? `Vercel ${r.status}` };
+      if (body.error?.code !== "domain_already_in_use_by_project" && body.error?.code !== "domain_already_exists") return { ok: false, error: body.error?.message?.slice(0, 160) ?? "تعذرت إضافة النطاق الآن، سنتولى الأمر" };
     }
   }
   return { ok: true };
@@ -85,7 +85,7 @@ export async function checkStoreDomain(store: Store): Promise<{ status: StoreDom
   if (!store.customDomain) return { status: "pending", dns: null };
   const r = await lookupDns(store.customDomain);
   const points = Boolean(r && dnsPointsToUs(r));
-  const added = vercelConfigured() ? (points ? (await vercelVerified(store.customDomain)) !== false : false) : Boolean(store.customDomainVerifiedAt);
+  const added = vercelConfigured() ? (points ? (await vercelVerified(store.customDomain)) === true : false) : Boolean(store.customDomainVerifiedAt);
   const status: StoreDomainStatus = points && added ? "active" : points ? "awaiting_team" : "pending";
   const now = new Date();
   await db

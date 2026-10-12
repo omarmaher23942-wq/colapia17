@@ -14,6 +14,8 @@ const TTL_S = 600;
 const MAX_TRIES = 5;
 const h = (v: string) => createHash("sha256").update(`${env.AUTH_SECRET}:${v}`).digest("hex");
 const key = (email: string) => `lc:${h(email).slice(0, 32)}`;
+// عدّاد المحاولات ذرّي (INCR) في مفتاح مستقل: الطلبات المتوازية لا تتجاوز الحد.
+const triesKey = (email: string) => `lcn:${h(email).slice(0, 32)}`;
 
 export const normalizeLoginEmail = (raw: string) => raw.trim().toLowerCase();
 
@@ -29,6 +31,7 @@ export async function sendLoginCode(email: string): Promise<boolean> {
   if (!(await known(email))) return false;
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   await redis.set(key(email), JSON.stringify({ c: h(`${email}:${code}`), n: 0 }), { ex: TTL_S });
+  await redis.del(triesKey(email));
   return sendEmail({
     to: email,
     subject: `رمز دخول لوحة متجرك: ${code}`,
@@ -43,7 +46,9 @@ export async function verifyLoginCode(email: string, code: string): Promise<Veri
   const raw = await redis.get<string | { c: string; n: number }>(key(email));
   if (!raw) return "expired";
   const rec = typeof raw === "string" ? (JSON.parse(raw) as { c: string; n: number }) : raw;
-  if (rec.n >= MAX_TRIES) {
+  const tries = await redis.incr(triesKey(email));
+  if (tries === 1) await redis.expire(triesKey(email), TTL_S).catch(() => {});
+  if (tries > MAX_TRIES) {
     await redis.del(key(email));
     return "locked";
   }
@@ -51,9 +56,8 @@ export async function verifyLoginCode(email: string, code: string): Promise<Veri
   const want = Buffer.from(rec.c);
   if (given.length === want.length && timingSafeEqual(given, want)) {
     await redis.del(key(email));
+    await redis.del(triesKey(email));
     return "ok";
   }
-  const ttl = await redis.ttl(key(email)).catch(() => TTL_S);
-  await redis.set(key(email), JSON.stringify({ ...rec, n: rec.n + 1 }), { ex: Math.max(1, ttl) });
-  return rec.n + 1 >= MAX_TRIES ? "locked" : "wrong";
+  return tries >= MAX_TRIES ? "locked" : "wrong";
 }

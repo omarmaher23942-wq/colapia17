@@ -45,6 +45,6 @@ export async function customerOrderDecisionAction(raw: z.input<typeof schema>): 
   const note =
     d.decision === "confirm" ? "أكّده العميل من رابط التأكيد" : `ألغاه العميل من رابط التأكيد${d.reason ? `: ${d.reason.replace(/\s+/g, " ")}` : ""}`;
   const status = d.decision === "confirm" ? "confirmed" : "cancelled";
-  const r = await applyOrderStatus({ db, storeId: store.id, subdomain: store.subdomain, actor: "customer:confirm-link" }, o.id, status, note);
+  const r = await applyOrderStatus({ db, storeId: store.id, subdomain: store.subdomain, actor: "customer:confirm-link" }, o.id, status, note, { expect: "new" });
   return r.ok ? { ok: true, status } : r;
 }

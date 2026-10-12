@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: { default: "Colapia", template: "%s | Colapia" },
-  description: "متجرك الإلكتروني الاحترافي جاهز بمنتجاتك الحقيقية في أقل من 12 ساعة، جرّبه 24 ساعة قبل أن تدفع.",
+  description: "فريق Colapia يبني لك متجراً إلكترونياً مخصصاً ويستضيفه، وتجربه مجاناً قبل أي دفع.",
 };
 
 export const viewport: Viewport = {

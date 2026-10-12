@@ -14,7 +14,10 @@ import { sendEmail } from "@/lib/email";
 import { redis } from "@/lib/redis";
 import { clientEnv } from "@/lib/env";
 
-const BATCH = 25;
+const BATCH = 10;
+// مهلة المسار 60 ثانية: نتوقف قبلها بهامش حتى لا يُقطع الإرسال وقفله معلّق.
+const BUDGET_MS = 35_000;
+const LOCK_TTL = 15 * 60;
 const LIVE = sql`${orders.status} not in ('cancelled','returned')`;
 
 export async function storeReport(store: typeof stores.$inferSelect, month: ReturnType<typeof reportMonth>) {
@@ -78,10 +81,11 @@ export async function sendMonthlyReports(now = new Date()): Promise<number> {
     .innerJoin(merchants, eq(merchants.id, stores.merchantId))
     .where(and(eq(stores.status, "active"), isNull(stores.deletedAt), isNull(stores.purgedAt), lt(stores.activatedAt, month.to)));
   let sent = 0;
+  const t0 = Date.now();
   for (const { store, email } of rows) {
-    if (sent >= BATCH) break;
+    if (sent >= BATCH || Date.now() - t0 > BUDGET_MS) break;
     if (!email) continue;
-    const lock = await redis.set(`report:${store.id}:${month.key}`, "1", { nx: true, ex: 40 * 86400 }).catch(() => null);
+    const lock = await redis.set(`report:${store.id}:${month.key}`, "1", { nx: true, ex: LOCK_TTL }).catch(() => null);
     if (!lock) continue;
     try {
       const paragraphs = await storeReport(store, month);
@@ -93,8 +97,10 @@ export async function sendMonthlyReports(now = new Date()): Promise<number> {
         buttons: [{ title: "افتح لوحة متجرك", url: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard/analytics` }],
         storeName: store.name,
       });
-      if (ok) sent++;
-      else await redis.del(`report:${store.id}:${month.key}`).catch(() => {});
+      if (ok) {
+        sent++;
+        await redis.set(`report:${store.id}:${month.key}`, "1", { ex: 40 * 86400 }).catch(() => {});
+      } else await redis.del(`report:${store.id}:${month.key}`).catch(() => {});
     } catch (e) {
       console.error("[monthly-report] failed", store.id, e);
       await redis.del(`report:${store.id}:${month.key}`).catch(() => {});
