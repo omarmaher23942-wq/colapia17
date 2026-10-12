@@ -44,7 +44,7 @@ export default async function ProductPage({ params }: P) {
   if (!p) notFound();
 
   const [fbt, rv] = await Promise.all([
-    bp.conversion.recommendations.frequentlyBoughtTogether ? frequentlyBoughtTogether(store.id, p as any, 4) : [],
+    bp.conversion.recommendations.frequentlyBoughtTogether ? frequentlyBoughtTogether(store.id, p as any, 4) : { rows: [], together: false },
     bp.productPage.showReviews ? productReviews(store.id, p.id) : [],
   ]);
   const avg = p.ratingCount ? p.ratingSum / p.ratingCount : 0;
@@ -143,13 +143,13 @@ export default async function ProductPage({ params }: P) {
         </div>
       </div>
 
-      {fbt.length ? (
+      {fbt.rows.length ? (
         <section className="mt-14 border-t pt-10" style={{ borderColor: "var(--border)" }} aria-labelledby="fbt-title">
           <h2 id="fbt-title" className="font-heading text-xl font-black">
-            يُشترى معه عادةً
+            {fbt.together ? "يُشترى معه عادةً" : "من نفس القسم"}
           </h2>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-            {fbt.map((x) => (
+            {fbt.rows.map((x) => (
               <ProductCard key={x.id} product={x as any} />
             ))}
           </div>

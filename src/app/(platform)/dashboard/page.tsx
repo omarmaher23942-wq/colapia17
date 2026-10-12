@@ -10,6 +10,10 @@ import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AttentionStrip } from "@/components/dashboard/overview/AttentionStrip";
 import { AbandonedCarts } from "@/components/dashboard/overview/AbandonedCarts";
+import { cartToken } from "@/lib/order-access";
+import { storeUrl } from "@/lib/utils";
+import { listDiscounts } from "@/server/repos/discounts-list";
+import { discountState, discountValueLabel } from "@/lib/discounts";
 import {
   EarningsCard,
   NotesCard,
@@ -86,13 +90,13 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
       <AttentionStrip />
 
       <Suspense key={range} fallback={<OverviewSkeleton />}>
-        <OverviewBody storeId={store.id} storeName={store.name} range={range} />
+        <OverviewBody storeId={store.id} subdomain={store.subdomain} storeName={store.name} range={range} />
       </Suspense>
     </div>
   );
 }
 
-async function OverviewBody({ storeId, storeName, range }: { storeId: string; storeName: string; range: OverviewRange }) {
+async function OverviewBody({ storeId, subdomain, storeName, range }: { storeId: string; subdomain: string; storeName: string; range: OverviewRange }) {
   const [data, bp] = await Promise.all([overviewData(storeId, range), getBlueprintOrNull(storeId)]);
   const { current: c, previous: p, series } = data;
   const shareHref = EDITION === "store" ? "/" : "/dashboard/store";
@@ -194,7 +198,10 @@ async function OverviewBody({ storeId, storeName, range }: { storeId: string; st
           itemsCount: r.items.length,
           lastSeenAt: r.lastSeenAt.toISOString(),
           contacted: r.contactedAt !== null,
+          restoreUrl: storeUrl(subdomain, `/cart/restore?c=${r.id}&t=${cartToken(storeId, r.id)}`),
         }))}
+        template={bp?.orderMessages?.abandoned ?? null}
+        promos={data.carts.length ? (await listDiscounts(storeId).catch(() => [])).filter((d) => discountState(d) === "active").map((d) => ({ code: d.code, label: discountValueLabel(d) })) : []}
       />
 
       {!readyDone && data.topProducts.length > 0 ? <TopProductsCard rows={data.topProducts} days={range} /> : null}

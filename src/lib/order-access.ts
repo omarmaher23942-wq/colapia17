@@ -84,3 +84,15 @@ export function validConfirmToken(storeId: string, orderId: string, token: strin
   const received = Buffer.from(token);
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
+
+/** رمز رابط «أكمل طلبك» لسلة متروكة: يعيد منتجات هذه السلة وحدها إلى سلة العميل على أي جهاز. */
+export function cartToken(storeId: string, cartId: string): string {
+  return createHmac("sha256", env.AUTH_SECRET).update(`cart:${storeId}:${cartId}`).digest("base64url").slice(0, 32);
+}
+
+export function validCartToken(storeId: string, cartId: string, token: string | null | undefined): boolean {
+  if (!token) return false;
+  const expected = Buffer.from(cartToken(storeId, cartId));
+  const received = Buffer.from(token);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}

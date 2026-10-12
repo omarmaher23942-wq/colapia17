@@ -1,8 +1,9 @@
 "use client";
 
-// AbandonedCarts — سلات متروكة خلال 7 أيام لعملاء كتبوا رقمهم ولم يكملوا الطلب: رسالة واتساب جاهزة باسم المتجر
-// وما في السلة، وفتحها يسجّل «تواصلت» فتخرج السلة من «ما يحتاج انتباهك» (ويمكن التراجع).
-import { useOptimistic, useTransition } from "react";
+// AbandonedCarts — سلات متروكة خلال 7 أيام لعملاء كتبوا رقمهم ولم يكملوا الطلب: رسالة واتساب جاهزة (قالب المتجر
+// في رسائل الطلبات) ومعها رابط «أكمل طلبك» يعيد منتجاته للسلة ويفتح الدفع، وكود خصم اختياري من أكواد المتجر الفعّالة.
+// فتح الرسالة يسجّل «تواصلت» فتخرج السلة من «ما يحتاج انتباهك» (ويمكن التراجع).
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 import { Check, MessageCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,11 @@ export type CartRow = {
   itemsCount: number;
   lastSeenAt: string;
   contacted: boolean;
+  /** رابط «أكمل طلبك» الموقّع. */
+  restoreUrl: string;
 };
+
+export type PromoOption = { code: string; label: string };
 
 function ago(iso: string): string {
   const h = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 3600e3));
@@ -30,14 +35,39 @@ function ago(iso: string): string {
   return d === 1 ? "منذ يوم" : d === 2 ? "منذ يومين" : `منذ ${d} أيام`;
 }
 
-function message(storeName: string, c: CartRow): string {
-  const hello = c.name ? `أهلاً ${c.name}` : "أهلاً بك";
+/** قالب المتجر ({name} و{items}) + رابط الاسترجاع، وسطر الخصم إن اختاره التاجر. */
+export function recoveryMessage(template: string | null, storeName: string, c: Pick<CartRow, "name" | "firstItem" | "itemsCount" | "restoreUrl">, promo: PromoOption | null): string {
   const what = c.firstItem ? `«${c.firstItem}»${c.itemsCount > 1 ? " ومنتجات أخرى" : ""}` : "منتجاتك";
-  return `${hello}، معك ${storeName}. لاحظنا أن طلبك لـ${what} لم يكتمل. هل تحب أن نساعدك في إتمامه؟`;
+  const base = template?.trim()
+    ? template.replaceAll("{name}", c.name ?? "").replaceAll("{items}", what).replace(/\s+،/g, "،").replace(/\s{2,}/g, " ").trim()
+    : `${c.name ? `أهلاً ${c.name}` : "أهلاً بك"}، معك ${storeName}. لاحظنا أن طلبك لـ${what} لم يكتمل.`;
+  const url = promo ? `${c.restoreUrl}&promo=${encodeURIComponent(promo.code)}` : c.restoreUrl;
+  const deal = promo ? ` وخصّصنا لك ${promo.label} بالكود ${promo.code}، يُطبَّق تلقائياً.` : "";
+  return `${base}${deal} سلتك محفوظة، أكمل طلبك من هنا: ${url}`;
 }
 
-export function AbandonedCarts({ storeName, rows }: { storeName: string; rows: CartRow[] }) {
+const PROMO_KEY = "clp_cart_promo";
+
+export function AbandonedCarts({ storeName, rows, template, promos }: { storeName: string; rows: CartRow[]; template: string | null; promos: PromoOption[] }) {
   const [pending, start] = useTransition();
+  const [promoCode, setPromoCode] = useState("");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PROMO_KEY) ?? "";
+      if (promos.some((p) => p.code === saved)) setPromoCode(saved);
+    } catch {
+      /* التخزين غير متاح */
+    }
+  }, [promos]);
+  const promo = promos.find((p) => p.code === promoCode) ?? null;
+  const pickPromo = (code: string) => {
+    setPromoCode(code);
+    try {
+      localStorage.setItem(PROMO_KEY, code);
+    } catch {
+      /* التخزين غير متاح */
+    }
+  };
   const [list, setOptimistic] = useOptimistic(rows, (cur, upd: { id: string; contacted: boolean }) =>
     cur.map((r) => (r.id === upd.id ? { ...r, contacted: upd.contacted } : r))
   );
@@ -63,10 +93,31 @@ export function AbandonedCarts({ storeName, rows }: { storeName: string; rows: C
           {open > 0 ? "عملاء كتبوا رقمهم ولم يكملوا الطلب خلال 7 أيام" : "تواصلت مع كل أصحاب السلات"}
         </p>
       </header>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] text-ink-2">
+        <label htmlFor="cart-promo">مع الرسالة:</label>
+        <select
+          id="cart-promo"
+          value={promoCode}
+          onChange={(e) => pickPromo(e.target.value)}
+          className="min-h-9 rounded-lg border border-edge/10 bg-edge/[0.03] px-2 text-[12px] text-ink outline-none focus:border-nova"
+        >
+          <option value="">رابط الاسترجاع فقط</option>
+          {promos.map((p) => (
+            <option key={p.code} value={p.code}>
+              {p.code} ({p.label})
+            </option>
+          ))}
+        </select>
+        {promos.length === 0 ? (
+          <a href="/dashboard/discounts" className="font-bold text-nova-2 hover:text-ink">
+            أنشئ كود خصم للاسترجاع
+          </a>
+        ) : null}
+      </div>
 
       <ul className="divide-y divide-edge/[0.06]">
         {list.map((c) => {
-          const href = waLink(c.phone, message(storeName, c));
+          const href = waLink(c.phone, recoveryMessage(template, storeName, c, promo));
           return (
             <li key={c.id} className={cn("flex flex-wrap items-center gap-x-3 gap-y-2 py-3", c.contacted && "opacity-60")}>
               <div className="min-w-0 flex-1 basis-full sm:basis-auto">

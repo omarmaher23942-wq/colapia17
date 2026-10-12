@@ -4,7 +4,6 @@ import { getTenantDb } from "@/db/tenant";
 import { categories, products, productVariants, reviews, orderItems, orders } from "@/db/schema";
 import { normalizeQuery } from "@/lib/arabic";
 import { bayesianScore } from "@/lib/utils";
-import { redis, rkeys } from "@/lib/redis";
 import type { z } from "zod";
 import type { productSourceSchema } from "@/blueprint/schema";
 
@@ -150,40 +149,48 @@ export async function productReviews(storeId: string, productId: string) {
   }
 }
 
-export async function frequentlyBoughtTogether(storeId: string, product: Product, limit = 4): Promise<Product[]> {
+/**
+ * «يُشترى معه عادةً»: منتجات اشتراها فعلاً عملاء هذا المنتج في نفس الطلب (آخر 180 يوماً، بلا الطلبات التجريبية
+ * والملغاة). `together=false` يعني أنه لا شراء مشترك كافٍ بعد، والمعروض منتجات من نفس القسم (ويتغير العنوان لذلك).
+ */
+export async function frequentlyBoughtTogether(storeId: string, product: Product, limit = 4): Promise<{ rows: Product[]; together: boolean }> {
   const db = await getTenantDb(storeId);
   try {
-    const ids = await redis.zrange<string[]>(rkeys.coPurchase(storeId, product.id), 0, limit - 1, { rev: true });
-    let rows: Product[] = ids.length
-      ? await db
-          .select()
-          .from(products)
-          .where(and(live(storeId), inArray(products.id, ids), ne(products.id, product.id)))
-      : [];
+    const since = new Date(Date.now() - 180 * 86400_000);
+    const co = await db
+      .select({ productId: orderItems.productId, n: sql<number>`count(distinct ${orderItems.orderId})`.mapWith(Number) })
+      .from(orderItems)
+      .innerJoin(orders, eq(orders.id, orderItems.orderId))
+      .where(
+        and(
+          eq(orderItems.storeId, storeId),
+          eq(orders.storeId, storeId),
+          eq(orders.isTest, false),
+          sql`${orders.status} not in ('cancelled','returned')`,
+          gt(orders.createdAt, since),
+          ne(orderItems.productId, product.id),
+          sql`${orderItems.orderId} in (select oi.order_id from order_items oi where oi.store_id = ${storeId} and oi.product_id = ${product.id})`
+        )
+      )
+      .groupBy(orderItems.productId)
+      .orderBy(desc(sql`count(distinct ${orderItems.orderId})`))
+      .limit(limit * 2);
+    const ids = co.filter((c) => c.productId && c.n >= 2).map((c) => c.productId!);
+    const bought = ids.length ? await db.select().from(products).where(and(live(storeId), inArray(products.id, ids))) : [];
+    const together = bought.sort((x, y) => ids.indexOf(x.id) - ids.indexOf(y.id)).filter((r) => r.name.toLowerCase() !== product.name.toLowerCase());
+    if (together.length >= 2) return { rows: together.slice(0, limit), together: true };
 
-    if (rows.length < limit && product.categoryId) {
-      const more = await db
-        .select()
-        .from(products)
-        .where(and(live(storeId), eq(products.categoryId, product.categoryId), ne(products.id, product.id)))
-        .orderBy(desc(products.orderCount))
-        .limit(limit);
-      rows = [...rows, ...more.filter((m) => m.id !== product.id && !rows.some((r) => r.id === m.id))].slice(0, limit);
-    }
-
-    // تنقية المنتجات لمنع تكرار نفس المنتج إطلاقاً
-    const uniqueMap = new Map<string, Product>();
-    for (const r of rows) {
-      if (r.id !== product.id && !uniqueMap.has(r.id) && r.name.toLowerCase() !== product.name.toLowerCase()) {
-        uniqueMap.set(r.id, r);
-      }
-    }
-
-    const uniqueRows = Array.from(uniqueMap.values());
-    // لا نعرض القسم إلا إذا كان هناك منتجان مختلفان على الأقل
-    return uniqueRows.length >= 2 ? uniqueRows.slice(0, limit) : [];
+    if (!product.categoryId) return { rows: [], together: false };
+    const same = await db
+      .select()
+      .from(products)
+      .where(and(live(storeId), eq(products.categoryId, product.categoryId), ne(products.id, product.id)))
+      .orderBy(desc(products.orderCount))
+      .limit(limit);
+    const rows = same.filter((r) => r.name.toLowerCase() !== product.name.toLowerCase());
+    return { rows: rows.length >= 2 ? rows : [], together: false };
   } catch {
-    return [];
+    return { rows: [], together: false };
   }
 }
 
