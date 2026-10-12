@@ -12,11 +12,12 @@ import { saveLifecycleAction, savePricingAction } from "@/server/actions/agency-
 const input = "h-11 w-full rounded-xl border border-white/10 bg-[#07091a] px-3 text-[14px] text-white outline-none focus:border-[#8fa8ff]";
 const label = "block text-[12px] font-bold text-[#8d97c4]";
 
-export function PricingEditor({ initial }: { initial: PriceLadder }) {
+export function PricingEditor({ initial, goldenUsed }: { initial: PriceLadder; goldenUsed: number }) {
   const router = useRouter();
   const [tiers, setTiers] = useState(initial.tiers.map((t) => ({ upTo: t.upTo === null ? "" : String(t.upTo), price: String(t.price) })));
   const [base, setBase] = useState(String(initial.basePrice));
   const [renewal, setRenewal] = useState(String(initial.renewal));
+  const [golden, setGolden] = useState({ code: initial.golden.code, price: String(initial.golden.price), seats: String(initial.golden.seats) });
   const [pending, start] = useTransition();
   const from = (i: number) => (i === 0 ? 1 : Number(tiers[i - 1]!.upTo || 0) + 1);
 
@@ -26,6 +27,7 @@ export function PricingEditor({ initial }: { initial: PriceLadder }) {
         tiers: tiers.map((t, i) => ({ upTo: i === tiers.length - 1 || !t.upTo ? null : Number(t.upTo), price: Number(t.price) })),
         basePrice: Number(base),
         renewal: Number(renewal),
+        golden: { code: golden.code.trim().toUpperCase(), price: Number(golden.price), seats: Number(golden.seats) },
       });
       if (!r.ok) return void toast.error(r.error);
       toast.success("حُفظ السلّم");
@@ -73,6 +75,26 @@ export function PricingEditor({ initial }: { initial: PriceLadder }) {
           <input className={`${input} mt-1.5`} inputMode="numeric" value={renewal} onChange={(e) => setRenewal(e.target.value.replace(/\D/g, ""))} />
         </label>
       </div>
+      <fieldset className="rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-4">
+        <legend className="px-1 text-[12.5px] font-black text-amber-200">الدائرة الذهبية</legend>
+        <p className="mb-3 text-[12px] leading-5 text-[#8d97c4]">
+          كود يُكتب في صفحة الدفع للباقة الأولى: سعر مرة واحدة واستضافة مدى الحياة، ويتوقف بعد عدد المقاعد. المستخدم الآن: {goldenUsed} من {golden.seats || 0}.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className={label}>
+            الكود
+            <input className={`${input} mt-1.5 font-mono uppercase`} dir="ltr" value={golden.code} onChange={(e) => setGolden({ ...golden, code: e.target.value.replace(/[^A-Za-z0-9_-]/g, "") })} />
+          </label>
+          <label className={label}>
+            السعر مرة واحدة (ج)
+            <input className={`${input} mt-1.5`} inputMode="numeric" value={golden.price} onChange={(e) => setGolden({ ...golden, price: e.target.value.replace(/\D/g, "") })} />
+          </label>
+          <label className={label}>
+            عدد المقاعد
+            <input className={`${input} mt-1.5`} inputMode="numeric" value={golden.seats} onChange={(e) => setGolden({ ...golden, seats: e.target.value.replace(/\D/g, "") })} />
+          </label>
+        </div>
+      </fieldset>
       <button type="button" onClick={save} disabled={pending} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#8fa8ff] px-5 text-[13.5px] font-black text-[#07091a] disabled:opacity-60">
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
         احفظ السلّم

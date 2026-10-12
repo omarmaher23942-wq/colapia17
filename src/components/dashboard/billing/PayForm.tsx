@@ -12,15 +12,32 @@ import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { normalizeEgyptianPhone, prettyPhone } from "@/lib/phone";
 import { useUploadThing } from "@/lib/uploadthing-client";
-import { submitPlatformPaymentAction } from "@/server/actions/platform";
+import { checkCouponAction, submitPlatformPaymentAction } from "@/server/actions/platform";
 import { requestPulse } from "../DashboardPulse";
 import { inputCls } from "../product/parts";
 
 type Method = "vodafone_cash" | "instapay";
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-export function PayForm({ price, vodafone, instapay }: { price: number; vodafone: string; instapay: string }) {
+/** `coupons`: يظهر حقل «كود عرض» (للباقة الأولى فقط، لا للتجديد). */
+export function PayForm({ price: basePrice, vodafone, instapay, coupons = false }: { price: number; vodafone: string; instapay: string; coupons?: boolean }) {
   const router = useRouter();
+  const [couponOpen, setCouponOpen] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [applied, setApplied] = useState<{ code: string; price: number } | null>(null);
+  const price = applied?.price ?? basePrice;
+
+  async function applyCoupon() {
+    setChecking(true);
+    setCouponError("");
+    const r = await checkCouponAction(couponInput).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    setChecking(false);
+    if (!r.ok) return setCouponError(r.error);
+    setApplied({ code: r.code, price: r.price });
+    toast.success("تم تطبيق الكود");
+  }
   const [method, setMethod] = useState<Method>("vodafone_cash");
   const [phone, setPhone] = useState("");
   const [phoneError, setPhoneError] = useState("");
@@ -78,7 +95,7 @@ export function PayForm({ price, vodafone, instapay }: { price: number; vodafone
     if (!n) return void document.getElementById("pay-phone")?.focus();
     if (!receipt) return void fileRef.current?.closest("section")?.scrollIntoView({ block: "center", behavior: "smooth" });
     setSending(true);
-    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url, coupon: applied?.code }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
     setSending(false);
     if (!r.ok) {
       toast.error(r.error);
@@ -132,6 +149,42 @@ export function PayForm({ price, vodafone, instapay }: { price: number; vodafone
           <CopyRow label="المبلغ بالضبط" display={`${fmtNum(price)} ج.م`} value={String(price)} />
         </dl>
         <p className="mt-2 text-[11.5px] leading-5 text-ink-3">حوّل المبلغ كاملاً في تحويل واحد، ثم التقط صورة لشاشة نجاح التحويل.</p>
+        {coupons ? (
+          applied ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ok/30 bg-ok/[0.06] px-3 py-2.5 text-[12.5px]">
+              <span className="font-bold text-ink">
+                الكود <span dir="ltr" className="font-mono">{applied.code}</span>: {fmtNum(applied.price)} ج.م مرة واحدة، واستضافة ودعم مدى الحياة.
+              </span>
+              <button type="button" onClick={() => setApplied(null)} className="text-[12px] font-bold text-ink-3 hover:text-ink">
+                إلغاء الكود
+              </button>
+            </div>
+          ) : couponOpen ? (
+            <div className="mt-3">
+              <div className="flex gap-2">
+                <label htmlFor="pay-coupon" className="sr-only">كود العرض</label>
+                <input
+                  id="pay-coupon"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && couponInput.trim() && applyCoupon()}
+                  dir="ltr"
+                  autoCapitalize="characters"
+                  placeholder="الكود"
+                  className={cn(inputCls, "font-mono uppercase")}
+                />
+                <button type="button" disabled={checking || !couponInput.trim()} onClick={applyCoupon} className="shrink-0 rounded-xl bg-nova px-4 text-[13px] font-black text-white disabled:opacity-50">
+                  {checking ? <Loader2 className="size-4 animate-spin" /> : "طبّق"}
+                </button>
+              </div>
+              {couponError ? <p role="alert" className="mt-1.5 text-[12px] font-bold text-bad">{couponError}</p> : null}
+            </div>
+          ) : (
+            <button type="button" onClick={() => setCouponOpen(true)} className="mt-3 text-[12px] font-bold text-nova-2 underline-offset-4 hover:underline">
+              عندك كود عرض؟
+            </button>
+          )
+        ) : null}
       </Step>
 
       {/* 2) الرقم المحوَّل منه */}

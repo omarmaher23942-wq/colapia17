@@ -18,13 +18,18 @@ const pricingSchema = z.object({
   tiers: z.array(tier).min(1).max(10),
   basePrice: z.number().int().min(100).max(1_000_000),
   renewal: z.number().int().min(100).max(1_000_000),
+  golden: z.object({
+    code: z.string().trim().regex(/^[A-Za-z0-9_-]{4,32}$/),
+    price: z.number().int().min(1).max(1_000_000),
+    seats: z.number().int().min(0).max(1000),
+  }),
 });
 
 export async function savePricingAction(raw: z.input<typeof pricingSchema>): Promise<Result> {
   const u = await platformUser({ cap: "pricing" });
   if (!u) return { ok: false, error: "الأسعار للمالك فقط." };
   const p = pricingSchema.safeParse(raw);
-  if (!p.success) return { ok: false, error: "أرقام غير صالحة." };
+  if (!p.success) return { ok: false, error: "أرقام غير صالحة (الكود 4–32 حرفاً لاتينياً أو رقماً)." };
   const t = p.data.tiers;
   for (let i = 0; i < t.length - 1; i++) {
     if (t[i]!.upTo === null) return { ok: false, error: "المرحلة بلا حد يجب أن تكون الأخيرة." };

@@ -4,6 +4,7 @@
 //  - grace: انتهت السنة، والمتجر ما زال يعمل HOSTING_GRACE_DAYS يوماً مع تنبيه واضح.
 //  - paused: بعد السماح يتوقف المتجر عن الظهور للزوار (صفحة «متوقف مؤقتاً»)، و**لا يُحذف شيء أبداً**؛
 //    التجديد يعيده فوراً كما كان.
+//  - lifetime: متجر «الدائرة الذهبية»: يعمل بلا انتهاء ولا تذكيرات تجديد.
 //  - offline: صاحب المتجر أوقف نسخته على المنصة بنفسه (بعد نقله لموقعه الخاص)، ويعيدها متى شاء.
 // المتجر غير المدفوع (تجربة/تجميد) خارج هذا الملف: له مراحله في lib/billing-stage.ts.
 
@@ -17,8 +18,12 @@ export const RENEW_OPEN_DAYS = 60;
 
 const DAY = 864e5;
 
+/** متاجر «الدائرة الذهبية» (stores.plan): استضافة ودعم مدى الحياة بلا تجديد (قرار المالك 2026-10-12). */
+export const LIFETIME_PLAN = "golden";
+
 export type HostingStore = {
   status: string;
+  plan?: string | null;
   activatedAt: Date | null;
   hostingExpiresAt: Date | null;
   platformOfflineAt: Date | null;
@@ -27,6 +32,7 @@ export type HostingStore = {
 
 export type HostingState =
   | { phase: "none" }
+  | { phase: "lifetime" }
   | { phase: "active" | "renew_soon"; expiresAt: Date; daysLeft: number; canRenew: boolean }
   | { phase: "grace"; expiresAt: Date; pauseAt: Date; daysLeft: number }
   | { phase: "paused"; expiresAt: Date }
@@ -50,6 +56,7 @@ export function hostingState(store: HostingStore, now = new Date(), edition: str
   if (store.status !== "active") return { phase: "none" };
   const expiresAt = hostingExpiry(store);
   if (store.platformOfflineAt || store.purgedAt) return { phase: "offline", expiresAt };
+  if (store.plan === LIFETIME_PLAN) return { phase: "lifetime" };
   if (!expiresAt) return { phase: "none" };
   const left = expiresAt.getTime() - now.getTime();
   if (left > 0) {

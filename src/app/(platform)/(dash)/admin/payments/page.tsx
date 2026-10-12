@@ -32,6 +32,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
       pId: platformPayments.id,
       pAmount: platformPayments.amountPiasters,
       pKind: platformPayments.kind,
+      pCoupon: platformPayments.coupon,
       pMethod: platformPayments.method,
       pSenderPhone: platformPayments.senderPhone,
       pScreenshotUrl: platformPayments.screenshotUrl,
@@ -114,7 +115,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <p className="text-xs text-[#8d97c4] font-mono mt-0.5" dir="ltr">{r.sSubdomain ? `${r.sSubdomain}.colapia.com` : "—"}</p>
                     </div>
                     <span className="rounded-xl bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-sm font-black font-mono border border-emerald-500/30 shadow-sm">
-                      {r.pKind === "renewal" ? "تجديد · " : "باقة · "}
+                      {r.pKind === "renewal" ? "تجديد · " : r.pCoupon ? `الدائرة الذهبية (${r.pCoupon}) · ` : "باقة · "}
                       {formatEgp(r.pAmount)}
                     </span>
                   </div>

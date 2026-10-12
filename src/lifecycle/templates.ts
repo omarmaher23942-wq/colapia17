@@ -47,6 +47,11 @@ export const TEMPLATE_DEFAULTS = {
     vars: ["store", "store_url", "expires"],
     body: "تم تأكيد دفعك! متجر {{store}} اتفعّل وبقى مفتوح لزباينك، والاستضافة سارية لحد {{expires}}. مفيش أي عمولة على مبيعاتك.\nرابط متجرك: {{store_url}}\nلو احتجت أي تعديل في متجرك كلّمنا وهنساعدك.",
   },
+  "payment.golden": {
+    label: "تأكيد دفع «الدائرة الذهبية»",
+    vars: ["store", "store_url"],
+    body: "تم تأكيد دفعك! متجر {{store}} اتفعّل وبقى مفتوح لزباينك، واستضافته ودعمه مدى الحياة كعضو في «الدائرة الذهبية» من غير أي تجديد. مفيش أي عمولة على مبيعاتك.\nرابط متجرك: {{store_url}}\nفاضل بس فيديو الإطلاق: ابعتلنا الفيديو القصير عن البراند وإحنا نمنتجه وننشره Collab بينا وبينكم.",
+  },
   "hosting.renewed": {
     label: "تأكيد تجديد الاستضافة",
     vars: ["store", "store_url", "expires"],
@@ -160,6 +165,7 @@ export async function sendEmailFromTemplate(
       "delivery.welcome": `متجرك جاهز — ${vars.store ?? ""}`,
       "payment.confirmed": `تم تفعيل متجرك — ${vars.store ?? ""}`,
       "hosting.renewed": `تم تجديد الاستضافة — ${vars.store ?? ""}`,
+      "payment.golden": `تم تفعيل متجرك في الدائرة الذهبية — ${vars.store ?? ""}`,
       "payment.rejected": `تعذّر تأكيد الدفع — ${vars.store ?? ""}`,
       "form.received": `استلمنا استمارتك — ${vars.name ?? ""}`,
     } as Record<string, string>)[key as string] ??

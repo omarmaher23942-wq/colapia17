@@ -11,7 +11,8 @@ import {
   scheduleHosting,
   type JobKind,
 } from "./scheduler";
-import { extendHosting, hostingExpiry } from "@/lib/hosting";
+import { extendHosting, hostingExpiry, LIFETIME_PLAN } from "@/lib/hosting";
+import { priceLadder } from "@/server/pricing";
 import { recordEvent, transition } from "./machine";
 import { deliverToMerchant } from "./messenger";
 import { formatDay, paymentVars, renderTemplate } from "./templates";
@@ -93,7 +94,9 @@ export async function confirmStorePayment(
   }
 
   // كل دفعة مقبولة = سنة استضافة: من نهاية الاشتراك الحالي إن كان سارياً، وإلا من اليوم.
+  // دفعة بكود «الدائرة الذهبية» = خطة golden: استضافة مدى الحياة بلا تاريخ انتهاء ولا تذكيرات.
   const renewal = cur === "active";
+  const golden = !renewal && Boolean(pay.coupon) && pay.coupon === (await priceLadder()).golden.code;
   const expiresAt = extendHosting(renewal ? hostingExpiry(store) : null, now);
 
   if (!renewal) {
@@ -104,7 +107,8 @@ export async function confirmStorePayment(
       actor,
       set: {
         activatedAt: store.activatedAt ?? now,
-        hostingExpiresAt: expiresAt,
+        hostingExpiresAt: golden ? null : expiresAt,
+        ...(golden ? { plan: LIFETIME_PLAN } : {}),
         frozenAt: null,
         purgeAt: null,
         doomAt: null,
@@ -128,10 +132,11 @@ export async function confirmStorePayment(
       .returning();
     if (renewed) await invalidateStoreCache(renewed).catch(() => {});
   }
-  await db.update(platformPayments).set({ coversUntil: expiresAt }).where(eq(platformPayments.id, paymentId));
-
-  // تذكيرات التجديد (قبل الانتهاء بـ30 و7 أيام ويوم، ثم عند الانتهاء، ثم عند الإيقاف). تجديد لاحق يعيد جدولتها.
-  await scheduleHosting(store.id, expiresAt).catch((e) => console.error("[payments] schedule hosting jobs failed", e));
+  if (!golden) {
+    await db.update(platformPayments).set({ coversUntil: expiresAt }).where(eq(platformPayments.id, paymentId));
+    // تذكيرات التجديد (قبل الانتهاء بـ30 و7 أيام ويوم، ثم عند الانتهاء، ثم عند الإيقاف). تجديد لاحق يعيد جدولتها.
+    await scheduleHosting(store.id, expiresAt).catch((e) => console.error("[payments] schedule hosting jobs failed", e));
+  }
 
   await db
     .update(conversations)
@@ -144,7 +149,7 @@ export async function confirmStorePayment(
     storeRef: store.subdomain,
     type: "payment.confirmed",
     actor,
-    data: { paymentId, kind: renewal ? "renewal" : "setup", hostingExpiresAt: expiresAt.toISOString() },
+    data: { paymentId, kind: renewal ? "renewal" : "setup", ...(golden ? { plan: LIFETIME_PLAN } : { hostingExpiresAt: expiresAt.toISOString() }) },
   });
 
   // حدث Pusher: تأكيد الدفعة.
@@ -156,7 +161,7 @@ export async function confirmStorePayment(
     confirmedBy: actor,
   });
 
-  const { text } = await renderTemplate(renewal ? "hosting.renewed" : "payment.confirmed", {
+  const { text } = await renderTemplate(renewal ? "hosting.renewed" : golden ? "payment.golden" : "payment.confirmed", {
     store: store.name,
     store_url: storeUrl(store.subdomain),
     expires: formatDay(expiresAt),
@@ -165,7 +170,7 @@ export async function confirmStorePayment(
     key: `payment.confirmed:${paymentId}`,
     text,
     purpose: "transactional",
-    email: { subject: renewal ? "تم تجديد استضافة متجرك" : "تم تأكيد دفعك وتفعيل متجرك" },
+    email: { subject: renewal ? "تم تجديد استضافة متجرك" : golden ? "تم تفعيل متجرك في «الدائرة الذهبية»" : "تم تأكيد دفعك وتفعيل متجرك" },
   });
   return { ok: true };
 }

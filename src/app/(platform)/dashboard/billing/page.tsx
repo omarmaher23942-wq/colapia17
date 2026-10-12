@@ -90,7 +90,7 @@ export default async function BillingPage() {
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
           <div className="space-y-4">
             <PhaseBanner stage={stage} now={now} />
-            <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} />
+            <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} coupons />
           </div>
           <Offer price={pricing.price} basePrice={pricing.basePrice} renewal={pricing.renewal} />
         </div>
@@ -274,6 +274,7 @@ function Hosting({
   const h = stage.hosting;
   const card = hostingCard(h, now);
   const open = canRenewNow(h) && !stage.renewalPending;
+  if (h.phase === "lifetime") return <StateCard tone={card.tone} icon={card.icon} title={card.title} text={card.text} />;
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="space-y-4">
@@ -327,6 +328,8 @@ function hostingCard(h: HostingState, now: number): { tone: keyof typeof TONE; i
       return { tone: "bad", icon: AlertTriangle, title: "انتهت سنة الاستضافة", text: `متجرك ما زال يعمل حتى ${dayFmt.format(h.pauseAt)} (${inTime(h.pauseAt, now)})، ثم يتوقف عن الظهور للزوار حتى تجدد. بياناتك محفوظة كاملة.` };
     case "paused":
       return { tone: "bad", icon: PauseCircle, title: "متجرك متوقف مؤقتاً", text: "لا يراه الزوار الآن لانتهاء الاستضافة. لم يُحذف أي شيء: جدّد ويعود فوراً بنفس الرابط ونفس البيانات." };
+    case "lifetime":
+      return { tone: "ok", icon: CalendarCheck, title: "متجرك مفعّل باستضافة مدى الحياة", text: "عضو «الدائرة الذهبية»: الاستضافة والدعم مستمران بلا تجديد سنوي، طوال تشغيل Colapia للخدمة. لا شيء مطلوب منك." };
     case "offline":
       return { tone: "muted", icon: PauseCircle, title: "أوقفت نسخة متجرك على المنصة", text: "زوار رابطك يُحوَّلون لموقعك الخاص. يمكنك إعادة تشغيلها هنا متى شئت ما دام اشتراكك سارياً." };
     default:

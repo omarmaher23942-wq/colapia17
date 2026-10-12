@@ -7,7 +7,7 @@ import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { type PaymentKind } from "@/lib/platform-pricing";
-import { amountForStore } from "@/server/pricing";
+import { amountForStore, resolveCoupon } from "@/server/pricing";
 import { canRenewNow, hostingState } from "@/lib/hosting";
 import { verifyPlatformPayment } from "@/ai/verify-payment";
 import { emitPaymentSubmitted } from "@/server/realtime/emitters";
@@ -20,10 +20,21 @@ import { after } from "next/server";
 /** حالات المتجر التي يُقبل فيها إيصال الباقة الأولى: التجربة (ومنها مهلة ما بعد الرفض) والتجميد. */
 const PAYABLE = new Set(["trial", "frozen"]);
 
+/** يتحقق من كود عرض قبل الدفع ويعيد السعر بعده (للعرض في صفحة الدفع؛ الخادم يعيد التحقق عند الإرسال). */
+export async function checkCouponAction(raw: string): Promise<{ ok: true; code: string; price: number } | { ok: false; error: string }> {
+  const session = await ownerStore();
+  if (!session?.store) return { ok: false, error: "الدفع لصاحب المتجر فقط." };
+  if (!PAYABLE.has(session.store.status)) return { ok: false, error: "الكود للباقة الأولى فقط." };
+  if (!(await allow("platformPayment", `coupon:${session.merchantId}`))) return { ok: false, error: "محاولات كثيرة، حاول بعد قليل" };
+  const r = await resolveCoupon(raw, session.store.id);
+  return r.ok ? { ok: true, code: r.code, price: r.price } : r;
+}
+
 export async function submitPlatformPaymentAction(input: {
   method: "vodafone_cash" | "instapay";
   senderPhone: string;
   screenshotUrl: string;
+  coupon?: string;
 }) {
   try {
     // الإيصال يُرفع من صاحب المتجر نفسه، وعلى متجره النشط في الجلسة.
@@ -63,7 +74,16 @@ export async function submitPlatformPaymentAction(input: {
     }
     const url = new URL(input.screenshotUrl);
 
-    const requiredAmountEgp = await amountForStore(store, kind);
+    // كود «الدائرة الذهبية» للباقة الأولى فقط، ويُعاد التحقق منه هنا (المقاعد قد تكتمل بعد فحصه في الصفحة).
+    let coupon: string | null = null;
+    let requiredAmountEgp = await amountForStore(store, kind);
+    if (input.coupon?.trim()) {
+      if (kind !== "setup") return { ok: false as const, error: "الكود للباقة الأولى فقط" };
+      const c = await resolveCoupon(input.coupon, store.id);
+      if (!c.ok) return { ok: false as const, error: c.error };
+      coupon = c.code;
+      requiredAmountEgp = c.price;
+    }
     const requiredAmountPiasters = requiredAmountEgp * 100;
 
     const [paymentRecord] = await db
@@ -72,6 +92,7 @@ export async function submitPlatformPaymentAction(input: {
         storeId: store.id,
         method: input.method,
         kind,
+        coupon,
         amountPiasters: requiredAmountPiasters,
         senderPhone: phone,
         screenshotUrl: url.toString(),

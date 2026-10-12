@@ -2,7 +2,7 @@
 // والعدّاد الحقيقي من الباقات المدفوعة فعلاً. ومدد ما بعد التسليم (التجربة، التنبيه الأخير، الحذف).
 import { BadgeDollarSign } from "lucide-react";
 import { requirePlatformPage } from "@/server/platform-guard";
-import { currentPricing } from "@/server/pricing";
+import { currentPricing, goldenSeatsUsed } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { PricingEditor, TimingsEditor } from "@/components/platform/PricingEditor";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function PricingPage() {
   await requirePlatformPage({ cap: "pricing" });
-  const [p, t] = await Promise.all([currentPricing(), lifecycleTimings()]);
+  const [p, t, goldenUsed] = await Promise.all([currentPricing(), lifecycleTimings(), goldenSeatsUsed()]);
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-[#eaf0ff]" dir="rtl">
       <header>
@@ -39,7 +39,7 @@ export default async function PricingPage() {
 
       <section className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5">
         <h2 className="mb-3 text-sm font-black">سلّم الأسعار</h2>
-        <PricingEditor initial={p.ladder} />
+        <PricingEditor initial={p.ladder} goldenUsed={goldenUsed} />
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5">
