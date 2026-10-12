@@ -29,6 +29,9 @@ export const closerTurnSchema = z.object({
 
   issueLink: z.boolean().default(false),
 
+  // محادثة الدائرة الذهبية: المشرف رفض بأدب، فنرد مرة ونتوقف (لا يرد الوكيل بعدها في هذه المحادثة).
+  close: z.boolean().nullish().transform((v) => v === true),
+
   buttonTitle: z
     .string()
     .nullish()

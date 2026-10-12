@@ -54,6 +54,7 @@ export const CONTROL_TABLES = [
   "referral_rewards",
   "store_transfers",
   "outreach_campaigns",
+  "ig_leads",
   "email_optouts",
   "store_requests",
   "store_request_assets",

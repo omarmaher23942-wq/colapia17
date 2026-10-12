@@ -129,7 +129,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
       if (r?.error) toast.error(r.error);
       else {
         setText("");
-        toast.success("أُرسلت وتم إيقاف المساعد");
+        toast.success(conv.paused ? "أُرسلت" : "أُرسلت، والمساعد ما زال يعمل في هذه المحادثة");
       }
     });
   };
@@ -170,7 +170,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             <Sparkles className="size-3.5" /> ملخص
           </button>
           <button disabled={p} onClick={() => start(() => togglePauseAction(conv.id, !conv.paused))} className={conv.paused ? SILVER : AMBER}>
-            {conv.paused ? <><Play className="size-3.5" /> تشغيل الـ AI</> : <><Pause className="size-3.5" /> إيقاف الـ AI</>}
+            {conv.paused ? <><Play className="size-3.5" /> شغّل المساعد هنا</> : <><Pause className="size-3.5" /> أوقف المساعد هنا</>}
           </button>
         </div>
       </header>
@@ -280,7 +280,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             <textarea
               rows={1}
               className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl border border-white/10 bg-[#07091a] px-4 py-3 text-sm text-[#eaf0ff] outline-none placeholder:text-slate-500 focus:border-[#8fa8ff] transition-colors"
-              placeholder={conv.paused ? "اكتب ردك كإنسان..." : "الإرسال يوقف المساعد الذكي تلقائياً..."}
+              placeholder={conv.paused ? "اكتب ردك كإنسان..." : "اكتب ردك (المساعد يبقى يعمل؛ أوقفه من الزر أعلاه إن أردت)..."}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}

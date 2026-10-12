@@ -6,6 +6,8 @@ import { redis } from "@/lib/redis";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, messages } from "@/db/schema";
+import { meta } from "@/channels/meta";
+import { linkOutreachConversation } from "@/server/ig-outreach";
 
 type Channel = "messenger" | "instagram";
 
@@ -70,8 +72,10 @@ function toPayload(channel: Channel, ev: any): InboundPayload | null {
 }
 
 /**
- * صدى رسالة خرجت من صفحتنا (is_echo): إن لم يرسلها تطبيقنا (app_id مختلف أو غائب) فهي رد موظف بشري من صندوق الصفحة،
- * فنوقف الوكيل لهذه المحادثة حتى لا يتدخل بين العميل والموظف، وتظهر بحالة «تدخل بشري» في /admin/conversations.
+ * صدى رسالة خرجت من صفحتنا (is_echo) ولم يرسلها تطبيقنا: رسالة كتبها فريقنا بنفسه من صندوق الصفحة أو من تطبيق
+ * إنستجرام. **لا توقف الوكيل** (قرار المالك 2026-10-12): الإيقاف لمحادثة بعينها يكون من لوحة المحادثات فقط.
+ * أول رسالة منّا قبل أي رسالة من الطرف الآخر = «رسالة افتتاحية» لبراند (الدائرة الذهبية): تُحفظ في ذاكرة المحادثة
+ * فيعرف الوكيل عند الرد أن الفريق بدأ الكلام وماذا قال، ويتعامل مع المشرف أو صاحب البراند (closer.outreach).
  */
 async function handleEcho(channel: Channel, ev: any): Promise<void> {
   const msg = ev?.message;
@@ -80,20 +84,32 @@ async function handleEcho(channel: Channel, ev: any): Promise<void> {
   if (appId && env.META_APP_ID && appId === env.META_APP_ID) return; // رسالتنا نحن (الوكيل)
   const customerId = ev?.recipient?.id ? String(ev.recipient.id) : null;
   if (!customerId) return;
+  const text = typeof msg.text === "string" && msg.text ? msg.text.slice(0, 4000) : "[مرفق]";
   try {
-    const [conv] = await db
-      .select({ id: conversations.id })
-      .from(conversations)
-      .where(and(eq(conversations.channel, channel), eq(conversations.externalId, customerId)))
-      .limit(1);
+    const where = and(eq(conversations.channel, channel), eq(conversations.externalId, customerId));
+    let [conv] = await db.select().from(conversations).where(where).limit(1);
+    if (!conv) {
+      const name = await meta.profile(channel, customerId).catch(() => null);
+      [conv] = await db.insert(conversations).values({ channel, externalId: customerId, profileName: name ?? undefined }).onConflictDoNothing().returning();
+      conv ??= (await db.select().from(conversations).where(where).limit(1))[0];
+    }
     if (!conv) return;
-    await db
-      .update(conversations)
-      .set({ botPaused: true, stage: "human", updatedAt: new Date() })
-      .where(eq(conversations.id, conv.id));
+    const [inbound] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(eq(messages.conversationId, conv.id), eq(messages.role, "user")))
+      .limit(1);
+    const memory = (conv.memory ?? {}) as Record<string, unknown>;
+    if (!inbound && !memory.outreach) {
+      await db
+        .update(conversations)
+        .set({ memory: { ...memory, outreach: { at: new Date().toISOString(), text: text.slice(0, 1000) } }, updatedAt: new Date() })
+        .where(eq(conversations.id, conv.id));
+      await linkOutreachConversation(conv.id, channel, customerId).catch((e) => console.error("[webhooks/meta] outreach link failed", e));
+    }
     await db
       .insert(messages)
-      .values({ conversationId: conv.id, role: "human_agent", externalMid: msg.mid ? String(msg.mid) : undefined, text: typeof msg.text === "string" && msg.text ? msg.text : "[مرفق]" })
+      .values({ conversationId: conv.id, role: "human_agent", externalMid: msg.mid ? String(msg.mid) : undefined, text })
       .onConflictDoNothing();
   } catch (e) {
     console.error("[webhooks/meta] echo handling failed", e);

@@ -114,3 +114,17 @@ export function shippingLabelText(o: MessageOrder, storeName: string): string {
     collect > 0 ? `المطلوب تحصيله: ${formatEgp(collect)}` : "لا تحصيل عند الاستلام",
   ].join("\n");
 }
+
+/**
+ * رسالة العميل للمتجر بعد إتمام الطلب (زر «ابعت رقم الطلب للمتجر على واتساب» في صفحة الطلب): تذكّر التاجر بالطلب
+ * وتبقى في محادثة العميل مرجعاً لرقم طلبه لو غيّر جهازه. الطلب نفسه مسجّل في لوحة التاجر قبل هذه الرسالة.
+ */
+export function customerOrderWhatsApp(
+  o: { code: string; customerName: string; totalPiasters: number; items: { name: string; variantLabel: string | null; quantity: number }[] },
+  storeName: string,
+  fmt: (piasters: number) => string
+): string {
+  const items = o.items.slice(0, 6).map((i) => `• ${i.name}${i.variantLabel ? ` (${i.variantLabel})` : ""} × ${i.quantity}`);
+  if (o.items.length > 6) items.push(`• و${o.items.length - 6} أصناف أخرى`);
+  return [`أهلاً ${storeName}، لسه عامل طلب من المتجر.`, `رقم الطلب: ${o.code}`, ...items, `الإجمالي: ${fmt(o.totalPiasters)}`, `الاسم: ${o.customerName}`].join("\n");
+}

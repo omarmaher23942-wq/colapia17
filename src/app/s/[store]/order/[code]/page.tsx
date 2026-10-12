@@ -9,6 +9,9 @@ import { formatEgp } from "@/lib/money";
 import { governorateName } from "@/lib/egypt";
 import { prettyPhone } from "@/lib/phone";
 import { TransferProof } from "@/components/storefront/TransferProof";
+import { BrandIcon } from "@/components/storefront/brand-icons";
+import { waLink } from "@/lib/whatsapp";
+import { customerOrderWhatsApp } from "@/lib/order-messages";
 
 const SW = 1.75;
 /** يقبل الأكواد النقية وكذلك الأكواد القديمة التي قد تحوي رموزاً بدون أن يرمي 404 */
@@ -49,6 +52,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
   }
 
   const transfer = o.paymentMethod !== "cod";
+  // رسالة جاهزة للمتجر برقم الطلب (تذكير للتاجر، ومرجع للعميل في محادثته).
+  const waHref = waLink(bp.channels.whatsappNumber, customerOrderWhatsApp(o, bp.brand.name || store.name, formatEgp));
   const target = o.paymentMethod === "vodafone_cash" ? bp.payments.vodafoneCash.number : (bp.payments.instapay.address ?? bp.payments.instapay.number);
 
   return (
@@ -60,6 +65,16 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mt-2 text-sm text-muted-foreground">
         طلبك محفوظ في «طلباتي» على هذا الجهاز، فلا تحتاج لحفظ الرقم. هنتواصل معاك على <span dir="ltr">{prettyPhone(o.customerPhone)}</span> للتأكيد.
       </p>
+
+      {waHref && (
+        <div className="surface mt-6 p-5">
+          <p className="text-sm font-semibold">ابعت رقم طلبك للمتجر على واتساب</p>
+          <p className="mt-1 text-xs text-muted-foreground">رسالة جاهزة فيها رقم الطلب وتفاصيله، تذكّر المتجر بطلبك وتفضل عندك في المحادثة لو احتجت الرقم بعدين.</p>
+          <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 font-bold text-white hover:brightness-95">
+            <BrandIcon brand="whatsapp" className="size-5" /> ابعت الرسالة على واتساب
+          </a>
+        </div>
+      )}
 
       {transfer && (
         <div className="surface mt-8 p-6 text-start">

@@ -183,6 +183,8 @@ export const platformPayments = pgTable(
     kind: text("kind").$type<"setup" | "renewal">().notNull().default("setup"),
     // نهاية الاستضافة التي غطتها هذه الدفعة بعد قبولها (سجل للتاجر وللمالك).
     coversUntil: timestamp("covers_until", { withTimezone: true }),
+    // كود عرض طُبّق على الدفعة (مثل GOLDEN599 للدائرة الذهبية): يحدد المبلغ ويُعدّ به عدد المقاعد المستخدمة.
+    coupon: text("coupon"),
     senderPhone: text("sender_phone"),
     screenshotUrl: text("screenshot_url"),
     screenshotHash: text("screenshot_hash"),

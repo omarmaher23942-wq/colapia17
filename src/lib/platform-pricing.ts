@@ -37,17 +37,41 @@ export function amountFor(kind: PaymentKind, p: PlatformPricing = platformPricin
 // (stores.price_locked_egp)، فمن وُعد بسعر يدفعه حتى لو امتلأت مرحلته قبل أن يدفع.
 
 export type PriceTier = { upTo: number | null; price: number };
-export type PriceLadder = { tiers: PriceTier[]; basePrice: number; renewal: number };
+/**
+ * «الدائرة الذهبية» (قرار المالك 2026-10-12): كود عام يُدخل في صفحة الدفع، بسعر رمزي مرة واحدة واستضافة مدى الحياة،
+ * ويتوقف آلياً بعد `seats` دفعات مؤكدة به. السعر لا يُعرض على الهبوط.
+ */
+export type GoldenOffer = { code: string; price: number; seats: number };
+export type PriceLadder = { tiers: PriceTier[]; basePrice: number; renewal: number; golden: GoldenOffer };
 
+export const DEFAULT_GOLDEN: GoldenOffer = { code: "GOLDEN599", price: 599, seats: 5 };
+
+// الافتراضي (قرار المالك 2026-10-12): سعر واحد 2,499 للبناء والسنة الأولى، وتجديد 1,299؛ بلا سعر «قبل» مشطوب.
 export const DEFAULT_LADDER: PriceLadder = {
-  tiers: [
-    { upTo: 5, price: 2499 },
-    { upTo: 15, price: 3499 },
-    { upTo: null, price: 4999 },
-  ],
-  basePrice: 10000,
+  tiers: [{ upTo: null, price: 2499 }],
+  basePrice: 2499,
   renewal: 1299,
+  golden: DEFAULT_GOLDEN,
 };
+
+/** يطبّع الكود كما يكتبه العميل (مسافات وحروف صغيرة وأرقام هندية). */
+export function normalizeCoupon(raw: unknown): string {
+  return String(raw ?? "")
+    .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)))
+    .replace(/\s+/g, "")
+    .toUpperCase()
+    .slice(0, 32);
+}
+
+function goldenFrom(raw: unknown): GoldenOffer {
+  const g = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+  const code = normalizeCoupon(g.code);
+  return {
+    code: /^[A-Z0-9_-]{4,32}$/.test(code) ? code : DEFAULT_GOLDEN.code,
+    price: egp(g.price) ?? DEFAULT_GOLDEN.price,
+    seats: egp(g.seats, 0, 1000) ?? DEFAULT_GOLDEN.seats,
+  };
+}
 
 const egp = (v: unknown, min = 1, max = 1_000_000) => {
   const n = Number(v);
@@ -70,10 +94,11 @@ export function ladderFrom(config: unknown): PriceLadder {
     if (upTo === null) break;
     last = upTo;
   }
-  if (!tiers.length) return DEFAULT_LADDER;
+  const golden = goldenFrom(c.golden);
+  if (!tiers.length) return { ...DEFAULT_LADDER, golden };
   if (tiers[tiers.length - 1]!.upTo !== null) tiers.push({ upTo: null, price: tiers[tiers.length - 1]!.price });
   const top = Math.max(...tiers.map((t) => t.price));
-  return { tiers, basePrice: Math.max(egp(c.basePrice) ?? DEFAULT_LADDER.basePrice, top), renewal: egp(c.renewal) ?? DEFAULT_LADDER.renewal };
+  return { tiers, basePrice: Math.max(egp(c.basePrice) ?? top, top), renewal: egp(c.renewal) ?? DEFAULT_LADDER.renewal, golden };
 }
 
 export type LadderPosition = { price: number; tier: number; remaining: number | null; nextPrice: number | null };

@@ -18,21 +18,13 @@ export const STATUS_INFO: Record<ChangeStatus, { label: string }> = {
   declined: { label: "لم يُنفذ" },
 };
 
+import { cairoOffsetMinutes } from "@/lib/cairo-time";
+
 export const DEFAULT_PER_MONTH = 2;
 
 export function perMonthFrom(config: unknown): number {
   const n = Number((config as Record<string, unknown> | null)?.perMonth);
   return Number.isInteger(n) && n >= 0 && n <= 50 ? n : DEFAULT_PER_MONTH;
-}
-
-/** إزاحة القاهرة عن UTC بالدقائق في لحظة معينة (120 شتاءً و180 صيفاً). */
-function cairoOffsetMinutes(at: Date): number {
-  const name = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", timeZoneName: "longOffset" })
-    .formatToParts(at)
-    .find((p) => p.type === "timeZoneName")?.value;
-  const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(name ?? "");
-  if (!m) return 120;
-  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3] ?? 0));
 }
 
 /** بداية الشهر الحالي بتوقيت القاهرة (منتصف ليل اليوم الأول بالإزاحة الفعلية صيفاً أو شتاءً). */

@@ -316,6 +316,25 @@ async function fetchProfile(ch: Channel, id: string): Promise<string | null> {
   }
 }
 
+/** اسم المستخدم على إنستجرام (للربط بقائمة التواصل في /admin/outreach). null إن تعذر. */
+async function fetchUsername(ch: Channel, id: string): Promise<string | null> {
+  if (ch !== "instagram") return null;
+  try {
+    const tok = token(ch);
+    const r = await fetch(`${base()}/${id}?fields=username&access_token=${encodeURIComponent(tok)}`, {
+      headers: { Authorization: `Bearer ${tok}` },
+      signal: AbortSignal.timeout(PROFILE_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!r.ok) return null;
+    const j = await readJson(r);
+    const u = String(j.username ?? "").trim().toLowerCase();
+    return /^[a-z0-9._]{1,30}$/.test(u) ? u : null;
+  } catch {
+    return null;
+  }
+}
+
 export const meta = {
   typing: (ch: Channel, to: string, on = true) =>
     call(ch, { recipient: { id: to }, sender_action: on ? "typing_on" : "typing_off" }, { retry: false }).catch(() => {}),
@@ -339,4 +358,5 @@ export const meta = {
   card: sendCard,
 
   profile: fetchProfile,
+  username: fetchUsername,
 };

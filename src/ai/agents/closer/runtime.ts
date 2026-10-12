@@ -14,6 +14,7 @@ import { derivedToken } from "@/intake/tokens";
 import { clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
+import { markOutreachReplied } from "@/server/ig-outreach";
 import { closerTurnSchema, type CloserTurn } from "./turn";
 import { HANDOFF_REPLY, MAX_MESSAGES_PER_HOUR, RATE_NOTICE, needsDisclosure, wantsHuman, withDisclosure } from "./policy";
 
@@ -65,10 +66,15 @@ const START_INTENT_RE = new RegExp(
 );
 
 async function interpolateVars(): Promise<Record<string, string>> {
-  const [{ price, basePrice, renewal, remaining }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
+  const [{ price, basePrice, renewal, remaining, ladder }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
+  const discounted = basePrice > price;
   return {
     price: String(price),
     basePrice: String(basePrice),
+    // سطر السعر بصيغته الصادقة: «بدلاً من» فقط إن كان هناك سعر أعلى فعلاً.
+    priceLine: discounted ? `${formatEgpNumber(price)} جنيه بدلاً من ${formatEgpNumber(basePrice)}` : `${formatEgpNumber(price)} جنيه`,
+    goldenPrice: String(ladder.golden.price),
+    goldenCode: ladder.golden.code,
     renewal: String(renewal),
     trialHours: String(timings.trialHours),
     // ندرة حقيقية فقط: عدّاد من المدفوعات المؤكدة (فارغ إن لم يكن للسعر حد).
@@ -99,9 +105,17 @@ function emergencyReply(vars: Record<string, string>): string {
 // ─── الرسالة الافتراضية مع زر الاستمارة ────────────────────────────────────
 function fallbackWithLink(vars: Record<string, string>, url: string, kind: "form" | "follow" = "form") {
   if (kind === "follow") return { text: "استمارتك وصلتنا، ومن الرابط ده تتابع متجرك مرحلة بمرحلة وموعد تسليمه:", buttonTitle: "تابع متجرك", url };
-  const text = `أهلاً بيك في Colapia. فريقنا بيصمم ويبني لك متجر إلكتروني لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج بدلاً من ${formatEgpNumber(Number(vars.basePrice))} ج وتشمل سنة استضافة، بلا عمولة على مبيعاتك. ${vars.remainingLine ?? ""}اضغط الزر واملأ الاستمارة في دقيقتين:`;
+  const text = `أهلاً بيك في Colapia. فريقنا بيصمم ويبني لك متجر إلكتروني لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${vars.priceLine} وتشمل سنة استضافة، بلا عمولة على مبيعاتك. ${vars.remainingLine ?? ""}اضغط الزر واملأ الاستمارة في دقيقتين:`;
   return { text, buttonTitle: "ابدأ استمارة متجرك", url };
 }
+
+/** محادثة بدأها فريقنا برسالة افتتاحية لبراند (webhooks/meta handleEcho): لها برومبت وقواعد رابط مختلفة. */
+type Outreach = { at?: string; text?: string; closed?: boolean };
+function outreachOf(conv: Conv): Outreach | null {
+  const o = (conv.memory as Record<string, unknown> | null)?.outreach;
+  return o && typeof o === "object" ? (o as Outreach) : null;
+}
+const EXPLICIT_LINK_RE = /(ابعت|ابعتلي|ابعتيلي|هات|فين)\s*(الفورم|الرابط|اللينك|الاستمارة)|(نبدأ|نبدا|يلا\s*بينا|موافق|مهتمين|مهتم)/i;
 
 export async function handleInbound(
   channel: Channel,
@@ -146,14 +160,21 @@ export async function handleInbound(
     })
     .where(eq(conversations.id, conv.id));
 
-  // تجاوز الـ bot إذا التاجر مسك المحادثة.
+  if (outreachOf(conv)) await markOutreachReplied(conv.id).catch((e) => console.error("[closer] outreach reply mark failed", e));
+
+  // الوكيل يتوقف في هذه المحادثة فقط إن أوقفه المالك من لوحة المحادثات (أو حوّلها الوكيل لموظف).
   if (conv.botPaused && conv.stage === "human") return;
 
   if (!botOn) return;
 
+  const outreach = outreachOf(conv);
+  // المشرف رفض بأدب ورددنا مرة: لا نعاود الكلام إلا إن أعاد المالك تشغيل الوكيل لهذه المحادثة.
+  if (outreach?.closed) return;
+
   const vars = await interpolateVars();
   const lastUserMessage = userTexts.join(" ").trim();
-  const userTriggeredLink = START_INTENT_RE.test(lastUserMessage);
+  // في محادثات الدائرة الذهبية لا يكفي ذكر «ملابس» أو «بكام» لإرسال الفورم: لا نرسلها قبل معرفة من يكلمنا.
+  const userTriggeredLink = outreach ? EXPLICIT_LINK_RE.test(lastUserMessage) && conv.stage !== "greeting" : START_INTENT_RE.test(lastUserMessage);
 
   // حد رسائل المرسل الواحد في الساعة: يحمي فاتورة الذكاء الاصطناعي من الإغراق والحلقات الآلية.
   const used = await redis
@@ -177,7 +198,7 @@ export async function handleInbound(
 
   const disclose = await shouldDisclose(conv.id);
 
-  const system = await getPrompt("closer.agency", vars);
+  const system = await getPrompt(outreach ? "closer.outreach" : "closer.agency", vars);
   const history = await buildHistory(conv.id);
 
   await metaApi.typing(channel, senderId, true);
@@ -203,6 +224,12 @@ export async function handleInbound(
       "[closer] AI call failed, applying guaranteed button fallback:",
       err
     );
+    if (outreach) {
+      // رد عام بالفورم قد يصل لمشرف لا لصاحب البراند: الصمت أسلم، وننبّه المالك ليرد بنفسه.
+      await notifyAdmin("تعذر رد الوكيل في محادثة «الدائرة الذهبية»، رد بنفسك من لوحة المحادثات.", { conversationId: conv.id }).catch(() => {});
+      await metaApi.typing(channel, senderId, false);
+      return;
+    }
     await sendFallbackWithLink(channel, senderId, conv, vars, disclose);
     await metaApi.typing(channel, senderId, false);
     return;
@@ -217,9 +244,9 @@ export async function handleInbound(
 
   // ─── قواعد تفعيل الرابط ────────────────────────────────────────────────
   const mentionsLinkOrButton =
-    /(الزر|الزرار|الرابط|اللينك|الاستمارة|استمارة|التسجيل)/i.test(turn.reply);
+    !outreach && /(الزر|الزرار|الرابط|اللينك|الاستمارة|استمارة|التسجيل)/i.test(turn.reply);
   const shouldSendLink =
-    turn.issueLink || userTriggeredLink || mentionsLinkOrButton;
+    !turn.close && (turn.issueLink || userTriggeredLink || mentionsLinkOrButton);
 
   if (shouldSendLink) {
     try {
@@ -237,9 +264,9 @@ export async function handleInbound(
       const genericSmell = /(قولي أكتر|احكيلي أكتر|بتبيع إيه|إيه نشاطك|ايه نشاطك)/i.test(
         replyText
       );
-      if (genericSmell && issued.kind === "form") {
+      if (genericSmell && issued.kind === "form" && !outreach) {
         replyText = `تمام. فريقنا هيبني لك متجر بصور منتجاتك والمقاسات والدفع عند الاستلام، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج وتشمل سنة استضافة. ${vars.remainingLine ?? ""}املأ الاستمارة من الزر:`;
-      } else if (!mentionsLinkOrButton && issued.kind === "form") {
+      } else if (!mentionsLinkOrButton && issued.kind === "form" && !outreach) {
         replyText = `${replyText}\n\nاضغط الزر وابدأ استمارتك في دقيقتين:`;
       }
 
@@ -274,7 +301,12 @@ export async function handleInbound(
     });
     await db
       .update(conversations)
-      .set({ lastBotMessageAt: new Date(), updatedAt: new Date() })
+      .set({
+        lastBotMessageAt: new Date(),
+        updatedAt: new Date(),
+        ...(outreach && turn.close ? { memory: { ...(conv.memory ?? {}), outreach: { ...outreach, closed: true } }, lostReason: "رفض المشرف" } : {}),
+        ...(outreach && conv.stage === "greeting" && !turn.close ? { stage: "discovery" as const } : {}),
+      })
       .where(eq(conversations.id, conv.id));
   }
 

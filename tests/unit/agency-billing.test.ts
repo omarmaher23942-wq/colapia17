@@ -1,14 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LADDER, ladderFrom, priceAt } from "@/lib/platform-pricing";
+import { DEFAULT_LADDER, ladderFrom, normalizeCoupon, priceAt } from "@/lib/platform-pricing";
 import { timingsFrom, trialSchedule } from "@/lifecycle/timings-rules";
 
 describe("سلّم الأسعار", () => {
-  it("أول 5 متاجر 2499 ثم 3499 ثم 4999، والعدّاد حقيقي", () => {
-    expect(priceAt(0, DEFAULT_LADDER)).toEqual({ price: 2499, tier: 0, remaining: 5, nextPrice: 3499 });
-    expect(priceAt(4, DEFAULT_LADDER)).toMatchObject({ price: 2499, remaining: 1 });
-    expect(priceAt(5, DEFAULT_LADDER)).toMatchObject({ price: 3499, remaining: 10, nextPrice: 4999 });
-    expect(priceAt(15, DEFAULT_LADDER)).toMatchObject({ price: 4999, remaining: null, nextPrice: null });
-    expect(priceAt(500, DEFAULT_LADDER).price).toBe(4999);
+  it("الافتراضي سعر واحد 2,499 بلا حد ولا سعر مشطوب، وتجديد 1,299، والدائرة الذهبية GOLDEN599 لـ5", () => {
+    expect(priceAt(0, DEFAULT_LADDER)).toEqual({ price: 2499, tier: 0, remaining: null, nextPrice: null });
+    expect(DEFAULT_LADDER.basePrice).toBe(2499);
+    expect(DEFAULT_LADDER.renewal).toBe(1299);
+    expect(DEFAULT_LADDER.golden).toEqual({ code: "GOLDEN599", price: 599, seats: 5 });
+    expect(normalizeCoupon(" golden ٥٩٩ ")).toBe("GOLDEN599");
+    expect(ladderFrom({ golden: { code: "x", price: -1, seats: 2 } }).golden).toEqual({ code: "GOLDEN599", price: 599, seats: 2 });
+  });
+  it("سلّم مراحل يضبطه المالك: 2499 ثم 3499 ثم 4999، والعدّاد حقيقي", () => {
+    const LADDER = ladderFrom({ tiers: [{ upTo: 5, price: 2499 }, { upTo: 15, price: 3499 }, { upTo: null, price: 4999 }] });
+    expect(priceAt(0, LADDER)).toEqual({ price: 2499, tier: 0, remaining: 5, nextPrice: 3499 });
+    expect(priceAt(4, LADDER)).toMatchObject({ price: 2499, remaining: 1 });
+    expect(priceAt(5, LADDER)).toMatchObject({ price: 3499, remaining: 10, nextPrice: 4999 });
+    expect(priceAt(15, LADDER)).toMatchObject({ price: 4999, remaining: null, nextPrice: null });
+    expect(priceAt(500, LADDER).price).toBe(4999);
   });
   it("إعداد تالف أو فارغ = السلّم الافتراضي", () => {
     expect(ladderFrom(null)).toEqual(DEFAULT_LADDER);
