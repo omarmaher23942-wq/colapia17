@@ -119,6 +119,7 @@ const PATH_AREAS: [string, StoreArea][] = [
   ["/dashboard/customers", "customers"],
   ["/dashboard/discounts", "discounts"],
   ["/dashboard/growth", "discounts"],
+  ["/dashboard/marketing", "discounts"],
   ["/dashboard/shipping", "shipping"],
   ["/dashboard/content", "content"],
   ["/dashboard/design", "content"],

@@ -62,6 +62,7 @@ export const CONTROL_TABLES = [
   "store_members",
   "store_activity",
   "store_change_requests",
+  "store_secrets",
 ] as const;
 
 /** صفوف تحكم تُنقل إلى قاعدة التاجر لتصح المفاتيح الأجنبية ويعمل مشروعه مستقلاً. */

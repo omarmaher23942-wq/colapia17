@@ -5,13 +5,13 @@ const isDev = process.env.NODE_ENV === "development";
 
 const csp = [
   "default-src 'self'",
-  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://*.googleusercontent.com",
+  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://*.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com",
   "media-src 'self' data: blob: https://utfs.io https://*.ufs.sh",
-  ["script-src 'self' 'unsafe-inline'", isDev ? "'unsafe-eval'" : "", "https://connect.facebook.net", "https://www.googletagmanager.com"].filter(Boolean).join(" "),
+  ["script-src 'self' 'unsafe-inline'", isDev ? "'unsafe-eval'" : "", "https://connect.facebook.net", "https://www.googletagmanager.com", "https://analytics.tiktok.com"].filter(Boolean).join(" "),
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.uploadthing.com https://*.ingest.uploadthing.com https://utfs.io https://*.ufs.sh https://connect.facebook.net https://www.facebook.com https://www.google-analytics.com",
+  "connect-src 'self' https://*.uploadthing.com https://*.ingest.uploadthing.com https://utfs.io https://*.ufs.sh https://connect.facebook.net https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://analytics.tiktok.com",
   "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.google.com",
   "frame-ancestors 'self'",
   "base-uri 'self'",

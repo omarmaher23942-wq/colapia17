@@ -99,6 +99,8 @@ export function Analytics({ storeId }: { storeId: string }) {
     };
 
     window.clpTrack = (name, props) => {
+      // بكسلات الإعلانات التي وضعها التاجر (StorePixels) تأخذ نفس الأحداث؛ page_view تتولاه هي مع كل مسار.
+      if (name !== "page_view") window.clpPixel?.(name, props);
       queueRef.current.push({
         name,
         props,

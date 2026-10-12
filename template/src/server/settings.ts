@@ -8,6 +8,7 @@ export type SettingKey =
   | "keys.uploadthing"
   | "keys.groq"
   | "keys.resend"
+  | "keys.meta_capi"
   | "owner.recovery"
   | "setup"
   | "import";

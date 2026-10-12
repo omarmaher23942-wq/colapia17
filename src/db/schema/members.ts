@@ -75,3 +75,16 @@ export const storeChangeRequests = pgTable(
     check("store_change_requests_area_chk", sql`${t.area} IN ('design', 'products', 'content', 'other')`),
   ]
 );
+
+/**
+ * أسرار تكاملات المتجر (المرحلة 9.2): رموز تُستخدم من الخادم فقط ولا تدخل الـ Blueprint (الذي قد يصل للمتصفح)
+ * ولا صف المتجر (الذي يُخزَّن مؤقتاً ويُمرَّر كثيراً). صف واحد لكل متجر.
+ */
+export const storeSecrets = pgTable("store_secrets", {
+  storeId: uuid("store_id")
+    .primaryKey()
+    .references(() => stores.id, { onDelete: "cascade" }),
+  /** رمز Conversions API من مدير أحداث ميتا لإرسال «شراء» من الخادم. */
+  metaCapiToken: text("meta_capi_token"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

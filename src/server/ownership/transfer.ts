@@ -11,7 +11,7 @@ import { and, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import { UTApi } from "uploadthing/server";
 import { db } from "@/db/client";
-import { stores, storeTransfers, merchants } from "@/db/schema";
+import { stores, storeTransfers, merchants, storeSecrets } from "@/db/schema";
 import { MEDIA_FREE_TABLES } from "@/db/transfer-tables";
 import { secureToken, sha256 } from "@/lib/ids";
 import { invalidateStoreCache } from "@/lib/tenant";
@@ -233,6 +233,8 @@ export async function purgeStore(store: Store): Promise<boolean> {
     // صف المتجر والتاجر يبقيان (سجل الدفع، والتحويل للموقع الجديد، وبريد التاجر)؛ كل بيانات المتجر تُحذف.
     const deletable = PLAN.filter((p) => !["merchants", "stores"].includes(tableName(p.table))).reverse();
     for (const spec of deletable) await db.delete(spec.table).where(spec.scope(store.id, store.merchantId));
+    // أسرار التكاملات (رمز Conversions API) ليست من بيانات المتجر المنقولة، لكنها تُحذف معه.
+    await db.delete(storeSecrets).where(eq(storeSecrets.storeId, store.id)).catch(() => {});
     if (keys.size) {
       const ut = new UTApi();
       const list = [...keys];

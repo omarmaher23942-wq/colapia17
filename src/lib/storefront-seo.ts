@@ -5,6 +5,7 @@ import type { Metadata, Viewport } from "next";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import type { TenantStore } from "@/lib/tenant";
 import { storeUrl } from "@/lib/utils";
+import { cleanGoogleVerification } from "@/lib/tracking";
 
 const STORE_ICON = "/api/storefront/icon";
 
@@ -46,6 +47,11 @@ export function storeMetadata(store: TenantStore, bp: StoreBlueprint | null): Me
     twitter: { card: ogImage ? "summary_large_image" : "summary", title, description },
     robots: indexable ? { index: true, follow: true } : { index: false, follow: false },
     formatDetection: { telephone: false },
+    // وسم Google Search Console الذي يضعه التاجر من «التسويق» (منقّى: حروف وأرقام فقط).
+    verification: (() => {
+      const google = cleanGoogleVerification(bp?.seo.googleVerification);
+      return google ? { google } : undefined;
+    })(),
   };
 }
 

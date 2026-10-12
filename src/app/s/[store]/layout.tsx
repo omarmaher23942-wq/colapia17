@@ -16,6 +16,8 @@ import { CartDrawer } from "@/components/storefront/CartDrawer";
 import { PromoFromLink } from "@/components/storefront/PromoFromLink";
 import { ConversionWidgets } from "@/components/storefront/ConversionWidgets";
 import { Analytics } from "@/components/storefront/Analytics";
+import { StorePixels } from "@/components/storefront/StorePixels";
+import { trackingFrom } from "@/lib/tracking";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
 import { hostingServes, hostingState } from "@/lib/hosting";
 import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstImpressionBanner";
@@ -205,6 +207,8 @@ export default async function StoreLayout({ children, params }: Props) {
           <CartDrawer />
           <PromoFromLink subdomain={store.subdomain} />
           <ConversionWidgets />
+          {/* بكسلات التاجر لا تعمل في معاينة الفريق (لا نلوّث إحصاءات إعلاناته بزياراتنا). */}
+          {teamPreview ? null : <StorePixels ids={trackingFrom(bp.seo)} />}
           <Analytics storeId={store.id} />
         </div>
       </EditorProvider>

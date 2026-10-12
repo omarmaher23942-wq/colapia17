@@ -12,7 +12,7 @@ const isDev = process.env.NODE_ENV === "development";
 const cspHeader = [
   "default-src 'self'",
 
-  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com",
+  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com",
 
   "media-src 'self' data: blob: https://utfs.io https://*.ufs.sh",
 
@@ -21,6 +21,7 @@ const cspHeader = [
     isDev ? "'unsafe-eval'" : "",
     "https://connect.facebook.net",
     "https://www.googletagmanager.com",
+    "https://analytics.tiktok.com",
     "https://va.vercel-scripts.com",
   ]
     .filter(Boolean)
@@ -45,6 +46,12 @@ const cspHeader = [
     // Social
     "https://connect.facebook.net",
     "https://www.facebook.com",
+    // بكسلات التاجر: GA4 وتيك توك
+    "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
+    "https://*.analytics.google.com",
+    "https://www.googletagmanager.com",
+    "https://analytics.tiktok.com",
     // Email
     "https://api.resend.com",
     // AI

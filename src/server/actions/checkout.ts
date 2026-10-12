@@ -1,6 +1,6 @@
 "use server";
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
 import { and, eq, ne, sql, inArray, isNull } from "drizzle-orm";
@@ -29,12 +29,16 @@ import {
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { governorateName, GOVERNORATES } from "@/lib/egypt";
 import { formatEgp } from "@/lib/money";
+import { clientEnv } from "@/lib/env";
 import { ensureDeviceId, grantOrderAccess, hasOrderAccess } from "@/lib/order-access";
 import {
   sendMerchantNewOrderEmail,
   sendCustomerOrderConfirmationEmail,
 } from "@/lib/email";
 import { storeUrl } from "@/lib/utils";
+import { cleanMetaPixel } from "@/lib/tracking";
+import { metaCapiToken } from "@/server/store-secrets";
+import { sendCapiPurchase } from "@/server/meta-capi";
 import { newOrderCode } from "@/lib/ids";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import {
@@ -640,6 +644,36 @@ export async function placeOrderAction(
       createdAt: now.toISOString(),
     });
 
+    // «شراء» لميتا من الخادم (إن وضع التاجر البكسل ورمز الواجهة): بنفس معرّف حدث البكسل في المتصفح (رقم الطلب).
+    const pixelId = isTest ? null : cleanMetaPixel(bp.seo?.metaPixelId);
+    if (pixelId) {
+      const hd = await headers();
+      const ck = (await cookies()).getAll();
+      const cookie = (n: string) => ck.find((c) => c.name === n)?.value ?? null;
+      const capi = {
+        pixelId,
+        orderCode: code,
+        totalPiasters: total,
+        contentIds: [...new Set(lines.map((l) => l.p.id))],
+        numItems: lines.reduce((a, l) => a + l.qty, 0),
+        phone: input.phone,
+        email: input.email,
+        name: input.name,
+        city: input.city,
+        externalId: deviceId,
+        ip: clientIp(hd),
+        userAgent: hd.get("user-agent"),
+        fbp: cookie("_fbp"),
+        fbc: cookie("_fbc"),
+        url: storeUrl(store.subdomain, "/checkout"),
+        at: now,
+      };
+      after(async () => {
+        const token = await metaCapiToken(store.id);
+        if (token) await sendCapiPurchase({ ...capi, token });
+      });
+    }
+
     // إرسال الإشعارات البريدية خارج مسار استجابة الطلب.
     after(async () => {
       try {
@@ -660,7 +694,7 @@ export async function placeOrderAction(
             customerName: input.name,
             totalAmount: formatEgp(total),
             governorate: governorateName(input.governorate),
-            adminOrderUrl: storeUrl(store.subdomain, `/admin/orders`),
+            adminOrderUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard/orders/${orderId}`,
           });
         }
         if (input.email) {

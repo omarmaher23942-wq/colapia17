@@ -32,7 +32,7 @@ export function RecentlyViewed({ current }: { current: Mini }) {
     } catch {
       // التخزين ممتلئ أو معطّل في وضع التصفح الخاص — الميزة اختيارية.
     }
-    window.clpTrack?.("product_view", { productId: current.id });
+    window.clpTrack?.("product_view", { productId: current.id, name: current.name, price: current.price });
   }, [current, storeId]);
 
   if (!items.length) return null;

@@ -194,7 +194,8 @@ export function CheckoutForm({
   // Idempotency key per checkout session
   useEffect(() => {
     idemKey.current = newKey();
-    window.clpTrack?.("begin_checkout");
+    window.clpTrack?.("begin_checkout", { value: items.reduce((a, i) => a + i.unitPiasters * i.qty, 0), items: items.reduce((a, i) => a + i.qty, 0) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Quote on change (debounced)
@@ -341,6 +342,7 @@ export function CheckoutForm({
         window.clpTrack?.("purchase", {
           code: r.data.code,
           total: r.data.total,
+          productIds: [...new Set(items.map((i) => i.productId))],
         });
         clear();
         clearPromo(subdomain);

@@ -589,6 +589,9 @@ export const seoSchema = z.object({
   ogImage: z.string().url().optional(),
   metaPixelId: z.string().max(30).optional(),
   gaMeasurementId: z.string().max(30).optional(),
+  tiktokPixelId: z.string().max(40).optional(),
+  /** محتوى وسم التحقق من Google Search Console (google-site-verification). */
+  googleVerification: z.string().max(120).optional(),
   noIndex: z.boolean().default(false),
 });
 

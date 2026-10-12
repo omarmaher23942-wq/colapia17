@@ -21,6 +21,7 @@ import {
   Globe,
   FileArchive,
   MessageSquarePlus,
+  Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
@@ -64,6 +65,7 @@ const ALL: NavSection[] = [
       { label: "المنتجات", href: "/dashboard/products", icon: Package, badgeKey: "products", hint: "المنتجات والأسعار والمخزون", keywords: ["products", "مخزون", "اصناف"] },
       { label: "الأقسام", href: "/dashboard/categories", icon: FolderTree, hint: "أقسام المتجر وترتيبها", keywords: ["categories", "فئات", "تصنيفات"] },
       { label: "أكواد الخصم", href: "/dashboard/discounts", icon: TicketPercent, hint: "كوبونات وعروض", keywords: ["discounts", "كوبون", "خصم", "عروض"] },
+      { label: "التسويق", href: "/dashboard/marketing", icon: Megaphone, hint: "بكسل الإعلانات وكتالوج المنتجات", keywords: ["marketing", "pixel", "بكسل", "اعلانات", "كتالوج", "فيسبوك", "تيك توك"] },
       { label: "الشحن", href: "/dashboard/shipping", icon: Truck, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
       { label: "السياسات والضمان", href: "/dashboard/policies", icon: ShieldCheck, hint: "الاستبدال والاسترجاع والمعاينة", keywords: ["policies", "استرجاع", "استبدال", "ضمان"] },
     ],
