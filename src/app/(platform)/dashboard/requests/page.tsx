@@ -6,7 +6,7 @@ import { requireStoreArea } from "@/server/merchant-guard";
 import { db } from "@/db/client";
 import { storeChangeRequests } from "@/db/schema";
 import { NO_STORE_HREF } from "@/lib/edition";
-import { quotaFor } from "@/server/actions/change-requests";
+import { quotaFor } from "@/server/change-quota";
 import { ChangeRequests } from "@/components/dashboard/requests/ChangeRequests";
 import { CHANGE_AREAS, type ChangeArea } from "@/lib/change-requests";
 

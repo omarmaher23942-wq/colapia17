@@ -8,6 +8,7 @@ import { purgeExpiredDrafts } from "@/intake/purge";
 import { retryPendingNotifications } from "@/intake/notify";
 import { alertOverdueRequests } from "@/agency/sla";
 import { checkPendingDomains } from "@/server/domains";
+import { sendMonthlyReports } from "@/server/monthly-report";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -55,6 +56,12 @@ export async function GET(req: Request) {
     return 0;
   });
 
+  // التقرير الشهري لأصحاب المتاجر المدفوعة (الأيام 1–3 من الشهر، مرة لكل متجر).
+  const monthlyReports = await sendMonthlyReports().catch((e) => {
+    console.error("[ops/tick] monthly reports failed", e);
+    return 0;
+  });
+
   const alerts: string[] = [];
   if ((stuck?.c ?? 0) > 5) alerts.push(`${stuck!.c} مهمة QStash متأخرة`);
   if ((overdueReview?.c ?? 0) > 0) alerts.push(`${overdueReview!.c} متجر مراجعته متأخرة`);
@@ -79,6 +86,7 @@ export async function GET(req: Request) {
     retriedNotifications,
     overdueRequests,
     domainsActivated,
+    monthlyReports,
   });
 }
 
