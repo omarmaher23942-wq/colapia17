@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
+import { publicStoreUrl } from "@/lib/utils";
 import { getStoreBySubdomain } from "@/lib/tenant";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
@@ -32,6 +33,9 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
             "/cart",
             "/checkout",
             "/track",
+            "/confirm",
+            "/review",
+            "/go/",
             "/api/",
           ],
         }
@@ -39,8 +43,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
           userAgent: "*",
           disallow: "/",
         },
-    sitemap: allow
-      ? `https://${sub}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/sitemap.xml`
-      : undefined,
+    sitemap: allow && store ? publicStoreUrl(store, "/sitemap.xml") : undefined,
   };
 }

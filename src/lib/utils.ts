@@ -27,6 +27,18 @@ export function storeUrl(subdomain: string, path = "") {
   return `${proto}://${subdomain}.${root}${suffix}`;
 }
 
+/**
+ * الرابط العام الأساسي للمتجر (canonical وخريطة الموقع والكتالوج والبيانات المنظمة): نطاقه الخاص متى كان مفعّلاً،
+ * وإلا نطاقه الفرعي. النطاق الفرعي لمتجر بنطاق خاص يحوّل إليه (308)، فلا يُفهرس نفس المحتوى برابطين.
+ */
+export function publicStoreUrl(store: { subdomain: string; customDomain?: string | null; customDomainStatus?: string | null }, path = "") {
+  if (EDITION !== "store" && store.customDomain && store.customDomainStatus === "active") {
+    const suffix = !path ? "" : path.startsWith("/") ? path : `/${path}`;
+    return `https://${store.customDomain}${suffix}`;
+  }
+  return storeUrl(store.subdomain, path);
+}
+
 /** نطاق المتجر للعرض فقط (بلا https://). */
 export function storeHost(subdomain: string): string {
   try {

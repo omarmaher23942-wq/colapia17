@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { breadcrumbJsonLd } from "@/lib/storefront-seo";
+import { jsonLdString } from "@/lib/json-ld";
+import { publicStoreUrl } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireStore, getStoreBySubdomain } from "@/lib/tenant";
@@ -55,8 +58,22 @@ export default async function CategoryPage({
     Number(page)
   );
 
+  const ld = [
+    breadcrumbJsonLd(store, [
+      { name: store.name, path: "/" },
+      { name: cat.name, path: `/c/${encodeURIComponent(cat.slug)}` },
+    ]),
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: cat.name,
+      itemListElement: rows.slice(0, 30).map((p, i) => ({ "@type": "ListItem", position: i + 1, url: publicStoreUrl(store, `/p/${encodeURIComponent(p.slug)}`), name: p.name })),
+    },
+  ];
+
   return (
     <div className="container-x py-8">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl">{cat.name}</h1>

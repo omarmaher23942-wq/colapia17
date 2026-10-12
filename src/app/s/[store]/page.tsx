@@ -7,6 +7,8 @@ import { truthfulBlueprint } from "@/blueprint/facts";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot } from "@/stores/resolve";
 import { isTeamPreview } from "@/server/store-preview";
+import { storeJsonLd } from "@/lib/storefront-seo";
+import { jsonLdString } from "@/lib/json-ld";
 
 export default async function Home({
   params,
@@ -30,11 +32,21 @@ export default async function Home({
     loadSlot(store.subdomain, "Home"),
   ]);
 
+  // بيانات المتجر المنظمة لمحركات البحث (الاسم، الشعار، الحسابات، خانة البحث).
+  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd(store, truthfulBlueprint(bp, facts))) }} />;
+
   // ترتيب الصفحة الرئيسية بكود المتجر الخاص إن وُجد (stores/<slug>/slots/Home.tsx)، وإلا بترتيب الـ Blueprint.
-  if (HomeSlot) return <HomeSlot kit={kit} sections={bp.home.map((section, i) => ({ section, node: nodes[i] }))} />;
+  if (HomeSlot)
+    return (
+      <>
+        {ld}
+        <HomeSlot kit={kit} sections={bp.home.map((section, i) => ({ section, node: nodes[i] }))} />
+      </>
+    );
 
   return (
     <>
+      {ld}
       {nodes.map((node, i) => (
         <Fragment key={(bp.home[i] as { id?: string }).id ?? i}>{node}</Fragment>
       ))}

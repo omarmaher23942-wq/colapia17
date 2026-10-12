@@ -5,7 +5,7 @@ import { getStoreBySubdomain, getBlueprintOrNull, isStorePubliclyVisible } from 
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
 import { renderProductFeed } from "@/lib/product-feed";
-import { storeUrl } from "@/lib/utils";
+import { publicStoreUrl } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,7 @@ export async function GET(_req: Request, ctx: { params: Promise<unknown> }) {
     .limit(5000);
   const xml = renderProductFeed({
     storeName: bp?.brand.name ?? store.name,
-    storeUrl: storeUrl(store.subdomain),
+    storeUrl: publicStoreUrl(store),
     description: bp?.brand.description,
     products: rows.map((r) => ({ ...r, description: r.description || r.shortDescription })),
   });

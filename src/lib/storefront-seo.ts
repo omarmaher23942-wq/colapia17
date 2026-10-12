@@ -4,8 +4,9 @@ import "server-only";
 import type { Metadata, Viewport } from "next";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import type { TenantStore } from "@/lib/tenant";
-import { storeUrl } from "@/lib/utils";
-import { cleanGoogleVerification } from "@/lib/tracking";
+import { publicStoreUrl } from "@/lib/utils";
+import { socialLinks } from "@/lib/store-channels";
+import { cleanGoogleVerification, e164Egypt } from "@/lib/tracking";
 
 const STORE_ICON = "/api/storefront/icon";
 
@@ -25,7 +26,7 @@ export function storeMetadata(store: TenantStore, bp: StoreBlueprint | null): Me
   const indexable = isIndexable(store, bp);
 
   return {
-    metadataBase: new URL(storeUrl(store.subdomain)),
+    metadataBase: new URL(publicStoreUrl(store)),
     title: { default: title, template: `%s | ${name}` },
     description,
     applicationName: name,
@@ -102,7 +103,7 @@ export function productMetadata(product: ProductLike): Metadata {
 /** JSON-LD من نوع Product لنتائج بحث غنية (السعر، التوفر، التقييم). */
 export function productJsonLd(store: TenantStore, storeName: string, product: ProductLike) {
   const inStock = !product.trackStock || product.stock === null || product.stock > 0;
-  const url = storeUrl(store.subdomain, `/p/${encodeURIComponent(product.slug)}`);
+  const url = publicStoreUrl(store, `/p/${encodeURIComponent(product.slug)}`);
   return {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -140,7 +141,34 @@ export function breadcrumbJsonLd(store: TenantStore, items: { name: string; path
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: storeUrl(store.subdomain, it.path),
+      item: publicStoreUrl(store, it.path),
     })),
   };
+}
+
+/** JSON-LD للرئيسية: المتجر (الاسم والشعار وحساباته وواتساب) والموقع بخانة بحث تظهر في نتائج جوجل. */
+export function storeJsonLd(store: TenantStore, bp: StoreBlueprint) {
+  const url = publicStoreUrl(store, "/");
+  const social = socialLinks(bp.channels).filter((s) => s.key !== "whatsapp" && s.key !== "messenger").map((s) => s.href);
+  const phone = e164Egypt(bp.channels.whatsappNumber ?? "");
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "OnlineStore",
+      name: bp.brand.name,
+      description: clip(bp.seo.description || bp.brand.description || bp.brand.tagline, 300),
+      url,
+      logo: bp.brand.logo?.url,
+      sameAs: social.length ? social : undefined,
+      contactPoint: phone ? { "@type": "ContactPoint", telephone: `+${phone}`, contactType: "customer service", areaServed: "EG", availableLanguage: "Arabic" } : undefined,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: bp.brand.name,
+      url,
+      inLanguage: "ar",
+      potentialAction: { "@type": "SearchAction", target: `${publicStoreUrl(store, "/search")}?q={search_term_string}`, "query-input": "required name=search_term_string" },
+    },
+  ];
 }

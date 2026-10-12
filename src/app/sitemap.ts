@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { products, categories } from "@/db/schema";
 import { getStoreBySubdomain, getBlueprint } from "@/lib/tenant";
-import { storeUrl } from "@/lib/utils";
+import { publicStoreUrl } from "@/lib/utils";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const h = await headers();
@@ -70,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ),
   ]);
 
-  const u = (p: string) => storeUrl(s.subdomain, p);
+  const u = (p: string) => publicStoreUrl(s, p);
 
   return [
     {
