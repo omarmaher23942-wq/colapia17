@@ -250,7 +250,7 @@ export default async function OrderDetailPage({ params, searchParams }: { params
               <h2 id="customer-title" className="text-[14px] font-black text-ink">
                 العميل والتوصيل
               </h2>
-              <CopyButton text={shippingLabelText(msgOrder, store.name)} label="انسخ بيانات الشحن" />
+              <CopyButton text={shippingLabelText(msgOrder, store.name)} label="نسخ بيانات الشحن" />
             </header>
             <dl className="grid gap-3 text-[13px] sm:grid-cols-2">
               <Field label="الاسم">

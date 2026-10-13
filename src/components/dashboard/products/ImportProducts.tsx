@@ -113,7 +113,7 @@ export function ImportProducts() {
           images ? (
             images.running ? (
               <button type="button" onClick={mover.stop} className="inline-flex min-h-11 items-center rounded-xl border border-edge/10 px-4 text-[12.5px] font-bold text-ink-2 hover:bg-edge/5">
-                أوقف بعد المنتج الحالي
+                إيقاف بعد المنتج الحالي
               </button>
             ) : (
               <MoverDoneButtons mover={mover} onDone={close} />
@@ -146,7 +146,7 @@ export function ImportProducts() {
               className="flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-edge/15 p-6 text-center transition-colors hover:border-nova/40 hover:bg-nova/[0.04]"
             >
               <FileSpreadsheet className="size-8 text-nova-2" strokeWidth={1.75} aria-hidden="true" />
-              <span className="text-[13.5px] font-black text-ink">اختر ملف CSV</span>
+              <span className="text-[13.5px] font-black text-ink">اختيار ملف CSV</span>
               <span className="text-[12px] text-ink-3">الأعمدة: اسم المنتج والسعر (إلزاميان)، ثم اختيارياً: السعر قبل الخصم، سعر التكلفة، الكمية، القسم، الكود، الوصف، الصور</span>
             </button>
             <button type="button" onClick={downloadTemplate} className="inline-flex min-h-10 items-center gap-1.5 text-[12.5px] font-bold text-nova-2 hover:text-ink">

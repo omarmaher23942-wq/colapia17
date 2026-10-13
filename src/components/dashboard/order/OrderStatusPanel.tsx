@@ -17,7 +17,7 @@ import { ConfirmDialog, DashDialog } from "../ui/DashDialog";
 const FLOW: OrderStatus[] = ["new", "confirmed", "preparing", "shipped", "delivered"];
 
 const NEXT: Partial<Record<OrderStatus, { to: OrderStatus; label: string; icon: typeof Check }>> = {
-  new: { to: "confirmed", label: "أكّد الطلب", icon: CheckCircle2 },
+  new: { to: "confirmed", label: "تأكيد الطلب", icon: CheckCircle2 },
   confirmed: { to: "preparing", label: "ابدأ التجهيز", icon: PackageCheck },
   preparing: { to: "shipped", label: "سلّمته لشركة الشحن", icon: Truck },
   shipped: { to: "delivered", label: "تم التسليم للعميل", icon: Check },
@@ -73,7 +73,7 @@ export function OrderStatusPanel(p: Props) {
         to: "confirmed",
         title: "تأكيد طلب لم يُراجَع تحويله",
         description: "إيصال التحويل لم يُراجَع بعد. الأفضل أن تتأكد من وصول المبلغ أولاً من بطاقة الإيصال. تريد تأكيد الطلب الآن؟",
-        confirmLabel: "أكّد الطلب",
+        confirmLabel: "تأكيد الطلب",
         tone: "primary",
       });
     }
@@ -140,7 +140,7 @@ export function OrderStatusPanel(p: Props) {
         to: "new",
         title: `إعادة فتح ${p.code}`,
         description: "يعود الطلب «جديداً» وتُخصم كمياته من المخزون من جديد. إن لم يكفِ المخزون الحالي سنخبرك بذلك.",
-        confirmLabel: "أعد فتحه",
+        confirmLabel: "إعادة فتحه",
         tone: "primary",
         noteLabel: "سبب إعادة الفتح (اختياري)",
       },
@@ -248,7 +248,7 @@ export function OrderStatusPanel(p: Props) {
                     : closed
                       ? "يُعاد فتح الطلب وتُخصم كمياته من المخزون من جديد."
                       : "يُسجَّل التغيير في سجل الطلب، ويُبلغ العميل بالبريد إن كتبه.",
-                confirmLabel: "غيّر الحالة",
+                confirmLabel: "تغيير الحالة",
                 tone: manual === "cancelled" || manual === "returned" ? "danger" : "primary",
                 noteLabel: "ملاحظة (اختيارية)",
               })

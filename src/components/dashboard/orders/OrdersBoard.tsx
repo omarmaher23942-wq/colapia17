@@ -19,7 +19,7 @@ import { HistoryBadge, PaymentChip, itemsSummary, timeAgo } from "./parts";
 
 const COLUMNS: OrderStatus[] = ["new", "confirmed", "preparing", "shipped", "delivered"];
 const NEXT: Partial<Record<OrderStatus, OrderStatus>> = { new: "confirmed", confirmed: "preparing", preparing: "shipped", shipped: "delivered" };
-const NEXT_LABEL: Partial<Record<OrderStatus, string>> = { new: "أكّد", confirmed: "جهّز", preparing: "اشحن", shipped: "سُلّم" };
+const NEXT_LABEL: Partial<Record<OrderStatus, string>> = { new: "تأكيد", confirmed: "تجهيز", preparing: "شحن", shipped: "تم التسليم" };
 
 export function OrdersBoard({ rows }: { rows: OrderRow[] }) {
   const router = useRouter();

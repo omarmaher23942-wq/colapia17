@@ -424,7 +424,7 @@ export function ContentEditor({
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-gradient-to-l from-nova to-nova-2 px-3.5 text-[12px] font-black text-white shadow-md transition-all hover:brightness-105 disabled:opacity-40"
                 >
                   <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-                  أضف قسماً
+                  إضافة قسم
                 </button>
               </div>
 
@@ -493,7 +493,7 @@ export function ContentEditor({
               ) : (
                 <button type="button" onClick={() => removeSection(currentSection.id)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-bad/20 px-3.5 text-[12px] font-bold text-bad hover:bg-bad/10">
                   <Trash2 className="size-4" aria-hidden="true" />
-                  احذف القسم
+                  حذف القسم
                 </button>
               )}
             </div>
@@ -540,7 +540,7 @@ export function ContentEditor({
         ))}
       </div>
 
-      <DashDialog open={addOpen} onClose={() => setAddOpen(false)} title="أضف قسماً" description="يُضاف في آخر الصفحة الرئيسية، ثم تحرّكه لمكانه." className="md:max-w-3xl">
+      <DashDialog open={addOpen} onClose={() => setAddOpen(false)} title="إضافة قسم" description="يُضاف في آخر الصفحة الرئيسية، ثم تحرّكه لمكانه." className="md:max-w-3xl">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
           {ADDABLE_SECTIONS.map((t) => (
             <button key={t} type="button" onClick={() => addSection(t)} className="rounded-xl border border-edge/10 bg-edge/[0.02] p-3 text-start transition-colors hover:border-nova/50 hover:bg-edge/[0.05]">

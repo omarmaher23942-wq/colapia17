@@ -68,7 +68,7 @@ export function TrackingPanel({ initial, capiMasked, canEdit }: { initial: Value
           مدير الأحداث ← البكسل ← الإعدادات ← «إنشاء رمز وصول». يرسل الشراء من خادمنا مباشرة فيُحسب حتى لو حجب متصفح العميل البكسل، ولا يُحسب مرتين.
           {capiMasked && canEdit ? (
             <button type="button" onClick={() => setCapi("")} className="ms-1 font-bold text-bad underline-offset-2 hover:underline">
-              احذف الرمز
+              حذف الرمز
             </button>
           ) : null}
         </p>

@@ -48,7 +48,7 @@ export async function Testimonials({ s, ctx }: { s: Sec; ctx: Ctx }) {
           {real.map((it, i) => (
             <figure key={i} className="s-card flex flex-col justify-between gap-3 p-5">
               <div className="space-y-2">
-                <div className="flex items-center gap-1" style={{ color: "var(--warning)" }} aria-label={`${it.rating} من 5`}>
+                <div className="flex items-center gap-1" style={{ color: "var(--warning)" }} role="img" aria-label={`${it.rating} من 5`}>
                   {Array.from({ length: 5 }).map((_, idx) => (
                     <Star key={idx} className="size-3.5" fill={idx < it.rating ? "currentColor" : "none"} strokeWidth={1.5} aria-hidden="true" />
                   ))}

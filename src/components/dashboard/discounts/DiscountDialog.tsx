@@ -142,7 +142,7 @@ export function DiscountDialog({ discount, open, onClose, onSaved }: { discount:
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-50"
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {discount ? "احفظ" : "أنشئ الكود"}
+            {discount ? "حفظ" : "إنشاء الكود"}
           </button>
         </>
       }

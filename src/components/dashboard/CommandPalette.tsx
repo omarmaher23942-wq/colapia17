@@ -147,16 +147,16 @@ export function CommandPalette({ storeHref, hasStore, perms }: { storeHref: stri
     const list: Cmd[] = [];
     if (hasStore) {
       list.push(
-        { id: "new-product", label: "أضف منتجاً جديداً", icon: Plus, keywords: ["منتج جديد", "new product", "اضافه"], run: () => go("/dashboard/products/new") },
+        { id: "new-product", label: "إضافة منتج جديد", icon: Plus, keywords: ["منتج جديد", "new product", "اضافه"], run: () => go("/dashboard/products/new") },
         { id: "pending-orders", label: "الطلبات بانتظار التأكيد", icon: ShoppingCart, keywords: ["جديد", "تاكيد", "new orders"], run: () => go("/dashboard/orders?status=new") },
-        { id: "new-discount", label: "أنشئ كود خصم", icon: TicketPercent, keywords: ["كوبون", "خصم", "coupon"], run: () => go("/dashboard/discounts") }
+        { id: "new-discount", label: "إنشاء كود خصم", icon: TicketPercent, keywords: ["كوبون", "خصم", "coupon"], run: () => go("/dashboard/discounts") }
       );
     }
     if (storeHref) {
       list.push(
         {
           id: "preview",
-          label: "افتح متجري",
+          label: "فتح متجري",
           hint: "في تبويب جديد",
           icon: ExternalLink,
           keywords: ["معاينه", "preview", "متجر"],
@@ -167,7 +167,7 @@ export function CommandPalette({ storeHref, hasStore, perms }: { storeHref: stri
         },
         {
           id: "copy-link",
-          label: "انسخ رابط متجري",
+          label: "نسخ رابط متجري",
           hint: "لمشاركته على واتساب أو فيسبوك",
           icon: Copy,
           keywords: ["رابط", "لينك", "link", "share"],

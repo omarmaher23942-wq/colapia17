@@ -85,7 +85,7 @@ export function ThemePanel({ value, onChange, fonts }: { value: Theme; onChange:
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="rounded-lg px-4 py-2 text-[0.85em] font-bold" style={{ background: p.primary, color: p.primaryForeground }}>
-            اطلب الآن
+            طلب الآن
           </span>
           <span className="rounded-full px-2.5 py-1 text-[0.75em] font-bold" style={{ background: p.accent, color: p.accentForeground }}>
             خصم 20%

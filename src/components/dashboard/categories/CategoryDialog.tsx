@@ -46,7 +46,7 @@ export function CategoryDialog({
   });
 
   async function upload(file: File) {
-    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return void toast.error("اختر صورة JPG أو PNG أو WebP");
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return void toast.error("المطلوب صورة JPG أو PNG أو WebP");
     setUploading(true);
     const small = await imageCompression(file, { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: false }).catch(() => file);
     const res = await startUpload([new File([small], file.name, { type: small.type || file.type })]).catch(() => undefined);
@@ -85,7 +85,7 @@ export function CategoryDialog({
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-50"
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {category ? "احفظ" : "أضف القسم"}
+            {category ? "حفظ" : "إضافة القسم"}
           </button>
         </>
       }
@@ -134,7 +134,7 @@ export function CategoryDialog({
               <div className="flex flex-wrap gap-1.5">
                 <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/5 hover:text-ink disabled:opacity-50">
                   <ImagePlus className="size-4" aria-hidden="true" />
-                  {d.imageUrl ? "غيّر الصورة" : "ارفع صورة"}
+                  {d.imageUrl ? "تغيير الصورة" : "رفع صورة"}
                 </button>
                 {d.imageUrl ? (
                   <button type="button" onClick={() => setD({ ...d, imageUrl: null })} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-[12px] font-bold text-bad hover:bg-bad/10">

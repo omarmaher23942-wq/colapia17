@@ -137,7 +137,7 @@ export default function DashboardError({
           className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-xs font-black text-white shadow-lg shadow-nova/25 transition-all hover:shadow-xl hover:shadow-nova/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 focus-visible:ring-offset-2 focus-visible:ring-offset-space active:scale-[0.98]"
         >
           <RotateCcw className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-          أعد المحاولة
+          إعادة المحاولة
         </button>
 
         <Link

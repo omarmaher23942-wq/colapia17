@@ -170,7 +170,7 @@ export function CategoriesManager({ rows, subdomain }: { rows: CategoryRow[]; su
           <p className="max-w-md text-[12.5px] leading-6 text-ink-3">الأقسام تظهر في قائمة متجرك وفي الرئيسية، مثل «فساتين» و«أحذية» و«عروض». أنشئ قسماً ثم اختره من صفحة كل منتج.</p>
           <button type="button" onClick={() => setEditing("new")} className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md">
             <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-            أنشئ أول قسم
+            إنشاء أول قسم
           </button>
         </div>
       )}
@@ -197,7 +197,7 @@ export function CategoriesManager({ rows, subdomain }: { rows: CategoryRow[]; su
             ? `${arCount(deleting.products, NOUN.product)} في هذا القسم ستبقى في متجرك بلا قسم، وتنقلها لقسم آخر من صفحة المنتجات. ورابط القسم يتوقف.`
             : "القسم فارغ، ويتوقف رابطه في المتجر."
         }
-        confirmLabel="احذف القسم"
+        confirmLabel="حذف القسم"
         tone="danger"
         onConfirm={async () => {
           if (!deleting) return true;

@@ -11,7 +11,7 @@ import { ChangeRequests } from "@/components/dashboard/requests/ChangeRequests";
 import { CHANGE_AREAS, type ChangeArea } from "@/lib/change-requests";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "اطلب تعديل" };
+export const metadata = { title: "طلب تعديل" };
 
 export default async function RequestsPage({ searchParams }: { searchParams: Promise<{ area?: string }> }) {
   const session = await getMerchantSession();

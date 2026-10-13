@@ -145,7 +145,7 @@ export function DiscountsManager({ rows, subdomain, storeName }: { rows: Discoun
                   </button>
                   <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-ok/25 px-3 text-[12px] font-bold text-ok hover:bg-ok/10">
                     <MessageCircle className="size-4" aria-hidden="true" />
-                    شارك
+                    مشاركة
                   </a>
                   <span className="ms-auto flex gap-1.5">
                     <button type="button" onClick={() => setEditing(d)} aria-label={`تعديل ${d.code}`} title="تعديل" className="grid size-10 place-items-center rounded-xl border border-edge/10 text-ink-2 hover:bg-edge/5">
@@ -171,7 +171,7 @@ export function DiscountsManager({ rows, subdomain, storeName }: { rows: Discoun
           </p>
           <button type="button" onClick={() => setEditing("new")} className="mt-1 inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md">
             <Plus className="size-4" strokeWidth={2.5} aria-hidden="true" />
-            أنشئ أول كود
+            إنشاء أول كود
           </button>
         </div>
       )}
@@ -195,7 +195,7 @@ export function DiscountsManager({ rows, subdomain, storeName }: { rows: Discoun
             ? `يتوقف الكود فوراً. ${arCount(deleting.orders, NOUN.order)} استخدمته تبقى بخصمها كما هي. لإيقافه مؤقتاً استخدم المفتاح بدلاً من الحذف.`
             : "يتوقف الكود فوراً ولا يمكن استرجاعه."
         }
-        confirmLabel="احذف الكود"
+        confirmLabel="حذف الكود"
         tone="danger"
         onConfirm={async () => {
           if (!deleting) return true;

@@ -253,7 +253,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
         onClose={() => setBulk(null)}
         title={bulk ? `تغيير ${arCount(selected.size, NOUN.order)} إلى «${orderStatusLabel(bulk)}»` : ""}
         description="يُسجَّل التغيير في سجل كل طلب، ويصل كل عميل كتب بريده إشعار بالحالة الجديدة. الطلبات الملغاة أو المرتجعة لا تُعاد فتحاً إلا إن كفى المخزون."
-        confirmLabel="غيّر الحالة"
+        confirmLabel="تغيير الحالة"
         onConfirm={() => applyBulk(bulk!)}
       />
     </>

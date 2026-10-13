@@ -269,7 +269,7 @@ export function ProductsList({
         onClose={() => setDialog(null)}
         title={dialog?.kind === "delete" ? `حذف «${dialog.name}»` : ""}
         description="يختفي المنتج من المتجر ومن هذه القائمة. الطلبات القديمة التي فيه تبقى كما هي."
-        confirmLabel="احذف المنتج"
+        confirmLabel="حذف المنتج"
         tone="danger"
         onConfirm={async () => {
           if (dialog?.kind !== "delete") return false;
@@ -423,7 +423,7 @@ function CategoryDialog({
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-50"
           >
             {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            انقل
+            نقل
           </button>
         </>
       }

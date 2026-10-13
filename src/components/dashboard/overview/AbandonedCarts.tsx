@@ -110,7 +110,7 @@ export function AbandonedCarts({ storeName, rows, template, promos }: { storeNam
         </select>
         {promos.length === 0 ? (
           <a href="/dashboard/discounts" className="font-bold text-nova-2 hover:text-ink">
-            أنشئ كود خصم للاسترجاع
+            إنشاء كود خصم للاسترجاع
           </a>
         ) : null}
       </div>

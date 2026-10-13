@@ -63,7 +63,7 @@ export function PlatformHealthScore() {
           <Activity className="size-4.5 text-[#8fa8ff]" strokeWidth={SW} />
           <h2 className="text-sm font-black text-white">نبض المنصة الحي</h2>
         </div>
-        <button onClick={fetchHealth} disabled={loading} className="text-[#8d97c4] hover:text-white transition-colors disabled:opacity-50">
+        <button type="button" onClick={fetchHealth} disabled={loading} aria-label="تحديث الفحص" title="تحديث الفحص" className="text-[#8d97c4] hover:text-white transition-colors disabled:opacity-50">
           <RefreshCw className={cn("size-3.5", loading && "animate-spin")} strokeWidth={SW} />
         </button>
       </header>

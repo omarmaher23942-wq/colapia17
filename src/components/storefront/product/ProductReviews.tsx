@@ -94,7 +94,7 @@ export function ProductReviews({ reviews, avg: storedAvg, count: storedCount }: 
 
 function Stars({ value, small }: { value: number; small?: boolean }) {
   return (
-    <div className="flex" style={{ color: "var(--primary)" }} aria-label={`${value.toFixed(1)} من 5`}>
+    <div className="flex" style={{ color: "var(--primary)" }} role="img" aria-label={`${value.toFixed(1)} من 5`}>
       {Array.from({ length: 5 }).map((_, k) => (
         <Star key={k} strokeWidth={1.75} className={cn(small ? "size-3.5" : "size-5", k < Math.round(value) ? "fill-current" : "opacity-25")} />
       ))}

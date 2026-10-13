@@ -50,7 +50,7 @@ export function CustomerNotes({ id, initial }: { id: string; initial: string }) 
           className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-nova px-4 text-[12px] font-black text-white disabled:opacity-40"
         >
           {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}
-          {dirty ? "احفظ" : "محفوظة"}
+          {dirty ? "حفظ" : "محفوظة"}
         </button>
       </div>
     </div>
@@ -76,7 +76,7 @@ export function BlockCustomer({ id, name, blocked }: { id: string; name: string;
     return (
       <button type="button" onClick={() => void apply(false)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-ok/30 px-3.5 text-[12.5px] font-bold text-ok hover:bg-ok/10">
         <ShieldCheck className="size-4" aria-hidden="true" />
-        ارفع الحظر
+        رفع الحظر
       </button>
     );
 

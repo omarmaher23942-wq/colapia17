@@ -191,7 +191,7 @@ export function CampaignsPanel({
         onClose={() => setRemoving(null)}
         title={`حذف حملة «${removing?.name ?? ""}»؟`}
         description="الرابط سيفتح الرئيسية بعدها، وطلباتها السابقة تبقى في سجلها."
-        confirmLabel="احذف"
+        confirmLabel="حذف"
         tone="danger"
         onConfirm={remove}
       />

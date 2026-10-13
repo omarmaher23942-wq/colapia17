@@ -49,7 +49,7 @@ export function CodeHandoff({ active, requestedAt, ownedUrl }: { active: boolean
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-nova px-5 text-[13.5px] font-black text-white disabled:opacity-50"
           >
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-            {requestedAt ? "أرسل طلباً جديداً" : "اطلب النسخة"}
+            {requestedAt ? "إرسال طلب جديد" : "طلب النسخة"}
           </button>
         </section>
       ) : null}

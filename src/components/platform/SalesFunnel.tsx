@@ -23,7 +23,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
         </div>
         <nav aria-label="الفترة" className="inline-flex rounded-xl border border-white/10 p-1">
           {FUNNEL_RANGES.map((d) => (
-            <Link key={d} href={`/admin?range=${d}`} aria-current={d === range ? "page" : undefined} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${d === range ? "bg-[#6f86ff] text-white" : "text-[#8d97c4] hover:text-white"}`}>
+            <Link key={d} href={`/admin?range=${d}`} aria-current={d === range ? "page" : undefined} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${d === range ? "bg-[#6f86ff] text-[#07091a]" : "text-[#8d97c4] hover:text-white"}`}>
               {d} يوماً
             </Link>
           ))}

@@ -221,7 +221,7 @@ export default async function PlatformAdminLayout({
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11.5px] font-bold",
-                  active ? "bg-[#6f86ff] text-white" : "bg-white/5 text-[#c3cdf0]/80"
+                  active ? "bg-[#6f86ff] text-[#07091a]" : "bg-white/5 text-[#c3cdf0]/80"
                 )}
               >
                 {label}

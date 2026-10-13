@@ -109,7 +109,7 @@ export function ImagesProgress({ p }: { p: ImagesPhase }) {
           توقف النقل: {p.stopped}
           {p.needsKey ? (
             <Link href={INTEGRATIONS_NAV.href} className="ms-1 font-black underline">
-              أضف المفتاح
+              إضافة المفتاح
             </Link>
           ) : null}
         </p>
@@ -139,7 +139,7 @@ export function MoverDoneButtons({ mover, onDone }: { mover: ReturnType<typeof u
       {mover.canRetry ? (
         <button type="button" onClick={mover.retry} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-edge/10 px-4 text-[12.5px] font-bold text-ink-2 hover:bg-edge/5">
           <RotateCcw className="size-4" aria-hidden="true" />
-          أعد المحاولة
+          إعادة المحاولة
         </button>
       ) : null}
       <button type="button" onClick={onDone} className="inline-flex min-h-11 items-center rounded-xl bg-nova px-5 text-[12.5px] font-black text-white">
@@ -187,7 +187,7 @@ export function PendingImages({ count }: { count: number }) {
           className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-nova px-4 text-[12.5px] font-black text-white disabled:opacity-60"
         >
           {loading ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ImageUp className="size-4" aria-hidden="true" />}
-          انقل الصور الآن
+          نقل الصور الآن
         </button>
       </div>
       <DashDialog
@@ -198,7 +198,7 @@ export function PendingImages({ count }: { count: number }) {
         footer={
           mover.phase?.running ? (
             <button type="button" onClick={mover.stop} className="inline-flex min-h-11 items-center rounded-xl border border-edge/10 px-4 text-[12.5px] font-bold text-ink-2 hover:bg-edge/5">
-              أوقف بعد المنتج الحالي
+              إيقاف بعد المنتج الحالي
             </button>
           ) : (
             <MoverDoneButtons mover={mover} onDone={close} />

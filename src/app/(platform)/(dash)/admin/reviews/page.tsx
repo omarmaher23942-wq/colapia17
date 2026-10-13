@@ -116,7 +116,7 @@ export default async function AdminReviewsPage({
               className={cn(
                 "inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-xs font-bold transition-colors",
                 active
-                  ? "bg-[#6f86ff] text-white shadow"
+                  ? "bg-[#6f86ff] text-[#07091a] shadow"
                   : "text-[#c3cdf0] hover:bg-white/[0.04]"
               )}
             >

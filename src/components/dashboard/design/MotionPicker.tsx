@@ -6,7 +6,7 @@ import { Box, Clapperboard, Feather, Wand2, Zap, type LucideIcon } from "lucide-
 import { cn } from "@/lib/utils";
 
 const OPTIONS: { id: MotionStyle; title: string; sub: string; icon: typeof Feather }[] = [
-  { id: "auto", title: "اختر لي", sub: "يختارها المصمم حسب نشاطك", icon: Wand2 },
+  { id: "auto", title: "اختيار تلقائي", sub: "يختارها المصمم حسب نشاطك", icon: Wand2 },
   { id: "calm", title: "هادئ", sub: "ظهور ناعم ورصين", icon: Feather },
   { id: "lively", title: "حيوي", sub: "عناصر تتتابع وبطاقات تستجيب", icon: Zap },
   { id: "cinematic", title: "سينمائي", sub: "عناوين تتكشف، وواجهة بصور منتجاتك تدور (من 4 صور)", icon: Clapperboard },

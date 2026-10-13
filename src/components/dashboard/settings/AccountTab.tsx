@@ -68,7 +68,7 @@ function ProfileCard({ account }: { account: AccountInfo }) {
         <div className="flex justify-end sm:col-span-2">
           <button type="submit" disabled={pending} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-4 text-[12.5px] font-black text-white shadow-md disabled:opacity-60">
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-            احفظ بياناتك
+            حفظ بياناتك
           </button>
         </div>
       </form>
@@ -104,7 +104,7 @@ function Avatar({ account }: { account: AccountInfo }) {
       <div className="flex flex-wrap gap-2">
         <label className={cn("inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/[0.05] hover:text-ink", (busy || working) && "pointer-events-none opacity-60")}>
           {busy || working ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ImagePlus className="size-4" aria-hidden="true" />}
-          {url ? "غيّر الصورة" : "ارفع صورة"}
+          {url ? "تغيير الصورة" : "رفع صورة"}
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -179,7 +179,7 @@ function PasswordCard() {
         <Field label="الجديدة" hint="8 أحرف على الأقل">
           {(a) => <input {...a} type="password" autoComplete="new-password" dir="ltr" minLength={8} className={inputCls} value={next} onChange={(e) => setNext(e.target.value)} required />}
         </Field>
-        <Field label="أعد كتابتها" error={mismatch ? "غير متطابقة" : null}>
+        <Field label="إعادة كتابتها" error={mismatch ? "غير متطابقة" : null}>
           {(a) => <input {...a} type="password" autoComplete="new-password" dir="ltr" className={inputCls} value={again} onChange={(e) => setAgain(e.target.value)} required />}
         </Field>
         {error ? (
@@ -247,7 +247,7 @@ function DeleteStoreCard({ store }: { store: StoreInfo }) {
             </button>
             <button type="button" onClick={run} disabled={!matches || busy} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-bad px-4 text-[12.5px] font-black text-white disabled:opacity-40">
               {busy ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Trash2 className="size-4" aria-hidden="true" />}
-              احذف نهائياً
+              حذف نهائياً
             </button>
           </>
         }

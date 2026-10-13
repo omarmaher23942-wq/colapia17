@@ -69,7 +69,7 @@ export function SizeGuideEditor({ initial, categories, canEdit }: { initial: Siz
         <div data-savebar className="sticky bottom-3 z-10">
           <button type="button" onClick={save} disabled={!dirty || pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-nova to-nova-deep text-sm font-black text-white shadow-xl shadow-nova/30 transition disabled:opacity-50">
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-            {dirty ? "احفظ دليل المقاسات" : "محفوظ"}
+            {dirty ? "حفظ دليل المقاسات" : "محفوظ"}
           </button>
         </div>
       ) : null}
@@ -79,7 +79,7 @@ export function SizeGuideEditor({ initial, categories, canEdit }: { initial: Siz
         onClose={() => setRemoving(null)}
         title="حذف الجدول؟"
         description="يختفي من صفحات المنتجات بعد الحفظ."
-        confirmLabel="احذف"
+        confirmLabel="حذف"
         tone="danger"
         onConfirm={async () => {
           setCharts((all) => all.filter((x) => x.id !== removing));

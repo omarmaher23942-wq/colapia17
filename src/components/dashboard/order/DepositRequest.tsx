@@ -27,7 +27,7 @@ export function DepositRequest({
   return (
     <div className="mt-3 rounded-xl border border-edge/10 bg-edge/[0.03] p-3">
       <p className="flex items-center gap-1.5 text-[12.5px] font-black text-ink">
-        <HandCoins className="size-4 text-nova-2" aria-hidden="true" /> اطلب عربون قبل الشحن
+        <HandCoins className="size-4 text-nova-2" aria-hidden="true" /> طلب عربون قبل الشحن
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <label className="flex items-center gap-2 text-[12px] text-ink-3">

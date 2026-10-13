@@ -211,7 +211,7 @@ function FirstProduct() {
       <span className="grid size-14 place-items-center rounded-2xl bg-nova/12 text-nova-2">
         <PackageOpen className="size-7" strokeWidth={1.75} aria-hidden="true" />
       </span>
-      <p className="text-[15px] font-black text-ink">أضف أول منتج في متجرك</p>
+      <p className="text-[15px] font-black text-ink">إضافة أول منتج في متجرك</p>
       <p className="max-w-md text-[12.5px] leading-6 text-ink-3">
         اكتب الاسم والسعر والوصف وارفع الصور. وإن كانت منتجاتك في ملف Excel فاستوردها كلها مرة واحدة من «استيراد من ملف».
       </p>
@@ -256,7 +256,7 @@ function VisualMisses({ misses }: { misses: { at: string; seen: string }[] }) {
     <details className="dash-card group p-4">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-black text-ink">
         <span>عملاء دوّروا بالصورة على قطع مش عندك ({fmtNum(misses.length)})</span>
-        <span className="text-[11.5px] font-bold text-ink-3 group-open:hidden">اعرض</span>
+        <span className="text-[11.5px] font-bold text-ink-3 group-open:hidden">عرض</span>
       </summary>
       <ul className="mt-3 space-y-1.5 text-[12.5px] leading-6 text-ink-2">
         {recent.map((m, i) => (

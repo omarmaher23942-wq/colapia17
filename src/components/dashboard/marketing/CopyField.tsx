@@ -20,7 +20,7 @@ export function CopyField({ value, label }: { value: string; label?: string }) {
         className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-edge/10 px-3 text-[12.5px] font-bold text-ink-2 hover:bg-edge/5"
       >
         {done ? <Check className="size-4 text-ok" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
-        {done ? "نُسخ" : "انسخ"}
+        {done ? "نُسخ" : "نسخ"}
       </button>
     </div>
   );

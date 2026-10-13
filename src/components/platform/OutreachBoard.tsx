@@ -198,7 +198,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Chip({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
   return (
-    <button type="button" onClick={onClick} className={cn("shrink-0 rounded-full px-3 py-1.5 text-[11.5px] font-bold", on ? "bg-[#6f86ff] text-white" : "bg-white/5 text-[#c3cdf0] hover:bg-white/10")}>
+    <button type="button" onClick={onClick} className={cn("shrink-0 rounded-full px-3 py-1.5 text-[11.5px] font-bold", on ? "bg-[#6f86ff] text-[#07091a]" : "bg-white/5 text-[#c3cdf0] hover:bg-white/10")}>
       {label}
     </button>
   );

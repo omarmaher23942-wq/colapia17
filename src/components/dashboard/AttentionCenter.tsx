@@ -53,7 +53,7 @@ export function AttentionCenter() {
     };
   }, [open, markArrivalsSeen]);
 
-  const label = badge > 0 ? `ما يحتاج انتباهك، ${badge} بنود` : "ما يحتاج انتباهك";
+  const label = badge > 0 ? `ما يحتاج انتباهك ${badge > 9 ? "9+" : badge}` : "ما يحتاج انتباهك";
 
   return (
     <div ref={wrap} className="relative">
@@ -69,7 +69,7 @@ export function AttentionCenter() {
       >
         <Bell className="size-4" strokeWidth={2.25} aria-hidden="true" />
         {badge > 0 ? (
-          <span className="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-500 px-1 font-mono text-[9px] font-black leading-none text-white ring-2 ring-space tabular-nums">
+          <span className="absolute end-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-rose-700 px-1 font-mono text-[9px] font-black leading-none text-white ring-2 ring-space tabular-nums">
             {badge > 9 ? "9+" : badge}
           </span>
         ) : null}

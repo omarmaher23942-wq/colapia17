@@ -97,7 +97,7 @@ export function PagesPanel({ bp, onChange, storeBase }: { bp: StoreBlueprint; on
                 ) : (
                   <button type="button" onClick={() => put(slug, { title: DEFAULT_TITLE[slug], body: `## ${DEFAULT_TITLE[slug]}\n`, enabled: true })} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-nova px-4 text-[12px] font-black text-white">
                     <PenLine className="size-4" aria-hidden="true" />
-                    أنشئ الصفحة
+                    إنشاء الصفحة
                   </button>
                 )}
               </div>

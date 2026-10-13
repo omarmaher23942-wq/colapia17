@@ -96,7 +96,7 @@ export function DesignStudio({ storeUrl, current, previous }: { storeUrl: string
           <p className="mt-1 text-[13px] leading-6 text-ink-2">اطلب من فريقنا تعديل التصميم أو هوية جديدة لمتجرك، ونحتفظ بتصميمك الحالي لتستعيده متى أردت.</p>
         </div>
         <Link href="/dashboard/requests?area=design" className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-l from-nova to-aurora px-5 text-[13.5px] font-black text-white shadow-lg shadow-nova/30">
-          <Wand2 className="size-4" /> اطلب تعديل التصميم
+          <Wand2 className="size-4" /> طلب تعديل التصميم
         </Link>
       </section>
 

@@ -123,7 +123,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
             </Link>
           ))}
         {seesAll ? (
-          <Link href={qs({ who: onlyMine ? null : "mine" })} aria-pressed={onlyMine} className={cn("ms-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black", onlyMine ? "bg-emerald-400 text-[#07091a]" : "bg-white/5 text-[#c3cdf0]")}>
+          <Link href={qs({ who: onlyMine ? null : "mine" })} aria-current={onlyMine ? "page" : undefined} className={cn("ms-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black", onlyMine ? "bg-emerald-400 text-[#07091a]" : "bg-white/5 text-[#c3cdf0]")}>
             <UserRound className="size-3.5" aria-hidden="true" /> طلباتي فقط
           </Link>
         ) : null}

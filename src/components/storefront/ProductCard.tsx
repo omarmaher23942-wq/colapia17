@@ -63,7 +63,7 @@ export function ProductCard({ product: p, size = "md", priority = false }: { pro
   return (
     <>
       <article data-tilt className={cn("s-card group relative flex h-full flex-col overflow-hidden", overlay && "s-card-overlay")} data-out={out ? "1" : undefined}>
-        <Link href={href} className="s-media block" aria-label={p.name}>
+        <Link href={href} className="s-media block">
           {primary ? (
             <>
               <Image src={primary.url} alt={primary.alt ?? p.name} fill sizes={sizes} priority={priority} className="!static" />

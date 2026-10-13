@@ -22,7 +22,7 @@ export function ChangeRequests({ allowed, quota, rows, initialArea }: { allowed:
     <div className="space-y-5">
       <header>
         <h1 className="flex items-center gap-2 text-xl font-black text-ink">
-          <MessageSquarePlus className="size-5 text-nova-2" aria-hidden="true" /> اطلب تعديل
+          <MessageSquarePlus className="size-5 text-nova-2" aria-hidden="true" /> طلب تعديل
         </h1>
         <p className="mt-1 text-[13.5px] leading-7 text-ink-2">
           ما تقدر تعمله من لوحتك (منتج، سعر، صورة، نص) اعمله فوراً بنفسك. وما يحتاج فريقنا (تصميم، صفحة جديدة، تنظيم كبير) اطلبه هنا: {quota.perMonth} طلبات كل شهر ضمن اشتراكك.
@@ -60,7 +60,7 @@ export function ChangeRequests({ allowed, quota, rows, initialArea }: { allowed:
             className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-nova px-5 text-[13.5px] font-black text-white disabled:opacity-50"
           >
             {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
-            أرسل الطلب
+            إرسال الطلب
           </button>
         </section>
       ) : (

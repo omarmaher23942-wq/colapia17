@@ -40,7 +40,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const lostReasons = await db.select({ r: conversations.lostReason, c: sql<number>`count(*)`.mapWith(Number) }).from(conversations).where(eq(conversations.stage, "lost")).groupBy(conversations.lostReason).orderBy(desc(sql`count(*)`)).limit(5);
   
   const Pill = ({ k, l, cur, param, icon: Icon }: any) => (
-    <Link href={`?${param}=${k}&${param === "f" ? `sort=${sort}` : `f=${f}`}`} className={cn("inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors", cur === k ? "bg-[#6f86ff] text-white shadow-md" : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10")}>
+    <Link href={`?${param}=${k}&${param === "f" ? `sort=${sort}` : `f=${f}`}`} className={cn("inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors", cur === k ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10")}>
       {Icon && <Icon className="size-3.5" />} {l}
     </Link>
   );

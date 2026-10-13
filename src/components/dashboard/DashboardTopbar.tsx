@@ -147,7 +147,7 @@ export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl
           <button
             type="button"
             onClick={openCommandPalette}
-            aria-label="افتح البحث ولوحة الأوامر"
+            aria-label="فتح البحث ولوحة الأوامر"
             aria-keyshortcuts={isMac ? "Meta+K" : "Control+K"}
             className="me-1 hidden h-10 items-center gap-2 rounded-xl border border-edge/10 bg-edge/[0.03] px-3 text-[11.5px] font-bold text-ink-3 transition-colors hover:bg-edge/[0.06] hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova md:inline-flex"
           >

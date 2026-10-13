@@ -268,7 +268,7 @@ export function Footer({
                   style={{
                     background: "color-mix(in srgb, #16a34a 12%, transparent)",
                     borderColor: "color-mix(in srgb, #16a34a 30%, transparent)",
-                    color: "#15803d",
+                    color: "color-mix(in srgb, #16a34a 55%, var(--foreground))",
                   }}
                 >
                   <Banknote
@@ -285,7 +285,7 @@ export function Footer({
                   style={{
                     background: "color-mix(in srgb, #dc2626 12%, transparent)",
                     borderColor: "color-mix(in srgb, #dc2626 30%, transparent)",
-                    color: "#b91c1c",
+                    color: "color-mix(in srgb, #dc2626 55%, var(--foreground))",
                   }}
                 >
                   <Smartphone
@@ -302,7 +302,7 @@ export function Footer({
                   style={{
                     background: "color-mix(in srgb, #7c3aed 12%, transparent)",
                     borderColor: "color-mix(in srgb, #7c3aed 30%, transparent)",
-                    color: "#6d28d9",
+                    color: "color-mix(in srgb, #7c3aed 55%, var(--foreground))",
                   }}
                 >
                   <Wallet

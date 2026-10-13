@@ -294,7 +294,7 @@ export function EmptyStoreState({
             {pending
               ? "جاري تجهيز الاستمارة..."
               : isError
-                ? "أعد المحاولة الآن"
+                ? "إعادة المحاولة الآن"
                 : "ابدأ إنشاء متجري الآن"}
           </span>
           {pending ? (

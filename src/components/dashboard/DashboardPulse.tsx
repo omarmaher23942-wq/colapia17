@@ -158,7 +158,7 @@ export function DashboardPulse({
         toast.success(`طلب جديد من ${first.customerName}`, {
           description: `${formatEgp(first.totalPiasters)} · ${governorateName(first.governorate)} · ${first.code}`,
           duration: 10_000,
-          action: { label: "افتح الطلب", onClick: () => router.push(`/dashboard/orders/${first.id}`) },
+          action: { label: "فتح الطلب", onClick: () => router.push(`/dashboard/orders/${first.id}`) },
         });
       } else {
         toast.success(`وصلك ${arCount(fresh.length, NOUN.newOrder)}`, {

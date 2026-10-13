@@ -157,10 +157,10 @@ export function PayForm({
           })}
         </div>
 
-        <dl className="mt-3 divide-y divide-edge/10 rounded-xl border border-edge/10 bg-edge/[0.02]">
+        <div className="mt-3 divide-y divide-edge/10 rounded-xl border border-edge/10 bg-edge/[0.02]">
           <CopyRow label={method === "vodafone_cash" ? "التحويل إلى رقم المحفظة" : "التحويل إلى الرقم المربوط بإنستاباي"} display={prettyPhone(target)} value={target} />
           <CopyRow label="المبلغ بالضبط" display={`${fmtNum(price)} ج.م`} value={String(price)} />
-        </dl>
+        </div>
         <p className="mt-2 text-[11.5px] leading-5 text-ink-3">المبلغ كاملاً في تحويل واحد، ثم لقطة شاشة لنجاح التحويل.</p>
         {coupons ? (
           applied ? (
@@ -313,10 +313,10 @@ function CopyRow({ label, display, value }: { label: string; display: string; va
   return (
     <div className="flex items-center justify-between gap-3 px-3 py-2.5">
       <div className="min-w-0">
-        <dt className="text-[11.5px] text-ink-3">{label}</dt>
-        <dd dir="ltr" className="text-end text-[17px] font-black tabular-nums text-ink">
+        <p className="text-[11.5px] text-ink-3">{label}</p>
+        <p dir="ltr" className="text-end text-[17px] font-black tabular-nums text-ink">
           {display}
-        </dd>
+        </p>
       </div>
       <button
         type="button"
@@ -333,7 +333,7 @@ function CopyRow({ label, display, value }: { label: string; display: string; va
         className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/5"
       >
         {done ? <Check className="size-4 text-ok" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
-        {done ? "نُسخ" : "انسخ"}
+        {done ? "نُسخ" : "نسخ"}
       </button>
     </div>
   );

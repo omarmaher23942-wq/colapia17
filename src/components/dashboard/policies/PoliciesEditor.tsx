@@ -222,11 +222,11 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
           </div>
         </div>
         <a href={`${storeUrl}/pages/${page}`} target="_blank" rel="noopener" className="flex items-center justify-center gap-1.5 text-[12px] font-bold text-ink-3 hover:text-ink">
-          افتح الصفحة في متجرك <ExternalLink className="size-3.5" />
+          فتح الصفحة في متجرك <ExternalLink className="size-3.5" />
         </a>
         <button type="button" onClick={save} disabled={!dirty || pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-nova to-nova-deep text-sm font-black text-white shadow-xl shadow-nova/30 transition disabled:opacity-50">
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-          {dirty ? "احفظ السياسات" : "محفوظة"}
+          {dirty ? "حفظ السياسات" : "محفوظة"}
         </button>
       </aside>
     </div>

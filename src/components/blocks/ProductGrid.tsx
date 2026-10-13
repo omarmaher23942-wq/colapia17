@@ -145,7 +145,7 @@ function Spotlight({ product: p }: { product: GridProduct }) {
   return (
     <div className="s-card grid gap-6 overflow-hidden p-3 sm:p-4 md:grid-cols-2 md:gap-10 md:p-6">
       <div className="grid gap-2">
-        <Link href={href} className="s-media relative block !aspect-[4/5]" aria-label={p.name}>
+        <Link href={href} className="s-media relative block !aspect-[4/5]">
           {imgs[0] ? <Image src={imgs[0].url} alt={imgs[0].alt ?? p.name} fill sizes="(max-width: 768px) 100vw, 50vw" priority className="!static" /> : <ShoppingBag className="m-auto size-12 opacity-30" />}
         </Link>
         {imgs.length > 1 ? (

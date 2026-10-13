@@ -133,7 +133,7 @@ export function VariantMatrix({
                   maxLength={30}
                   className="h-10 w-40 rounded-xl border border-edge/10 bg-edge/[0.03] px-3 text-[12.5px] font-black text-ink outline-none focus:border-nova/60"
                 />
-                <span className="text-[11px] text-ink-3">{o.values.length ? `${fmtNum(o.values.length)} ${o.values.length === 1 ? "قيمة" : o.values.length === 2 ? "قيمتان" : o.values.length <= 10 ? "قيم" : "قيمة"}` : "أضف القيم"}</span>
+                <span className="text-[11px] text-ink-3">{o.values.length ? `${fmtNum(o.values.length)} ${o.values.length === 1 ? "قيمة" : o.values.length === 2 ? "قيمتان" : o.values.length <= 10 ? "قيم" : "قيمة"}` : "إضافة القيم"}</span>
                 <button
                   type="button"
                   onClick={() => apply(options.filter((_, i) => i !== oi))}

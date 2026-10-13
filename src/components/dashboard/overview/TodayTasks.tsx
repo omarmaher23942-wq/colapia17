@@ -100,7 +100,7 @@ export function TodayTasks({ extras, asks: initialAsks, asksTotal, canMessage }:
       {shownAsks.length ? (
         <div className="dash-card space-y-2 p-4">
           <p className="flex items-center gap-2 text-[13px] font-black text-ink">
-            <Star className="size-4 text-warn" aria-hidden="true" /> اطلب تقييماً ممن استلموا
+            <Star className="size-4 text-warn" aria-hidden="true" /> طلب تقييم ممن استلموا
             <span className="rounded-full bg-warn/12 px-2 py-0.5 text-[11px] text-warn">{arCount(remainingAsks, NOUN.customer)}</span>
           </p>
           <p className="text-[12px] leading-5 text-ink-3">التقييمات الحقيقية ترفع ثقة الزائر الجديد. الرسالة جاهزة برابط التقييم الخاص بطلب كل عميل.</p>

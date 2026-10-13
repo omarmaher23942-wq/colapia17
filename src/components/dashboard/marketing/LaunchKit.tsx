@@ -170,7 +170,7 @@ function CopyBlock({ title, text }: { title: string; text: string }) {
           className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-edge/10 px-2.5 text-[12px] font-bold text-ink-2 hover:bg-edge/5"
         >
           {done ? <Check className="size-3.5 text-ok" aria-hidden="true" /> : <Copy className="size-3.5" aria-hidden="true" />}
-          {done ? "نُسخ" : "انسخ"}
+          {done ? "نُسخ" : "نسخ"}
         </button>
       </div>
       <p className="whitespace-pre-line text-[13px] leading-7 text-ink-2">{text}</p>

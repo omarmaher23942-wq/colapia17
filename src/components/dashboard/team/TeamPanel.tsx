@@ -16,7 +16,7 @@ type Activity = { id: string; who: string; action: string; target: string | null
 
 const input = "h-11 w-full rounded-xl border border-edge/10 bg-edge/[0.03] px-3 text-[14px] text-ink outline-none focus:border-nova";
 const GRANTABLE = STORE_AREAS.filter((a) => a !== "team" && a !== "billing");
-const ACTIONS: Record<string, string> = { "member.invited": "دعا", "member.updated": "غيّر صلاحيات", "member.removed": "أزال" };
+const ACTIONS: Record<string, string> = { "member.invited": "دعا", "member.updated": "غيّر الصلاحيات", "member.removed": "أزال" };
 const when = (iso: string) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(new Date(iso));
 
 function PermsMatrix({ value, onChange }: { value: Partial<Record<StoreArea, AccessLevel>>; onChange: (v: Partial<Record<StoreArea, AccessLevel>>) => void }) {
@@ -83,7 +83,7 @@ export function TeamPanel({ storeName, members, activity }: { storeName: string;
 
       <section className="dash-card space-y-4 p-4 sm:p-5">
         <h2 className="flex items-center gap-2 text-[14px] font-black text-ink">
-          <UserPlus className="size-4" aria-hidden="true" /> ادعُ عضواً
+          <UserPlus className="size-4" aria-hidden="true" /> دعوة عضو
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block text-[12.5px] font-bold text-ink-3">
@@ -100,7 +100,7 @@ export function TeamPanel({ storeName, members, activity }: { storeName: string;
         {role === "custom" ? <PermsMatrix value={custom} onChange={setCustom} /> : null}
         <button type="button" onClick={invite} disabled={pending || !email.trim()} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-nova px-5 text-[13.5px] font-black text-white disabled:opacity-50">
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <UserPlus className="size-4" aria-hidden="true" />}
-          أرسل الدعوة
+          إرسال الدعوة
         </button>
       </section>
 
@@ -161,7 +161,7 @@ export function TeamPanel({ storeName, members, activity }: { storeName: string;
                     }
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-nova px-4 text-[13px] font-black text-white disabled:opacity-50"
                   >
-                    احفظ
+                    حفظ
                   </button>
                 </div>
               ) : null}

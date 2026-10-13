@@ -75,13 +75,13 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
         </div>
 
         <div className="flex items-center gap-2 bg-[#0b0f2a] p-1.5 rounded-xl border border-white/10">
-          <Link href="?view=pending" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "pending" ? "bg-[#6f86ff] text-white shadow-md" : "text-slate-400 hover:text-white")}>
+          <Link href="?view=pending" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "pending" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
             بانتظار المراجعة ({rows.filter((r) => r.pStatus === "under_review").length})
           </Link>
-          <Link href="?view=auto" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "auto" ? "bg-[#6f86ff] text-white shadow-md" : "text-slate-400 hover:text-white")}>
+          <Link href="?view=auto" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "auto" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
             قُبلت آلياً (قديماً)
           </Link>
-          <Link href="?view=all" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "all" ? "bg-[#6f86ff] text-white shadow-md" : "text-slate-400 hover:text-white")}>
+          <Link href="?view=all" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "all" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
             سجل التحويلات
           </Link>
         </div>

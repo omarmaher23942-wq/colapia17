@@ -125,7 +125,7 @@ export function ManualOrderForm({ catalog }: { catalog: PickProduct[] }) {
 
   const save = () => {
     setError(null);
-    if (!lines.length) return setError({ msg: "أضف منتجاً واحداً على الأقل", field: "items" });
+    if (!lines.length) return setError({ msg: "المطلوب منتج واحد على الأقل", field: "items" });
     const ship = shipManual ? pounds(shipText) : undefined;
     if (shipManual && ship === null) return setError({ msg: "اكتب سعر الشحن (0 للشحن المجاني)", field: "shipping" });
     startSave(async () => {

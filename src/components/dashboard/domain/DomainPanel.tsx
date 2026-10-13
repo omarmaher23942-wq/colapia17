@@ -63,7 +63,7 @@ export function DomainPanel(p: Props) {
             {p.canEdit ? (
               <button type="button" disabled={pending || !value.trim() || value.trim().toLowerCase() === p.domain} onClick={() => run(() => setCustomDomainAction(value), "حُفظ النطاق. أضف السجلات أدناه")} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-nova px-4 text-[13.5px] font-black text-white disabled:opacity-50">
                 {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-                {p.domain ? "غيّر النطاق" : "اربط النطاق"}
+                {p.domain ? "تغيير النطاق" : "ربط النطاق"}
               </button>
             ) : null}
           </div>

@@ -162,7 +162,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
               className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-edge/15 p-3 text-center transition-colors hover:border-nova/50 hover:bg-nova/[0.04] disabled:opacity-60"
             >
               <ImagePlus className="size-6 text-nova-2" strokeWidth={1.75} aria-hidden="true" />
-              <span className="text-[12.5px] font-black text-ink">{value.length ? "أضف صوراً" : "ارفع صور المنتج"}</span>
+              <span className="text-[12.5px] font-black text-ink">{value.length ? "إضافة صور" : "رفع صور المنتج"}</span>
               <span className="hidden text-[11px] text-ink-3 sm:block">أو اسحبها إلى هنا</span>
             </button>
           </li>

@@ -215,7 +215,7 @@ export function SettingsPage({ initialTab, store, settings, account }: { initial
               </button>
               <button type="button" onClick={() => void save()} disabled={saving} title="Ctrl+S" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-60">
                 {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-                احفظ
+                حفظ
               </button>
             </div>
           </div>

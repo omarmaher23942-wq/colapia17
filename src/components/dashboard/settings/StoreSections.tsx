@@ -58,15 +58,15 @@ export function ShareCard({ store }: { store: StoreInfo }) {
           <div className="flex flex-wrap gap-2">
             <Btn onClick={copy}>
               {copied ? <Check className="size-4 text-ok" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
-              انسخ الرابط
+              نسخ الرابط
             </Btn>
             <Btn onClick={share}>
               <Share2 className="size-4" aria-hidden="true" />
-              شارك
+              مشاركة
             </Btn>
             <a href={store.qr} download={`${store.subdomain}-qr.png`} className={btnCls}>
               <Download className="size-4" aria-hidden="true" />
-              نزّل الكود
+              تنزيل الكود
             </a>
             <Btn onClick={print}>
               <Printer className="size-4" aria-hidden="true" />
@@ -159,7 +159,7 @@ export function PaymentsSection({ d, patch, errors }: Props) {
 
       {transfers ? (
         <Section title="التحويلات" hint="للدفع بفودافون كاش أو إنستاباي">
-          <Switch label="اطلب صورة التحويل" hint="لا يُرسَل الطلب حتى يرفع العميل صورة إيصال التحويل، فتراجعها من صفحة الطلب" checked={d.requireTransferProof} onChange={(v) => patch({ requireTransferProof: v })} />
+          <Switch label="طلب صورة التحويل" hint="لا يُرسَل الطلب حتى يرفع العميل صورة إيصال التحويل، فتراجعها من صفحة الطلب" checked={d.requireTransferProof} onChange={(v) => patch({ requireTransferProof: v })} />
           <Field id="set-transferInstructions" label="تعليمات التحويل" optional hint="تظهر للعميل في صفحة طلبه بعد إرساله" error={errors.transferInstructions} count={d.transferInstructions.length} max={SETTINGS_LIMITS.instructions}>
             {(a) => <textarea {...a} dir="auto" rows={3} maxLength={SETTINGS_LIMITS.instructions} className={cn(inputCls, "py-2.5 font-normal leading-7")} placeholder="مثال: اكتب رقم الطلب في ملاحظة التحويل" value={d.transferInstructions} onChange={(e) => patch({ transferInstructions: e.target.value }, ["transferInstructions"])} />}
           </Field>

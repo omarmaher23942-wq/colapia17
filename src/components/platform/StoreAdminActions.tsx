@@ -122,7 +122,7 @@ export function StoreAdminActions({
           <Globe className="size-4 text-slate-400 shrink-0" />
           <input value={domain} onChange={(e) => setDomain(e.target.value.toLowerCase())} dir="ltr" className="w-full bg-transparent font-mono text-xs text-white outline-none" placeholder="customdomain.com" />
           {domain !== (s.customDomain || "") && (
-            <button disabled={p} onClick={() => go(() => bindCustomDomainAction(s.id, domain), "تم ربط الدومين")} className="bg-[#6f86ff] text-white px-2 py-1 rounded text-[10px] font-bold shrink-0">ربط DNS</button>
+            <button disabled={p} onClick={() => go(() => bindCustomDomainAction(s.id, domain), "تم ربط الدومين")} className="bg-[#6f86ff] text-[#07091a] px-2 py-1 rounded text-[10px] font-bold shrink-0">ربط DNS</button>
           )}
         </div>
       </div>

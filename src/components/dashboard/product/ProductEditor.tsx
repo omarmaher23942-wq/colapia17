@@ -189,7 +189,7 @@ export function ProductEditor({
   };
 
   async function duplicate() {
-    if (dirty) return void toast.error("احفظ تعديلاتك أولاً ثم انسخ المنتج");
+    if (dirty) return void toast.error("المطلوب حفظ التعديلات أولاً، ثم نسخ المنتج");
     setBusy("duplicate");
     const r = await duplicateProductAction(f.id!);
     setBusy(null);
@@ -284,7 +284,7 @@ export function ProductEditor({
               className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md transition-shadow hover:shadow-lg disabled:opacity-50"
             >
               {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-              {isNew ? "أضف المنتج" : dirty ? "احفظ" : "محفوظ"}
+              {isNew ? "إضافة المنتج" : dirty ? "حفظ" : "محفوظ"}
             </button>
           </div>
         </div>
@@ -533,7 +533,7 @@ export function ProductEditor({
               ) : null}
               <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-60">
                 {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-                {isNew ? "أضف المنتج" : "احفظ"}
+                {isNew ? "إضافة المنتج" : "حفظ"}
               </button>
             </div>
           </div>
@@ -545,7 +545,7 @@ export function ProductEditor({
         onClose={() => setDialog(null)}
         title={`حذف «${f.name}»؟`}
         description="يختفي من متجرك ومن القوائم فوراً. الطلبات السابقة تبقى كما هي بأسمائها وأسعارها."
-        confirmLabel="احذف المنتج"
+        confirmLabel="حذف المنتج"
         tone="danger"
         onConfirm={remove}
       />

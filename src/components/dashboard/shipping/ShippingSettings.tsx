@@ -216,7 +216,7 @@ export function ShippingSettings({ initial }: { initial: ShippingState }) {
               </button>
               <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[12.5px] font-black text-white shadow-md disabled:opacity-60">
                 {saving ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Save className="size-4" aria-hidden="true" />}
-                احفظ
+                حفظ
               </button>
             </div>
           </div>
@@ -304,10 +304,10 @@ function GroupTools({ mode, onApply }: { mode: ShippingState["mode"]; onApply: (
         </span>
       ) : null}
       <button type="button" onClick={() => onApply({ isActive: true })} className="min-h-9 rounded-lg px-2.5 font-bold text-ink-2 hover:bg-edge/5">
-        فعّل الكل
+        تفعيل الكل
       </button>
       <button type="button" onClick={() => onApply({ isActive: false })} className="min-h-9 rounded-lg px-2.5 font-bold text-ink-3 hover:bg-edge/5">
-        أوقف الكل
+        إيقاف الكل
       </button>
     </div>
   );

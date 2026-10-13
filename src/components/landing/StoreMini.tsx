@@ -119,7 +119,7 @@ export function StoreMini({ s, animate = true, className }: { s: MiniStore; anim
   } as CSSProperties;
   const words = s.headline.split(" ");
   return (
-    <div className={`mini-store flex h-full flex-col overflow-hidden ${animate ? "mini-animate" : ""} ${className ?? ""}`} style={vars} dir="rtl">
+    <div aria-hidden="true" className={`mini-store flex h-full flex-col overflow-hidden ${animate ? "mini-animate" : ""} ${className ?? ""}`} style={vars} dir="rtl">
       <div className="flex items-center justify-between px-3.5 py-2.5" style={{ borderBottom: `1px solid color-mix(in srgb, ${s.fg} 10%, transparent)` }}>
         <span className="text-[13px] font-black" style={{ color: s.primary }}>
           {s.name}
