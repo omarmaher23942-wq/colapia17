@@ -20,10 +20,23 @@ type Method = "vodafone_cash" | "instapay";
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
 /** `coupons`: يظهر حقل «كود عرض» (للباقة الأولى فقط، لا للتجديد). */
-export function PayForm({ price: basePrice, vodafone, instapay, coupons = false }: { price: number; vodafone: string; instapay: string; coupons?: boolean }) {
+export function PayForm({
+  price: basePrice,
+  vodafone,
+  instapay,
+  coupons = false,
+  suggestCoupon,
+}: {
+  price: number;
+  vodafone: string;
+  instapay: string;
+  coupons?: boolean;
+  /** كود الدائرة الذهبية لتاجر جاء من استمارتها: الخانة مفتوحة ومملوءة. */
+  suggestCoupon?: string;
+}) {
   const router = useRouter();
-  const [couponOpen, setCouponOpen] = useState(false);
-  const [couponInput, setCouponInput] = useState("");
+  const [couponOpen, setCouponOpen] = useState(Boolean(suggestCoupon));
+  const [couponInput, setCouponInput] = useState(suggestCoupon ?? "");
   const [couponError, setCouponError] = useState("");
   const [checking, setChecking] = useState(false);
   const [applied, setApplied] = useState<{ code: string; price: number } | null>(null);

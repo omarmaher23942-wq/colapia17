@@ -250,13 +250,13 @@ export async function handleInbound(
 
   if (shouldSendLink) {
     try {
-      const issued = await linkFor(conv, channel, { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp });
+      const issued = await linkFor(conv, channel, { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp, ...(outreach ? { offer: "golden" as const } : {}) });
       if (!issued) {
         await handoffToHuman(channel, senderId, conv, "طلب سابق مغلق لنفس المحادثة");
         await metaApi.typing(channel, senderId, false);
         return;
       }
-      const buttonTitle = issued.kind === "follow" ? "تابع متجرك" : turn.buttonTitle || "ابدأ استمارة متجرك";
+      const buttonTitle = issued.kind === "follow" ? "تابع متجرك" : outreach ? "افتح الفورم" : turn.buttonTitle || "ابدأ استمارة متجرك";
 
       let replyText = issued.kind === "follow" ? `${turn.reply}\n\nاستمارتك وصلتنا، وتقدر تتابع متجرك من هنا:` : turn.reply;
 

@@ -59,7 +59,14 @@ export const intakeDataSchema = z.object({
   inspiration: z.object({ url: text(300), team: z.boolean().default(false) }).default({}),
   voice: z.object({ key, transcript: text(4000) }).default({}),
   notes: text(2000),
+  /** «الدائرة الذهبية» (PLAN 14): استمارة مصغّرة (البراند، التواصل، 5–6 منتجات، والموافقة على فيديو الإطلاق). */
+  offer: z.enum(["golden"]).optional(),
+  golden: z.object({ videoConsent: z.boolean().default(false) }).default({}),
 });
+
+/** أقل وأنسب عدد منتجات في استمارة الدائرة الذهبية. */
+export const GOLDEN_MIN_PRODUCTS = 3;
+export const GOLDEN_SUGGESTED_PRODUCTS = 6;
 
 export type IntakeData = z.infer<typeof intakeDataSchema>;
 export type IntakeProductLine = IntakeData["products"]["items"][number];
@@ -152,7 +159,7 @@ export function normalizeIntake(d: IntakeData): IntakeData {
 
 // ─── التحقق عند الإرسال ─────────────────────────────────────────────────────
 
-export type IntakeErrors = Partial<Record<"store.name" | "contact.whatsapp" | "contact.email" | "social.url" | "inspiration.url" | "colors.mode", string>>;
+export type IntakeErrors = Partial<Record<"store.name" | "contact.whatsapp" | "contact.email" | "social.url" | "inspiration.url" | "colors.mode" | "products" | "golden.video", string>>;
 
 /** شروط الإرسال (نفسها في المتصفح والخادم). */
 export function validateSubmission(d: IntakeData): IntakeErrors {
@@ -174,6 +181,13 @@ export function validateSubmission(d: IntakeData): IntakeErrors {
   if (insp && !safeUrl(insp)) e["inspiration.url"] = "اكتب رابط الموقع كاملاً (مثال: example.com).";
 
   if (d.colors.mode === "logo" && !d.logo.key && !d.logo.team) e["colors.mode"] = "ارفع الشعار عشان ناخد الألوان منه، أو اختر طريقة تانية.";
+
+  // الدائرة الذهبية: منتجات حقيقية بصورها وأسطرها (لا بيانات وهمية)، والموافقة على فيديو الإطلاق جزء من العرض.
+  if (d.offer === "golden") {
+    const real = d.products.items.filter((p) => p.key && clean(p.line)).length;
+    if (real < GOLDEN_MIN_PRODUCTS) e.products = `ابعت ${GOLDEN_MIN_PRODUCTS} منتجات على الأقل، كل منتج بصورته واسمه وسعره (الأفضل ${GOLDEN_SUGGESTED_PRODUCTS}).`;
+    if (!d.golden.videoConsent) e["golden.video"] = "وافق على فيديو الإطلاق القصير، هو جزء من عرض الدائرة الذهبية.";
+  }
   return e;
 }
 
@@ -190,6 +204,17 @@ export function referencedKeys(d: IntakeData): { images: string[]; logo: string 
 
 /** نسبة الأسئلة المُجابة أو المتروكة للفريق (0..1). لا تمنع الإرسال: المطلوب الاسم ووسيلة التواصل فقط. */
 export function completion(d: IntakeData): number {
+  if (d.offer === "golden") {
+    const real = d.products.items.filter((p) => p.key && clean(p.line)).length;
+    const steps = [
+      Boolean(clean(d.store.name)),
+      Boolean(clean(d.contact.whatsapp) || clean(d.contact.email)),
+      Boolean(clean(d.social.url)),
+      Math.min(1, real / GOLDEN_SUGGESTED_PRODUCTS),
+      d.golden.videoConsent,
+    ].map(Number);
+    return steps.reduce((a, b) => a + b, 0) / steps.length;
+  }
   const answered = [
     Boolean(clean(d.store.name)),
     Boolean(clean(d.contact.whatsapp) || clean(d.contact.email)),

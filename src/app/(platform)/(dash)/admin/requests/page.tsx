@@ -148,7 +148,10 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
                 <Link key={r.id} href={`/admin/requests/${r.id}`} className="block rounded-2xl border border-white/10 bg-[#0e1424] p-3 transition hover:border-[#8fa8ff]/40">
                   <div className="flex items-start justify-between gap-2">
                     <p className="min-w-0 truncate text-sm font-black text-white">{r.storeName || "بلا اسم"}</p>
-                    {!r.seenAt ? <span className="shrink-0 rounded-full bg-[#6f86ff] px-2 py-0.5 text-[10px] font-black text-[#07091a]">جديد</span> : null}
+                    <span className="flex shrink-0 gap-1">
+                      {(r.data as { offer?: string } | null)?.offer === "golden" ? <span className="rounded-full bg-amber-300/20 px-2 py-0.5 text-[10px] font-black text-amber-200">الدائرة الذهبية</span> : null}
+                      {!r.seenAt ? <span className="rounded-full bg-[#6f86ff] px-2 py-0.5 text-[10px] font-black text-[#07091a]">جديد</span> : null}
+                    </span>
                   </div>
                   <p className="mt-1 font-mono text-[11px] text-[#8d97c4]">
                     {r.code} · {r.submittedAt ? ago(r.submittedAt, now) : ""}

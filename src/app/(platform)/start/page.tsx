@@ -26,7 +26,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const d = typeof sp.d === "string" ? sp.d : null;
 
-  let initial: { token: string | null; version: number; data: IntakeData } = { token: null, version: 0, data: emptyIntake() };
+  // رابط الدائرة الذهبية العام (/start?offer=golden) يفتح الاستمارة المصغّرة من أول حرف.
+  const golden = sp.offer === "golden";
+  let initial: { token: string | null; version: number; data: IntakeData } = { token: null, version: 0, data: golden ? { ...emptyIntake(), offer: "golden" } : emptyIntake() };
   let urls: Record<string, string> = {};
   let eta = etaText(estimateEta(0));
   let closedMessage: string | null = null;

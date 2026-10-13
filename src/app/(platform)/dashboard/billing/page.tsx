@@ -11,7 +11,7 @@ import { desc, eq } from "drizzle-orm";
 import { AlertTriangle, ArrowLeft, CalendarCheck, Check, CheckCircle2, Clock, ExternalLink, Hourglass, Lock, PauseCircle, Receipt, RefreshCw, Snowflake, XCircle } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
-import { platformPayments } from "@/db/schema";
+import { platformPayments, storeRequests } from "@/db/schema";
 import { env } from "@/lib/env";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
@@ -72,6 +72,14 @@ export default async function BillingPage() {
   const now = Date.now();
   const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now));
   const current = await currentPricing();
+  // تاجر جاء من «الدائرة الذهبية» (استمارتها المصغّرة): خانة الكود تظهر مملوءة بكود العرض.
+  const [req] = await db
+    .select({ data: storeRequests.data })
+    .from(storeRequests)
+    .where(eq(storeRequests.storeId, store.id))
+    .limit(1)
+    .catch(() => []);
+  const suggestCoupon = (req?.data as { offer?: string } | null)?.offer === "golden" ? current.ladder.golden.code : undefined;
   // سعر هذا المتجر مثبَّت عند تسليمه؛ «قبل الخصم» والتجديد من السلّم.
   const pricing = { price: store.priceLockedEgp ?? current.price, basePrice: current.basePrice, renewal: current.renewal };
 
@@ -90,7 +98,7 @@ export default async function BillingPage() {
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
           <div className="space-y-4">
             <PhaseBanner stage={stage} now={now} />
-            <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} coupons />
+            <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} coupons suggestCoupon={suggestCoupon} />
           </div>
           <Offer price={pricing.price} basePrice={pricing.basePrice} renewal={pricing.renewal} />
         </div>

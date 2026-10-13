@@ -14,7 +14,7 @@ import { emptyIntake, normalizeIntake, socialUrl, type IntakeData } from "./sche
 import { derivedToken } from "./tokens";
 import type { RequestSource } from "@/db/schema/agency";
 
-export type IntakePrefill = { storeName?: string | null; whatsapp?: string | null; social?: string | null; oneLine?: string | null };
+export type IntakePrefill = { storeName?: string | null; whatsapp?: string | null; social?: string | null; oneLine?: string | null; offer?: "golden" };
 
 export const intakeUrl = (draftToken: string) => `${clientEnv.NEXT_PUBLIC_APP_URL}/start?d=${draftToken}`;
 
@@ -31,6 +31,8 @@ export function applyPrefill(d: IntakeData, p: IntakePrefill): IntakeData {
     store: { name: d.store.name || txt(p.storeName, 60), oneLine: d.store.oneLine || txt(p.oneLine, 200) },
     contact: { ...d.contact, whatsapp: d.contact.whatsapp || wa || undefined },
     social: { ...d.social, url: d.social.url || social || undefined },
+    // محادثة الدائرة الذهبية تفتح الاستمارة المصغّرة (لا تُلغى إن كانت مفعّلة).
+    offer: d.offer ?? p.offer,
   };
 }
 
