@@ -40,6 +40,7 @@ export const MODELS = {
   geminiLite: "gemini-3.5-flash-lite",
   // نموذج يقرأ الصور على Groq (البحث بالصورة في المتجر). يُغيَّر بـ GROQ_VISION_MODEL إن أوقفته Groq.
   groqVision: clean(process.env.GROQ_VISION_MODEL, "meta-llama/llama-4-scout-17b-16e-instruct"),
+  groqVisionAlt: "meta-llama/llama-4-maverick-17b-128e-instruct",
   claude: clean(env.CLAUDE_MODEL, "claude-3-5-sonnet-20241022"),
   opus: clean(env.CLAUDE_OPUS_MODEL, "claude-3-opus-20240229"),
 } as const;
@@ -100,7 +101,9 @@ const DEFAULT_CHAINS: Record<Tier, Link[]> = {
   // البحث بالصورة: Groq أولاً (أسرع وأرخص)، وGemini احتياطاً.
   visionFast: dedupe([
     L("groq", MODELS.groqVision),
+    L("groq", MODELS.groqVisionAlt),
     L("google", MODELS.gemini),
+    L("google", MODELS.geminiLite),
   ]),
 };
 
@@ -119,7 +122,12 @@ export function estimateTokens(text: string): number {
   return Math.ceil(ascii / 3.8 + other / 2.4) + 8;
 }
 
-const msgText = (m: ModelMessage) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content));
+// نص الرسالة لتقدير حجم الطلب: الصور والملفات تُحسب بحجم ثابت تقريبي (لا تُحوَّل بايتاتها لنص فيتضخم التقدير بالملايين).
+const IMAGE_TOKENS_TEXT = "x".repeat(3_000);
+const msgText = (m: ModelMessage) =>
+  typeof m.content === "string"
+    ? m.content
+    : (m.content as { type: string; text?: string }[]).map((p) => (p.type === "text" ? p.text ?? "" : p.type === "image" || p.type === "file" ? IMAGE_TOKENS_TEXT : JSON.stringify(p))).join("\n");
 const requestTokens = (system?: string, prompt?: string, messages?: ModelMessage[], extra = "") =>
   estimateTokens((system ?? "") + (prompt ?? "") + (messages ?? []).map(msgText).join("\n") + extra);
 const fits = (l: Link, need: number) => need <= l.cap * 0.92;

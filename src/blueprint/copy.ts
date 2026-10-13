@@ -1,18 +1,18 @@
 // copy.ts — نصوص أزرار وعناوين الواجهة بصوت كل متجر.
-// يكتبها الذكاء الاصطناعي في bp.copy؛ وما لم يكتبه يأخذ صياغة وظيفية قصيرة ومحايدة،
+// يكتبها فريق البناء في bp.copy؛ وما لم يُكتب يأخذ صياغة وظيفية قصيرة ومحايدة (مصدر لا فعل أمر مذكر أو مؤنث، فتخاطب أي عميل)،
 // فلا يظهر أبداً زر بلا نص، ولا عبارة ترحيب عامة لا تخص المتجر.
 import type { StoreCopy } from "./schema";
 
 export const COPY_FALLBACK: Required<StoreCopy> = {
-  addToCart: "أضف للسلة",
-  buyNow: "اشترِ الآن",
+  addToCart: "إضافة للسلة",
+  buyNow: "شراء الآن",
   soldOut: "نفدت الكمية",
   viewAll: "عرض الكل",
   cartTitle: "سلة المشتريات",
   emptyCart: "سلتك فارغة حتى الآن.",
-  continueShopping: "تابع التسوق",
+  continueShopping: "متابعة التسوق",
   checkout: "إتمام الطلب",
-  searchPlaceholder: "ابحث عن منتج",
+  searchPlaceholder: "البحث عن منتج",
   newBadge: "جديد",
   saleBadge: "خصم",
   bestSellerBadge: "الأكثر طلباً",
@@ -20,7 +20,7 @@ export const COPY_FALLBACK: Required<StoreCopy> = {
   freeShippingGap: "باقي {amount} على الشحن المجاني",
   freeShippingReached: "طلبك شحنه مجاني",
   orderSuccessTitle: "تم استلام طلبك",
-  trackOrder: "تتبع طلبك",
+  trackOrder: "تتبع الطلب",
   menu: "القائمة",
   allProducts: "كل المنتجات",
 };

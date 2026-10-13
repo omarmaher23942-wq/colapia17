@@ -1,6 +1,6 @@
 "use client";
 
-// VisualSearch — «دوّري بالصورة»: زر كاميرا في رأس المتجر يفتح نافذة: العميلة تختار سكرين شوت (أو تلصقه)، تُضغط
+// VisualSearch — «البحث بالصورة»: زر كاميرا في رأس المتجر يفتح نافذة: الزائر يختار سكرين شوت (أو يلصقه)، تُضغط
 // الصورة في المتصفح وتُرسل لـ /api/storefront/visual-search، فتظهر القطعة نفسها بسعرها، أو «قريبة منها»، أو رسالة
 // صادقة بزر واتساب للمتجر. أي مكان آخر (صفحة البحث) يفتحها بحدث window «clp:visual-search».
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -47,26 +47,26 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
 
   const search = useCallback(async (f: File | null | undefined) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) return setState({ phase: "error", message: "اختاري صورة (سكرين شوت للقطعة)." });
+    if (!f.type.startsWith("image/")) return setState({ phase: "error", message: "الملف المختار ليس صورة. اختيار صورة للقطعة (سكرين شوت مثلاً) مطلوب." });
     const preview = URL.createObjectURL(f);
     setState({ phase: "searching", preview });
     let file: File = f;
     try {
-      const c = await imageCompression(f, { maxSizeMB: 0.6, maxWidthOrHeight: 1280, useWebWorker: true, fileType: "image/jpeg", initialQuality: 0.85 });
+      const c = await imageCompression(f, { maxSizeMB: 0.6, maxWidthOrHeight: 1280, useWebWorker: false, fileType: "image/jpeg", initialQuality: 0.85 });
       file = new File([c], "search.jpg", { type: "image/jpeg" });
     } catch {
-      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) return setState({ phase: "error", preview, message: "الصيغة دي مش مدعومة، جرّبي صورة JPG أو PNG." });
+      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) return setState({ phase: "error", preview, message: "صيغة الصورة غير مدعومة. الصيغ المتاحة: JPG أو PNG." });
     }
     const body = new FormData();
     body.set("image", file);
     try {
       const r = await fetch("/api/storefront/visual-search", { method: "POST", body });
       const j = (await r.json().catch(() => null)) as (Result & { error?: string }) | null;
-      if (!r.ok || !j) return setState({ phase: "error", preview, message: j?.error ?? "تعذر البحث الآن، جرّبي تاني." });
+      if (!r.ok || !j) return setState({ phase: "error", preview, message: j?.error ?? "تعذر البحث الآن. حاول مرة أخرى بعد لحظات." });
       window.clpTrack?.("visual_search", { status: j.status });
       setState({ phase: "done", preview, result: j });
     } catch {
-      setState({ phase: "error", preview, message: "النت فيه مشكلة، جرّبي تاني." });
+      setState({ phase: "error", preview, message: "الاتصال بالإنترنت متقطع. حاول مرة أخرى." });
     }
   }, []);
 
@@ -90,7 +90,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
     };
   }, [open, search, close]);
 
-  const ask = waLink(whatsapp, `أهلاً ${storeName}، عندي صورة قطعة عايزة أعرف هي متوفرة عندكم؟ (هبعتلكم الصورة هنا)`);
+  const ask = waLink(whatsapp, `أهلاً ${storeName}، عندي صورة قطعة وأريد أن أعرف هل هي متوفرة عندكم؟ (سأرسل الصورة هنا)`);
 
   return (
     <>
@@ -99,8 +99,8 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
         type="button"
         onClick={() => setOpen(true)}
         className="grid size-10 place-items-center rounded-xl opacity-80 transition-opacity hover:opacity-100"
-        aria-label="دوّري بالصورة"
-        title="دوّري بالصورة"
+        aria-label="البحث بالصورة"
+        title="البحث بالصورة"
       >
         <Camera className="size-4.5" strokeWidth={SW} aria-hidden="true" />
       </button>
@@ -111,7 +111,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
             ref={dialogRef}
             role="dialog"
             aria-modal="true"
-            aria-label="دوّري بالصورة"
+            aria-label="البحث بالصورة"
             tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
             className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl p-5 outline-none sm:max-w-lg sm:rounded-3xl"
@@ -120,9 +120,9 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="flex items-center gap-2 font-heading text-lg font-black">
-                  <Sparkles className="size-5" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" /> دوّري بالصورة
+                  <Sparkles className="size-5" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" /> البحث بالصورة
                 </p>
-                <p className="mt-1 text-sm opacity-70">ارفعي سكرين شوت للقطعة اللي عجبتك من الريلز أو أي صورة، ونفتحلك صفحتها.</p>
+                <p className="mt-1 text-sm opacity-70">صورة أو سكرين شوت لأي قطعة من الريلز أو غيرها، ونفتح لك صفحتها في المتجر إن كانت عندنا.</p>
               </div>
               <button type="button" onClick={close} className="grid size-9 shrink-0 place-items-center rounded-xl opacity-60 hover:opacity-100" aria-label="إغلاق">
                 <X className="size-5" strokeWidth={SW} aria-hidden="true" />
@@ -141,21 +141,21 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
                 <span className="grid size-14 place-items-center rounded-2xl" style={{ background: "color-mix(in oklab, var(--primary) 14%, transparent)", color: "var(--primary)" }}>
                   <ImagePlus className="size-7" strokeWidth={SW} aria-hidden="true" />
                 </span>
-                <span className="font-bold">اختاري صورة أو صوّري</span>
-                <span className="hidden text-xs opacity-60 sm:block">أو الصقي الصورة هنا (Ctrl+V)</span>
+                <span className="font-bold">اختيار صورة أو التقاطها</span>
+                <span className="hidden text-xs opacity-60 sm:block">أو لصق الصورة هنا (Ctrl+V)</span>
               </button>
             ) : null}
 
             {"preview" in state && state.preview ? (
               <div className="mt-5 flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={state.preview} alt="الصورة التي اخترتِها" className="size-20 shrink-0 rounded-xl border object-cover" style={{ borderColor: "var(--border)" }} />
+                <img src={state.preview} alt="الصورة المختارة" className="size-20 shrink-0 rounded-xl border object-cover" style={{ borderColor: "var(--border)" }} />
                 {state.phase === "searching" ? (
                   <p className="flex items-center gap-2 text-sm font-bold">
-                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> بندوّر على القطعة في المتجر…
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> نبحث عن القطعة في المتجر…
                   </p>
                 ) : state.phase === "done" && state.result.seen ? (
-                  <p className="text-sm opacity-70">فهمنا إنها: {state.result.seen}</p>
+                  <p className="text-sm opacity-70">فهمنا أنها: {state.result.seen}</p>
                 ) : null}
               </div>
             ) : null}
@@ -171,23 +171,23 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
               <div className="mt-5 space-y-5" aria-live="polite">
                 {state.result.match ? (
                   <div>
-                    <p className="mb-2 text-sm font-black">لقيناها</p>
+                    <p className="mb-2 text-sm font-black">وجدناها</p>
                     <ProductRow item={state.result.match} big onNavigate={close} />
                   </div>
                 ) : (
                   <p className="text-sm font-bold">
                     {state.result.status === "not_product"
-                      ? "مش واضح في الصورة قطعة نقدر ندوّر عليها. جرّبي سكرين شوت أقرب للقطعة."
+                      ? "لم تظهر في الصورة قطعة واضحة للبحث عنها. صورة أقرب للقطعة تعطي نتيجة أفضل."
                       : state.result.status === "limit"
-                        ? "البحث بالصورة مش متاح دلوقتي. جرّبي البحث بالكلمات أو كلّمي المتجر."
+                        ? "البحث بالصورة غير متاح حالياً. يمكنك البحث بالكلمات أو التواصل مع المتجر."
                         : state.result.similar.length
-                          ? "ملقيناش القطعة دي بالظبط، بس دي قريبة منها:"
-                          : "ملقيناش القطعة دي في المتجر."}
+                          ? "لم نجد القطعة نفسها، وهذه أقرب القطع لها:"
+                          : "لم نجد هذه القطعة في المتجر."}
                   </p>
                 )}
                 {state.result.similar.length ? (
                   <div>
-                    {state.result.match ? <p className="mb-2 text-sm font-black opacity-80">وقريبة منها</p> : null}
+                    {state.result.match ? <p className="mb-2 text-sm font-black opacity-80">وقطع قريبة منها</p> : null}
                     <div className="space-y-2">
                       {state.result.similar.map((s) => (
                         <ProductRow key={s.id} item={s} onNavigate={close} />
@@ -199,7 +199,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
                   <Retry onClick={() => fileRef.current?.click()} />
                   {!state.result.match && ask ? (
                     <a href={ask} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#25D366] px-4 text-sm font-bold text-white">
-                      <BrandIcon brand="whatsapp" className="size-4" /> اسألي المتجر على واتساب
+                      <BrandIcon brand="whatsapp" className="size-4" /> مراسلة المتجر على واتساب
                     </a>
                   ) : null}
                 </div>
@@ -216,7 +216,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
 function Retry({ onClick }: { onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold" style={{ borderColor: "var(--border)" }}>
-      <RefreshCw className="size-4" strokeWidth={SW} aria-hidden="true" /> صورة تانية
+      <RefreshCw className="size-4" strokeWidth={SW} aria-hidden="true" /> صورة أخرى
     </button>
   );
 }
@@ -232,7 +232,7 @@ function ProductRow({ item, big, onNavigate }: { item: Item; big?: boolean; onNa
           {item.compareAtPiasters && item.compareAtPiasters > item.pricePiasters ? <s className="text-xs opacity-50">{formatEgp(item.compareAtPiasters)}</s> : null}
         </span>
       </span>
-      {big ? <span className="btn-brand shrink-0 px-3 py-2 text-sm">افتحي القطعة</span> : null}
+      {big ? <span className="btn-brand shrink-0 px-3 py-2 text-sm">عرض القطعة</span> : null}
     </Link>
   );
 }

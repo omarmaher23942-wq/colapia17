@@ -48,7 +48,7 @@ export function CategoryDialog({
   async function upload(file: File) {
     if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return void toast.error("اختر صورة JPG أو PNG أو WebP");
     setUploading(true);
-    const small = await imageCompression(file, { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: true }).catch(() => file);
+    const small = await imageCompression(file, { maxSizeMB: 0.8, maxWidthOrHeight: 1600, useWebWorker: false }).catch(() => file);
     const res = await startUpload([new File([small], file.name, { type: small.type || file.type })]).catch(() => undefined);
     setUploading(false);
     const url = res?.[0]?.ufsUrl;

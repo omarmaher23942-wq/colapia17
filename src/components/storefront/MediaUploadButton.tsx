@@ -33,7 +33,7 @@ export function MediaUploadButton({
     setBusy(true);
     let file = f;
     try {
-      const c = await imageCompression(f, { maxSizeMB: 1.5, maxWidthOrHeight: 2400, useWebWorker: true, initialQuality: 0.9, fileType: "image/jpeg" });
+      const c = await imageCompression(f, { maxSizeMB: 1.5, maxWidthOrHeight: 2400, useWebWorker: false, initialQuality: 0.9, fileType: "image/jpeg" });
       file = new File([c], f.name.replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
     } catch {
       /* يُرفع الأصل */

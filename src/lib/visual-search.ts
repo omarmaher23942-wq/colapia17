@@ -1,5 +1,6 @@
-// visual-search.ts — منطق خالص لـ«دوّري بالصورة»: ترتيب منتجات المتجر حسب ما قرأه النموذج من الصورة (النوع، الألوان،
+// visual-search.ts — منطق خالص لـ«البحث بالصورة»: ترتيب منتجات المتجر حسب ما قرأه النموذج من الصورة (النوع، الألوان،
 // الكلمات، النص الظاهر)، واختيار المرشحين للمقارنة البصرية، وقرار عرض «القطعة نفسها» أو «قريبة منها».
+import { z } from "zod";
 import { normalizeArabic } from "@/lib/arabic";
 
 export type VisionRead = {
@@ -86,3 +87,27 @@ export function decide(verdict: { best: number | null; confidence: number; simil
     .slice(0, 3);
   return { match: best, similar };
 }
+
+// المخططات متسامحة عمداً: النموذج قد يعيد لوناً زائداً أو كلمة أطول أو رقماً نصياً؛ نقصّ ونحوّل بدل رفض الرد كله
+// (كان أي تجاوز صغير يُسقط القراءة عند كل المزوّدين فيفشل البحث).
+const text = (max: number) =>
+  z.preprocess((v) => (v == null ? null : String(v).trim().slice(0, max) || null), z.string().nullable()).default(null);
+const words = (maxItems: number, maxLen: number) =>
+  z.preprocess(
+    (v) => (Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,،]/) : []).map((x) => String(x).trim().slice(0, maxLen)).filter(Boolean).slice(0, maxItems),
+    z.array(z.string())
+  ).default([]);
+const num = z.preprocess((v) => (v == null || v === "" ? null : Number(v)), z.number().nullable());
+export const readSchema = z.object({
+  isProduct: z.preprocess((v) => (typeof v === "string" ? !/^(false|no|لا)$/i.test(v.trim()) : v ?? true), z.boolean()).default(true),
+  garment: text(80),
+  colors: words(6, 30),
+  keywords: words(10, 40),
+  visibleText: text(200),
+  description: text(200),
+});
+export const verdictSchema = z.object({
+  best: num.default(null).transform((v) => (v != null && Number.isInteger(v) ? v : null)),
+  confidence: z.preprocess((v) => Math.min(1, Math.max(0, Number(v) || 0)), z.number()).default(0),
+  similar: z.preprocess((v) => (Array.isArray(v) ? v.map(Number).filter(Number.isInteger).slice(0, 4) : []), z.array(z.number())).default([]),
+});

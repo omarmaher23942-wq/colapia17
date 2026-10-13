@@ -29,7 +29,7 @@ export function useImageUpload() {
       let file = f;
       if (f.type !== "image/gif") {
         try {
-          const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2400, useWebWorker: true, initialQuality: 0.85 });
+          const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2400, useWebWorker: false, initialQuality: 0.85 });
           file = new File([c], f.name, { type: c.type || f.type });
         } catch {
           /* يُرفع الأصل */

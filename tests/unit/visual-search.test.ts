@@ -31,3 +31,30 @@ describe("visual search ranking", () => {
     expect(decide({ best: 9, confidence: 1, similar: [] }, c)).toEqual({ match: null, similar: [] });
   });
 });
+
+describe("قراءة ردود النموذج بتسامح", async () => {
+  const { readSchema, verdictSchema } = await import("@/lib/visual-search");
+  it("لا يرفض رداً فيه ألوان كثيرة أو كلمات طويلة أو قيم نصية", () => {
+    const r = readSchema.parse({
+      isProduct: "true",
+      garment: "فستان dress",
+      colors: ["أسود", "أبيض", "أحمر", "أزرق", "أخضر", "بيج", "رمادي", "وردي"],
+      keywords: "قطن، كم طويل، ياقة دائرية بتفاصيل دانتيل على الأطراف والصدر",
+      visibleText: "",
+      description: "x".repeat(400),
+    });
+    expect(r.isProduct).toBe(true);
+    expect(r.colors).toHaveLength(6);
+    expect(r.keywords.length).toBeGreaterThan(1);
+    expect(r.visibleText).toBeNull();
+    expect(r.description).toHaveLength(200);
+  });
+  it("isProduct «لا» = ليس منتجاً، والحقول الناقصة لها قيم آمنة", () => {
+    const r = readSchema.parse({ isProduct: "لا" });
+    expect(r).toMatchObject({ isProduct: false, garment: null, colors: [], keywords: [] });
+  });
+  it("الحكم: أرقام نصية وثقة خارج المدى", () => {
+    expect(verdictSchema.parse({ best: "2", confidence: 1.4, similar: ["1", "x", 3] })).toEqual({ best: 2, confidence: 1, similar: [1, 3] });
+    expect(verdictSchema.parse({})).toEqual({ best: null, confidence: 0, similar: [] });
+  });
+});

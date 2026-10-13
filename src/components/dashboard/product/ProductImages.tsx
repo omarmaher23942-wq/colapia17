@@ -45,7 +45,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
     const compressed = await Promise.all(
       picked.map(async (f) => {
         try {
-          const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2000, useWebWorker: true, initialQuality: 0.85 });
+          const c = await imageCompression(f, { maxSizeMB: 1, maxWidthOrHeight: 2000, useWebWorker: false, initialQuality: 0.85 });
           return new File([c], f.name, { type: c.type || f.type });
         } catch {
           return f;

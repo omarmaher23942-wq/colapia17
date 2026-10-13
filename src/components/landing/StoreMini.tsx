@@ -37,7 +37,7 @@ export const MINI_STORES: MiniStore[] = [
     radius: 4,
     eyebrow: "مجموعة الخريف",
     headline: "فساتين تتفصّل على مقاس لحظتك",
-    cta: "اكتشفي المجموعة",
+    cta: "المجموعة كاملة",
     products: [
       { name: "فستان ساتان", price: "1,250 ج", icon: "Shirt" },
       { name: "عباية كتان", price: "890 ج", icon: "Gem" },
@@ -76,7 +76,7 @@ export const MINI_STORES: MiniStore[] = [
     radius: 22,
     eyebrow: "للأطفال من 0 لـ 6 سنين",
     headline: "ملابس ناعمة على بشرة أولادك",
-    cta: "شوفي الجديد",
+    cta: "كل الجديد",
     products: [
       { name: "طقم قطن", price: "420 ج", icon: "Baby" },
       { name: "حذاء أول خطوة", price: "350 ج", icon: "Footprints" },

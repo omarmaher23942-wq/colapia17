@@ -1,9 +1,8 @@
 import "server-only";
-// visual-search.ts — «دوّري بالصورة» في المتجر (PLAN 14-ب.5): العميلة ترفع سكرين شوت ← قراءة الصورة (النوع والألوان
+// visual-search.ts — «البحث بالصورة» في المتجر (PLAN 14-ب.5): الزائر يرفع سكرين شوت ← قراءة الصورة (النوع والألوان
 // والنص الظاهر) ← أقرب منتجات من كتالوج المتجر نفسه ← مقارنة بصرية للمرشحين ← القطعة نفسها بثقة، أو «قريبة منها».
 // الصورة لا تُخزَّن. حد شهري لكل متجر (إعداد visual_search)، وما لم يُعثر عليه يُسجَّل للتاجر (بلا صورة).
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
 import { aiObject } from "@/ai/providers";
@@ -11,7 +10,7 @@ import { getFlag } from "@/lib/flags";
 import { redis } from "@/lib/redis";
 import { cairoDate } from "@/lib/cairo-time";
 import { logVisualMiss } from "@/server/visual-search-misses";
-import { decide, pickCandidates, type CatalogItem, type VisionRead } from "@/lib/visual-search";
+import { decide, pickCandidates, readSchema, verdictSchema, type CatalogItem, type VisionRead } from "@/lib/visual-search";
 
 export const VISUAL_SEARCH_FLAG = "visual_search";
 export const DEFAULT_MONTHLY = 400;
@@ -23,20 +22,6 @@ export type VisualResult = {
   seen: string | null;
 };
 export type ResultItem = { id: string; slug: string; name: string; image: string; pricePiasters: number; compareAtPiasters: number | null };
-
-const readSchema = z.object({
-  isProduct: z.boolean().default(true),
-  garment: z.string().max(80).nullish().transform((v) => v || null),
-  colors: z.array(z.string().max(30)).max(6).default([]),
-  keywords: z.array(z.string().max(30)).max(10).default([]),
-  visibleText: z.string().max(200).nullish().transform((v) => v || null),
-  description: z.string().max(200).nullish().transform((v) => v || null),
-});
-const verdictSchema = z.object({
-  best: z.number().int().nullish().transform((v) => v ?? null),
-  confidence: z.number().min(0).max(1).default(0),
-  similar: z.array(z.number().int()).max(4).default([]),
-});
 
 const monthKey = (storeId: string) => {
   const d = cairoDate(new Date());
@@ -86,14 +71,15 @@ async function catalog(storeId: string): Promise<(CatalogItem & { slug: string; 
     slug: r.slug,
     name: r.name,
     text: [r.short, r.category, r.tags.join(" "), r.search].filter(Boolean).join(" "),
-    image: r.images[0]?.url ?? null,
+    // صورة عامة فقط (https): المقارنة البصرية تفتح الرابط، ورابط نسبي أو داخلي يُسقط الطلب.
+    image: /^https:\/\//.test(r.images[0]?.url ?? "") ? r.images[0]!.url : null,
     orderCount: r.orderCount,
     pricePiasters: r.pricePiasters,
     compareAtPiasters: r.compareAtPiasters,
   }));
 }
 
-const READ_SYSTEM = `أنت تقرأ صورة أرسلتها عميلة لمتجر ملابس/منتجات مصري (غالباً سكرين شوت من ريلز أو منشور). صف القطعة الأساسية فقط بإيجاز:
+const READ_SYSTEM = `أنت تقرأ صورة أرسلها زائر لمتجر مصري (ملابس أو أي منتجات) (غالباً سكرين شوت من ريلز أو منشور). صف القطعة الأساسية فقط بإيجاز:
 - isProduct: هل في الصورة منتج يمكن شراؤه (ملابس، شنطة، حذاء، إكسسوار…)؟
 - garment: نوع القطعة بالعربية وبالإنجليزية (مثل "فستان dress").
 - colors: ألوانها الأساسية.
@@ -102,7 +88,7 @@ const READ_SYSTEM = `أنت تقرأ صورة أرسلتها عميلة لمتج
 - description: جملة قصيرة بالعربية تصف القطعة.
 لا تخمّن ما لا يظهر. أخرج JSON فقط.`;
 
-const COMPARE_SYSTEM = `أمامك صورة العميلة أولاً، ثم صور منتجات من المتجر مرقمة 1..N بنفس الترتيب. هل صورة العميلة هي نفس منتج من المرقمة؟
+const COMPARE_SYSTEM = `أمامك صورة الزائر أولاً، ثم صور منتجات من المتجر مرقمة 1..N بنفس الترتيب. هل صورة الزائر هي نفس منتج من المرقمة؟
 - best: رقم المنتج المطابق (نفس القطعة: النوع والقصة والتفاصيل؛ اللون قد يختلف بالإضاءة)، أو null إن لم يكن أي منها نفسها.
 - confidence: ثقتك في best من 0 إلى 1. كن صارماً: قطعة تشبهها فقط ليست هي.
 - similar: أرقام منتجات قريبة في الشكل أو النوع (حتى 3).
@@ -139,6 +125,11 @@ export async function runVisualSearch(storeId: string, image: Uint8Array, mime: 
   if (!read.isProduct) return { ...empty, status: "not_product", seen: read.description };
 
   const candidates = pickCandidates(read as VisionRead, items, 4) as typeof items;
+  if (!candidates.length) {
+    await logVisualMiss(storeId, read.description ?? read.garment);
+    return { ...empty, seen: read.description ?? read.garment };
+  }
+  // المقارنة البصرية تحسّن الدقة فقط: إن تعذرت نعرض أقرب المرشحين بالوصف بصدق («قريبة منها») بدل خطأ.
   const verdict = await aiObject(
     "visionFast",
     {
@@ -148,7 +139,7 @@ export async function runVisualSearch(storeId: string, image: Uint8Array, mime: 
         {
           role: "user",
           content: [
-            { type: "text", text: "صورة العميلة:" },
+            { type: "text", text: "صورة الزائر:" },
             { type: "image", image, mediaType: mime },
             ...candidates.flatMap((c, i) => [
               { type: "text" as const, text: `منتج ${i + 1}: ${c.name}` },
@@ -162,7 +153,10 @@ export async function runVisualSearch(storeId: string, image: Uint8Array, mime: 
       timeoutMs: 20_000,
     },
     { purpose: "visual_search_compare", storeId }
-  );
+  ).catch((e) => {
+    console.error("[visual-search] compare failed, using text ranking", storeId, String(e).slice(0, 300));
+    return { best: null, confidence: 0, similar: candidates.slice(0, 3).map((_, i) => i + 1) };
+  });
   const d = decide(verdict, candidates);
   const result: VisualResult = {
     status: d.match ? "match" : d.similar.length ? "similar" : "none",
