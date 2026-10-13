@@ -6,11 +6,17 @@ import Link from "next/link";
 import { ArrowLeft, Eye, Percent, Plus, ShoppingCart, Sparkles, Wallet } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { EmptyStoreState } from "@/components/dashboard/EmptyStoreState";
-import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
+import { TrialCard } from "@/components/dashboard/TrialCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AttentionStrip } from "@/components/dashboard/overview/AttentionStrip";
 import { AbandonedCarts } from "@/components/dashboard/overview/AbandonedCarts";
-import { cartToken } from "@/lib/order-access";
+import { cartToken, reviewToken } from "@/lib/order-access";
+import { TodayTasks } from "@/components/dashboard/overview/TodayTasks";
+import { todayData } from "@/server/repos/today-tasks";
+import { orderMessage } from "@/lib/order-messages";
+import { waLink } from "@/lib/whatsapp";
+import { memberPerms } from "@/server/merchant-guard";
+import { allows, OWNER_PERMS } from "@/lib/store-perms";
 import { storeUrl } from "@/lib/utils";
 import { listDiscounts } from "@/server/repos/discounts-list";
 import { discountState, discountValueLabel } from "@/lib/discounts";
@@ -30,7 +36,6 @@ import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";
 import { readRequestId } from "@/lib/correlation";
-import { platformPricing } from "@/lib/platform-pricing";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "نظرة عامة" };
@@ -78,22 +83,33 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
         </div>
       </header>
 
-      {showTrial && store.demoExpiresAt ? (
-        <TrialCountdownCard
-          expiresAt={store.demoExpiresAt.toISOString()}
-          startedAt={(store.demoStartedAt ?? store.deliveredAt)?.toISOString() ?? null}
-          serverNow={Date.now()}
-          planPrice={store.priceLockedEgp ?? platformPricing().price}
-        />
-      ) : null}
+      {showTrial ? <TrialCard store={store} /> : null}
 
-      <AttentionStrip />
+      <Suspense fallback={<AttentionStrip />}>
+        <TodaySection storeId={store.id} subdomain={store.subdomain} storeName={store.name} canMessage={allows(memberPerms(session) ?? OWNER_PERMS, "orders", "manage")} />
+      </Suspense>
 
       <Suspense key={range} fallback={<OverviewSkeleton />}>
         <OverviewBody storeId={store.id} subdomain={store.subdomain} storeName={store.name} range={range} />
       </Suspense>
     </div>
   );
+}
+
+async function TodaySection({ storeId, subdomain, storeName, canMessage }: { storeId: string; subdomain: string; storeName: string; canMessage: boolean }) {
+  const t = await todayData(storeId).catch(() => null);
+  if (!t) return <AttentionStrip />;
+  const { reviewAsks, reviewAsksTotal, ...extras } = t;
+  const asks = reviewAsks.map((o) => ({
+    id: o.id,
+    code: o.code,
+    name: o.customerName,
+    href: waLink(
+      o.customerPhone,
+      orderMessage("delivered", { ...o, reviewUrl: storeUrl(subdomain, `/review?o=${encodeURIComponent(o.code)}&t=${reviewToken(storeId, o.id)}`) }, storeName)
+    ),
+  }));
+  return <TodayTasks extras={extras} asks={asks} asksTotal={reviewAsksTotal} canMessage={canMessage} />;
 }
 
 async function OverviewBody({ storeId, subdomain, storeName, range }: { storeId: string; subdomain: string; storeName: string; range: OverviewRange }) {

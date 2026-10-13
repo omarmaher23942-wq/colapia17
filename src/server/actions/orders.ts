@@ -140,3 +140,16 @@ export async function updateOrderMetaAction(orderId: string, data: unknown): Pro
   revalidatePath(`/dashboard/orders/${orderId}`);
   return { ok: true };
 }
+
+/** تسجيل أن التاجر راسل العميل على واتساب بخصوص الطلب (يُخفي طلب التقييم من «مهام اليوم» بعد إرساله). */
+export async function markOrderContactedAction(orderId: string): Promise<OrderActionResult> {
+  const s = await own();
+  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
+  if (!uuid.safeParse(orderId).success) return { ok: false, error: "بيانات غير صالحة" };
+  const rows = await s.db
+    .update(orders)
+    .set({ whatsappContactedAt: new Date() })
+    .where(and(eq(orders.id, orderId), eq(orders.storeId, s.storeId)))
+    .returning({ id: orders.id });
+  return rows.length ? { ok: true } : { ok: false, error: "الطلب غير موجود" };
+}
