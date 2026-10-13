@@ -182,7 +182,7 @@ R2 تخزن صور المنتجات والإيصالات وملفات الاست
    Route: `media.colapia.com/*` ← Worker: **None** ← Save. (بدونه يلتقط الـ Worker طلبات الصور فلا تظهر.)
 
 > المشروع سيُعاد نشره تلقائياً مع كل تحديث يُرفع إلى `main` في GitHub. لا تحتاج تفعل شيئاً بعد اليوم.
-> ملف `wrangler.jsonc` فيه مسار يلتقط colapia.com كله، لكنه **لا يعمل** إلا على السجلات البرتقالية، والسجلات الآن رمادية،
+> ملف `wrangler.jsonc` فيه مساران (`colapia.com/*` و`*.colapia.com/*`) يلتقطان colapia.com والمتاجر، لكنه **لا يعمل** إلا على السجلات البرتقالية، والسجلات الآن رمادية،
 > فالموقع ما زال على Vercel.
 
 ---
@@ -275,7 +275,10 @@ Workers & Pages ← `colapia` ← **Settings** ← **Variables and Secrets** ←
    - **Continue to summary** ← **Create Token** ← انسخه.
 4. أضف سرّين في المشروع (القسم 5 طريقة ب): `CF_API_TOKEN` = التوكن، و`CF_ZONE_ID` = **Zone ID** (colapia.com ← **Overview** ←
    على اليمين تحت API). ثم أعد النشر.
-5. **كيف يعمل بعدها:** التاجر يكتب نطاقه في لوحته ← يُضاف لـ Cloudflare تلقائياً ← يظهر له سجل واحد يضيفه عند شركة نطاقه
+5. **أضف المسار الشامل (مرة واحدة، من اللوحة):** colapia.com ← **Workers Routes** ← **Add route** ← Route: `*/*` ← Worker: `colapia`
+   ← Save. (يرفضه Cloudflare قبل تفعيل Cloudflare for SaaS بخطأ 10022، ولذلك لا يوجد في `wrangler.jsonc`؛ بدونه تعمل
+   colapia.com والمتاجر `<slug>.colapia.com` فقط، ولا تعمل نطاقات العملاء.)
+6. **كيف يعمل بعدها:** التاجر يكتب نطاقه في لوحته ← يُضاف لـ Cloudflare تلقائياً ← يظهر له سجل واحد يضيفه عند شركة نطاقه
    (`CNAME` إلى `customers.colapia.com`) ← تصدر الشهادة الآمنة وحدها ← يعمل متجره على نطاقه. لا تفعل أنت شيئاً.
 
 ---
@@ -317,6 +320,8 @@ Workers & Pages ← `colapia` ← **Settings** ← **Variables and Secrets** ←
 
 | ما تراه | السبب | الحل |
 |---|---|---|
+| أثناء النشر: `You cannot use a wildcard host without Cloudflare for SaaS` [code: 10022] | مسار `*/*` يحتاج Cloudflare for SaaS | حُلّت في الكود (مساران صريحان). لو ظهرت بعد تعديل يدوي لـ `wrangler.jsonc` فأعد المسارين كما هما |
+| تحذيرات `equals-negative-zero` أثناء النشر | تحذير من مكتبة داخل الحزمة | بلا أثر، تجاهلها: الفشل الحقيقي هو سطر `ERROR` الذي بعدها |
 | البريد توقف بعد نقل الـ Nameservers | سجلات Resend لم تُنسخ | resend.com/domains ← colapia.com ← انسخ السجلات الناقصة إلى Cloudflare كـ DNS only |
 | `/api/health` يقول `database: false` | `DATABASE_URL` ناقص أو خاطئ | انسخه من Vercel كما هو (يبدأ بـ `postgresql://`) |
 | صفحة بيضاء أو «Internal Server Error» | مفتاح إلزامي ناقص | Workers ← colapia ← Logs ← Begin log stream؛ اسم المتغير الناقص يظهر في السجل |

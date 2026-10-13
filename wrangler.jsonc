@@ -15,9 +15,13 @@
     // كل 10 دقائق: استعادة المهام المجدولة المتأخرة (ops/sweep). يومياً 04:00 UTC: المتابعة اليومية (ops/tick).
     "crons": ["*/10 * * * *", "0 4 * * *"]
   },
-  // مسار واحد يلتقط colapia.com والمتاجر <slug>.colapia.com ونطاقات العملاء (Cloudflare for SaaS، server/domains.ts).
-  // media.colapia.com (صور R2) يُستثنى بمسار «None» من اللوحة. الدليل: docs/deploy-cloudflare.md القسم 5.
-  "routes": [{ "pattern": "*/*", "zone_name": "colapia.com" }],
+  // colapia.com والمتاجر <slug>.colapia.com. المسار «*/*» (يلتقط نطاقات العملاء أيضاً) يرفضه Cloudflare قبل تفعيل
+  // Cloudflare for SaaS على المنطقة (خطأ 10022)، فنكتفي بمسارين صريحين الآن، ويُضاف «*/*» عند تفعيل النطاقات الخاصة
+  // (الدليل: docs/deploy-cloudflare.md القسم 8). media.colapia.com (صور R2) يُستثنى بمسار «None» من اللوحة.
+  "routes": [
+    { "pattern": "colapia.com/*", "zone_name": "colapia.com" },
+    { "pattern": "*.colapia.com/*", "zone_name": "colapia.com" }
+  ],
   // متغيرات وقت التشغيل غير السرية. متغيرات NEXT_PUBLIC_* تُثبَّت في الكود وقت البناء: تُضبط أيضاً في «Build variables»
   // (الدليل، القسم 2).
   "vars": {
