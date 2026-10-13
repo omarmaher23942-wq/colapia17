@@ -72,14 +72,14 @@ export default async function DashboardOrdersPage({ searchParams }: { searchPara
                   )}
                 >
                   <Icon className="size-4" aria-hidden="true" />
-                  {v === "list" ? "قائمة" : "مراحل"}
+                  <span className="sr-only sm:not-sr-only">{v === "list" ? "قائمة" : "مراحل"}</span>
                 </Link>
               );
             })}
           </nav>
           <Link
             href="/dashboard/orders/new"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-3.5 text-[12.5px] font-black text-white shadow-md"
+            className="inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-xl bg-gradient-to-b from-nova to-nova-deep px-3.5 text-[12.5px] font-black text-white shadow-md"
           >
             <MessageSquarePlus className="size-4" aria-hidden="true" />
             طلب من الشات

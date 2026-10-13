@@ -147,6 +147,7 @@ function ChartCard({ chart: c, categories, canEdit, onChange, onRemove }: { char
         ) : null}
       </fieldset>
 
+      <p className="text-[11px] text-ink-3 sm:hidden">الجدول أعرض من الشاشة: اسحبه جانبياً لرؤية الطول والوزن.</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-[12.5px]">
           <thead>
@@ -155,7 +156,7 @@ function ChartCard({ chart: c, categories, canEdit, onChange, onRemove }: { char
               {c.columns.map((col, i) => (
                 <th key={i} className="p-1.5 text-start font-bold">
                   <div className="flex items-center gap-1">
-                    <input value={col} disabled={!canEdit} maxLength={20} onChange={(e) => setCol(i, e.target.value)} className={cn(INPUT, "h-9")} aria-label={`اسم العمود ${i + 1}`} />
+                    <input value={col} disabled={!canEdit} maxLength={20} onChange={(e) => setCol(i, e.target.value)} className={cn(INPUT, "h-9 min-w-[6rem]")} aria-label={`اسم العمود ${i + 1}`} />
                     {canEdit && c.columns.length > 1 ? (
                       <button type="button" onClick={() => delCol(i)} className="text-ink-3 hover:text-rose-400" aria-label={`حذف عمود ${col}`}>
                         <X className="size-3.5" aria-hidden="true" />
