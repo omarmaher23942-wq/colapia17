@@ -29,6 +29,13 @@
       "when": 1791757822453,
       "tag": "0003_custom_domain",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791862778930,
+      "tag": "0004_stock_alerts",
+      "breakpoints": true
     }
   ]
 }

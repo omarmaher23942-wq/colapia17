@@ -1,6 +1,6 @@
 // attention-items.ts — بنود «ما يحتاج انتباهك» من أعداد النبض: مصدر واحد للجرس في الشريط العلوي
 // ولقائمة الانتباه في صفحة النظرة العامة. دالة نقية بلا React state، تعمل في الخادم والعميل.
-import { Layers, PackageMinus, PackageX, Receipt, ShoppingBag, ShoppingCart, Star, type LucideIcon } from "lucide-react";
+import { BellRing, Layers, PackageMinus, PackageX, Receipt, ShoppingBag, ShoppingCart, Star, type LucideIcon } from "lucide-react";
 import { arCount, NOUN } from "@/lib/format";
 import type { AttentionCounts } from "@/server/repos/attention";
 
@@ -65,6 +65,16 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       chip: arCount(c.outOfStock, NOUN.product),
       desc: "يراها العملاء «نفدت الكمية». حدّث الكمية أو أخفِ المنتج.",
       href: "/dashboard/products?status=active&stock=out",
+    });
+  if (c.restockReady > 0)
+    items.push({
+      key: "restock",
+      icon: BellRing,
+      tone: "warn",
+      title: "رجع للمخزون وفيه منتظرون",
+      chip: arCount(c.restockReady, NOUN.product),
+      desc: "عملاء طلبوا التنبيه عند توفره. رسالة «رجع تاني» جاهزة لهم في صفحة المنتج.",
+      href: "/dashboard/products?stock=waiting",
     });
   if (c.variantsOut > 0)
     items.push({

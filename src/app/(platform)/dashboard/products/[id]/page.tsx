@@ -3,10 +3,12 @@
 import type { Metadata } from "next";
 import { requireStoreArea } from "@/server/merchant-guard";
 import { notFound, redirect } from "next/navigation";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { getMerchantSession } from "@/server/auth";
 import { getTenantDb } from "@/db/tenant";
-import { categories, productVariants, products } from "@/db/schema";
+import { categories, productVariants, products, stockAlerts } from "@/db/schema";
+import { publicStoreUrl } from "@/lib/utils";
+import { StockAlertsPanel } from "@/components/dashboard/product/StockAlertsPanel";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { copyOf } from "@/blueprint/copy";
 import { NO_STORE_HREF } from "@/lib/edition";
@@ -48,7 +50,7 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
   const { id } = await params;
   const { store, db, product: p } = await load(id);
 
-  const [cats, variants, bp] = await Promise.all([
+  const [cats, variants, bp, alerts] = await Promise.all([
     db.select({ id: categories.id, name: categories.name }).from(categories).where(eq(categories.storeId, store.id)).orderBy(asc(categories.sortOrder), asc(categories.name)),
     p
       ? db
@@ -58,6 +60,15 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
           .orderBy(asc(productVariants.createdAt))
       : Promise.resolve([]),
     getBlueprintOrNull(store.id),
+    p
+      ? db
+          .select({ id: stockAlerts.id, phone: stockAlerts.phone, name: stockAlerts.name, variantLabel: stockAlerts.variantLabel, notifiedAt: stockAlerts.notifiedAt, createdAt: stockAlerts.createdAt })
+          .from(stockAlerts)
+          .where(and(eq(stockAlerts.storeId, store.id), eq(stockAlerts.productId, p.id)))
+          .orderBy(asc(stockAlerts.notifiedAt), desc(stockAlerts.createdAt))
+          .limit(200)
+          .catch(() => [])
+      : Promise.resolve([]),
   ]);
   const featuredBadge = copyOf(bp?.copy, "bestSellerBadge");
 
@@ -99,6 +110,7 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
   };
 
   return (
+    <>
     <ProductEditor
       key={p.id}
       initial={initial}
@@ -113,5 +125,13 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
         createdAt: p.createdAt.toISOString(),
       }}
     />
+    {alerts.length ? (
+      <StockAlertsPanel
+        storeName={bp?.brand.name ?? store.name}
+        product={{ name: p.name, url: publicStoreUrl(store, `/p/${p.slug}`) }}
+        alerts={alerts.map((a) => ({ ...a, notifiedAt: a.notifiedAt?.toISOString() ?? null, createdAt: a.createdAt.toISOString() }))}
+      />
+    ) : null}
+    </>
   );
 }

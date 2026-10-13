@@ -259,6 +259,7 @@
   - [ ] `0011_change_requests` (نفس الأمر): جدول `store_change_requests` لطلبات التعديل الشهرية (إضافية فقط).
   - [ ] `0012_store_secrets` (نفس الأمر): جدول `store_secrets` لرمز Conversions API (إضافي فقط).
   - [ ] `0013_ig_leads_and_coupon` (نفس الأمر): جدول `ig_leads` لقائمة التواصل مع البراندات، و`platform_payments.coupon` (إضافيان فقط).
+  - [ ] `0014_stock_alerts` (نفس الأمر): جدول `stock_alerts` لـ«نبّهني عند التوفر» (إضافي فقط؛ وفي مشروع التاجر `template/drizzle/0004_stock_alerts.sql`).
 - **البريد (Resend):** إن ظهر في السجلات `The colapia.com domain is not verified` فالنطاق فقد التحقق في Resend: افتح resend.com/domains وأعد التحقق (سجلات DNS). الكود لم يتغير.
 - **Gemini:** إن كان `GEMINI_MODEL` في Vercel مضبوطاً على `gemini-2.0-flash` أو 1.5 فاحذفه أو اجعله `gemini-3.8-flash` (القديم أُوقف، والكود يتجاهله تلقائياً).
 - **تنبيهات الدفع:** `OWNER_ALERT_EMAILS` في Vercel (اختياري؛ الافتراضي بريد المالك). تعتمد على Resend، فلا بد أن يكون نطاق colapia.com موثّقاً.

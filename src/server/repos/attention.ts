@@ -26,6 +26,8 @@ export type AttentionCounts = {
   variantsOut: number;
   /** سلات متروكة برقم موبايل خلال 7 أيام لم يُتواصل معها ولم تتحول لطلب. */
   abandoned: number;
+  /** منتجات متاحة الآن وفيها من طلب «نبّهني عند التوفر» ولم يُبلَّغ بعد. */
+  restockReady: number;
 };
 
 export type ArrivedOrder = {
@@ -70,6 +72,18 @@ export async function attentionCounts(storeId: string): Promise<AttentionCounts>
          and c.recovered_order_id is null and c.whatsapp_contacted_at is null
          and c.last_seen_at >= now() - interval '7 days') as abandoned
   `);
+  // استعلام مستقل: قبل migration 0014 (جدول stock_alerts) يعيد 0 بدل أن يُسقط بقية الأعداد.
+  const restock = await db
+    .execute(sql`
+      select count(distinct a.product_id) as n from stock_alerts a
+      join products p on p.id = a.product_id and p.store_id = ${storeId}
+      left join product_variants v on a.variant_key <> '' and v.id::text = a.variant_key
+      where a.store_id = ${storeId} and a.notified_at is null and p.deleted_at is null and p.status = 'active'
+        and case when a.variant_key = '' then (p.track_stock = false or p.stock is null or p.stock > 0)
+                 else coalesce(v.is_available, false) and (p.track_stock = false or v.stock is null or v.stock > 0) end
+    `)
+    .then((r) => Number((r.rows?.[0] as { n?: unknown } | undefined)?.n ?? 0) || 0)
+    .catch(() => 0);
   const row = (res.rows?.[0] ?? {}) as Record<string, unknown>;
   const n = (k: string) => {
     const v = Number(row[k] ?? 0);
@@ -84,6 +98,7 @@ export async function attentionCounts(storeId: string): Promise<AttentionCounts>
     lowStock: n("low_stock"),
     variantsOut: n("variants_out"),
     abandoned: n("abandoned"),
+    restockReady: restock,
   };
 }
 

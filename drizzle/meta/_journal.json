@@ -99,6 +99,13 @@
       "when": 1791847929226,
       "tag": "0013_ig_leads_and_coupon",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791862769900,
+      "tag": "0014_stock_alerts",
+      "breakpoints": true
     }
   ]
 }

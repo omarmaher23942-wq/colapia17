@@ -31,3 +31,13 @@ describe("مساعد المقاس", () => {
     expect(g.charts[0]!.rows[0]).toMatchObject({ heightFrom: 160, heightTo: null });
   });
 });
+
+describe("رسالة «رجع تاني»", async () => {
+  const { restockMessage } = await import("@/lib/order-messages");
+  it("فيها الاسم الأول والاختيار والرابط", () => {
+    const m = restockMessage({ name: "منى أحمد", variantLabel: "M / بيج" }, { name: "فستان", url: "https://x.colapia.com/p/a" }, "نوفا");
+    expect(m).toContain("أهلاً منى،");
+    expect(m).toContain("فستان (M / بيج)");
+    expect(m).toContain("https://x.colapia.com/p/a");
+  });
+});

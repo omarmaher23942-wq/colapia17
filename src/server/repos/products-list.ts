@@ -11,7 +11,7 @@ import { LOW_STOCK_MAX } from "@/server/repos/attention";
 
 export const PRODUCTS_PAGE_SIZE = 40;
 const STATUSES = ["active", "draft", "hidden"] as const;
-const STOCKS = ["low", "out", "variants_out"] as const;
+const STOCKS = ["low", "out", "variants_out", "waiting"] as const;
 const SORTS = ["new", "best", "price_asc", "price_desc", "stock"] as const;
 const NEEDS = ["image", "cost", "description"] as const;
 
@@ -49,6 +49,8 @@ function stockCond(stock: ProductsQuery["stock"]): SQL | undefined {
   if (stock === "out") return and(eq(products.trackStock, true), sql`${products.stock} <= 0`);
   if (stock === "low") return and(eq(products.trackStock, true), sql`${products.stock} between 1 and ${LOW_STOCK_MAX}`);
   if (stock === "variants_out") return and(eq(products.trackStock, true), sql`(${products.stock} is null or ${products.stock} > 0)`, variantsOutSql);
+  // فيها من طلب «نبّهني عند التوفر» ولم يُبلَّغ بعد (من بند الجرس).
+  if (stock === "waiting") return sql`exists (select 1 from stock_alerts a where a.product_id = ${products.id} and a.notified_at is null)`;
   return undefined;
 }
 

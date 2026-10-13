@@ -47,6 +47,7 @@ export const ZERO_COUNTS: AttentionCounts = {
   lowStock: 0,
   variantsOut: 0,
   abandoned: 0,
+  restockReady: 0,
 };
 
 type PulseCtx = {

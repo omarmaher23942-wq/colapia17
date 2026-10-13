@@ -78,6 +78,7 @@ const LABELS: Record<string, string> = {
   payments: "المدفوعات",
   reviews: "التقييمات",
   abandoned_carts: "السلات المتروكة",
+  stock_alerts: "طلبات «نبّهني عند التوفر»",
   analytics_events: "الزيارات",
   analytics_daily: "الإحصاءات اليومية",
   support_threads: "محادثات الدعم",

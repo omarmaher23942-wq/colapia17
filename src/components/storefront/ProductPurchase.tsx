@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import type { Product, Variant } from "@/server/repos/catalog";
 import { chartFor, isSizeOption } from "@/lib/size-guide";
 import { SizeGuideButton } from "./SizeGuide";
+import { StockAlertForm } from "./StockAlertForm";
 
 type PurchaseProduct = Product & { variants: Variant[] };
 
@@ -27,7 +28,7 @@ const TRUST_ORDER = ["cod", "inspection", "returns", "free_shipping_over", "free
 
 export function ProductPurchase({ product: p }: { product: PurchaseProduct; payments?: unknown }) {
   const router = useRouter();
-  const { conversion, facts, sizeGuide, storeId } = useStore();
+  const { conversion, facts, sizeGuide, storeId, subdomain } = useStore();
   const t = useCopy();
   const add = useCart((s) => s.add);
   const items = useCart((s) => s.items);
@@ -44,6 +45,8 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
   const stock = variant ? variant.stock : p.stock;
   const out = (p.trackStock && stock !== null && stock <= 0) || (variant && !variant.isAvailable);
 
+  // تركيبة موجودة أصلاً (حتى لو نفدت): تبقى قابلة للاختيار مشطوبة، فيظهر «نبلغك أول ما يتوفر» لها بالذات.
+  const exists = (i: number, val: string) => p.variants.some((v) => v.optionValues[i] === val && v.optionValues.every((ov, k) => k === i || !sel[k] || ov === sel[k]));
   const sizeChart = useMemo(() => chartFor(sizeGuide, p.categoryId, p.optionNames), [sizeGuide, p.categoryId, p.optionNames]);
   const optionValues = (i: number) => Array.from(new Set(p.variants.map((v) => v.optionValues[i]!)));
   const available = (i: number, val: string) =>
@@ -170,6 +173,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
                 <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={name}>
                   {values.map((val) => {
                     const ok = available(i, val);
+                    const can = exists(i, val);
                     const on = sel[i] === val;
                     return (
                       <button
@@ -177,12 +181,14 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
                         key={val}
                         role="radio"
                         aria-checked={on}
-                        disabled={!ok}
+                        disabled={!can}
+                        aria-label={ok ? val : `${val} (نفد)`}
                         onClick={() => setSel((s) => s.map((x, k) => (k === i ? val : x)))}
                         className={cn(
                           "s-chip relative inline-flex h-11 min-w-[44px] items-center justify-center gap-1.5 border-2 px-3.5 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2",
                           on ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]" : "border-[var(--border)] hover:border-[var(--foreground)]/40",
-                          !ok && "cursor-not-allowed line-through opacity-30"
+                          !can && "cursor-not-allowed line-through opacity-30",
+                          can && !ok && "line-through opacity-50"
                         )}
                       >
                         {isColor ? <span className="size-4 rounded-full border" style={{ background: colorFromLabel(val), borderColor: "var(--border)" }} aria-hidden="true" /> : null}
@@ -222,6 +228,8 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
           <span>{added ? "في السلة" : t("addToCart")}</span>
         </button>
       </div>
+
+      {out ? <StockAlertForm subdomain={subdomain} productId={p.id} variantId={variant?.id} label={variant ? variant.optionValues.join(" / ") : undefined} /> : null}
 
       {trust.length ? (
         <ul className={cn("grid gap-2 rounded-2xl border p-3.5 text-[12px] font-bold", trust.length === 1 ? "grid-cols-1" : "grid-cols-2")} style={{ background: "color-mix(in srgb, var(--muted) 60%, transparent)", borderColor: "var(--border)" }}>

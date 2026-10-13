@@ -46,6 +46,7 @@ export const PLAN: TransferSpec[] = [
   { table: s.payments, scope: (id) => eq(s.payments.storeId, id) },
   { table: s.reviews, scope: (id) => eq(s.reviews.storeId, id) },
   { table: s.abandonedCarts, scope: (id) => eq(s.abandonedCarts.storeId, id) },
+  { table: s.stockAlerts, scope: (id) => eq(s.stockAlerts.storeId, id) },
   { table: s.analyticsEvents, scope: (id) => eq(s.analyticsEvents.storeId, id) },
   { table: s.analyticsDaily, scope: (id) => eq(s.analyticsDaily.storeId, id) },
   { table: s.supportThreads, scope: (id) => eq(s.supportThreads.storeId, id), override: { assignedTo: null } },

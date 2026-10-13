@@ -240,3 +240,22 @@ export const abandonedCarts = pgTable(
   },
   (t) => [uniqueIndex("abandoned_store_visitor_uq").on(t.storeId, t.visitorId)]
 );
+/**
+ * «نبّهني عند التوفر» (الجولة 2.2): زائر يترك رقمه على منتج أو مقاس نافد، والتاجر يراسله على واتساب حين يعود.
+ * variantKey = معرّف التركيبة أو "" للمنتج كله (نص لا null، فيعمل القيد الفريد). لا بريد ولا رسائل آلية لزبائن التاجر.
+ */
+export const stockAlerts = pgTable(
+  "stock_alerts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    variantKey: text("variant_key").notNull().default(""),
+    variantLabel: text("variant_label"),
+    phone: text("phone").notNull(),
+    name: text("name"),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("stock_alerts_uq").on(t.storeId, t.productId, t.variantKey, t.phone), index("stock_alerts_product_idx").on(t.storeId, t.productId)]
+);

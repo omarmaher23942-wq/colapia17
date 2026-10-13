@@ -20,7 +20,7 @@ export {
 export { merchants, sessions } from "../src/db/schema/platform";
 export { stores, storeBlueprints, storeSnapshots } from "../src/db/schema/stores";
 export { categories, products, productVariants } from "../src/db/schema/catalog";
-export { customers, shippingZones, discounts, orders, orderItems, payments, reviews, abandonedCarts } from "../src/db/schema/commerce";
+export { customers, shippingZones, discounts, orders, orderItems, payments, reviews, abandonedCarts, stockAlerts } from "../src/db/schema/commerce";
 export { analyticsEvents, analyticsDaily } from "../src/db/schema/analytics";
 export { systemEvents } from "../src/db/schema/system";
 export { aiCalls } from "../src/db/schema/ai";

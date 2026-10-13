@@ -155,3 +155,13 @@ export function depositMessage(
     "ابعتلنا صورة التحويل هنا ونأكد طلبك فوراً.",
   ].join("\n");
 }
+
+/** رسالة «المنتج رجع» لمن طلب التنبيه عند التوفر (يرسلها التاجر بنفسه من واتساب). */
+export function restockMessage(a: { name?: string | null; variantLabel?: string | null }, product: { name: string; url: string }, storeName: string): string {
+  const hi = a.name?.trim() ? `أهلاً ${first(a.name)}،` : "أهلاً،";
+  return [
+    `${hi} معك ${storeName}.`,
+    `${product.name}${a.variantLabel ? ` (${a.variantLabel})` : ""} اللي طلبت نبلغك بتوفره رجع تاني.`,
+    `تقدر تطلبه من هنا قبل ما يخلص: ${product.url}`,
+  ].join("\n");
+}

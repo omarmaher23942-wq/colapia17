@@ -14,7 +14,7 @@ export default async function DesignLab({ searchParams }: { searchParams: Promis
   if (view === "shell") {
     return (
       <div dir="rtl" className={`dash dash-cosmos min-h-dvh text-ink ${theme === "light" ? "" : "dark"}`}>
-        <DashboardPulse storeId={null} initial={{ newOrders: 3, ordersToHandle: 4, receipts: 1, pendingReviews: 2, outOfStock: 1, lowStock: 2, variantsOut: 1, abandoned: 2 }} initialAt={null}>
+        <DashboardPulse storeId={null} initial={{ newOrders: 3, ordersToHandle: 4, receipts: 1, pendingReviews: 2, outOfStock: 1, lowStock: 2, variantsOut: 1, abandoned: 2, restockReady: 1 }} initialAt={null}>
           <div className="flex min-h-dvh">
             <DashboardSidebar
               merchant={{ displayName: "عمر ماهر", email: "omar@example.com", avatarUrl: null }}

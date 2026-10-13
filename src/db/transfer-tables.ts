@@ -21,6 +21,7 @@ export const TRANSFER_ORDER = [
   ["payments", s.payments],
   ["reviews", s.reviews],
   ["abandoned_carts", s.abandonedCarts],
+  ["stock_alerts", s.stockAlerts],
   ["analytics_events", s.analyticsEvents],
   ["analytics_daily", s.analyticsDaily],
   ["support_threads", s.supportThreads],
@@ -37,7 +38,7 @@ export function transferTable(name: string): PgTable | undefined {
 }
 
 /** جداول لا تحتوي صوراً (لا داعي لفحصها عند جمع الوسائط). */
-export const MEDIA_FREE_TABLES = new Set<string>(["analytics_events", "analytics_daily", "shipping_zones", "discounts", "abandoned_carts"]);
+export const MEDIA_FREE_TABLES = new Set<string>(["analytics_events", "analytics_daily", "shipping_zones", "discounts", "abandoned_carts", "stock_alerts"]);
 
 /** يستبدل روابط الصور القديمة (حساب المنصة) بنسخها الجديدة (حساب التاجر) في أي صفوف. */
 export function rewriteMedia<T>(rows: T[], media: Record<string, string>): T[] {

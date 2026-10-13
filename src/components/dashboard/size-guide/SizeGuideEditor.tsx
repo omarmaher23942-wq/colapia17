@@ -43,7 +43,7 @@ export function SizeGuideEditor({ initial, categories, canEdit }: { initial: Siz
         <div className="dash-card p-6 text-center">
           <Ruler className="mx-auto size-8 text-nova" aria-hidden="true" />
           <p className="mt-3 text-[15px] font-black text-ink">لا جداول مقاسات بعد</p>
-          <p className="mt-1 text-[13px] text-ink-3">ابدأ من قالب بقيم شائعة ثم عدّلها لتطابق منتجاتك بالضبط، أو من جدول فارغ.</p>
+          <p className="mt-1 text-[13px] text-ink-3">البداية من قالب بقيم شائعة تُعدَّل لتطابق منتجاتك بالضبط، أو من جدول فارغ.</p>
         </div>
       ) : null}
 
@@ -61,7 +61,7 @@ export function SizeGuideEditor({ initial, categories, canEdit }: { initial: Siz
               </button>
             ))}
           </div>
-          <p className="mt-2 text-[11.5px] text-ink-3">القوالب قيم شائعة في السوق للبداية فقط؛ راجع كل رقم على منتجاتك قبل الحفظ.</p>
+          <p className="mt-2 text-[11.5px] text-ink-3">القوالب قيم شائعة في السوق للبداية فقط؛ كل رقم يحتاج مراجعة على منتجاتك قبل الحفظ.</p>
         </div>
       ) : null}
 
@@ -222,15 +222,15 @@ function ChartCard({ chart: c, categories, canEdit, onChange, onRemove }: { char
       </label>
 
       <div className="rounded-2xl border border-dashed border-edge/15 p-3">
-        <p className="text-[12.5px] font-black text-ink">جرّب المساعد كما يراه عميلك</p>
+        <p className="text-[12.5px] font-black text-ink">المساعد كما يراه عميلك</p>
         {helper ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <input value={h} onChange={(e) => setH(e.target.value)} placeholder="الطول سم" inputMode="numeric" className={cn(INPUT, "w-28")} aria-label="طول للتجربة" />
             <input value={w} onChange={(e) => setW(e.target.value)} placeholder="الوزن كجم" inputMode="numeric" className={cn(INPUT, "w-28")} aria-label="وزن للتجربة" />
-            <span className="text-[13px] font-bold text-ink">{rec ? `المقترح: ${rec.size}${rec.alternative ? ` (أو ${rec.alternative})` : ""}` : "اكتب طولاً أو وزناً"}</span>
+            <span className="text-[13px] font-bold text-ink">{rec ? `المقترح: ${rec.size}${rec.alternative ? ` (أو ${rec.alternative})` : ""}` : "طول أو وزن للتجربة"}</span>
           </div>
         ) : (
-          <p className="mt-1 text-[12px] text-ink-3">املأ مدى الطول أو الوزن لكل مقاس ليقترح المتجر المقاس للعميل. بدونهما يظهر الجدول وحده.</p>
+          <p className="mt-1 text-[12px] text-ink-3">مدى الطول أو الوزن لكل مقاس يجعل المتجر يقترح المقاس للعميل. بدونهما يظهر الجدول وحده.</p>
         )}
       </div>
     </section>
