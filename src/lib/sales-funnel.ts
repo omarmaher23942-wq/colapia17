@@ -1,0 +1,64 @@
+// sales-funnel.ts — قمع مبيعات الوكالة (الجولة 4.1): من أول رسالة إلى الدفع، بنسبة كل خطوة من التي قبلها وأين يضيع
+// أكثر الناس. منطق خالص مختبَر؛ الأعداد من `server/repos/sales-funnel.ts`. لا أرقام مخترعة: نسبة بلا أساس = null.
+
+export const FUNNEL_RANGES = [7, 30, 90] as const;
+export type FunnelRange = (typeof FUNNEL_RANGES)[number];
+
+export type FunnelCounts = {
+  /** رسائل تواصل أرسلها المالك من /admin/outreach في الفترة، ومن ردّ منهم، ومن وصل منهم للاستمارة أو أبعد. */
+  outreach: { sent: number; replied: number; reachedForm: number };
+  /** محادثات جديدة (إعلانات ورسائل وتواصل) في الفترة. */
+  conversations: number;
+  /** استمارات أُرسلت في الفترة. */
+  submitted: number;
+  /** متاجر سُلّمت للتجربة في الفترة. */
+  delivered: number;
+  /** باقات أولى قُبل دفعها في الفترة، ومبلغها بالقروش. */
+  paid: number;
+  revenue: number;
+  /** تجديدات قُبلت في الفترة. */
+  renewals: number;
+  /** من سُلّموا في الفترة: كم دفع منهم حتى الآن (تحويل التجربة لنفس الدفعة). */
+  deliveredCohortPaid: number;
+};
+
+export type FunnelStep = { key: string; label: string; value: number; rate: number | null; hint: string };
+
+const rate = (n: number, d: number) => (d > 0 ? Math.min(100, Math.round((n / d) * 100)) : null);
+
+export function funnelSteps(c: FunnelCounts): FunnelStep[] {
+  return [
+    { key: "conversations", label: "محادثات جديدة", value: c.conversations, rate: null, hint: "من الإعلانات ورسائل التواصل" },
+    { key: "submitted", label: "أرسلوا الاستمارة", value: c.submitted, rate: rate(c.submitted, c.conversations), hint: "من المحادثات" },
+    { key: "delivered", label: "استلموا متاجرهم", value: c.delivered, rate: rate(c.delivered, c.submitted), hint: "من الاستمارات" },
+    { key: "paid", label: "دفعوا", value: c.paid, rate: rate(c.paid, c.delivered), hint: "من المتاجر المسلّمة" },
+  ];
+}
+
+export function outreachSteps(o: FunnelCounts["outreach"]): FunnelStep[] {
+  return [
+    { key: "sent", label: "رسائل أُرسلت", value: o.sent, rate: null, hint: "من قائمة التواصل" },
+    { key: "replied", label: "ردّوا", value: o.replied, rate: rate(o.replied, o.sent), hint: "من المُرسل لهم" },
+    { key: "form", label: "وصلوا للاستمارة", value: o.reachedForm, rate: rate(o.reachedForm, o.replied), hint: "من الذين ردّوا" },
+  ];
+}
+
+/** أضعف خطوة (أقل نسبة بعد الأولى، بأساس 5 على الأقل حتى لا يحكم رقم صغير): حيث يُستثمر الجهد. */
+export function weakestStep(steps: FunnelStep[]): FunnelStep | null {
+  let worst: FunnelStep | null = null;
+  for (let i = 1; i < steps.length; i++) {
+    const s = steps[i]!;
+    if (s.rate === null || steps[i - 1]!.value < 5) continue;
+    if (!worst || s.rate < worst.rate!) worst = s;
+  }
+  return worst;
+}
+
+/** نصيحة واحدة للخطوة الأضعف (مبنية على ما يملكه الفريق فعلاً من أدوات). */
+export const STEP_ADVICE: Record<string, string> = {
+  submitted: "المحادثات لا تصل للاستمارة: راجع برومبت الوكيل وردوده في «المحادثات»، وهل يرسل الرابط مبكراً بما يكفي.",
+  delivered: "استمارات لا تتحول لمتاجر مسلّمة: افتح لوحة الإنتاج وراجع المتأخر و«بانتظار العميل».",
+  paid: "متاجر تُسلَّم ولا تدفع: راجع رسائل التجربة وصفحة الدفع، واتصل بمن انتهت تجربته اليوم.",
+  replied: "قليلون يردّون على رسائل التواصل: جرّب صياغة افتتاحية أخرى أو حسابات أنسب لعرضك.",
+  form: "يردّون ولا يصلون للاستمارة: المحادثة بعد الرد تحتاج متابعة أسرع منك أو من الوكيل.",
+};

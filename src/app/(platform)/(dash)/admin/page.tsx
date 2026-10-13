@@ -13,6 +13,10 @@ import { PlatformHealthScore } from "@/components/platform/PlatformHealthScore";
 import { HotLeadsWidget } from "@/components/platform/HotLeadsWidget";
 import { storeRequests } from "@/db/schema/agency";
 import { requirePlatformPage } from "@/server/platform-guard";
+import { SalesFunnel } from "@/components/platform/SalesFunnel";
+import { salesFunnel } from "@/server/repos/sales-funnel";
+import { FUNNEL_RANGES, type FunnelRange } from "@/lib/sales-funnel";
+import { goldenSeatsUsed, priceLadder } from "@/server/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +34,13 @@ async function platformGmv(since: Date): Promise<[{ n: number; v: number }]> {
   return [parts.flat().reduce((a, r) => ({ n: a.n + r.n, v: a.v + r.v }), { n: 0, v: 0 })];
 }
 
-export default async function AdminCommandCenter() {
+export default async function AdminCommandCenter({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const me = await requirePlatformPage();
   // لوحة القيادة فيها الإيرادات والمدفوعات: للمالك والمدير. باقي الفريق يبدأ من لوحة الإنتاج.
   if (!can(me.role, "stores.manage")) redirect("/admin/requests");
+  const sp = await searchParams;
+  const range: FunnelRange = (FUNNEL_RANGES as readonly number[]).includes(Number(sp.range)) ? (Number(sp.range) as FunnelRange) : 30;
+  const [funnel, ladder, seatsUsed] = await Promise.all([salesFunnel(range), priceLadder(), goldenSeatsUsed()]);
   const d30 = new Date(Date.now() - 30 * 864e5);
   const d1 = new Date(Date.now() - 864e5);
 
@@ -79,6 +86,8 @@ export default async function AdminCommandCenter() {
           <span className="text-xs font-bold text-[#8fa8ff]">افتح طلبات المتاجر ←</span>
         </Link>
       ) : null}
+
+      <SalesFunnel counts={funnel} range={range} golden={{ code: ladder.golden.code, used: seatsUsed, seats: ladder.golden.seats }} />
 
       {/* Top Widgets Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
