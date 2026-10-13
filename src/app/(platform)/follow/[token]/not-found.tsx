@@ -4,7 +4,7 @@ import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { ContactHelp } from "@/components/intake/ContactHelp";
 import { agencyWhatsappUrl } from "@/intake/notify";
 
-export const metadata = { title: "الرابط مش صحيح | Colapia", robots: { index: false, follow: false } };
+export const metadata = { title: "الرابط مش صحيح", robots: { index: false, follow: false } };
 
 export default function FollowNotFound() {
   return (

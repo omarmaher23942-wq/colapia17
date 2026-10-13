@@ -13,7 +13,7 @@ import { derivedToken } from "@/intake/tokens";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "طلب متجرك | Colapia",
+  title: "طلب متجرك",
   description: "استمارة دقيقتين عن البراند والمنتجات، وفريق Colapia يصمم المتجر ويبنيه ويراجعه قبل التسليم، ثم تجربة مجانية قبل الدفع.",
   openGraph: { title: "طلب متجرك من Colapia", description: "استمارة دقيقتين، وفريقنا يبني المتجر ويراجعه، ثم تجربة مجانية قبل الدفع.", locale: "ar_EG", type: "website" },
   robots: { index: false, follow: false },

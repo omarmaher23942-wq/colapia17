@@ -1,6 +1,6 @@
 import { Markdown } from "@/components/storefront/Markdown";
 
-export const metadata = { title: "تعليمات حذف البيانات | Colapia" };
+export const metadata = { title: "تعليمات حذف البيانات" };
 
 const BODY = `## Data Deletion Instructions
 If you wish to request the deletion of your personal or business data processed by Colapia via our Facebook Page or Instagram integration, you may do so easily:

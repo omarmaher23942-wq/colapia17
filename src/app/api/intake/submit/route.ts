@@ -4,9 +4,9 @@ import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
-import { intakeDataSchema, normalizeEmail, referencedKeys, validateSubmission } from "@/intake/schema";
+import { canonicalEmail, intakeDataSchema, normalizeEmail, referencedKeys, validateSubmission } from "@/intake/schema";
 import { draftIsOpen, findByDraftToken, isMissingTable, openQueueLength, requestAssets, submitRequest } from "@/intake/repo";
-import { checkIntake, commitIntake, filledHoneypot, hit, intakeSettings, json, requestIp, sameOrigin, submitWaitMs } from "@/intake/guard";
+import { checkIntake, commitIntake, filledHoneypot, findOpenRequest, hit, intakeSettings, isTeamContact, json, requestIp, sameOrigin, submitWaitMs } from "@/intake/guard";
 import { estimateEta, etaText } from "@/intake/eta";
 import { readJson } from "@/intake/http";
 import { derivedToken, randomToken } from "@/intake/tokens";
@@ -76,8 +76,17 @@ export async function POST(req: Request) {
     const email = normalizeEmail(data.contact.email);
     const whatsapp = normalizeEgyptianPhone(data.contact.whatsapp ?? null);
     // الفحص أولاً دون حجز: العدّادات لا ترتفع إلا بعد حفظ الطلب (خطأ مؤقت في القاعدة لا يحرق حصة العميل).
-    const check = await checkIntake({ ip, email, whatsapp, limits: settings.limits });
-    if (!check.decision.ok) return json({ error: "limited", reason: check.decision.reason, message: check.decision.message }, 429);
+    const team = await isTeamContact({ email, whatsapp }, settings);
+    const check = await checkIntake({ ip, email, whatsapp, limits: settings.limits, team });
+    if (!check.decision.ok) {
+      // طلب مفتوح بنفس البريد: نعرض إرسال رابط المتابعة إلى هذا البريد نفسه (لا نكشف الرابط في الرد).
+      let canResend = false;
+      if (check.decision.reason === "contact" && email) {
+        const open = await findOpenRequest({ email, whatsapp: null, excludeId: row.id }).catch(() => null);
+        canResend = Boolean(open?.email && canonicalEmail(open.email) === canonicalEmail(email));
+      }
+      return json({ error: "limited", reason: check.decision.reason, message: check.decision.message, canResend }, 429);
+    }
 
     const eta = estimateEta(await openQueueLength(), settings.capacityPerDay);
     const now = Date.now();

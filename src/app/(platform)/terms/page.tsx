@@ -2,7 +2,7 @@ import { Markdown } from "@/components/storefront/Markdown";
 import { currentPricing } from "@/server/pricing";
 import { fmtNum } from "@/lib/format";
 
-export const metadata = { title: "الشروط والأحكام | Colapia" };
+export const metadata = { title: "الشروط والأحكام" };
 export const dynamic = "force-dynamic";
 
 const body = (price: number, renewal: number) => `## Terms of Service (English summary)

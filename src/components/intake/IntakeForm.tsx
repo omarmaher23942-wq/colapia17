@@ -34,6 +34,18 @@ import { ColorChoice, LogoPicker } from "./LogoAndColors";
 /** أقل زمن بين إنشاء المسودة والإرسال (الخادم يعامل الأسرع كبرنامج آلي). */
 const MIN_SUBMIT_MS = 9_000;
 
+/** آخر طلب أُرسل من هذا الجهاز (رابط متابعته). */
+const FOLLOW_STORAGE_KEY = "clp-intake-follow";
+const FOLLOW_TTL_MS = 45 * 86_400_000;
+function savedFollowUrl(): string | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(FOLLOW_STORAGE_KEY) ?? "null") as { url?: string; at?: number } | null;
+    return v?.url && /^\/follow\/[A-Za-z0-9_-]{16,}$/.test(v.url) && typeof v.at === "number" && Date.now() - v.at < FOLLOW_TTL_MS ? v.url : null;
+  } catch {
+    return null;
+  }
+}
+
 export function IntakeForm({
   initial,
   initialUrls,
@@ -54,6 +66,9 @@ export function IntakeForm({
   const [showErrors, setShowErrors] = useState(false);
   const [serverErrors, setServerErrors] = useState<IntakeErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  /** حجب «طلب مفتوح بنفس البيانات»: ماذا نعرض لصاحبه (رابط محفوظ على هذا الجهاز، أو إرسال الرابط لبريده). */
+  const [openRequest, setOpenRequest] = useState<{ canResend: boolean; followUrl: string | null } | null>(null);
+  const [resend, setResend] = useState<"idle" | "sending" | "sent">("idle");
   const [sending, setSending] = useState(false);
   /** رفع صورة أو شعار جارٍ: الإرسال ينتظره (وإلا يخرج الطلب بلا ما رفعه العميل ولا يعرف). */
   const [uploading, setUploading] = useState(0);
@@ -84,12 +99,22 @@ export function IntakeForm({
   const set = (fn: (d: IntakeData) => IntakeData) => {
     setServerErrors({});
     setSubmitError(null);
+    setOpenRequest(null);
     update(fn);
+  };
+
+  const sendFollowLink = async () => {
+    if (!token) return;
+    setResend("sending");
+    await fetch("/api/intake/resend-follow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) }).catch(() => null);
+    setResend("sent");
   };
 
   const submit = async () => {
     setShowErrors(true);
     setSubmitError(null);
+    setOpenRequest(null);
+    setResend("idle");
     const errs = validateSubmission(getData());
     if (Object.keys(errs).length) {
       revealFirstError();
@@ -114,7 +139,7 @@ export function IntakeForm({
           body: JSON.stringify({ token: t, data: getData(), hp: hp.current?.value ?? "" }),
         });
       let res = await send();
-      let j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; followUrl?: string; errors?: IntakeErrors; message?: string; retryAfterMs?: number };
+      let j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; followUrl?: string; errors?: IntakeErrors; message?: string; retryAfterMs?: number; reason?: string; canResend?: boolean };
       // الخادم يطلب ثواني إضافية (المسودة أُنشئت للتو): ننتظر ونعيد مرة واحدة.
       if (j.error === "too_fast" && typeof j.retryAfterMs === "number") {
         await new Promise((r) => setTimeout(r, Math.min(15_000, j.retryAfterMs ?? 0)));
@@ -122,11 +147,20 @@ export function IntakeForm({
         j = (await res.json().catch(() => ({}))) as typeof j;
       }
       if (res.ok && j.ok && j.followUrl) {
+        // رابط المتابعة يبقى على هذا الجهاز: إن حاول صاحبه إرسال استمارة ثانية يجد طلبه بضغطة.
+        try {
+          localStorage.setItem(FOLLOW_STORAGE_KEY, JSON.stringify({ url: j.followUrl.split("?")[0], at: Date.now() }));
+        } catch {
+          /* تخزين محجوب */
+        }
         forget();
         router.push(j.followUrl);
         return;
       }
-      if (res.status === 422 && j.errors) {
+      if (res.status === 429 && j.reason === "contact") {
+        setOpenRequest({ canResend: Boolean(j.canResend), followUrl: savedFollowUrl() });
+        setSubmitError(j.message ?? "عندنا طلب مفتوح بنفس البيانات.");
+      } else if (res.status === 422 && j.errors) {
         setServerErrors(j.errors);
         revealFirstError();
       } else {
@@ -495,6 +529,24 @@ export function IntakeForm({
         {submitError || problem ? (
           <div role="alert" className="space-y-2 border-b border-rose-400/20 bg-rose-500/10 px-4 py-2 text-center text-[13px] font-bold text-rose-300">
             <p>{submitError ?? problem?.message}</p>
+            {openRequest ? (
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {openRequest.followUrl ? (
+                  <a href={openRequest.followUrl} className="inline-flex min-h-11 items-center rounded-xl bg-rose-500/20 px-4 font-black text-rose-100 underline">
+                    افتح متابعة طلبك
+                  </a>
+                ) : null}
+                {openRequest.canResend ? (
+                  resend === "sent" ? (
+                    <span className="text-[13px] font-bold text-emerald-300">لو في طلب على بريدك هيوصلك الرابط خلال دقيقة (شوف الرسائل غير المرغوبة كمان).</span>
+                  ) : (
+                    <button type="button" onClick={() => void sendFollowLink()} disabled={resend === "sending"} className="inline-flex min-h-11 items-center rounded-xl bg-rose-500/20 px-4 font-black text-rose-100 underline disabled:opacity-60">
+                      {resend === "sending" ? "بنرسل…" : "ابعتوا لي رابط المتابعة على بريدي"}
+                    </button>
+                  )
+                ) : null}
+              </div>
+            ) : null}
             {!submitError && problem?.href ? (
               <a href={problem.href} className="inline-flex min-h-11 items-center rounded-xl bg-rose-500/20 px-4 font-black text-rose-100 underline">
                 افتح متابعة طلبك

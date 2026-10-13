@@ -69,7 +69,7 @@ vi.mock("@/lib/env", async (orig) => ({
   getOwnerAlertEmails: () => ["owner@example.com"],
 }));
 
-import { checkIntake, commitIntake } from "@/intake/guard";
+import { checkIntake, commitIntake, findOpenRequest, isTeamContact } from "@/intake/guard";
 import { DEFAULT_INTAKE_LIMITS } from "@/intake/rules";
 import { purgeExpiredDrafts } from "@/intake/purge";
 import { notifySubmitted } from "@/intake/notify";
@@ -114,6 +114,38 @@ describe("فحص الإرسال لا يحجز حصة", () => {
     const r = await checkIntake({ ip: "41.33.10.2", email: "a@gmail.com", whatsapp: null, limits: DEFAULT_INTAKE_LIMITS });
     expect(r.decision).toMatchObject({ ok: false, reason: "contact" });
     expect(r.counters).toEqual([]);
+  });
+});
+
+describe("فريقنا يجرّب الاستمارة بلا حجب التكرار", () => {
+  const none = { bypass: [] as string[] };
+
+  it("checkIntake(team) يعفي من كل الحدود دون أي استعلام ولا عدّاد", async () => {
+    const r = await checkIntake({ ip: "41.33.10.2", email: "owner@example.com", whatsapp: "01012345678", limits: DEFAULT_INTAKE_LIMITS, team: true });
+    expect(r).toEqual({ decision: { ok: true }, counters: [] });
+    expect(h.selects).toEqual([]);
+  });
+
+  it("بريد المالك بأي شكل كتابة (حروف كبيرة، وسم +x) فريق", async () => {
+    expect(await isTeamContact({ email: "owner@example.com", whatsapp: null }, none)).toBe(true);
+    expect(await isTeamContact({ email: "Owner+test1@Example.com", whatsapp: null }, none)).toBe(true);
+  });
+
+  it("بريد أو رقم في «intake.bypass» فريق، وعضو نشط في فريق الوكالة فريق، وغيرهم لا", async () => {
+    expect(await isTeamContact({ email: "qa@gmail.com", whatsapp: null }, { bypass: ["Q.A+1@gmail.com"] })).toBe(true);
+    expect(await isTeamContact({ email: null, whatsapp: "01012345678" }, { bypass: ["+20 101 234 5678"] })).toBe(true);
+    h.selects.push([{ id: "u1" }]);
+    expect(await isTeamContact({ email: "member@agency.com", whatsapp: null }, none)).toBe(true);
+    h.selects.push([]);
+    expect(await isTeamContact({ email: "client@gmail.com", whatsapp: "01099999999" }, none)).toBe(false);
+  });
+
+  it("findOpenRequest: بلا بريد ولا رقم لا استعلام، وإلا أحدث طلب مفتوح", async () => {
+    expect(await findOpenRequest({ email: null, whatsapp: null })).toBeNull();
+    h.selects.push([{ id: "open1", email: "a@gmail.com" }]);
+    expect(await findOpenRequest({ email: "a@gmail.com", whatsapp: null })).toMatchObject({ id: "open1" });
+    h.selects.push([]);
+    expect(await findOpenRequest({ email: "b@gmail.com", whatsapp: null })).toBeNull();
   });
 });
 

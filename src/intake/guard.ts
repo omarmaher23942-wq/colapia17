@@ -6,16 +6,18 @@ import "server-only";
 // القاعدة (لا يتأثر بتعطل Redis)، ثم حدود البريد والرقم والشبكة، ثم سقف يومي عام بأكبر العدّين (Redis والقاعدة).
 // Redis متعطل = نسمح (تجربة العميل أهم) والقاعدة تبقى الحماية الأخيرة.
 import { createHash } from "node:crypto";
-import { and, count, eq, gte, ne, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
+import { platformUsers } from "@/db/schema";
 import { storeRequests } from "@/db/schema/agency";
 import { redis } from "@/lib/redis";
-import { clientEnv } from "@/lib/env";
+import { clientEnv, getOwnerAlertEmails } from "@/lib/env";
+import { normalizeEgyptianPhone } from "@/lib/phone";
 import { clientIp, ipBucket } from "@/lib/client-ip";
 import { getFlag } from "@/lib/flags";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { NextResponse } from "next/server";
-import { decideIntake, limitsFrom, type IntakeDecision, type IntakeLimits } from "./rules";
+import { decideIntake, limitsFrom, OPEN_REQUEST_DAYS, type IntakeDecision, type IntakeLimits } from "./rules";
 import { canonicalEmail } from "./schema";
 import { DEFAULT_CAPACITY_PER_DAY } from "./eta";
 
@@ -25,7 +27,7 @@ export const MIN_FILL_MS = 8_000;
 
 export const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
-export type IntakeSettings = { enabled: boolean; limits: IntakeLimits; capacityPerDay: number };
+export type IntakeSettings = { enabled: boolean; limits: IntakeLimits; capacityPerDay: number; /** بريد أو رقم معفى من حدود التكرار (لتجربة الفريق). */ bypass: string[] };
 
 /** إعداد الاستمارة من لوحة المالك (/admin/flags): التشغيل، والحدود، وطاقة الفريق اليومية لحساب موعد التسليم. */
 export async function intakeSettings(): Promise<IntakeSettings> {
@@ -35,7 +37,51 @@ export async function intakeSettings(): Promise<IntakeSettings> {
     enabled: f.enabled,
     limits: limitsFrom(f.config),
     capacityPerDay: Number.isInteger(cap) && cap > 0 && cap <= 100 ? cap : DEFAULT_CAPACITY_PER_DAY,
+    bypass: Array.isArray(f.config?.bypass) ? (f.config!.bypass as unknown[]).filter((v): v is string => typeof v === "string").slice(0, 50) : [],
   };
+}
+
+/**
+ * هل صاحب الطلب من فريقنا؟ بريده من بريد المالك/المالكين أو عضو نشط في فريق الوكالة، أو بريده/رقمه في «intake.bypass»
+ * بلوحة الأعلام. هؤلاء يجرّبون الاستمارة مراراً، فلا تنطبق عليهم حدود التكرار (وتبقى حماية الإغراق العامة: حدود
+ * المعدل على الطلبات نفسها). التطبيع نفسه الذي يُحفظ به الطلب فيتطابق ما كتبه.
+ */
+export async function isTeamContact(input: { email: string | null; whatsapp: string | null }, settings: Pick<IntakeSettings, "bypass">): Promise<boolean> {
+  const email = input.email ? canonicalEmail(input.email) : null;
+  const listed = new Set(settings.bypass.map((v) => (v.includes("@") ? canonicalEmail(v) : (normalizeEgyptianPhone(v) ?? v.trim()))));
+  if (email && (listed.has(email) || getOwnerAlertEmails().some((e) => canonicalEmail(e) === email))) return true;
+  if (input.whatsapp && listed.has(input.whatsapp)) return true;
+  if (input.email) {
+    const [member] = await db
+      .select({ id: platformUsers.id })
+      .from(platformUsers)
+      .where(and(eq(platformUsers.isActive, true), sql`lower(${platformUsers.email}) = ${input.email.toLowerCase()}`))
+      .limit(1)
+      .catch(() => []);
+    if (member) return true;
+  }
+  return false;
+}
+
+/** أحدث طلب مفتوح (مُرسَل ولم يُسلَّم، خلال المدة) لنفس البريد أو الرقم، أو null. */
+export async function findOpenRequest(input: { email: string | null; whatsapp: string | null; excludeId?: string }) {
+  const contact = [input.email ? eq(storeRequests.email, input.email) : undefined, input.whatsapp ? eq(storeRequests.whatsapp, input.whatsapp) : undefined].filter((c): c is NonNullable<typeof c> => Boolean(c));
+  if (!contact.length) return null;
+  const [row] = await db
+    .select()
+    .from(storeRequests)
+    .where(
+      and(
+        eq(storeRequests.status, "submitted"),
+        ne(storeRequests.stage, "delivery"),
+        gte(storeRequests.submittedAt, sql`now() - interval '${sql.raw(String(OPEN_REQUEST_DAYS))} days'`),
+        input.excludeId ? ne(storeRequests.id, input.excludeId) : undefined,
+        or(...contact),
+      ),
+    )
+    .orderBy(desc(storeRequests.submittedAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /**
@@ -124,7 +170,8 @@ export type IntakeCheck = { decision: IntakeDecision; counters: IntakeCounters }
  * يفحص الإرسال دون أن يحجز شيئاً: العدّادات لا تُرفع إلا في commitIntake بعد أن يُحفظ الطلب فعلاً، فخطأ مؤقت في
  * القاعدة أو ضغطتان متزامنتان لا تحرقان حصة العميل ولا تمنعانه من إعادة المحاولة. email/whatsapp بعد التطبيع (أو null).
  */
-export async function checkIntake(input: { ip: string; email: string | null; whatsapp: string | null; limits: IntakeLimits }): Promise<IntakeCheck> {
+export async function checkIntake(input: { ip: string; email: string | null; whatsapp: string | null; limits: IntakeLimits; /** فريقنا يجرّب: بلا حدود تكرار. */ team?: boolean }): Promise<IntakeCheck> {
+  if (input.team) return { decision: { ok: true }, counters: [] };
   const day = cairoDay();
   // كل المفاتيح مجزّأة: لا عنوان شبكة ولا رقم هاتف نصاً في Redis.
   const keys = {
@@ -144,7 +191,14 @@ export async function checkIntake(input: { ip: string; email: string | null; wha
       ? db
           .select({ n: count() })
           .from(storeRequests)
-          .where(and(eq(storeRequests.status, "submitted"), ne(storeRequests.stage, "delivery"), or(...contact)))
+          .where(
+            and(
+              eq(storeRequests.status, "submitted"),
+              ne(storeRequests.stage, "delivery"),
+              gte(storeRequests.submittedAt, sql`now() - interval '${sql.raw(String(OPEN_REQUEST_DAYS))} days'`),
+              or(...contact),
+            ),
+          )
       : Promise.resolve([{ n: 0 }]),
     db
       .select({ n: count() })

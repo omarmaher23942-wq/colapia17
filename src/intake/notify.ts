@@ -212,6 +212,32 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
   }
 }
 
+/** رابط متابعة طلب مفتوح إلى بريده المسجّل (لمن حاول إرسال استمارة ثانية). يحترم نفس حد الرسائل لكل عنوان. */
+export async function sendFollowLink(r: RequestRow): Promise<boolean> {
+  if (!r.email) return false;
+  const eta = r.etaFrom && r.etaTo && r.submittedAt ? etaText({ fromHours: hoursBetween(r.submittedAt, r.etaFrom), toHours: hoursBetween(r.submittedAt, r.etaTo) }) : "هنبلغك بالموعد";
+  const res = await sendTemplatedEmail({
+    to: r.email,
+    subject: `رابط متابعة طلب متجرك (${r.code})`,
+    element: createElement(RequestReceivedClientEmail, {
+      storeName: r.storeName ?? "متجرك",
+      code: r.code,
+      etaText: eta,
+      followUrl: followUrl(r.id),
+      confirmUrl: confirmUrl(r.id),
+      agencyWhatsappUrl: agencyWhatsappUrl(`أهلاً، بخصوص طلب متجر «${r.storeName ?? ""}» (${r.code})`),
+    }),
+    senderKind: "hello",
+    fromName: "Colapia",
+    replyTo: env.INTAKE_REPLY_TO,
+    idempotencyKey: `intake:${r.id}:follow:${Date.now().toString(36)}`,
+    tracking: false,
+    entityId: r.id,
+  });
+  await logEvent(r.id, res.ok ? "رابط المتابعة أُعيد إرساله لبريد العميل (حاول إرسال استمارة ثانية)" : `تعذر إعادة إرسال رابط المتابعة: ${emailError(res.error)}`);
+  return res.ok;
+}
+
 /** طلب لم يُبلَّغ فريقه أو عميله بعد (فشل بريد، أو توقفت الدالة قبل الإرسال): يعاد من تكرار الإرسال ومن ops/tick. */
 export async function notifyIfPending(r: RequestRow): Promise<void> {
   if (r.status !== "submitted") return;

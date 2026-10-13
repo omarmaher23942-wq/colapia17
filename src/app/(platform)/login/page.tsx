@@ -11,7 +11,7 @@ import { LoginForm } from "./LoginForm";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "تسجيل الدخول | Colapia",
+  title: "تسجيل الدخول",
   description: "سجّل الدخول إلى حسابك في Colapia بحساب Google في ثوانٍ.",
   robots: { index: false, follow: false },
   openGraph: {

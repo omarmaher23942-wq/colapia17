@@ -21,7 +21,7 @@ import { currentPricing } from "@/server/pricing";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "متابعة متجرك | Colapia",
+  title: "متابعة متجرك",
   robots: { index: false, follow: false, nocache: true },
   referrer: "no-referrer",
 };

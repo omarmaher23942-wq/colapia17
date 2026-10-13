@@ -1,6 +1,6 @@
 import { Markdown } from "@/components/storefront/Markdown";
 
-export const metadata = { title: "سياسة الخصوصية | Colapia" };
+export const metadata = { title: "سياسة الخصوصية" };
 
 const BODY = `## Privacy Policy (English summary)
 Colapia designs, builds and hosts e-commerce stores for merchants. When you fill in our store request form or message our Facebook Page or Instagram account we receive what you send (store details, WhatsApp number, email, page link, photos, logo, voice notes and notes), solely to build your store and contact you about it. Voice notes are converted to text automatically by a service provider so our team can read them. Unsent form drafts are deleted with their files after 21 days. Merchant store data (products, orders, customers) is processed on behalf of the merchant and hosted with our infrastructure providers (cloud application hosting and file storage, a cloud database, caching and job scheduling, and email delivery). Images a shopper uploads to a store's visual search are analysed automatically by a service provider to find matching products and are not stored. A paid store is never deleted automatically; the merchant may export and delete their data at any time. We do not sell data. Contact: privacy@colapia.com. Data deletion: see /data-deletion.
