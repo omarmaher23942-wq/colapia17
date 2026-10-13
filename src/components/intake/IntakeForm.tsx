@@ -160,11 +160,11 @@ export function IntakeForm({
               <Clock className="size-3.5" aria-hidden="true" /> التسليم {etaText} من وقت إرسال الطلب
             </span>
           )}
-          <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">{golden ? "منتجاتك هنا، ومتجرك يبدأ" : "احكيلنا عن متجرك، وإحنا نبنيه"}</h1>
+          <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">{golden ? "منتجاتك هنا، ومتجرك يبدأ" : "احكوا لنا عن متجركم، وإحنا نبنيه"}</h1>
           <p className="text-[15px] leading-8 text-ink-2">
             {golden
               ? `صور ${GOLDEN_SUGGESTED_PRODUCTS} منتجات باسم وسعر كل منتج، وأي تفصيلة صغيرة زي الألوان والمقاسات. الباقي كله على فريق Colapia، والتسليم ${etaText} من وقت الإرسال.`
-              : "دقيقتين بس. فريق Colapia بيصمم متجرك وبيبنيه وبيراجعه قبل ما يوصلك. المطلوب اسم المتجر ووسيلة تواصل، والباقي اختياري أو «سيبها للفريق»."}
+              : "دقيقتين بس. فريق Colapia بيصمم متجرك وبيبنيه وبيراجعه قبل ما يوصلك. المطلوب اسم المتجر ووسيلة تواصل، والباقي اختياري أو «يختارها الفريق»."}
           </p>
         </motion.header>
 
@@ -192,7 +192,7 @@ export function IntakeForm({
               className={cn(inputCls, "h-14 text-lg")}
             />
           </Field>
-          <Field label="بتبيع إيه؟ في سطر" htmlFor="store-line" optional>
+          <Field label="البراند بيبيع إيه؟ في سطر" htmlFor="store-line" optional>
             <input
               id="store-line"
               value={data.store.oneLine ?? ""}
@@ -236,7 +236,7 @@ export function IntakeForm({
           </Field>
         </Card>
 
-        <Card n={3} icon={AtSign} title="صفحتك على إنستجرام أو فيسبوك" sub="لو عندك صفحة بتبيع منها، رابطها هنا.">
+        <Card n={3} icon={AtSign} title="صفحتك على إنستجرام أو فيسبوك" sub="لو في صفحة بتبيعوا منها، رابطها هنا.">
           <Field label="رابط الصفحة أو اسم الحساب" htmlFor="social" error={errors["social.url"]} optional>
             <input
               id="social"
@@ -266,7 +266,7 @@ export function IntakeForm({
             />
             <span className="text-[14px] font-bold leading-6 text-ink">
               خلّوا الفريق يجمع منتجاتي من الصفحة
-              <span className="block text-[12.5px] font-medium text-ink-3">الصور والأسماء والأسعار، وهتشوفها في متجرك أول ما يوصلك وتقدر تطلب تعديل.</span>
+              <span className="block text-[12.5px] font-medium text-ink-3">الصور والأسماء والأسعار، وتظهر في المتجر أول ما يوصل، وأي تعديل مطلوب يتعمل.</span>
             </span>
           </label>
         </Card>
@@ -276,9 +276,9 @@ export function IntakeForm({
           icon={Palette}
           title="الشكل"
           sub="ألوان متجرك وشعارك."
-          action={<TeamToggle on={data.colors.mode === "team"} ariaLabel="سيبها للفريق: الألوان" onChange={(v) => set((d) => ({ ...d, colors: v ? { mode: "team" } : {} }))} />}
+          action={<TeamToggle on={data.colors.mode === "team"} ariaLabel="يختارها الفريق: الألوان" onChange={(v) => set((d) => ({ ...d, colors: v ? { mode: "team" } : {} }))} />}
         >
-          {data.colors.mode !== "team" ? <ColorChoice data={data} update={set} error={errors["colors.mode"]} /> : <p className="text-[13.5px] leading-7 text-ink-2">تمام، فريق التصميم هيختار ألوان تناسب نشاطك وزبونك.</p>}
+          {data.colors.mode !== "team" ? <ColorChoice data={data} update={set} error={errors["colors.mode"]} /> : <p className="text-[13.5px] leading-7 text-ink-2">تمام، فريق التصميم هيختار ألوان تناسب النشاط والعملاء.</p>}
           <div className="border-t border-edge/[0.07] pt-4">
             <p className="mb-3 text-[14px] font-black text-ink">
               الشعار <span className="text-[12px] font-bold text-ink-3">(اختياري)</span>
@@ -304,14 +304,14 @@ export function IntakeForm({
           {productMode === "list" ? (
             <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
           ) : productMode === "team" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من صفحتك{data.social.url ? "" : "؛ رابطها مكانه خانة إنستجرام أو فيسبوك فوق"}.</p>
+            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من الصفحة{data.social.url ? "" : "؛ رابطها مكانه خانة إنستجرام أو فيسبوك فوق"}.</p>
           ) : productMode === "later" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">تمام، هتضيفها من لوحة التحكم بعد التسليم، وهي سهلة جداً.</p>
+            <p className="text-[13.5px] leading-7 text-ink-2">تمام، إضافتها من لوحة التحكم بعد التسليم سهلة جداً.</p>
           ) : null}
         </Card>
 
         <Card n={6} icon={Truck} title="الدفع والتوصيل">
-          <Field label="عملاءك هيدفعوا إزاي؟">
+          <Field label="العملاء هيدفعوا إزاي؟">
             <div className="flex flex-wrap items-center gap-2">
               <Choice
                 label="طرق الدفع"
@@ -321,10 +321,10 @@ export function IntakeForm({
                   set((d) => ({ ...d, payment: { unsure: false, methods: d.payment.methods.includes(id) ? d.payment.methods.filter((m) => m !== id) : [...d.payment.methods, id] } }))
                 }
               />
-              <TeamToggle on={data.payment.unsure} ariaLabel="مش متأكد: طرق الدفع" onChange={(v) => set((d) => ({ ...d, payment: { methods: v ? [] : d.payment.methods, unsure: v } }))} label="مش متأكد" />
+              <TeamToggle on={data.payment.unsure} ariaLabel="لسه مش محدد: طرق الدفع" onChange={(v) => set((d) => ({ ...d, payment: { methods: v ? [] : d.payment.methods, unsure: v } }))} label="لسه مش محدد" />
             </div>
           </Field>
-          <Field label="بتوصّل فين؟">
+          <Field label="التوصيل لفين؟">
             <Choice
               label="نطاق التوصيل"
               options={DELIVERY_OPTIONS}
@@ -351,7 +351,7 @@ export function IntakeForm({
           icon={Globe}
           title="موقع عاجبك شكله"
           sub="أي متجر أو موقع (حتى لو أجنبي) يعجبك ستايله."
-          action={<TeamToggle on={data.inspiration.team} ariaLabel="سيبها للفريق: موقع الإلهام" onChange={(v) => set((d) => ({ ...d, inspiration: { url: v ? undefined : d.inspiration.url, team: v } }))} />}
+          action={<TeamToggle on={data.inspiration.team} ariaLabel="يختارها الفريق: موقع الإلهام" onChange={(v) => set((d) => ({ ...d, inspiration: { url: v ? undefined : d.inspiration.url, team: v } }))} />}
         >
           {!data.inspiration.team ? (
             <Field label="رابط الموقع" htmlFor="insp" error={errors["inspiration.url"]} optional>
@@ -373,7 +373,7 @@ export function IntakeForm({
           )}
         </Card>
 
-        <Card n={8} icon={Mic} title="عندك إضافة؟" sub="رسالة صوتية بدل الكتابة، أو أي تفصيلة مكتوبة.">
+        <Card n={8} icon={Mic} title="في إضافة؟" sub="رسالة صوتية بدل الكتابة، أو أي تفصيلة مكتوبة.">
           <VoiceNote data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} whatsappUrl={whatsappUrl} onBusy={onBusy} />
           <Field label="ملاحظات" htmlFor="notes" optional>
             <textarea
@@ -400,7 +400,7 @@ export function IntakeForm({
         </div>
 
         <p className="text-center text-[12.5px] leading-6 text-ink-3">
-          بإرسال الطلب أنت موافق على{" "}
+          بإرسال الطلب تتم الموافقة على{" "}
           <Link href="/terms" className="font-bold text-ink-2 underline">
             الشروط
           </Link>{" "}
@@ -569,7 +569,7 @@ function GoldenCards({
             className="mt-1 size-5 accent-[#6f86ff]"
           />
           <span className="text-[14px] font-bold leading-6 text-ink">
-            موافق أصوّر فيديو قصير عن البراند
+            موافقة على تصوير فيديو قصير عن البراند
             <span className="block text-[12.5px] font-medium text-ink-3">دقيقة أو أقل من الموبايل. فريقنا يراجعه ويمنتجه، وننشره Collab Post بينا وبينكم بعد ما المتجر يجهز.</span>
           </span>
         </label>
@@ -585,7 +585,7 @@ function GoldenCards({
             maxLength={2000}
             rows={3}
             onChange={(e) => set((d) => ({ ...d, notes: e.target.value }))}
-            placeholder="الشحن، الدفع عند الاستلام، ألوان البراند… أي تفصيلة تحبها."
+            placeholder="الشحن، الدفع عند الاستلام، ألوان البراند… أي تفصيلة مهمة."
             className="w-full rounded-xl border border-edge/10 bg-edge/[0.04] p-3 text-[16px] leading-7 text-ink outline-none placeholder:text-ink-3/60 focus:border-nova focus:ring-2 focus:ring-nova/25 sm:text-[15px]"
           />
         </Field>

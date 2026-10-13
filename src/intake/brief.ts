@@ -13,7 +13,7 @@ export type BriefInput = {
   submittedAt?: Date | null;
 };
 
-const TEAM = "سيبها للفريق";
+const TEAM = "يختارها الفريق";
 const NONE = "—";
 
 /** نص سطر واحد آمن داخل Markdown (لا عناوين ولا قوائم مزروعة من نص العميل). */
@@ -42,7 +42,7 @@ export function renderBrief({ code, data: d, assets, submittedAt }: BriefInput):
   const social = socialUrl(d.social.url);
   const inspiration = safeUrl(d.inspiration.url);
   const payment = d.payment.unsure
-    ? "مش متأكد (الفريق يقترح)"
+    ? "لسه مش محدد (الفريق يقترح)"
     : d.payment.methods.map((m) => PAYMENT_OPTIONS.find((p) => p.id === m)?.label ?? m).join("، ") || NONE;
   const delivery = DELIVERY_OPTIONS.find((o) => o.id === d.delivery.scope)?.label ?? NONE;
 

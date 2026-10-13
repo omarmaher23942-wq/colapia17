@@ -50,16 +50,16 @@ function teamRows(r: RequestRow, d: IntakeData): TeamAlertRow[] {
   const palette = paletteById(d.colors.preset);
   add(
     "الألوان",
-    d.colors.mode === "preset" && palette ? palette.name : d.colors.mode === "logo" ? "من الشعار" : d.colors.mode === "custom" ? d.colors.custom : d.colors.mode === "team" ? "سيبها للفريق" : null,
+    d.colors.mode === "preset" && palette ? palette.name : d.colors.mode === "logo" ? "من الشعار" : d.colors.mode === "custom" ? d.colors.custom : d.colors.mode === "team" ? "يختارها الفريق" : null,
   );
-  add("الشعار", d.logo.key ? "مرفوع" : d.logo.team ? "سيبها للفريق" : null);
+  add("الشعار", d.logo.key ? "مرفوع" : d.logo.team ? "يختارها الفريق" : null);
   add(
     "المنتجات",
     d.products.mode === "team" ? "الفريق يجمعها" : d.products.mode === "later" ? "يضيفها بنفسه لاحقاً" : d.products.items.length ? `${d.products.items.length} (صورة وسطر)` : null,
   );
-  add("الدفع", d.payment.unsure ? "مش متأكد" : d.payment.methods.map((m) => PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m).join("، "));
+  add("الدفع", d.payment.unsure ? "لسه مش محدد" : d.payment.methods.map((m) => PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m).join("، "));
   add("الشحن", [DELIVERY_OPTIONS.find((o) => o.id === d.delivery.scope)?.label, d.delivery.note].filter(Boolean).join(" — "));
-  add("موقع إلهام", safeUrl(d.inspiration.url) ?? (d.inspiration.team ? "سيبها للفريق" : null));
+  add("موقع إلهام", safeUrl(d.inspiration.url) ?? (d.inspiration.team ? "يختارها الفريق" : null));
   add("المصدر", [r.source, r.utm?.utm_source, r.utm?.utm_campaign].filter(Boolean).join(" / "));
   return rows;
 }
@@ -119,7 +119,7 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
             storeName: name,
             code: r.code,
             adminUrl: adminRequestUrl(r.id),
-            whatsappUrl: r.whatsapp ? waLink(r.whatsapp, `أهلاً، معاك فريق Colapia بخصوص طلب متجر «${name}» (${r.code}).`) : null,
+            whatsappUrl: r.whatsapp ? waLink(r.whatsapp, `أهلاً، مع حضراتكم فريق Colapia بخصوص طلب متجر «${name}» (${r.code}).`) : null,
             rows: teamRows(r, d),
             images,
             voiceUrl: voice?.url ?? null,

@@ -20,6 +20,7 @@ const ROOTS = [
   "src/blueprint/facts.ts",
   "src/blueprint/schema.ts",
   "src/lib/order-messages.ts",
+  "src/intake",
   "src/lifecycle/templates.ts",
   "src/lifecycle/handlers.ts",
   "src/components/dashboard/billing",
@@ -29,7 +30,7 @@ const ROOTS = [
 const BANNED = [
   "دوّري", "دوري", "ابحثي", "جرّبي", "جربي", "اختاري", "الصقي", "صوّري", "ارفعي", "افتحي", "اطلبيه", "اطلبي", "اسألي", "كلّمي",
   "شوفي", "اكتشفي", "تسوقي", "تسوّقي", "العميلة", "عميلتك", "عايزة", "حبيبتي",
-  "عايز", "معاك", "استنى", "يا بطل", "يا باشا", "يا معلم",
+  "عايز", "معاك", "استنى", "سيبها", "متأكد", "هتضيفها", "هتشوفها", "يا بطل", "يا باشا", "يا معلم",
 ];
 
 function files(p: string): string[] {

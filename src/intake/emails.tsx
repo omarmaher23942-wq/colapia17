@@ -33,7 +33,7 @@ export function RequestReceivedClientEmail(p: {
         <>
           <EmailDivider />
           <EmailParagraph>
-            أكّد بريدك بضغطة واحدة عشان نتأكد إنه وصلك، وهنستخدمه في التواصل معاك وفي الدخول للوحة تحكم متجرك:
+            تأكيد البريد بضغطة واحدة، عشان نطمّن إنه وصل، وهو اللي هنستخدمه في التواصل وفي الدخول للوحة تحكم المتجر:
           </EmailParagraph>
           <p style={{ margin: "12px 0" }}>
             <EmailButton href={p.confirmUrl} variant="ghost">

@@ -78,7 +78,7 @@ export function ErrorText({ children }: { children?: React.ReactNode }) {
 }
 
 /** «سيبها للفريق»: يسلّم السؤال لفريق التصميم ويطوي خياراته. */
-export function TeamToggle({ on, onChange, label = "سيبها للفريق", ariaLabel }: { on: boolean; onChange: (v: boolean) => void; label?: string; ariaLabel?: string }) {
+export function TeamToggle({ on, onChange, label = "يختارها الفريق", ariaLabel }: { on: boolean; onChange: (v: boolean) => void; label?: string; ariaLabel?: string }) {
   return (
     <button
       type="button"

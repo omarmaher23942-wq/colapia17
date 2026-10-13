@@ -21,7 +21,7 @@ export const DELIVERY_OPTIONS = [
   { id: "all", label: "كل المحافظات" },
   { id: "cairo_giza", label: "القاهرة والجيزة" },
   { id: "custom", label: "محافظات معينة" },
-  { id: "unsure", label: "مش متأكد" },
+  { id: "unsure", label: "لسه مش محدد" },
 ] as const;
 export type DeliveryScope = (typeof DELIVERY_OPTIONS)[number]["id"];
 const DELIVERY_IDS = DELIVERY_OPTIONS.map((d) => d.id) as [DeliveryScope, ...DeliveryScope[]];
@@ -173,7 +173,7 @@ export function validateSubmission(d: IntakeData): IntakeErrors {
   const mail = clean(d.contact.email);
   if (wa && !normalizeEgyptianPhone(wa)) e["contact.whatsapp"] = "رقم واتساب مصري غير صحيح (مثال: 01012345678).";
   if (mail && !normalizeEmail(mail)) e["contact.email"] = "البريد غير صحيح.";
-  if (!wa && !mail) e["contact.whatsapp"] = "اكتب رقم واتساب أو بريدك عشان نقدر نتواصل معاك.";
+  if (!wa && !mail) e["contact.whatsapp"] = "رقم واتساب أو بريد مطلوب عشان نقدر نتواصل.";
 
   const social = clean(d.social.url);
   if (social && !socialUrl(social)) e["social.url"] = "اكتب رابط الصفحة كاملاً أو اسم الحساب مثل @mystore.";

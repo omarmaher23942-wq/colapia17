@@ -1,9 +1,10 @@
 // صفحة تسجيل الدخول — Server Component:
-// - تقرأ كوكي clp_m أولاً، وإذا وُجد تاجر مسجّل → redirect مباشر لـ /dashboard.
+// - جلسة تاجر صالحة فعلاً ← redirect مباشر للوجهة المطلوبة (لا مجرد وجود الكوكي: الكوكي المنتهي كان يدور بلا نهاية).
 // - تستقبل redirect intent عبر ?redirect= وتحفظه لتمريره للـ Server Action (E2).
 // - SEO/OpenGraph Tags (E5) + noindex لأنها صفحة وظيفية.
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { getMerchantSession } from "@/server/auth";
 import { cookies } from "next/headers";
 import { LoginForm } from "./LoginForm";
 
@@ -33,13 +34,11 @@ export default async function LoginPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const jar = await cookies();
-  if (jar.get("clp_m")?.value) {
-    redirect("/dashboard");
-  }
-
   const params = await searchParams;
   const redirectTo = sanitizeRedirect(params.redirect);
+  // جلسة صالحة فعلاً (لا مجرد وجود الكوكي): كوكي منتهٍ أو ملغى كان يدور بين /login و/dashboard بلا نهاية.
+  const jar = await cookies();
+  if (jar.get("clp_m")?.value && (await getMerchantSession().catch(() => null))) redirect(redirectTo);
 
   return (
     <main

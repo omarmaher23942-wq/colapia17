@@ -244,7 +244,7 @@ export function VoiceNote({
             onClick={() => fileInput.current?.click()}
             className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-2xl border border-edge/10 px-4 text-[13.5px] font-bold text-ink-2 hover:text-ink disabled:opacity-50"
           >
-            <Upload className="size-4" aria-hidden="true" /> ارفع ملف صوتي
+            <Upload className="size-4" aria-hidden="true" /> رفع ملف صوتي
           </button>
         </div>
       ) : null}

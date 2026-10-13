@@ -63,14 +63,14 @@ export function LogoPicker({
           ) : null}
         </button>
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[13px] leading-6 text-ink-2">{src ? "الشعار وصل. تقدر تغيّره بضغطة." : "الشعار لو موجود (PNG بخلفية شفافة أفضل)."}</p>
+          <p className="text-[13px] leading-6 text-ink-2">{src ? "الشعار وصل، وتغييره بضغطة." : "الشعار لو موجود (PNG بخلفية شفافة أفضل)."}</p>
           <div className="flex flex-wrap gap-2">
             {src ? (
               <button type="button" onClick={() => update((d) => ({ ...d, logo: { team: false } }))} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[12.5px] font-bold text-ink-3 hover:text-rose-400">
                 <Trash2 className="size-3.5" aria-hidden="true" /> احذف الشعار
               </button>
             ) : (
-              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="مافيش شعار؟ شعار نصي من الفريق" ariaLabel="سيبها للفريق: الشعار" />
+              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="مافيش شعار؟ شعار نصي من الفريق" ariaLabel="يختارها الفريق: الشعار" />
             )}
           </div>
         </div>
