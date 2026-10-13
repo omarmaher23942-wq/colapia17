@@ -46,9 +46,9 @@ export function CartRestore({ items, dropped, customer }: { items: RestoreItem[]
     return (
       <div className="container-x max-w-md py-16 text-center">
         <h1 className="text-2xl">منتجات السلة لم تعد متاحة</h1>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">نفدت أو لم تعد معروضة. تصفّح الجديد في المتجر.</p>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">نفدت أو لم تعد معروضة، وفي المتجر جديد كثير.</p>
         <Link href="/" className="btn-brand mt-6">
-          تصفّح المتجر
+          العودة للمتجر
         </Link>
       </div>
     );

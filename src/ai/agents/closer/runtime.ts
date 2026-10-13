@@ -99,13 +99,13 @@ function formatEgpNumber(n: number): string {
 
 // ─── الرسالة الطارئة بدون رابط (المستوى الأخير) ────────────────────────────
 function emergencyReply(vars: Record<string, string>): string {
-  return `أهلاً بيك في Colapia. فريقنا بيبني لك متجر إلكتروني كامل لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج وتشمل سنة استضافة. ابعتلي اسم نشاطك وأبعتلك رابط الاستمارة.`;
+  return `أهلاً بك في Colapia. فريقنا بيبني لك متجر إلكتروني كامل لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة قبل ما تدفع. الباقة ${formatEgpNumber(Number(vars.price))} ج وتشمل سنة استضافة. ابعتلي اسم نشاطك وأبعتلك رابط الاستمارة.`;
 }
 
 // ─── الرسالة الافتراضية مع زر الاستمارة ────────────────────────────────────
 function fallbackWithLink(vars: Record<string, string>, url: string, kind: "form" | "follow" = "form") {
   if (kind === "follow") return { text: "استمارتك وصلتنا، ومن الرابط ده تتابع متجرك مرحلة بمرحلة وموعد تسليمه:", buttonTitle: "تابع متجرك", url };
-  const text = `أهلاً بيك في Colapia. فريقنا بيصمم ويبني لك متجر إلكتروني لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${vars.priceLine} وتشمل سنة استضافة، بلا عمولة على مبيعاتك. ${vars.remainingLine ?? ""}اضغط الزر واملأ الاستمارة في دقيقتين:`;
+  const text = `أهلاً بك في Colapia. فريقنا بيصمم ويبني لك متجر إلكتروني لنشاطك ويستضيفه، وتجربه ${vars.trialHours} ساعة بعد التسليم قبل ما تدفع. الباقة ${vars.priceLine} وتشمل سنة استضافة، بلا عمولة على مبيعاتك. ${vars.remainingLine ?? ""}اضغط الزر واملأ الاستمارة في دقيقتين:`;
   return { text, buttonTitle: "ابدأ استمارة متجرك", url };
 }
 

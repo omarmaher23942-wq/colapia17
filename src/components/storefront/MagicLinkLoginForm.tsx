@@ -62,7 +62,7 @@ export function MagicLinkLoginForm({
         <div>
           <p className="text-sm font-black">وصلك الرابط</p>
           <p className="mt-1 text-[11px] leading-relaxed opacity-70">
-            افتح بريدك <b dir="ltr">{email}</b> واضغط الرابط لتسجيل الدخول.
+            أرسلنا رابط الدخول إلى <b dir="ltr">{email}</b>. الرابط في البريد يفتح حسابك مباشرة.
             الرابط صالح 15 دقيقة.
           </p>
         </div>
@@ -72,7 +72,7 @@ export function MagicLinkLoginForm({
           className="text-[11px] font-bold underline-offset-4 hover:underline"
           style={{ color: "var(--primary)" }}
         >
-          جرب بريد آخر
+          بريد آخر
         </button>
       </div>
     );
@@ -127,7 +127,7 @@ export function MagicLinkLoginForm({
           </>
         ) : (
           <>
-            <span>أرسل لي رابط الدخول</span>
+            <span>إرسال رابط الدخول</span>
             <ArrowRight className="size-4" strokeWidth={2.5} aria-hidden="true" />
           </>
         )}

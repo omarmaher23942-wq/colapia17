@@ -287,7 +287,7 @@ export function CheckoutForm({
             color: "var(--primary-foreground)",
           }}
         >
-          تصفح المنتجات الآن
+          عرض المنتجات
         </Link>
       </div>
     );
@@ -407,7 +407,7 @@ export function CheckoutForm({
                   id="co-name"
                   className={F}
                   style={inputStyle}
-                  placeholder="اكتب اسمك الثلاثي"
+                  placeholder="الاسم الثلاثي"
                   autoComplete="name"
                   value={f.name}
                   onChange={(e) => set("name", e.target.value)}
@@ -484,7 +484,7 @@ export function CheckoutForm({
                     onChange={(e) => set("governorate", e.target.value)}
                     required
                   >
-                    <option value="">اختر المحافظة لحساب الشحن</option>
+                    <option value="">المحافظة (لحساب الشحن)</option>
                     {governorates.map((g) => {
                       const z = zoneByCode.get(g.code);
                       const showFee = z && policy && policy.flatPiasters === null && policy.freeOverPiasters !== 0;
@@ -623,9 +623,9 @@ export function CheckoutForm({
                 }}
               >
                 <ol className="list-inside list-decimal space-y-1 text-[12px] font-bold opacity-80">
-                  <li>انسخ الرقم وحوّل المبلغ بالضبط.</li>
+                  <li>نسخ الرقم وتحويل المبلغ بالضبط.</li>
                   <li>صوّر شاشة نجاح التحويل وارفعها هنا.</li>
-                  <li>اضغط تأكيد الطلب، ونراجع التحويل ونؤكد لك.</li>
+                  <li>الضغط على «تأكيد الطلب»، ثم نراجع التحويل ونؤكد لك.</li>
                 </ol>
                 {quote ? (
                   <div className="flex items-center justify-between gap-2 rounded-xl border bg-[var(--background)] p-3" style={{ borderColor: "var(--border)" }}>
@@ -724,7 +724,7 @@ export function CheckoutForm({
                     <MediaUploadButton
                       route="transferProof"
                       input={{ subdomain }}
-                      label="ارفع صورة الإيصال"
+                      label="رفع صورة الإيصال"
                       onUploaded={(url) => {
                         set("transferScreenshotUrl", url);
                         toast.success("تم إرفاق الإيصال");
@@ -748,7 +748,7 @@ export function CheckoutForm({
             <input
               className={cn(F, "font-mono font-bold uppercase")}
               style={inputStyle}
-              placeholder="اكتب كود الخصم"
+              placeholder="كود الخصم"
               dir="ltr"
               value={f.discountCode}
               onChange={(e) =>
@@ -863,7 +863,7 @@ export function CheckoutForm({
                 <span className="text-rose-500">{quote.shippingError}</span>
               ) : !shippingReady ? (
                 <span className="font-sans font-normal opacity-60">
-                  {f.governorate ? "جاري الحساب…" : "اختر المحافظة"}
+                  {f.governorate ? "جاري الحساب…" : "حسب المحافظة"}
                 </span>
               ) : quote!.shipping === 0 ? (
                 <span className="font-sans font-bold text-emerald-600">مجاني</span>
@@ -898,7 +898,7 @@ export function CheckoutForm({
         {policy?.freeOverPiasters && quote?.shipping && quote.shipping > 0 && shownSub < policy.freeOverPiasters ? (
           <div className="space-y-1.5 rounded-2xl p-3" style={{ background: "var(--muted)" }}>
             <p className="text-[11.5px] font-bold">
-              أضف منتجات بـ <span className="font-mono">{formatEgp(policy.freeOverPiasters - shownSub)}</span> واحصل على شحن مجاني
+              باقي <span className="font-mono">{formatEgp(policy.freeOverPiasters - shownSub)}</span> على الشحن المجاني
             </p>
             <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
               <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, (shownSub / policy.freeOverPiasters) * 100)}%` }} />

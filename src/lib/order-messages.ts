@@ -95,7 +95,7 @@ export function orderMessage(kind: MessageKind, o: MessageOrder, storeName: stri
     case "cancelled":
       return `${hi} بخصوص طلبك ${o.code}: تم إلغاؤه. إن كان ذلك غير مقصود أو لديك أي سؤال فنحن هنا.`;
     case "payment_rejected":
-      return `${hi} لم يصلنا تحويل طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. أرسل لنا صورة الإيصال الصحيحة أو أعد التحويل، وسنؤكد طلبك فوراً.`;
+      return `${hi} لم يصلنا تحويل طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. نحتاج صورة الإيصال الصحيحة أو إعادة التحويل، وسنؤكد طلبك فوراً.`;
     default:
       return `${hi} بخصوص طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}.`;
   }

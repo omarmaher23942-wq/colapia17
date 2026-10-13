@@ -45,8 +45,8 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
   }
 
   async function send() {
-    if (!rated.length) return void toast.error("اختر عدد النجوم لمنتج واحد على الأقل");
-    if (name.trim().length < 2) return void toast.error("اكتب الاسم الذي يظهر مع تقييمك");
+    if (!rated.length) return void toast.error("التقييم يحتاج عدد النجوم لمنتج واحد على الأقل");
+    if (name.trim().length < 2) return void toast.error("الاسم مطلوب ليظهر مع التقييم");
     setSending(true);
     const r = await submitOrderReviewsAction({
       subdomain,
@@ -148,7 +148,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
           <CheckCircle2 strokeWidth={SW} className="mx-auto size-8 text-primary" aria-hidden="true" />
           <p className="mt-2 font-bold">وصلتنا تقييماتك، شكراً لك!</p>
           <Link href="/" className="btn-brand mt-4">
-            تصفح المتجر
+            العودة للمتجر
           </Link>
         </div>
       ) : (
@@ -159,7 +159,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
           </label>
           <button type="button" onClick={send} disabled={sending || !rated.length || open.some((i) => draft(i.productId).uploading)} className="btn-brand w-full disabled:opacity-50">
             {sending ? <Loader2 className="size-5 animate-spin" aria-hidden="true" /> : null}
-            {rated.length ? `أرسل ${rated.length === 1 ? "تقييمك" : `${rated.length} تقييمات`}` : "اختر النجوم أولاً"}
+            {rated.length ? `إرسال ${rated.length === 1 ? "التقييم" : `${rated.length} تقييمات`}` : "التقييم بالنجوم أولاً"}
           </button>
           <p className="text-center text-xs text-muted-foreground">رقم موبايلك لا يظهر لأحد.</p>
         </div>

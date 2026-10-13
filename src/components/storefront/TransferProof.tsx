@@ -54,7 +54,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        {phone && !validPhone && <p className="mt-1 text-xs text-danger">اكتب رقم موبايل مصري صحيح</p>}
+        {phone && !validPhone && <p className="mt-1 text-xs text-danger">رقم الموبايل غير صحيح (مثال: 01012345678)</p>}
       </div>
 
       {url ? (
@@ -66,7 +66,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
           </button>
         </div>
       ) : (
-        <MediaUploadButton route="transferProof" input={{ subdomain }} label="ارفع صورة التحويل" onUploaded={setUrl} onError={(m) => toast.error(m)} />
+        <MediaUploadButton route="transferProof" input={{ subdomain }} label="رفع صورة التحويل" onUploaded={setUrl} onError={(m) => toast.error(m)} />
       )}
 
       {err && <p className="text-sm text-danger">{err}</p>}

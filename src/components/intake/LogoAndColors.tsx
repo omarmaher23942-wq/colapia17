@@ -38,7 +38,7 @@ export function LogoPicker({
       setUrl(key, url);
       update((d) => ({ ...d, logo: { key, team: false } }));
     } catch (e) {
-      setError(uploadErrorMessage(e, "فشل رفع الشعار، جرّب تاني."));
+      setError(uploadErrorMessage(e, "فشل رفع الشعار. مرة أخرى؟"));
     } finally {
       setBusy(false);
       onBusy(-1);
@@ -53,7 +53,7 @@ export function LogoPicker({
           onClick={() => input.current?.click()}
           disabled={busy}
           className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-dashed border-nova/40 bg-nova/[0.06] text-nova-2 transition hover:bg-nova/[0.12] disabled:opacity-70"
-          aria-label={src ? "غيّر الشعار" : "ارفع الشعار"}
+          aria-label={src ? "تغيير الشعار" : "رفع الشعار"}
         >
           {src ? <Image src={src} alt="الشعار" fill sizes="96px" className="object-contain p-2" unoptimized /> : <ImagePlus className="size-7" aria-hidden="true" />}
           {busy ? (
@@ -63,7 +63,7 @@ export function LogoPicker({
           ) : null}
         </button>
         <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[13px] leading-6 text-ink-2">{src ? "الشعار وصل. تقدر تغيّره بضغطة." : "ارفع الشعار لو عندك (PNG بخلفية شفافة أفضل)."}</p>
+          <p className="text-[13px] leading-6 text-ink-2">{src ? "الشعار وصل. تقدر تغيّره بضغطة." : "الشعار لو موجود (PNG بخلفية شفافة أفضل)."}</p>
           <div className="flex flex-wrap gap-2">
             {src ? (
               <button type="button" onClick={() => update((d) => ({ ...d, logo: { team: false } }))} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-[12.5px] font-bold text-ink-3 hover:text-rose-400">
@@ -119,10 +119,10 @@ export function ColorChoice({ data, update, error }: Base & { error?: string }) 
               value={data.colors.custom ?? "#4f5fd9"}
               onChange={(e) => set({ mode: "custom", custom: e.target.value })}
               className="h-8 w-12 cursor-pointer rounded-lg border border-edge/15 bg-transparent"
-              aria-label="اختر لونك الأساسي"
+              aria-label="لونك الأساسي"
             />
             <span className="font-mono text-[12px] text-ink-3" dir="ltr">
-              {mode === "custom" ? data.colors.custom : "اختار"}
+              {mode === "custom" ? data.colors.custom : "اختيار"}
             </span>
           </span>
         </label>

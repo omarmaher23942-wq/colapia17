@@ -30,7 +30,7 @@ export default async function SearchPage({
           name="q"
           defaultValue={q}
           autoFocus
-          placeholder="ابحث بالاسم أو الوصف..."
+          placeholder="البحث بالاسم أو الوصف..."
           className="flex-1 bg-transparent px-3 outline-none"
         />
       </form>
@@ -52,7 +52,7 @@ export default async function SearchPage({
         </div>
       ) : (
         <p className="py-20 text-center text-muted-foreground">
-          مش لاقيين نتائج. جرّب كلمة مختلفة أو تصفح الأقسام.
+          لا نتائج لهذه الكلمة. كلمة أخرى أو الأقسام قد تساعد.
         </p>
       )}
     </div>

@@ -44,8 +44,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
         <span className="mx-auto grid size-16 place-items-center rounded-2xl bg-primary/10 text-primary" aria-hidden="true">
           <Search strokeWidth={SW} className="size-7" />
         </span>
-        <h1 className="mt-5 text-2xl">افتح طلبك من صفحة التتبع</h1>
-        <p className="mt-2 text-muted-foreground">لحماية بياناتك، اكتب رقم الطلب ورقم الموبايل اللي طلبت بيه.</p>
+        <h1 className="mt-5 text-2xl">الطلب يُفتح من صفحة «طلباتي»</h1>
+        <p className="mt-2 text-muted-foreground">لحماية بياناتك، نطلب رقم الطلب ورقم الموبايل المستخدم فيه.</p>
         <Link href={`/track?code=${encodeURIComponent(code)}`} className="btn-brand mt-6">تتبع الطلب</Link>
       </div>
     );
@@ -63,22 +63,22 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <p className="mt-2 text-muted-foreground">رقم طلبك</p>
       <p className="text-3xl font-black tracking-widest text-primary" dir="ltr">{o.code}</p>
       <p className="mt-2 text-sm text-muted-foreground">
-        طلبك محفوظ في «طلباتي» على هذا الجهاز، فلا تحتاج لحفظ الرقم. هنتواصل معاك على <span dir="ltr">{prettyPhone(o.customerPhone)}</span> للتأكيد.
+        طلبك محفوظ في «طلباتي» على هذا الجهاز، فلا تحتاج لحفظ الرقم. نتواصل معك على <span dir="ltr">{prettyPhone(o.customerPhone)}</span> للتأكيد.
       </p>
 
       {waHref && (
         <div className="surface mt-6 p-5">
-          <p className="text-sm font-semibold">ابعت رقم طلبك للمتجر على واتساب</p>
+          <p className="text-sm font-semibold">إرسال رقم الطلب للمتجر على واتساب</p>
           <p className="mt-1 text-xs text-muted-foreground">رسالة جاهزة فيها رقم الطلب وتفاصيله، تذكّر المتجر بطلبك وتفضل عندك في المحادثة لو احتجت الرقم بعدين.</p>
           <a href={waHref} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#25D366] px-5 py-3 font-bold text-white hover:brightness-95">
-            <BrandIcon brand="whatsapp" className="size-5" /> ابعت الرسالة على واتساب
+            <BrandIcon brand="whatsapp" className="size-5" /> إرسال الرسالة على واتساب
           </a>
         </div>
       )}
 
       {transfer && (
         <div className="surface mt-8 p-6 text-start">
-          <h2 className="text-lg">أكمل الدفع بالتحويل</h2>
+          <h2 className="text-lg">إكمال الدفع بالتحويل</h2>
           <p className="mt-2">
             حوّل <b className="text-primary">{formatEgp(o.totalPiasters)}</b> على {o.paymentMethod === "vodafone_cash" ? "فودافون كاش" : "إنستاباي"}
             {target && <>: <b dir="ltr" className="select-all">{target}</b></>}
@@ -108,7 +108,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       </div>
 
       <div className="mt-8 flex justify-center gap-3">
-        <Link href={`/track?code=${encodeURIComponent(o.code)}`} className="btn-brand">تابع حالة طلبك</Link>
+        <Link href={`/track?code=${encodeURIComponent(o.code)}`} className="btn-brand">حالة الطلب</Link>
         <Link href="/" className="rounded-lg border-2 px-5 py-3 font-semibold">متابعة التسوق</Link>
       </div>
     </div>

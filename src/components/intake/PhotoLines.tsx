@@ -126,7 +126,7 @@ export function PhotoLines({ items, urls, setUrl, update, ensureToken, onBusy }:
           className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-dashed border-nova/40 bg-nova/[0.06] px-4 text-[14px] font-black text-nova-2 transition hover:bg-nova/[0.12] sm:flex-none"
         >
           <ImagePlus className="size-5" aria-hidden="true" />
-          {items.length ? "أضف صور كمان" : "أضف صور منتجاتك"}
+          {items.length ? "صور إضافية" : "صور منتجاتك"}
         </button>
         <button
           type="button"

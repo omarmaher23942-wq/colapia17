@@ -18,7 +18,7 @@ export function TrialEndedEmail({
   return (
     <EmailLayout
       brand={{ storeName: "Colapia", logoUrl, primaryColor: "#0f766e" }}
-      preheader={`متجر ${storeName} محفوظ ليك لمدة ${graceDaysLeft} يوم — فعّله قبل الحذف`}
+      preheader={`متجر ${storeName} محفوظ لك لمدة ${graceDaysLeft} يوم — فعّله قبل الحذف`}
       footerNote={`إشعار من منصة Colapia بخصوص متجر ${storeName}.`}
     >
       <EmailHeading>متجرك محفوظ ليك</EmailHeading>

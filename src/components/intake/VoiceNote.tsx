@@ -27,7 +27,7 @@ const fmt = (ms: number) => {
 function micMessage(name: string | undefined): string {
   if (name === "NotFoundError" || name === "DevicesNotFoundError" || name === "OverconstrainedError") return "مش لاقيين ميكروفون شغال في جهازك.";
   if (name === "NotReadableError" || name === "TrackStartError" || name === "AbortError") return "الميكروفون مستخدم في تطبيق تاني. اقفله وجرّب تاني.";
-  return "ما قدرناش نشغّل التسجيل هنا. جرّب ترفع ملف صوتي أو اكتب ملاحظاتك.";
+  return "ما قدرناش نشغّل التسجيل هنا. ممكن رفع ملف صوتي أو كتابة الملاحظات.";
 }
 
 export function VoiceNote({
@@ -95,7 +95,7 @@ export function VoiceNote({
       if (j.ok && j.text) update((d) => (d.voice.key === key && !d.voice.transcript?.trim() ? { ...d, voice: { key, transcript: j.text } } : d));
       else setNote(j.message ?? "التسجيل وصل، والفريق هيسمعه.");
     } catch (e) {
-      setError(uploadErrorMessage(e, "فشل رفع التسجيل، جرّب تاني."));
+      setError(uploadErrorMessage(e, "فشل رفع التسجيل. مرة أخرى؟"));
     } finally {
       release();
       setPhase("idle");
@@ -130,7 +130,7 @@ export function VoiceNote({
         const ms = Date.now() - started.current;
         if (ms < 1500 || blob.size < 2000) {
           setPhase("idle");
-          return void setNote("التسجيل قصير جداً، جرّب تاني.");
+          return void setNote("التسجيل قصير جداً. مرة أخرى؟");
         }
         void send(new File([blob], `voice.${type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm"}`, { type }), ms);
       };
@@ -189,7 +189,7 @@ export function VoiceNote({
               onClick={() => void start()}
               className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-edge/10 px-3 text-[13px] font-bold text-ink-2 hover:text-ink disabled:opacity-50"
             >
-              <RotateCcw className="size-4" aria-hidden="true" /> سجّل من جديد
+              <RotateCcw className="size-4" aria-hidden="true" /> تسجيل من جديد
             </button>
             <button
               type="button"
@@ -235,7 +235,7 @@ export function VoiceNote({
               className={cn("inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-nova px-4 text-[14px] font-black text-white shadow-lg shadow-nova/30 sm:flex-none", busy && "opacity-70")}
             >
               {busy ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Mic className="size-5" aria-hidden="true" />}
-              {phase === "uploading" ? "بنرفع التسجيل…" : phase === "transcribing" ? "بنحوّله لنص…" : denied ? "جرّب تاني بعد ما تسمح للميكروفون" : "سجّل رسالة صوتية"}
+              {phase === "uploading" ? "بنرفع التسجيل…" : phase === "transcribing" ? "بنحوّله لنص…" : denied ? "إعادة المحاولة بعد السماح للميكروفون" : "تسجيل رسالة صوتية"}
             </button>
           ) : null}
           <button
@@ -249,7 +249,7 @@ export function VoiceNote({
         </div>
       ) : null}
 
-      {denied ? <p className="text-[12.5px] leading-6 text-amber-300">المتصفح رافض الميكروفون. اسمح له من إعدادات الموقع وجرّب تاني، أو ارفع ملف صوتي، أو اكتب تحت.</p> : null}
+      {denied ? <p className="text-[12.5px] leading-6 text-amber-300">المتصفح رافض الميكروفون. السماح له من إعدادات الموقع يحل المشكلة، أو رفع ملف صوتي، أو الكتابة تحت.</p> : null}
       {note ? (
         <p role="status" className="text-[12.5px] font-bold leading-6 text-amber-300">
           {note}
@@ -258,12 +258,12 @@ export function VoiceNote({
       <ErrorText>{error}</ErrorText>
       {!supported ? (
         <p className="text-[12.5px] leading-6 text-ink-3">
-          المتصفح ده مش بيسجّل صوت. افتح الرابط في Chrome أو Safari، أو ارفع ملف صوتي من تطبيق التسجيل
+          المتصفح ده مش بيسجّل صوت. الرابط يشتغل في Chrome أو Safari، أو ممكن رفع ملف صوتي من تطبيق التسجيل
           {whatsappUrl ? (
             <>
               ، أو{" "}
               <a href={whatsappUrl} target="_blank" rel="noopener" className="font-bold text-nova-2 underline">
-                ابعته لنا على واتساب
+                إرساله لنا على واتساب
               </a>
             </>
           ) : null}
@@ -279,7 +279,7 @@ export function VoiceNote({
           const f = e.target.files?.[0];
           e.target.value = "";
           if (!f) return;
-          if (f.size > 8 * 1024 * 1024) return void setError("الملف أكبر من 8 ميجا. سجّل رسالة أقصر.");
+          if (f.size > 8 * 1024 * 1024) return void setError("الملف أكبر من 8 ميجا. رسالة أقصر تكفي.");
           void send(new File([f], f.name, { type: (f.type || "audio/mp4").split(";")[0] }), 0);
         }}
       />

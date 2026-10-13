@@ -43,7 +43,7 @@ export default async function ReviewPage({ params, searchParams }: { params: Pro
     return (
       <Shell>
         <Lock strokeWidth={SW} className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-        <h1 className="mt-3 text-2xl">افتح التقييم من رابط طلبك</h1>
+        <h1 className="mt-3 text-2xl">التقييم يُفتح من رابط طلبك</h1>
         <p className="mt-2 text-sm leading-7 text-muted-foreground">لحماية بيانات طلبك، يُفتح التقييم من رسالة «وصل طلبك» على بريدك، أو من «طلباتي» على نفس الجهاز الذي طلبت منه.</p>
         <Link href="/track" className="btn-brand mt-6">
           طلباتي
@@ -59,7 +59,7 @@ export default async function ReviewPage({ params, searchParams }: { params: Pro
         <h1 className="mt-3 text-2xl">قيّم بعد ما يوصلك طلبك</h1>
         <p className="mt-2 text-sm leading-7 text-muted-foreground">التقييم متاح بعد استلام الطلب {order.code}، لتقيّم المنتج بعد ما تجربه.</p>
         <Link href={`/track?code=${encodeURIComponent(order.code)}`} className="btn-brand mt-6">
-          تابع طلبك
+          حالة طلبك
         </Link>
       </Shell>
     );

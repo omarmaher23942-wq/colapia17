@@ -36,7 +36,7 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
   try {
     const settings = await intakeSettings();
-    if (!settings.enabled) closedMessage = "بنجهز الفريق لطلبات جديدة. ابعتلنا رسالة وهنرد عليك بأسرع وقت.";
+    if (!settings.enabled) closedMessage = "بنجهز الفريق لطلبات جديدة. رسالتك على واتساب توصلنا ونرد بأسرع وقت.";
     eta = etaText(estimateEta(await openQueueLength(), settings.capacityPerDay));
     if (d) {
       const row = await findByDraftToken(d);

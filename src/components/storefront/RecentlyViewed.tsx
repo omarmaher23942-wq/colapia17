@@ -38,7 +38,7 @@ export function RecentlyViewed({ current }: { current: Mini }) {
   if (!items.length) return null;
   return (
     <section className="mt-16">
-      <h2 className="mb-6 text-2xl">شاهدت مؤخرًا</h2>
+      <h2 className="mb-6 text-2xl">شوهد مؤخراً</h2>
       <div className="snap-row">
         {items.map((x) => (
           <Link key={x.id} href={`/p/${x.slug}`} className="w-36 shrink-0">

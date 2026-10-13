@@ -69,7 +69,7 @@ export default async function CustomerLoginPage({
             أهلاً بك في {store.name}
           </h1>
           <p className="mx-auto max-w-sm text-xs leading-relaxed opacity-75">
-            سجّل الدخول لتتبّع طلباتك، حفظ عناوينك، وتقييم مشترياتك.
+            الدخول يحفظ طلباتك وعناوينك ويتيح تقييم مشترياتك.
           </p>
         </div>
 
@@ -79,7 +79,7 @@ export default async function CustomerLoginPage({
             className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-300"
           >
             {error === "magic_expired"
-              ? "الرابط انتهت صلاحيته. اطلب رابطاً جديداً."
+              ? "انتهت صلاحية الرابط. يمكن طلب رابط جديد."
               : "تعذّر تسجيل الدخول. حاول مرة أخرى."}
           </div>
         ) : null}

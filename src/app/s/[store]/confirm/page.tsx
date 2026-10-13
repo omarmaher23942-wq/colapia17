@@ -34,7 +34,7 @@ export default async function ConfirmPage({ params, searchParams }: { params: Pr
       <Shell>
         <Lock strokeWidth={SW} className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
         <h1 className="mt-3 text-2xl">الرابط غير صالح</h1>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">افتح رابط التأكيد كما وصلك في رسالة المتجر، أو تابع طلباتك من «طلباتي».</p>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">رابط التأكيد يُفتح كما وصل في رسالة المتجر، وكل طلباتك في «طلباتي».</p>
         <Link href="/track" className="btn-brand mt-6">
           طلباتي
         </Link>
@@ -99,7 +99,7 @@ export default async function ConfirmPage({ params, searchParams }: { params: Pr
             {o.status === "cancelled" ? "هذا الطلب ملغي" : already || o.status === "confirmed" ? "طلبك مؤكد" : "المتجر يجهّز طلبك بالفعل"}
           </p>
           <Link href={orderHref} className="btn-brand mt-4">
-            تابع حالة الطلب
+            حالة الطلب
           </Link>
         </div>
       )}

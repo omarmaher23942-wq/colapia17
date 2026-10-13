@@ -126,7 +126,7 @@ export function StoreRiskAuditCard({ storeId }: { storeId: string }) {
           
           {data.merchantPhone && (
             <a
-              href={`https://wa.me/2${data.merchantPhone}?text=${encodeURIComponent("أهلاً بك يا بطل، لاحظنا إنك محتاج مساعدة في متجرك على كولابيا، إحنا معاك خطوة بخطوة، إيه الأخبار؟")}`}
+              href={`https://wa.me/2${data.merchantPhone}?text=${encodeURIComponent("أهلاً بك، معك فريق Colapia. حابين نطمّن على متجرك ونساعدك في أي خطوة. كيف نقدر نخدمك؟")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-4 py-2 text-xs font-black text-white shadow-md hover:brightness-110 transition-all"

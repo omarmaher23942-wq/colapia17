@@ -23,7 +23,7 @@ const cap = (s: string, max: number) => (s.length > max ? s.slice(0, max) : s);
 export const INSPECTION_BADGE = {
   icon: "package-open",
   title: "معاينة قبل الاستلام",
-  text: "افتح الشحنة وافحصها مع المندوب قبل ما تدفع",
+  text: "معاينة الشحنة مع المندوب قبل الدفع",
 } as const;
 export const INSPECTION_TRUST = {
   icon: "package-open",
@@ -49,7 +49,7 @@ function buildAdaptiveTrustItems(ctx: {
       }
     : {
         icon: "banknote",
-        title: "ادفع عند الاستلام",
+        title: "الدفع عند الاستلام",
         text: "افحص طلبك قبل ما تدفع",
       };
 
@@ -124,7 +124,7 @@ function buildDynamicFaqItems(ctx: {
   const base = [
     {
       q: "إزاي أطلب؟",
-      a: "اختار المنتج، اضغط أضف للسلة، وبعدين أكمل بياناتك وهنتواصل معاك لتأكيد الطلب.",
+      a: "باختيار المنتج ثم «إضافة للسلة» ثم إكمال البيانات، ونتواصل معك لتأكيد الطلب.",
     },
     {
       q: "التوصيل بياخد قد إيه؟",
@@ -138,13 +138,13 @@ function buildDynamicFaqItems(ctx: {
   if (ctx.inspectionAllowed) {
     base.push({
       q: "أقدر أفتح الشحنة قبل ما أدفع؟",
-      a: "أكيد، المعاينة مع المندوب قبل الدفع متاحة. افحص طلبك واطمّن وبعدين ادفع.",
+      a: "أكيد، المعاينة مع المندوب قبل الدفع متاحة: الفحص أولاً ثم الدفع.",
     });
   }
   if (ctx.hasWhatsapp) {
     base.push({
       q: "أقدر أتواصل معاكم بسرعة؟",
-      a: "أكيد، كلمنا على واتساب في أي وقت وهنرد عليك فوراً.",
+      a: "أكيد، نحن على واتساب في أي وقت ونرد بسرعة.",
     });
   }
   base.push({
@@ -351,7 +351,7 @@ export function defaultBlueprint(input: {
           { icon: "shield-check", text: "منتجات أصلية" },
         ],
         primaryCta: {
-          label: "تسوّق الآن",
+          label: "التسوق الآن",
           target: { type: "all_products" },
           style: "primary",
         },
@@ -378,7 +378,7 @@ export function defaultBlueprint(input: {
         background: "default",
         reveal: "stagger",
         variant: "circles",
-        title: "تسوّق حسب القسم",
+        title: "التسوق حسب القسم",
         categorySlugs: [],
         showProductCount: true,
       },
@@ -411,10 +411,10 @@ export function defaultBlueprint(input: {
           {
             eyebrow: "عرض محدود",
             title: "خصم على أول طلب",
-            text: "استخدم الكود وخد خصمك فوراً",
+            text: "الكود يعطيك خصمك فوراً",
             couponCode: "WELCOME10",
             cta: {
-              label: "اطلب الآن",
+              label: "الطلب الآن",
               target: { type: "all_products" },
               style: "primary",
             },
@@ -494,8 +494,8 @@ export function defaultBlueprint(input: {
       liveViewers: true,
       exitIntentOffer: {
         enabled: false,
-        title: "استنى! خصم خاص ليك",
-        text: "استخدم الكود ده قبل ما يخلص",
+        title: "خصم خاص لأول طلب",
+        text: "الكود يعطيك خصماً على طلبك الأول",
         showOncePerDays: 3,
       },
       productTrustRow,
@@ -563,7 +563,7 @@ export function defaultBlueprint(input: {
       customFields: [],
       minOrderPiasters: null,
       termsCheckbox: false,
-      successMessage: "شكراً لطلبك! هنتواصل معاك خلال ساعات للتأكيد.",
+      successMessage: "شكراً لطلبك! نتواصل معك خلال ساعات للتأكيد.",
     },
     orderMessages: {
       confirmed:

@@ -191,7 +191,7 @@ function QuickView({ product: p, onClose }: { product: ProductCardProduct; onClo
           {names.map((name, i) => (
             <div key={name}>
               <p className="mb-2 text-xs font-bold">
-                {name}: <span className="font-normal opacity-70">{sel[i] || "اختر"}</span>
+                {name}: <span className="font-normal opacity-70">{sel[i] || "اختيار"}</span>
               </p>
               <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={name}>
                 {valuesFor(i).map((val) => {

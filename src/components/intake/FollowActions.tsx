@@ -34,7 +34,7 @@ export function FollowActions({ code, storeName }: { code: string; storeName: st
       </button>
       <button type="button" onClick={share} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#25D366] px-4 text-[14px] font-black text-[#062b15]">
         <MessageCircle className="size-4" aria-hidden="true" />
-        ابعته لنفسك على واتساب
+        إرساله لنفسك على واتساب
       </button>
     </div>
   );

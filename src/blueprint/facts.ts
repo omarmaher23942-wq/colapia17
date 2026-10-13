@@ -49,8 +49,8 @@ export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact
   const s = bp.shipping;
   const p = bp.payments;
 
-  if (p.cod.enabled) out.push({ key: "cod", icon: "banknote", title: "الدفع عند الاستلام", detail: "ادفع نقداً عند وصول طلبك" });
-  if (s.inspectionAllowed) out.push({ key: "inspection", icon: "eye", title: "معاينة قبل الدفع", detail: "افتح الشحنة وافحص المنتج مع المندوب قبل أن تدفع" });
+  if (p.cod.enabled) out.push({ key: "cod", icon: "banknote", title: "الدفع عند الاستلام", detail: "الدفع نقداً عند وصول طلبك" });
+  if (s.inspectionAllowed) out.push({ key: "inspection", icon: "eye", title: "معاينة قبل الدفع", detail: "فتح الشحنة وفحص المنتج مع المندوب قبل الدفع" });
 
   if (r.windowDays > 0 && (r.allowExchange || r.allowRefund)) {
     const what = r.allowExchange && r.allowRefund ? "استبدال واسترجاع" : r.allowExchange ? "استبدال" : "استرجاع";
@@ -82,7 +82,7 @@ export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact
     const names = [p.vodafoneCash.enabled ? "فودافون كاش" : null, p.instapay.enabled ? "إنستاباي" : null].filter(Boolean).join(" و");
     out.push({ key: "wallets", icon: "smartphone", title: `الدفع بـ${names}`, detail: `ادفع مقدماً بتحويل ${names}` });
   }
-  if (bp.channels.whatsappNumber) out.push({ key: "whatsapp", icon: "message-circle", title: "رد سريع على واتساب", detail: "كلمنا على واتساب في أي سؤال قبل الطلب أو بعده" });
+  if (bp.channels.whatsappNumber) out.push({ key: "whatsapp", icon: "message-circle", title: "رد سريع على واتساب", detail: "نرد على واتساب في أي سؤال قبل الطلب أو بعده" });
 
   return out;
 }

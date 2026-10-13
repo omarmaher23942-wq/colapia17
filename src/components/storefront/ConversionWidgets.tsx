@@ -377,7 +377,7 @@ export function ConversionWidgets() {
               </h3>
               <p className="relative mt-1 text-xs leading-relaxed opacity-75">
                 {conversion.exitIntentOffer.text ||
-                  "احصل على خصم فوري على أول طلب لك."}
+                  "خصم فوري على أول طلب لك."}
               </p>
 
               {conversion.exitIntentOffer.couponCode ? (
@@ -405,7 +405,7 @@ export function ConversionWidgets() {
                   color: "var(--primary-foreground)",
                 }}
               >
-                استخدم الكود الآن
+                نسخ الكود واستخدامه
               </Link>
             </motion.div>
           </motion.div>

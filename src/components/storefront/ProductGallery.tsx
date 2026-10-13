@@ -370,7 +370,7 @@ export function ProductGallery({
                 setArOpen(true);
               }}
               className="absolute end-3 top-16 grid size-10 place-items-center rounded-xl bg-black/55 text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/75 focus-visible:opacity-100 group-hover:opacity-100"
-              aria-label="شاهد في مساحتك"
+              aria-label="العرض في مساحتك"
             >
               <Smartphone className="size-4" strokeWidth={SW} aria-hidden="true" />
             </button>
@@ -525,7 +525,7 @@ export function ProductGallery({
             onClick={() => setArOpen(false)}
             role="dialog"
             aria-modal="true"
-            aria-label="شاهد في مساحتك"
+            aria-label="العرض في مساحتك"
           >
             <button
               type="button"

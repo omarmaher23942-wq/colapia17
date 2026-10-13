@@ -32,7 +32,7 @@ export function ARPreviewButton({
       className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--foreground)] px-4 py-2.5 text-xs font-black text-[var(--background)] shadow-lg transition-transform hover:scale-105 active:scale-95"
     >
       <Smartphone className="size-4" />
-      شاهد المنتج في غرفتك (AR)
+      المنتج في مساحتك (AR)
     </button>
   );
 }

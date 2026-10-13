@@ -17,7 +17,7 @@ export async function prepareImage(f: File): Promise<File> {
     return new File([c], `${f.name.replace(/\.[^.]+$/, "") || "image"}.${EXT[type] ?? "jpg"}`, { type });
   } catch {
     if (ACCEPTED.has(f.type)) return f;
-    throw new Error("الصيغة دي مش مدعومة. جرّب صورة JPG أو PNG.");
+    throw new Error("الصيغة دي مش مدعومة. الصيغ المتاحة JPG أو PNG.");
   }
 }
 
@@ -34,7 +34,7 @@ export async function uploadIntakeVoice(token: string, file: File, durationMs: n
 }
 
 /** رسالة الخادم إن كانت عربية (رسائلنا)، وإلا رسالة عامة مفهومة. */
-export function uploadErrorMessage(e: unknown, fallback = "فشل الرفع، جرّب تاني."): string {
+export function uploadErrorMessage(e: unknown, fallback = "فشل الرفع. مرة أخرى؟"): string {
   const m = e instanceof Error ? e.message : typeof e === "string" ? e : "";
   return /[؀-ۿ]/.test(m) ? m : fallback;
 }

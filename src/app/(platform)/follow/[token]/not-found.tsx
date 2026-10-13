@@ -16,7 +16,7 @@ export default function FollowNotFound() {
       </div>
       <main className="mx-auto max-w-lg space-y-4 px-4 py-12 text-center">
         <h1 className="text-[24px] font-black text-ink">الرابط ده مش صحيح</h1>
-        <p className="text-[14.5px] leading-7 text-ink-2">ممكن يكون اتقطع جزء منه وقت النسخ. جرّب تفتحه تاني من الرسالة أو البريد اللي وصلك، ولو لسه مش شغال كلّمنا وقول لنا رقم طلبك.</p>
+        <p className="text-[14.5px] leading-7 text-ink-2">ممكن يكون اتقطع جزء منه وقت النسخ. افتحه تاني من الرسالة أو البريد اللي وصلك، ولو لسه مش شغال راسلنا برقم طلبك.</p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <ContactHelp whatsappUrl={agencyWhatsappUrl("أهلاً، رابط متابعة طلب متجري مش شغال")} />
           <Link href="/start" className="inline-flex min-h-11 items-center rounded-xl border border-edge/15 px-4 text-[14px] font-black text-ink hover:border-edge/30">

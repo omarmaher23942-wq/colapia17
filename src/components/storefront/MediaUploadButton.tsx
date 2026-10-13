@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 export function MediaUploadButton({
   route,
   input,
-  label = "ارفع صورة",
+  label = "رفع صورة",
   className,
   onUploaded,
   onError,
@@ -29,7 +29,7 @@ export function MediaUploadButton({
 
   async function pick(f: File | undefined) {
     if (!f) return;
-    if (!f.type.startsWith("image/")) return onError("ارفع صورة (لقطة شاشة)، لا ملفاً آخر");
+    if (!f.type.startsWith("image/")) return onError("المطلوب صورة (لقطة شاشة)، لا ملف آخر");
     setBusy(true);
     let file = f;
     try {

@@ -152,7 +152,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
             return (
               <div key={name}>
                 <p className="mb-2 text-xs font-bold">
-                  {name}: <span className={cn("font-normal", sel[i] ? "opacity-70" : missing ? "text-[var(--danger)]" : "opacity-70")}>{sel[i] || "اختر"}</span>
+                  {name}: <span className={cn("font-normal", sel[i] ? "opacity-70" : missing ? "text-[var(--danger)]" : "opacity-70")}>{sel[i] || "اختيار"}</span>
                 </p>
                 <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={name}>
                   {values.map((val) => {

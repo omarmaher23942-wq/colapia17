@@ -10,7 +10,7 @@ import { validCartToken } from "@/lib/order-access";
 import { CartRestore, type RestoreItem } from "@/components/storefront/CartRestore";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "أكمل طلبك", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "إكمال الطلب", robots: { index: false, follow: false } };
 
 const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : "");
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -28,9 +28,9 @@ export default async function RestorePage({ params, searchParams }: { params: Pr
     return (
       <div className="container-x max-w-md py-16 text-center">
         <h1 className="text-2xl">الرابط غير صالح</h1>
-        <p className="mt-2 text-sm leading-7 text-muted-foreground">تصفّح المتجر وأضف ما تحب إلى السلة من جديد.</p>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">المتجر مفتوح، والسلة تنتظر اختياراتك من جديد.</p>
         <Link href="/" className="btn-brand mt-6">
-          تصفّح المتجر
+          العودة للمتجر
         </Link>
       </div>
     );

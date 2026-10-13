@@ -421,7 +421,7 @@ export const conversionSchema = z.object({
   liveViewers: z.boolean().default(true),
   exitIntentOffer: z.object({
     enabled: z.boolean().default(false),
-    title: z.string().max(60).default("استنى! خصم خاص ليك"),
+    title: z.string().max(60).default("خصم خاص لأول طلب"),
     text: z.string().max(160).default("استخدم الكود ده قبل ما يخلص"),
     couponCode: z.string().max(20).optional(),
     showOncePerDays: z.number().int().min(1).default(3),
@@ -553,7 +553,7 @@ export const checkoutSchema = z.object({
   minOrderPiasters: z.number().int().min(0).nullable().default(null),
   banner: z.string().max(160).optional(),
   termsCheckbox: z.boolean().default(false),
-  successMessage: z.string().max(300).default("شكرًا لطلبك! هنتواصل معاك خلال ساعات للتأكيد."),
+  successMessage: z.string().max(300).default("شكراً لطلبك! نتواصل معك خلال ساعات للتأكيد."),
 });
 
 export const orderMessagesSchema = z.object({

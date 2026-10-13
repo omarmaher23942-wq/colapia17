@@ -111,7 +111,7 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
             <a href={storeUrl(store.subdomain)} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-xl bg-nova px-4 text-[14px] font-black text-space" dir="ltr">
               {storeUrl(store.subdomain).replace(/^https?:\/\//, "")}
             </a>
-            <p className="text-[13.5px] leading-7 text-ink-2">رابط لوحة التحكم وصلك على بريدك. ادخل منها لتدير منتجاتك وطلباتك.</p>
+            <p className="text-[13.5px] leading-7 text-ink-2">رابط لوحة التحكم وصلك على بريدك، ومنها تدار منتجاتك وطلباتك.</p>
             {store.status === "trial" && store.trialEndsAt ? (
               <TrialCountdownCard expiresAt={store.trialEndsAt.toISOString()} startedAt={store.deliveredAt?.toISOString() ?? null} serverNow={Date.now()} planPrice={price} />
             ) : null}

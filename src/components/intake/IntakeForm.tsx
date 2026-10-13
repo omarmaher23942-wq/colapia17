@@ -89,7 +89,7 @@ export function IntakeForm({
       return;
     }
     if (uploading > 0) {
-      setSubmitError("لسه فيه صور أو تسجيل بيترفع، استنى ثواني وابعت تاني.");
+      setSubmitError("لسه فيه صور أو تسجيل بيترفع. ثواني ونقدر نرسل الطلب.");
       return;
     }
     setSending(true);
@@ -160,7 +160,7 @@ export function IntakeForm({
               <Clock className="size-3.5" aria-hidden="true" /> التسليم {etaText} من وقت إرسال الطلب
             </span>
           )}
-          <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">{golden ? "ابعتلنا منتجاتك ونبدأ متجرك" : "احكيلنا عن متجرك، وإحنا نبنيه"}</h1>
+          <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">{golden ? "منتجاتك هنا، ومتجرك يبدأ" : "احكيلنا عن متجرك، وإحنا نبنيه"}</h1>
           <p className="text-[15px] leading-8 text-ink-2">
             {golden
               ? `صور ${GOLDEN_SUGGESTED_PRODUCTS} منتجات باسم وسعر كل منتج، وأي تفصيلة صغيرة زي الألوان والمقاسات. الباقي كله على فريق Colapia، والتسليم ${etaText} من وقت الإرسال.`
@@ -170,7 +170,7 @@ export function IntakeForm({
 
         {problem && problem.kind !== "submitted" ? (
           <div role="status" className="space-y-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-3 text-[13.5px] font-bold leading-6 text-amber-200">
-            <p>{problem.message || "الاستمارة بتتجهز، جرّب بعد قليل."}</p>
+            <p>{problem.message || "الاستمارة بتتجهز، لحظات وتكون جاهزة."}</p>
             {problem.kind === "closed" || problem.kind === "limited" ? <ContactHelp whatsappUrl={whatsappUrl} className="text-[13px]" /> : null}
           </div>
         ) : null}
@@ -204,7 +204,7 @@ export function IntakeForm({
           </Field>
         </Card>
 
-        <Card n={2} icon={MessageCircle} title="نتواصل معاك إزاي؟" sub="واحدة منهم كفاية، والاتنين أحسن.">
+        <Card n={2} icon={MessageCircle} title="نتواصل معك إزاي؟" sub="واحدة منهم كفاية، والاتنين أحسن.">
           <Field label="رقم واتساب" htmlFor="wa" error={errors["contact.whatsapp"]} hint="هنراسلك عليه لو احتجنا تفصيلة، ونبعتلك متجرك.">
             <input
               id="wa"
@@ -236,7 +236,7 @@ export function IntakeForm({
           </Field>
         </Card>
 
-        <Card n={3} icon={AtSign} title="صفحتك على إنستجرام أو فيسبوك" sub="لو عندك صفحة بتبيع منها، ابعت رابطها.">
+        <Card n={3} icon={AtSign} title="صفحتك على إنستجرام أو فيسبوك" sub="لو عندك صفحة بتبيع منها، رابطها هنا.">
           <Field label="رابط الصفحة أو اسم الحساب" htmlFor="social" error={errors["social.url"]} optional>
             <input
               id="social"
@@ -304,7 +304,7 @@ export function IntakeForm({
           {productMode === "list" ? (
             <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
           ) : productMode === "team" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من صفحتك{data.social.url ? "" : "؛ اكتب رابطها في خانة إنستجرام أو فيسبوك فوق"}.</p>
+            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من صفحتك{data.social.url ? "" : "؛ رابطها مكانه خانة إنستجرام أو فيسبوك فوق"}.</p>
           ) : productMode === "later" ? (
             <p className="text-[13.5px] leading-7 text-ink-2">تمام، هتضيفها من لوحة التحكم بعد التسليم، وهي سهلة جداً.</p>
           ) : null}
@@ -350,7 +350,7 @@ export function IntakeForm({
           n={7}
           icon={Globe}
           title="موقع عاجبك شكله"
-          sub="أي متجر أو موقع (حتى لو أجنبي) عايز روحه في متجرك."
+          sub="أي متجر أو موقع (حتى لو أجنبي) يعجبك ستايله."
           action={<TeamToggle on={data.inspiration.team} ariaLabel="سيبها للفريق: موقع الإلهام" onChange={(v) => set((d) => ({ ...d, inspiration: { url: v ? undefined : d.inspiration.url, team: v } }))} />}
         >
           {!data.inspiration.team ? (
@@ -373,7 +373,7 @@ export function IntakeForm({
           )}
         </Card>
 
-        <Card n={8} icon={Mic} title="عايز تقول حاجة؟" sub="سجّل رسالة صوتية بدل الكتابة، أو اكتب أي تفصيلة تحبها.">
+        <Card n={8} icon={Mic} title="عندك إضافة؟" sub="رسالة صوتية بدل الكتابة، أو أي تفصيلة مكتوبة.">
           <VoiceNote data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} whatsappUrl={whatsappUrl} onBusy={onBusy} />
           <Field label="ملاحظات" htmlFor="notes" optional>
             <textarea
@@ -382,7 +382,7 @@ export function IntakeForm({
               maxLength={2000}
               rows={4}
               onChange={(e) => set((d) => ({ ...d, notes: e.target.value }))}
-              placeholder="أي حاجة عايز الفريق يعرفها: ستايل معين، ألوان مش بتحبها، عروض…"
+              placeholder="أي حاجة مهم الفريق يعرفها: ستايل معين، ألوان غير مرغوبة، عروض…"
               className="w-full rounded-xl border border-edge/10 bg-edge/[0.04] p-3 text-[16px] leading-7 text-ink outline-none placeholder:text-ink-3/60 focus:border-nova focus:ring-2 focus:ring-nova/25 sm:text-[15px]"
             />
           </Field>
@@ -441,7 +441,7 @@ export function IntakeForm({
             className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-2xl bg-gradient-to-l from-[#6f86ff] to-[#8fa8ff] px-5 text-[15px] font-black text-[#07091a] shadow-[0_0_30px_-8px_rgba(111,134,255,0.75)] transition active:scale-95 disabled:opacity-70"
           >
             {sending || uploading > 0 ? <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Send className="size-5" aria-hidden="true" />}
-            {sending ? "بنرسل…" : uploading > 0 ? "بنرفع الملفات…" : "ابعت الطلب"}
+            {sending ? "بنرسل…" : uploading > 0 ? "بنرفع الملفات…" : "إرسال الطلب"}
           </button>
         </div>
       </div>
@@ -517,7 +517,7 @@ function GoldenCards({
         </Field>
       </Card>
 
-      <Card n={2} icon={MessageCircle} title="نتواصل معاك إزاي؟" sub="البريد بيكون دخولك للوحة متجرك.">
+      <Card n={2} icon={MessageCircle} title="نتواصل معك إزاي؟" sub="البريد بيكون دخولك للوحة متجرك.">
         <Field label="بريدك (يفضّل Gmail)" htmlFor="email" error={errors["contact.email"] ?? (data.contact.whatsapp?.trim() ? undefined : errors["contact.whatsapp"])}>
           <input
             id="email"
