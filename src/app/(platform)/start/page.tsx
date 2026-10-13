@@ -13,8 +13,9 @@ import { derivedToken } from "@/intake/tokens";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "اطلب متجرك | Colapia",
-  description: "استمارة دقيقتين: احكيلنا عن متجرك، وفريق Colapia يصمم ويبني ويراجع متجرك قبل التسليم.",
+  title: "طلب متجرك | Colapia",
+  description: "استمارة دقيقتين عن البراند والمنتجات، وفريق Colapia يصمم المتجر ويبنيه ويراجعه قبل التسليم، ثم تجربة مجانية قبل الدفع.",
+  openGraph: { title: "طلب متجرك من Colapia", description: "استمارة دقيقتين، وفريقنا يبني المتجر ويراجعه، ثم تجربة مجانية قبل الدفع.", locale: "ar_EG", type: "website" },
   robots: { index: false, follow: false },
   // الرابط السري للمسودة (?d=) لا يخرج مع Referer إلى أي موقع يفتحه العميل من الصفحة.
   referrer: "no-referrer",

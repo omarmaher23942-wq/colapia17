@@ -6,6 +6,7 @@ import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { getFlag } from "@/lib/flags";
 import { perMonthFrom } from "@/lib/change-requests";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { cached } from "@/lib/redis";
 import { and, desc, eq } from "drizzle-orm";
@@ -42,6 +43,19 @@ const getApprovedReviews = () =>
     }
   });
 
+const SITE = `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "colapia.com"}`;
+const TITLE = "Colapia | متجر إلكتروني لبراندك، يبنيه فريقنا ويستضيفه";
+const DESCRIPTION =
+  "فريق Colapia يبني لبراندك متجراً إلكترونياً مخصصاً ويستضيفه: تجربة مجانية قبل الدفع، طلبات بالدفع عند الاستلام وفودافون كاش وإنستاباي، ولوحة تحكم بالعربي، وبلا عمولة على مبيعاتك.";
+
+export const metadata: Metadata = {
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  alternates: { canonical: SITE },
+  openGraph: { type: "website", locale: "ar_EG", url: SITE, siteName: "Colapia", title: TITLE, description: DESCRIPTION },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+};
+
 async function getSessionState(): Promise<SessionState> {
   // فحص وجود كوكي فقط — لا نلمس DB في اللاندينج (الأمان الحقيقي في middleware
   // وفي صفحات /dashboard/* التي تستدعي getMerchantSession).
@@ -62,5 +76,26 @@ export default async function Page() {
     getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
   ]);
 
-  return <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerMonth={perMonthFrom(changes.config)} />;
+  // بيانات منظمة صادقة: المنظمة والخدمة بسعرها الحالي الفعلي من سلّم الأسعار.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      { "@type": "Organization", "@id": `${SITE}/#org`, name: "Colapia", url: SITE, logo: `${SITE}/logo.png` },
+      {
+        "@type": "Service",
+        name: "متجر إلكتروني مخصص مع سنة استضافة",
+        provider: { "@id": `${SITE}/#org` },
+        areaServed: { "@type": "Country", name: "Egypt" },
+        description: DESCRIPTION,
+        offers: { "@type": "Offer", price, priceCurrency: "EGP", url: `${SITE}/start` },
+      },
+    ],
+  };
+
+  return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerMonth={perMonthFrom(changes.config)} />
+    </>
+  );
 }

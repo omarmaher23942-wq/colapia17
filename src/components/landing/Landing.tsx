@@ -43,7 +43,7 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
   const Primary = ({ label }: { label: string }) =>
     merchant ? (
       <Link href="/dashboard" className={CTA_PRIMARY}>
-        <LayoutDashboard className="size-5" aria-hidden="true" /> افتح لوحة متجرك
+        <LayoutDashboard className="size-5" aria-hidden="true" /> لوحة متجرك
       </Link>
     ) : (
       <Link href="/start" className={CTA_PRIMARY}>
@@ -76,9 +76,9 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
               ويبنيه ويراجعه ويسلّمه خلال 12 ساعة إلى 4 أيام، وتجرّبه {trialHours} ساعة قبل أي دفع.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <Primary label="اطلب متجرك" />
+              <Primary label="طلب متجرك" />
               <a href="#how" className={CTA_GHOST}>
-                شاهد كيف يعمل
+                كيف يعمل
               </a>
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[#c3cdf0]/75">
@@ -251,7 +251,7 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
                 ))}
               </ul>
               <div className="mt-9">
-                <Primary label="اطلب متجرك الآن" />
+                <Primary label="طلب متجرك الآن" />
               </div>
               <p className="mt-4 text-[11.5px] leading-6 text-[#c3cdf0]/55">
                 الدفع بتحويل فودافون كاش أو إنستاباي، ونفعّل متجرك فور مراجعة الإيصال. إن تأخرت في التجديد يتوقف متجرك عن الظهور فقط ويعود فور التجديد، ولا تُحذف بياناتك.
@@ -323,7 +323,7 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
               نبدأ العمل على متجرك، وتتابع كل مرحلة من صفحة طلبك. وتجربة {trialHours} ساعة كاملة قبل أن تدفع أي شيء.
             </p>
             <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-              <Primary label="اطلب متجرك" />
+              <Primary label="طلب متجرك" />
               <a href="#designs" className={CTA_GHOST}>
                 شاهد أمثلة <ArrowLeft className="size-4" aria-hidden="true" />
               </a>

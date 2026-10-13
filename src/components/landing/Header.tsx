@@ -2,7 +2,7 @@
 
 // هيدر لاصق. جلسة-واعي بالكامل:
 // - guest  → "دخول لوحة متجرك" + "ابدأ بحساب Google"
-// - merchant → زر واحد فقط "افتح الداشبورد"
+// - merchant → زر واحد فقط "لوحة التحكم"
 // زر Google يستدعي Server Action مباشرة عبر GoogleAuthCta (لا رابط /api مكسور).
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -76,7 +76,7 @@ export function Header({ session }: { session: SessionState }) {
           {isMerchant ? (
             <Link href={DASHBOARD_URL} className={CTA_PRIMARY}>
               <LayoutDashboard className="size-4" aria-hidden="true" />
-              افتح الداشبورد
+              لوحة التحكم
             </Link>
           ) : (
             <>
@@ -87,7 +87,7 @@ export function Header({ session }: { session: SessionState }) {
                 دخول لوحة متجرك
               </Link>
               <Link href="/start" className={CTA_PRIMARY}>
-                اطلب متجرك
+                طلب متجرك
               </Link>
             </>
           )}
@@ -144,7 +144,7 @@ export function Header({ session }: { session: SessionState }) {
                     onClick={() => setOpen(false)}
                   >
                     <LayoutDashboard className="size-4" aria-hidden="true" />
-                    افتح الداشبورد
+                    لوحة التحكم
                   </Link>
                 ) : (
                   <>
@@ -156,7 +156,7 @@ export function Header({ session }: { session: SessionState }) {
                       دخول لوحة متجرك
                     </Link>
                     <Link href="/start" className={`${CTA_PRIMARY} w-full`} onClick={() => setOpen(false)}>
-                      اطلب متجرك
+                      طلب متجرك
                     </Link>
                   </>
                 )}

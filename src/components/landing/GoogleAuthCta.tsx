@@ -43,7 +43,7 @@ function SubmitButton({
 
 export function GoogleAuthCta({
   redirectTo = "/dashboard",
-  label = "ابدأ بحساب Google",
+  label = "الدخول بحساب Google",
   className,
 }: Props) {
   const boundAction = initiateMerchantGoogleAuthAction.bind(null, redirectTo);
