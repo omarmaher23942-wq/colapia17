@@ -3,6 +3,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
+import { chatSourceLabel } from "@/lib/manual-order";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { ArrowRight, Mail, MapPin, Package, Phone, Printer, ShieldAlert } from "lucide-react";
 import { RISK_ADVICE, RISK_LABEL } from "@/lib/order-risk";
@@ -54,7 +55,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return { title: o ? `طلب ${o.code}` : "الطلب" };
 }
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ created?: string }> }) {
+  const justCreated = (await searchParams).created === "1";
   const { id } = await params;
   const session = await getMerchantSession();
   if (!session?.storeId || !session.store) redirect("/dashboard");
@@ -114,6 +116,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   };
   const collect = collectNote(o);
   const bp = await getBlueprintOrNull(store.id);
+  const chatSource = chatSourceLabel(o.source);
   const campaign = o.source.startsWith("campaign:") ? bp?.campaigns.find((c) => `campaign:${c.slug}` === o.source) ?? { name: o.source.slice(9) } : null;
   const timeline = [...o.statusHistory].reverse();
 
@@ -140,6 +143,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   من حملة «{campaign.name}»
                 </Link>
               ) : null}
+              {chatSource ? <span className="rounded-full bg-edge/[0.06] px-2.5 py-1 text-[12px] font-black text-ink-2" title="سجّله فريق المتجر من المحادثة">من الشات · {chatSource}</span> : null}
             </h1>
             <p className="mt-1 text-[12.5px] text-ink-3">
               {dateTime.format(o.createdAt)} · {paymentMethodLabel(o.paymentMethod)} ·{" "}
@@ -161,6 +165,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </header>
+
+      {justCreated ? (
+        <p role="status" className="dash-card border-ok/30 p-3.5 text-[12.5px] font-bold leading-6 text-ink-2">
+          ✓ حُفظ الطلب ودخل مع طلباتك وخُصم من المخزون.{" "}
+          {o.status === "new" ? "الخطوة التالية: رسالة التأكيد للعميل برابطها من «رسائل واتساب» أعلاه." : "الخطوة التالية: رسالة «طلبك قيد التجهيز» من «رسائل واتساب» أعلاه، ثم الشحن."}
+        </p>
+      ) : null}
 
       {/* على الموبايل: الحالة أولاً ثم الدفع والأصناف؛ وعلى الشاشات الكبيرة عمودان (contents يذيب الغلافين). */}
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">

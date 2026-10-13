@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
-import { ChevronLeft, ChevronRight, Download, Inbox, Kanban, List, Search, SearchX } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Inbox, Kanban, List, MessageSquarePlus, Search, SearchX } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { boardOrders, listOrders, parseOrdersQuery, type OrdersQuery, type PayFilter } from "@/server/repos/orders-list";
 import { OrdersList } from "@/components/dashboard/orders/OrdersList";
@@ -77,6 +77,13 @@ export default async function DashboardOrdersPage({ searchParams }: { searchPara
               );
             })}
           </nav>
+          <Link
+            href="/dashboard/orders/new"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-3.5 text-[12.5px] font-black text-white shadow-md"
+          >
+            <MessageSquarePlus className="size-4" aria-hidden="true" />
+            طلب من الشات
+          </Link>
           <a
             href={exportHref}
             download

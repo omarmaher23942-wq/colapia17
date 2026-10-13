@@ -122,6 +122,8 @@ export async function attentionSnapshot(storeId: string, since: Date | null): Pr
             and(
               eq(orders.storeId, storeId),
               eq(orders.isTest, false),
+              // الطلب الذي سجّله التاجر بنفسه من الشات لا يستحق نغمة «طلب جديد».
+              sql`${orders.source} not like 'chat:%'`,
               gt(orders.createdAt, new Date(since.getTime() - OVERLAP_MS))
             )
           )
