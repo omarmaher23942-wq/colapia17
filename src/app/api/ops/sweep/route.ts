@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { redis } from "@/lib/redis";
 import { isAuthorizedCron } from "@/server/cron-auth";
 import { Client } from "@upstash/qstash";
 import { and, asc, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
@@ -16,6 +17,8 @@ export async function GET(req: Request) {
   if (!(await isAuthorizedCron(req))) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+  // نبضة لمركز جاهزية الإطلاق: آخر تشغيل فعلي للمهمة المجدولة (تكشف جدولاً متوقفاً).
+  await redis.set("ops:last:sweep", new Date().toISOString(), { ex: 14 * 86400 }).catch(() => {});
 
   let jobs: (typeof scheduledJobs.$inferSelect)[] = [];
   try {

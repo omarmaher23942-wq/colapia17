@@ -10,16 +10,13 @@ import { requirePlatformPage } from "@/server/platform-guard";
 export const dynamic = "force-dynamic";
 
 const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; config?: Record<string, unknown> }[] = [
-  { key: "bot.enabled", enabled: true, description: "تشغيل مستشار المبيعات الذكي عالمياً (مفتاح الطوارئ)" },
+  { key: "bot.enabled", enabled: true, description: "تشغيل الوكيل الآلي على رسائل فيسبوك وإنستجرام لكل المحادثات (مفتاح الطوارئ؛ الإيقاف لمحادثة واحدة من صفحتها)" },
   { key: "bot.instagram", enabled: true, description: "الرد التلقائي على إنستاجرام" },
-  { key: "build.auto_deliver", enabled: true, description: "التسليم الفوري التلقائي بمجرد اكتمال البناء بالـ AI" },
-  { key: "build.qa_second_pass", enabled: true, description: "جولة فحص جودة ثانية في حال كانت الدرجة أقل من 75" },
-  { key: "trial.enabled", enabled: true, description: "تفعيل التجربة المجانية للتاجر" },
-  { key: "payments.ai_verify", enabled: true, description: "الفحص الآلي لإيصالات التحويل بـ Gemini Vision" },
-  { key: "showcase.enabled", enabled: true, description: "عرض المتاجر المميزة في الصفحة الرئيسية" },
   { key: "pricing", enabled: true, description: "سلّم الأسعار والتجديد (يُعدَّل من صفحة «الأسعار»)", config: { ...DEFAULT_LADDER } },
   { key: "lifecycle", enabled: true, description: "مدد ما بعد التسليم بالساعات: التجربة، ثم التنبيه الأخير بعد الإيقاف، ثم الحذف (يُعدَّل من صفحة «الأسعار»)", config: { trialHours: 24, noticeHours: 24, deleteHours: 24 } },
   { key: "production", enabled: true, description: "مهلة كل حالة إنتاج بالساعات قبل تنبيه التأخر", config: { sla: { ...DEFAULT_SLA_HOURS } } },
+  { key: "visual_search", enabled: true, description: "«البحث بالصورة» في كل المتاجر: perMonth = حد البحث الشهري لكل متجر (الإيقاف يخفي الزر)", config: { perMonth: 400 } },
+  { key: "change_requests", enabled: true, description: "طلبات التعديل الشهرية للتاجر بعد الدفع: perMonth = عددها كل شهر (يظهر في الهبوط والشروط ولوحة التاجر)", config: { perMonth: 2 } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
   {
     key: "intake",

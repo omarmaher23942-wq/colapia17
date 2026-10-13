@@ -88,6 +88,7 @@ export const ADMIN_PAGES = {
   "/admin/costs": "costs",
   "/admin/pricing": "pricing",
   "/admin/flags": "settings",
+  "/admin/launch": "settings", // جاهزية الإطلاق: فحص حي للخدمات والمفاتيح
   "/admin/team": null, // يراها الجميع (من في الفريق)، والإدارة للمالك
 } as const satisfies Record<string, Capability | null>;
 

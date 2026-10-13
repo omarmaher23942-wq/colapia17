@@ -24,14 +24,14 @@ export default async function PricingPage() {
         <div className="rounded-2xl border border-white/10 bg-[#0b0f2a] p-4">
           <p className="text-[12px] font-bold text-[#8d97c4]">السعر الآن لمتجر جديد</p>
           <p className="mt-1 text-2xl font-black">{p.price.toLocaleString("en-US")} ج</p>
-          <p className="text-[12px] text-[#8d97c4] line-through">{p.basePrice.toLocaleString("en-US")} ج</p>
+          {p.basePrice > p.price ? <p className="text-[12px] text-[#8d97c4] line-through">{p.basePrice.toLocaleString("en-US")} ج</p> : null}
         </div>
         <div className="rounded-2xl border border-white/10 bg-[#0b0f2a] p-4">
           <p className="text-[12px] font-bold text-[#8d97c4]">باقات مدفوعة فعلاً</p>
           <p className="mt-1 text-2xl font-black">{p.paid}</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-[#0b0f2a] p-4">
-          <p className="text-[12px] font-bold text-[#8d97c4]">باقٍ بهذا السعر (يظهر للزوار)</p>
+          <p className="text-[12px] font-bold text-[#8d97c4]">باقٍ بهذا السعر في السلّم</p>
           <p className="mt-1 text-2xl font-black">{p.remaining ?? "بلا حد"}</p>
           {p.nextPrice ? <p className="text-[12px] text-[#8d97c4]">ثم {p.nextPrice.toLocaleString("en-US")} ج</p> : null}
         </div>

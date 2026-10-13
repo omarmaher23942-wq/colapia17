@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { redis } from "@/lib/redis";
 import { isAuthorizedCron } from "@/server/cron-auth";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -17,6 +18,8 @@ export async function GET(req: Request) {
   if (!(await isAuthorizedCron(req))) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+  // نبضة لمركز جاهزية الإطلاق: آخر تشغيل فعلي للمهمة المجدولة (تكشف جدولاً متوقفاً).
+  await redis.set("ops:last:tick", new Date().toISOString(), { ex: 14 * 86400 }).catch(() => {});
 
   const [stuck] = await db
     .select({ c: sql<number>`count(*)::int` })

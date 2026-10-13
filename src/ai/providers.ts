@@ -605,3 +605,33 @@ export async function transcribe(audioUrl: string, meta: Meta, opts: { mime?: st
   const r = await transcribeAudio(audioUrl, meta, opts);
   return r.ok ? r.text : "";
 }
+
+// ─── فحص المزوّدين (مركز جاهزية الإطلاق) ────────────────────────────────────
+
+export type ProbeResult = { model: string; ok: boolean; ms: number; detail: string };
+
+/**
+ * يجرّب كل نموذج في سلسلة المستوى منفرداً (بلا قاطع الدارة) ويعيد نتيجة كل واحد ونص خطئه الحقيقي: هكذا يعرف المالك
+ * لماذا تعطلت ميزة (مفتاح منتهٍ، نموذج أوقفه مزوّده، حد استهلاك…) بدل رسالة عامة.
+ */
+export async function probeTier(tier: Tier, messages: ModelMessage[], timeoutMs = 20_000): Promise<ProbeResult[]> {
+  return Promise.all(
+    DEFAULT_CHAINS[tier].map(async (l) => {
+      const t0 = Date.now();
+      try {
+        const r = await withTimeout(
+          generateText({ model: make(l), messages, temperature: 0, maxOutputTokens: 60, maxRetries: 0, abortSignal: abortAfter(timeoutMs) }),
+          timeoutMs
+        );
+        return { model: `${l.provider}:${l.modelId}`, ok: Boolean(r.text?.trim()), ms: Date.now() - t0, detail: r.text?.trim().slice(0, 120) || "رد فارغ" };
+      } catch (e) {
+        return { model: `${l.provider}:${l.modelId}`, ok: false, ms: Date.now() - t0, detail: String((e as Error)?.message ?? e).slice(0, 300) };
+      }
+    })
+  );
+}
+
+/** يفك قاطع الدارة عن نماذج مستوى (بعد إصلاح المفتاح أو انتهاء حد الاستهلاك) فتُجرَّب فوراً. */
+export async function resetBreakers(tier: Tier): Promise<void> {
+  await Promise.all(DEFAULT_CHAINS[tier].map((l) => redis.del(cbKey(l)).catch(() => 0)));
+}
