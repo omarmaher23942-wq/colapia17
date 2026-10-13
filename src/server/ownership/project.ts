@@ -4,6 +4,7 @@ import { getBlueprintOrNull } from "@/lib/tenant";
 import { defaultBlueprint } from "@/blueprint/defaults";
 import { clientEnv } from "@/lib/env";
 import { buildStoreProject, STORE_IDENTITY_FILES, type TemplateFile } from "./template";
+import { platformSource } from "./source";
 
 /**
  * ملفات مشروع المتجر. identity = "keep" لتحديث كود متجر استُلم وحُذفت بياناته من المنصة: يُبنى الكود فقط،
@@ -16,7 +17,7 @@ export async function projectFilesFor(
   const current = opts.identity === "keep" ? null : await getBlueprintOrNull(store.id);
   if (!current && opts.identity !== "keep") throw new Error("store blueprint not found");
   const blueprint = current ?? defaultBlueprint({ name: store.name } as never);
-  const { files, missing } = await buildStoreProject(process.cwd(), {
+  const { files, missing } = await buildStoreProject(await platformSource(), {
     storeName: store.name,
     subdomain: store.subdomain,
     blueprint,

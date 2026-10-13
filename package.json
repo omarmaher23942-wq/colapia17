@@ -21,7 +21,10 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run stores:check && npm run test",
     "stores:registry": "tsx scripts/stores/registry.ts",
-    "stores:check": "tsx scripts/stores/registry.ts --check && tsx scripts/stores/guard.ts"
+    "stores:check": "tsx scripts/stores/registry.ts --check && tsx scripts/stores/guard.ts",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy"
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.0",
@@ -102,6 +105,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.20.10",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.13.0",
@@ -117,6 +121,7 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.19.3",
     "typescript": "^5.8.0",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "wrangler": "^4.149.0"
   }
 }

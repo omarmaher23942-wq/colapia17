@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { stores } from "@/db/schema";
 import { ownerStore } from "@/server/merchant-guard";
 import { normalizeDomain } from "@/lib/custom-domain";
-import { addToVercel, checkStoreDomain, removeFromVercel, unmapDomain } from "@/server/domains";
+import { addDomainHostnames, checkStoreDomain, removeDomainHostnames, unmapDomain } from "@/server/domains";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { allow } from "@/lib/ratelimit";
 
@@ -26,10 +26,10 @@ export async function setCustomDomainAction(raw: string): Promise<Result> {
   if (taken) return { ok: false, error: "هذا النطاق مربوط بمتجر آخر." };
   if (s.store.customDomain && s.store.customDomain !== domain) {
     await unmapDomain(s.store, s.store.customDomain).catch(() => {});
-    await removeFromVercel(s.store.customDomain).catch(() => {});
+    await removeDomainHostnames(s.store.customDomain).catch(() => {});
   }
   await db.update(stores).set({ customDomain: domain, customDomainStatus: "pending", customDomainVerifiedAt: null, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
-  const added = await addToVercel(domain);
+  const added = await addDomainHostnames(domain);
   if (!added.ok && added.error === "manual") {
     await notifyAdmin(`نطاق خاص جديد بانتظار إضافته في Vercel: ${domain} لمتجر ${s.store.subdomain}. أضفه من Settings ← Domains ثم «أكّد الإضافة» في صفحة المتجر.`, { storeId: s.storeId }).catch(() => {});
   } else if (!added.ok) {
@@ -56,7 +56,7 @@ export async function removeCustomDomainAction(): Promise<Result> {
   const s = await ownerStore();
   if (!s?.store.customDomain) return { ok: false, error: "لا نطاق مربوط." };
   await unmapDomain(s.store, s.store.customDomain).catch(() => {});
-  await removeFromVercel(s.store.customDomain).catch(() => {});
+  await removeDomainHostnames(s.store.customDomain).catch(() => {});
   await db.update(stores).set({ customDomain: null, customDomainStatus: null, customDomainVerifiedAt: null, customDomainCheckedAt: null, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
   refresh();
   return { ok: true };

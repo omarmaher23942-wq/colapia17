@@ -1,6 +1,6 @@
 "use client";
 
-// DomainAdmin.tsx — في صفحة المتجر بلوحة الوكالة: حالة النطاق الخاص وتأكيد إضافته في Vercel (بلا توكن)، وتنزيل مشروع
+// DomainAdmin.tsx — في صفحة المتجر بلوحة الوكالة: حالة النطاق الخاص وتأكيد إضافته يدوياً عند مزود الاستضافة (بلا توكن)، وتنزيل مشروع
 // المتجر لتسليم الكود.
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { Download, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { confirmDomainAddedAction } from "@/server/actions/platform-stores-governance";
 
-const LABEL: Record<string, string> = { pending: "DNS لا يشير إلينا بعد", awaiting_team: "يشير إلينا: أضفه في Vercel ثم أكّد", active: "يعمل" };
+const LABEL: Record<string, string> = { pending: "DNS لا يشير إلينا بعد", awaiting_team: "يشير إلينا: أضفه عند مزود الاستضافة ثم أكّد", active: "يعمل" };
 
 export function DomainAdmin({ storeId, domain, status, auto, codeRequestedAt }: { storeId: string; domain: string | null; status: string | null; auto: boolean; codeRequestedAt: string | null }) {
   const router = useRouter();
@@ -36,7 +36,7 @@ export function DomainAdmin({ storeId, domain, status, auto, codeRequestedAt }: 
               }
               className="min-h-10 rounded-xl bg-[#8fa8ff] px-4 text-[12.5px] font-black text-[#07091a] disabled:opacity-50"
             >
-              أضفته في Vercel (Settings ← Domains): أكّد
+              أضفته (Cloudflare: Custom Hostnames، أو Vercel: Domains): أكّد
             </button>
           ) : null}
         </div>

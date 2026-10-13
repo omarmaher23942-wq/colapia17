@@ -108,6 +108,11 @@ const serverSchema = z.object({
   VERCEL_TOKEN: z.string().min(20).optional().or(z.literal("").transform(() => undefined)),
   VERCEL_PROJECT_ID: z.string().min(3).optional().or(z.literal("").transform(() => undefined)),
   VERCEL_TEAM_ID: z.string().min(3).optional().or(z.literal("").transform(() => undefined)),
+  // النطاقات الخاصة على Cloudflare (Cloudflare for SaaS): توكن بصلاحية «SSL and Certificates: Edit» على منطقة colapia.com
+  // ورقم المنطقة. بدونهما يبقى الربط على Vercel (VERCEL_*) أو يدوياً. CF_SAAS_TARGET = نطاق الاستقبال الذي يشير إليه العملاء.
+  CF_API_TOKEN: z.string().min(20).optional().or(z.literal("").transform(() => undefined)),
+  CF_ZONE_ID: z.string().regex(/^[0-9a-f]{32}$/).optional().or(z.literal("").transform(() => undefined)),
+  CF_SAAS_TARGET: z.string().min(4).optional().or(z.literal("").transform(() => undefined)),
   STORES_GITHUB_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/).optional().or(z.literal("").transform(() => undefined)),
   // Cloudflare R2 (مساحة الملفات، PLAN 14): مفاتيح API token بصلاحية Object Read & Write على الـ bucket وحده.
   R2_ACCOUNT_ID: z.string().min(8).optional().or(z.literal("").transform(() => undefined)),

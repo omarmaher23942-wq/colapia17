@@ -19,6 +19,8 @@ type Props = {
   explain: string | null;
   allowed: boolean;
   auto: boolean;
+  /** الجذري يُربط بسجل CNAME على @ (Cloudflare): بعض الشركات تسميه ALIAS أو لا تدعمه. */
+  apexNeedsCname?: boolean;
 };
 
 const STATUS = {
@@ -100,6 +102,11 @@ export function DomainPanel(p: Props) {
                 </tbody>
               </table>
             </div>
+            {p.apexNeedsCname && p.records.some((r) => r.name === "@") ? (
+              <p className="text-[12.5px] leading-6 text-ink-3">
+                سجل <span dir="ltr" className="font-mono">@</span> من نوع CNAME تسميه بعض الشركات ALIAS أو ANAME. إن لم تسمح شركتك به، انقل إدارة DNS لنطاقك إلى Cloudflare (مجاناً) أو اربط نطاقاً فرعياً مثل <span dir="ltr" className="font-mono">shop.{p.domain}</span>، وكلّمنا إن احتجت مساعدة.
+              </p>
+            ) : null}
           </section>
 
           <section className="dash-card space-y-3 p-4 sm:p-5">

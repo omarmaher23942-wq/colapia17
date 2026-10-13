@@ -2,7 +2,7 @@
 // https فقط، ولا عناوين داخلية أو خاصة (حماية من SSRF، ويُعاد الفحص مع كل تحويل)، وحد للحجم والوقت، والنوع يُعرف
 // من بايتات الملف نفسه لا من ترويسة الخادم (JPEG وPNG وWebP وGIF وAVIF فقط؛ SVG مرفوض لأنه قد يحمل سكربت).
 import "server-only";
-import { lookup } from "node:dns/promises";
+import { resolveAddresses } from "@/server/doh";
 import { isIP } from "node:net";
 
 export const REMOTE_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
@@ -57,8 +57,9 @@ async function publicHost(hostname: string): Promise<boolean> {
   const host = hostname.replace(/^\[|\]$/g, "").toLowerCase();
   if (!host || host === "localhost" || /\.(localhost|local|internal|lan|home|corp)$/.test(host)) return false;
   if (isIP(host)) return !isPrivateAddress(host);
-  const addrs = await lookup(host, { all: true, verbatim: true }).catch(() => []);
-  return addrs.length > 0 && addrs.every((a) => !isPrivateAddress(a.address));
+  // عبر DNS-over-HTTPS (يعمل على Cloudflare أيضاً، وهناك يمنع global_fetch_strictly_public العناوين الخاصة كذلك).
+  const addrs = await resolveAddresses(host);
+  return addrs.length > 0 && addrs.every((a) => !isPrivateAddress(a));
 }
 
 /** نوع الصورة من أول بايتات الملف. */

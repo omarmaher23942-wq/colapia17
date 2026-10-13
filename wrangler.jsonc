@@ -1,0 +1,30 @@
+// wrangler.jsonc — إعداد Colapia على Cloudflare Workers. دليل المالك: docs/deploy-cloudflare.md.
+// لا مفاتيح هنا أبداً: الأسرار من لوحة Cloudflare (Settings ← Variables and Secrets) أو `wrangler secret put`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "colapia",
+  // يغلّف عامل OpenNext ويضيف المهام المجدولة (cron) بدل Vercel Cron وجداول QStash.
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  // تحسين الصور (next/image) عبر Cloudflare Images.
+  "images": { "binding": "IMAGES" },
+  "observability": { "enabled": true },
+  "triggers": {
+    // كل 10 دقائق: استعادة المهام المجدولة المتأخرة (ops/sweep). يومياً 04:00 UTC: المتابعة اليومية (ops/tick).
+    "crons": ["*/10 * * * *", "0 4 * * *"]
+  },
+  // مسار واحد يلتقط colapia.com والمتاجر <slug>.colapia.com ونطاقات العملاء (Cloudflare for SaaS، server/domains.ts).
+  // media.colapia.com (صور R2) يُستثنى بمسار «None» من اللوحة. الدليل: docs/deploy-cloudflare.md القسم 5.
+  "routes": [{ "pattern": "*/*", "zone_name": "colapia.com" }],
+  // متغيرات وقت التشغيل غير السرية. متغيرات NEXT_PUBLIC_* تُثبَّت في الكود وقت البناء: تُضبط أيضاً في «Build variables»
+  // (الدليل، القسم 2).
+  "vars": {
+    "NEXT_PUBLIC_ROOT_DOMAIN": "colapia.com",
+    "ROOT_DOMAIN": "colapia.com",
+    "NEXT_PUBLIC_APP_URL": "https://colapia.com",
+    // على Workers يكتب Cloudflare هذا الهيدر بعنوان الزائر الحقيقي ولا يقبل نسخة من العميل (lib/client-ip.ts).
+    "TRUST_CF_CONNECTING_IP": "1"
+  }
+}

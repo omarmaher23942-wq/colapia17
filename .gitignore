@@ -13,3 +13,7 @@ repomix-output_part_1.md
 repomix-output_part_2.md
 repomix-output_part_3.md
 .env13
+# Cloudflare (OpenNext/wrangler)
+.open-next
+.wrangler
+.dev.vars*

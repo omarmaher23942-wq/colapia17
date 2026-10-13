@@ -4,7 +4,7 @@ import { getMerchantSession } from "@/server/auth";
 import { isStoreOwner, requireStoreArea } from "@/server/merchant-guard";
 import { NO_STORE_HREF } from "@/lib/edition";
 import { dnsRecordsFor, explainDns } from "@/lib/custom-domain";
-import { lookupDns, vercelConfigured } from "@/server/domains";
+import { domainAutoConfigured, domainTarget, lookupDns } from "@/server/domains";
 import { storeUrl } from "@/lib/utils";
 import { DomainPanel } from "@/components/dashboard/domain/DomainPanel";
 
@@ -18,6 +18,7 @@ export default async function DomainPage() {
   const s = await requireStoreArea("settings");
   const store = session.store;
   const domain = store.customDomain;
+  const target = domainTarget();
   const dns = domain && store.customDomainStatus !== "active" ? await lookupDns(domain) : null;
   return (
     <div className="mx-auto max-w-3xl">
@@ -27,10 +28,11 @@ export default async function DomainPage() {
         domain={domain}
         status={(store.customDomainStatus as "pending" | "awaiting_team" | "active" | null) ?? null}
         checkedAt={store.customDomainCheckedAt?.toISOString() ?? null}
-        records={domain ? dnsRecordsFor(domain) : []}
-        explain={domain ? (store.customDomainStatus === "active" ? "متجرك يعمل على نطاقك، ورابطك القديم يحوّل إليه تلقائياً." : store.customDomainStatus === "awaiting_team" ? "النطاق يشير إلينا. فريقنا يكمل ربطه من جهتنا، وسيعمل خلال ساعات." : explainDns(domain, dns)) : null}
+        records={domain ? dnsRecordsFor(domain, target) : []}
+        explain={domain ? (store.customDomainStatus === "active" ? "متجرك يعمل على نطاقك، ورابطك القديم يحوّل إليه تلقائياً." : store.customDomainStatus === "awaiting_team" ? "النطاق يشير إلينا. فريقنا يكمل ربطه من جهتنا، وسيعمل خلال ساعات." : explainDns(domain, dns, target)) : null}
         allowed={["trial", "active"].includes(store.status)}
-        auto={vercelConfigured()}
+        auto={domainAutoConfigured()}
+        apexNeedsCname={target.kind === "cloudflare"}
       />
     </div>
   );

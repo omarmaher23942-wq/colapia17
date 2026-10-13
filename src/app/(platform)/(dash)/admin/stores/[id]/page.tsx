@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DomainAdmin } from "@/components/platform/DomainAdmin";
-import { vercelConfigured } from "@/server/domains";
+import { domainAutoConfigured } from "@/server/domains";
 import { storeActivity } from "@/db/schema";
 import { notFound } from "next/navigation";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -64,7 +64,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <DomainAdmin storeId={s.id} domain={s.customDomain} status={s.customDomainStatus} auto={vercelConfigured()} codeRequestedAt={codeReq?.createdAt.toISOString() ?? null} />
+          <DomainAdmin storeId={s.id} domain={s.customDomain} status={s.customDomainStatus} auto={domainAutoConfigured()} codeRequestedAt={codeReq?.createdAt.toISOString() ?? null} />
           <StoreAdminActions 
             store={{ id: s.id, status: s.status, subdomain: s.subdomain, customDomain: s.customDomain, showcase: s.showcaseOptIn, acceptingOrders: s.acceptingOrders }} 
             merchantActivated={!!m?.isActivated} 

@@ -24,7 +24,7 @@ export async function GET() {
   const [database, cache] = await Promise.all([probe(() => db.execute(sql`select 1`)), probe(() => redis.ping())]);
   const ok = database.ok;
   return NextResponse.json(
-    { ok, database, redis: cache, version: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) ?? process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null },
+    { ok, database, redis: cache, version: process.env.BUILD_COMMIT_SHA?.slice(0, 7) || null },
     { status: ok ? 200 : 503, headers: { "Cache-Control": "no-store" } }
   );
 }

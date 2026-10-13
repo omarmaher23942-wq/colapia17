@@ -58,17 +58,20 @@ async function redisGet(key: string): Promise<string | null> {
   }
 }
 
-/** مضيف ليس المنصة ولا نطاقاً فرعياً لها ولا نشرة Vercel ولا تطويراً محلياً = نطاق خاص محتمل لمتجر. */
+/** نطاقات المزود نفسه (نشرات Vercel وروابط Cloudflare Workers): تُعامل كالمنصة، لا كنطاق متجر. */
+const isProviderHost = (h: string) => h.endsWith(".vercel.app") || h.endsWith(".workers.dev");
+
+/** مضيف ليس المنصة ولا نطاقاً فرعياً لها ولا نطاق المزود ولا تطويراً محلياً = نطاق خاص محتمل لمتجر. */
 function isCustomHost(host: string): boolean {
   const h = host.toLowerCase().split(":")[0]!;
   if (!h || h === ROOT.split(":")[0] || h.endsWith(`.${ROOT.split(":")[0]}`)) return false;
-  if (h.endsWith(".vercel.app") || h === "localhost" || h.endsWith(".localhost") || /^[\d.]+$/.test(h)) return false;
+  if (isProviderHost(h) || h === "localhost" || h.endsWith(".localhost") || /^[\d.]+$/.test(h)) return false;
   return true;
 }
 
 function extractSubdomain(hostHeader: string): string | null {
   const host = hostHeader.toLowerCase();
-  if (host.endsWith(".vercel.app")) return null;
+  if (isProviderHost(host.split(":")[0]!)) return null;
   if (host === ROOT || !host.endsWith(`.${ROOT}`)) return null;
   const sub = host.slice(0, -(ROOT.length + 1)).split(".")[0] ?? "";
   return sub || null;
@@ -104,10 +107,14 @@ function cleanRedirect(url: URL, param: string): NextResponse {
   return NextResponse.redirect(clean, 307);
 }
 
-/** معاينة متجر على نشرة معاينة: ?store=<slug> يُحفظ في كوكي، و?store=off يلغيه. */
+/**
+ * معاينة متجر على نشرة معاينة: ?store=<slug> يُحفظ في كوكي، و?store=off يلغيه. على Cloudflare لا يميَّز إصدار المعاينة
+ * ببيئة، فروابط *.workers.dev تعمل بها المعاينة بشرط مفتاح STORE_PREVIEW_KEY دائماً (الرابط عام بلا حماية Vercel).
+ */
 function previewStore(req: NextRequest): { sub: string | null; response?: NextResponse } {
-  if (!isPreviewDeployment()) return { sub: null };
   const key = process.env.STORE_PREVIEW_KEY;
+  const workersDev = (req.headers.get("host") ?? "").toLowerCase().split(":")[0]!.endsWith(".workers.dev");
+  if (!isPreviewDeployment() && !(workersDev && key)) return { sub: null };
   const param = req.nextUrl.searchParams.get("store");
   if (param !== null) {
     const res = cleanRedirect(req.nextUrl, "store");

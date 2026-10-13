@@ -108,10 +108,14 @@ const nextConfig: NextConfig = {
   // خادم Node مستقل (Dockerfile): يحمل ما تحتاجه الصفحات فقط، فتصغر الصورة وذاكرة التشغيل على Railway أو أي مضيف.
   // Vercel يتجاهله ويبني بطريقته.
   output: "standalone",
-  // "امتلك متجرك" يولّد مشروع التاجر من ملفات المشروع نفسها وقت التشغيل (server/ownership/template.ts).
+  // تسليم الكود يولّد مشروع التاجر من ملفات المشروع نفسها وقت التشغيل (server/ownership/template.ts): على خادم Node
+  // تُرفق الملفات بالدالة، وعلى Cloudflare (بلا ملفات) تُقرأ من مستودع GitHub بنفس الـ commit (server/ownership/source.ts).
   outputFileTracingIncludes: {
-    "/api/ownership/zip": ["./src/**/*", "./template/**/*", "./public/sounds/**/*", "./public/logo.png", "./package.json", "./package-lock.json", "./postcss.config.mjs", "./next-env.d.ts"],
-    "/api/ownership/github/callback": ["./src/**/*", "./template/**/*", "./public/sounds/**/*", "./public/logo.png", "./package.json", "./package-lock.json", "./postcss.config.mjs", "./next-env.d.ts"],
+    "/admin/stores/[id]/project": ["./src/**/*", "./template/**/*", "./public/sounds/**/*", "./public/logo.png", "./package.json", "./package-lock.json", "./postcss.config.mjs", "./next-env.d.ts"],
+  },
+  // الـ commit المنشور (Cloudflare Workers Builds أو Vercel أو Railway): مصدر ملفات تسليم الكود ورقم الإصدار في /api/health.
+  env: {
+    BUILD_COMMIT_SHA: process.env.WORKERS_CI_COMMIT_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? "",
   },
   images: {
     formats: ["image/avif", "image/webp"],

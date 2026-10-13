@@ -8,10 +8,9 @@
 //
 // يُستخدم من: GitHub (إنشاء مستودع التاجر)، وتحميل ZIP، وسكربت الفحص scripts/store-template.ts
 // الذي يولّد المشروع في مجلد ويشغّل عليه فحص الأنواع والبناء.
-import { readFile, readdir, stat } from "node:fs/promises";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, posix } from "node:path";
+import { posix } from "node:path";
 import type { StoreBlueprint } from "@/blueprint/schema";
+import { localSource, type SourceTree } from "./source";
 
 export const TEMPLATE_DIR = "template";
 
@@ -98,19 +97,12 @@ export type TemplateFile = { path: string; data: string | Uint8Array };
 
 const posixRel = (p: string) => p.split("\\").join("/");
 
-async function walk(root: string, dir: string): Promise<string[]> {
-  if (!existsSync(join(root, dir))) return [];
-  const out: string[] = [];
-  for (const name of await readdir(join(root, dir))) {
-    const rel = `${dir}/${name}`;
-    if ((await stat(join(root, rel))).isDirectory()) out.push(...(await walk(root, rel)));
-    else out.push(rel);
-  }
-  return out;
-}
+/** المشروع على القرص (مسار) أو شجرة ملفات جاهزة (أرشيف المستودع على Cloudflare). */
+export type ProjectRoot = string | SourceTree;
+const sourceOf = (root: ProjectRoot): Promise<SourceTree> => (typeof root === "string" ? localSource(root) : Promise.resolve(root));
 
 /** يحل مسار استيراد إلى ملف داخل المشروع (مع اعتبار ملفات القالب)، أو null لحزمة خارجية. */
-function resolveSpec(root: string, from: string, spec: string, overlay: Set<string>): string | null | undefined {
+function resolveSpec(src: SourceTree, from: string, spec: string, overlay: Set<string>): string | null | undefined {
   let base: string;
   if (spec.startsWith("@/")) base = `src/${spec.slice(2)}`;
   else if (spec.startsWith(".")) base = posix.normalize(posix.join(posix.dirname(from), spec));
@@ -118,8 +110,7 @@ function resolveSpec(root: string, from: string, spec: string, overlay: Set<stri
   const cands = [base, ...CODE_EXT.map((e) => base + e), ...CODE_EXT.map((e) => `${base}/index${e}`)];
   for (const c of cands) {
     if (overlay.has(c)) return c;
-    const abs = join(root, c);
-    if (existsSync(abs) && statSync(abs).isFile()) return c;
+    if (src.isFile(c)) return c;
   }
   return undefined;
 }
@@ -143,13 +134,13 @@ export function packageOf(spec: string): string | null {
 export type TraceResult = { files: Map<string, string>; packages: Set<string>; missing: string[] };
 
 /** يجمع ملفات مشروع التاجر: التتبع يبدأ من صفحات المتجر واللوحة وملفات القالب الخاصة. */
-export async function traceStoreProject(root: string): Promise<TraceResult> {
-  const overlayFiles = (await walk(root, `${TEMPLATE_DIR}/src`)).map((f) => f.slice(TEMPLATE_DIR.length + 1));
+export async function traceStoreProject(root: ProjectRoot): Promise<TraceResult> {
+  const src = await sourceOf(root);
+  const overlayFiles = (await src.list(`${TEMPLATE_DIR}/src`)).map((f) => f.slice(TEMPLATE_DIR.length + 1));
   const overlay = new Set(overlayFiles);
-  const read = async (f: string) =>
-    overlay.has(f) ? readFile(join(root, TEMPLATE_DIR, f), "utf8") : readFile(join(root, f), "utf8");
+  const read = async (f: string) => (overlay.has(f) ? src.read(`${TEMPLATE_DIR}/${f}`) : src.read(f));
 
-  const entryDirFiles = (await Promise.all(ENTRY_DIRS.map((d) => walk(root, d)))).flat();
+  const entryDirFiles = (await Promise.all(ENTRY_DIRS.map((d) => src.list(d)))).flat();
   const entries = [...entryDirFiles, ...ENTRY_FILES, ...overlayFiles]
     .filter((f) => CODE_EXT.some((e) => f.endsWith(e)))
     .filter((f) => !EXCLUDED_ENTRIES.some((re) => re.test(f)));
@@ -164,7 +155,7 @@ export async function traceStoreProject(root: string): Promise<TraceResult> {
     const code = await read(f);
     files.set(f, code);
     for (const spec of importSpecs(code)) {
-      const r = resolveSpec(root, f, spec, overlay);
+      const r = resolveSpec(src, f, spec, overlay);
       if (r === null) {
         const pkg = packageOf(spec);
         if (pkg) packages.add(pkg);
@@ -292,13 +283,20 @@ export function storePackageJson(
 // ─── التجميع ─────────────────────────────────────────────────────────────────
 
 const ROOT_SKELETON = "root";
+const NEXT_ENV_DTS = `/// <reference types="next" />
+/// <reference types="next/image-types/global" />
+
+// NOTE: This file should not be edited
+// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
+`;
 const INJECTED = new Set(["src/lib/fonts.ts", "src/store.config.ts", "src/app/store-theme.css"]);
 
 /** ملفات هوية المتجر المحقونة (اسمه وخطوطه وألوانه وتصميمه): التحديث اللاحق للكود لا يلمسها. */
 export const STORE_IDENTITY_FILES = ["src/lib/fonts.ts", "src/store.config.ts", "src/app/store-theme.css", "store/blueprint.json"] as const;
 
-export async function buildStoreProject(root: string, inj: StoreInjection): Promise<{ files: TemplateFile[]; missing: string[] }> {
-  const { files, packages, missing } = await traceStoreProject(root);
+export async function buildStoreProject(root: ProjectRoot, inj: StoreInjection): Promise<{ files: TemplateFile[]; missing: string[] }> {
+  const src = await sourceOf(root);
+  const { files, packages, missing } = await traceStoreProject(src);
   const out: TemplateFile[] = [];
 
   for (const [path, code] of files) {
@@ -312,42 +310,30 @@ export async function buildStoreProject(root: string, inj: StoreInjection): Prom
   out.push({ path: "store/blueprint.json", data: json(inj.blueprint) + "\n" });
 
   // ملفات الجذر (tsconfig، next.config، vercel.json، README...) ومخطط قاعدة المتجر.
-  for (const f of await walk(root, `${TEMPLATE_DIR}/${ROOT_SKELETON}`)) {
+  for (const f of await src.list(`${TEMPLATE_DIR}/${ROOT_SKELETON}`)) {
     const rel = f.slice(`${TEMPLATE_DIR}/${ROOT_SKELETON}/`.length).replace(/(^|\/)_dot_/g, "$1.");
-    const raw = await readFile(join(root, f), "utf8");
+    const raw = await src.read(f);
     out.push({ path: rel, data: raw.replaceAll("{{STORE_NAME}}", inj.storeName).replaceAll("{{SUBDOMAIN}}", inj.subdomain) });
   }
-  for (const f of await walk(root, `${TEMPLATE_DIR}/drizzle`)) {
-    out.push({ path: f.slice(TEMPLATE_DIR.length + 1), data: await readFile(join(root, f)) });
+  for (const f of await src.list(`${TEMPLATE_DIR}/drizzle`)) {
+    out.push({ path: f.slice(TEMPLATE_DIR.length + 1), data: await src.readBytes(f) });
   }
   for (const f of ["postcss.config.mjs", "next-env.d.ts"]) {
-    if (existsSync(join(root, f))) out.push({ path: f, data: await readFile(join(root, f), "utf8") });
+    if (src.isFile(f)) out.push({ path: f, data: await src.read(f) });
   }
-  for (const f of [...(await walk(root, "public/sounds")), "public/logo.png"]) {
-    if (existsSync(join(root, f))) out.push({ path: f, data: await readFile(join(root, f)) });
+  // next-env.d.ts لا يُرفع للمستودع (يولّده next): نسخة ثابتة حين لا يوجد (أرشيف GitHub).
+  if (!src.isFile("next-env.d.ts")) out.push({ path: "next-env.d.ts", data: NEXT_ENV_DTS });
+  for (const f of [...(await src.list("public/sounds")), "public/logo.png"]) {
+    if (src.isFile(f)) out.push({ path: f, data: await src.readBytes(f) });
   }
 
-  const platformPkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  const platformPkg = JSON.parse(await src.read("package.json"));
   // مصدر الإصدارات: package-lock.json (مرفق مع الدالة على Vercel)، ثم node_modules محلياً.
   // بدونهما كان النطاق يُقطع إلى أقل إصدار (zod 3.24.0 مثلاً) فيفشل npm install عند التاجر بتعارض peer.
-  const lock = existsSync(join(root, "package-lock.json"))
-    ? ((JSON.parse(await readFile(join(root, "package-lock.json"), "utf8")) as { packages?: Record<string, { version?: string }> }).packages ?? {})
+  const lock = src.isFile("package-lock.json")
+    ? ((JSON.parse(await src.read("package-lock.json")) as { packages?: Record<string, { version?: string }> }).packages ?? {})
     : {};
-  const installed = (name: string) => {
-    const locked = lock[`node_modules/${name}`]?.version;
-    if (locked) return locked;
-    for (const base of [join(root, "node_modules"), join(dirname(root), "node_modules")]) {
-      const p = join(base, name, "package.json");
-      if (existsSync(p)) {
-        try {
-          return (JSON.parse(readFileSync(p, "utf8")) as { version?: string }).version ?? null;
-        } catch {
-          return null;
-        }
-      }
-    }
-    return null;
-  };
+  const installed = (name: string) => lock[`node_modules/${name}`]?.version ?? src.installedVersion(name);
   // الاعتماديات الندية الإلزامية (مثل three لـ model-viewer) تُضاف بإصدار المنصة نفسه، فيكون التثبيت حتمياً.
   const pkgJson = JSON.parse(storePackageJson(inj.subdomain, packages, platformPkg, installed)) as { dependencies: Record<string, string> };
   const lockMeta = lock as Record<string, { version?: string; peerDependencies?: Record<string, string>; peerDependenciesMeta?: Record<string, { optional?: boolean }> }>;

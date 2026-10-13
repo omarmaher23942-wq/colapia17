@@ -1,19 +1,19 @@
 // الصفحة الرئيسية (Server Component):
 // - تقرأ كوكي clp_m مباشرة (بدون استعلام DB) لضمان LCP سريع (مبدأ الأداء).
-// - تجلب المراجعات المعتمدة عبر unstable_cache لتفادي ضرب الـ DB في كل طلب.
+// - تجلب المراجعات المعتمدة من ذاكرة Redis (5 دقائق) لتفادي ضرب الـ DB في كل طلب (لا ذاكرة Next: تعمل على أي استضافة).
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
 import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { cookies } from "next/headers";
-import { unstable_cache } from "next/cache";
+import { cached } from "@/lib/redis";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { platformReviews } from "../../db/schema/platform";
 import { Landing } from "../../components/landing/Landing";
 import type { LandingReview, SessionState } from "../../components/landing/types";
 
-const getApprovedReviews = unstable_cache(
-  async (): Promise<LandingReview[]> => {
+const getApprovedReviews = () =>
+  cached("landing:reviews", 300, async (): Promise<LandingReview[]> => {
     try {
       const rows = await db
         .select({
@@ -38,10 +38,7 @@ const getApprovedReviews = unstable_cache(
       // في حال تعذّر الاتصال بقاعدة البيانات: حالة فارغة أنيقة — لا بيانات وهمية.
       return [];
     }
-  },
-  ["landing-approved-reviews"],
-  { revalidate: 300, tags: ["platform-reviews"] }
-);
+  });
 
 async function getSessionState(): Promise<SessionState> {
   // فحص وجود كوكي فقط — لا نلمس DB في اللاندينج (الأمان الحقيقي في middleware
