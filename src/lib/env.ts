@@ -20,30 +20,46 @@ export const optionalEmail = z.preprocess((v) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e) ? e : undefined;
 }, z.string().optional());
 
+/**
+ * مفتاح يلصقه المالك بيده: نقبله كما يُنسخ عادةً (مسافات أو سطر جديد، بين تنصيص، «NAME=قيمة»، «Bearer …»)
+ * ونحفظ القيمة النظيفة. رمز Meta بحرف زائد واحد يُرفض بخطأ «could not be decrypted».
+ */
+export function cleanSecretValue(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  let s = v.trim();
+  s = s.replace(/^export\s+/i, "").replace(/^[A-Z][A-Z0-9_]*\s*=\s*/, "").trim();
+  s = s.replace(/^(['"`])([\s\S]*)\1$/, "$2").trim();
+  s = s.replace(/^Bearer\s+/i, "").replace(/\s+/g, "");
+  return s || undefined;
+}
+const optionalSecret = z.preprocess(cleanSecretValue, z.string().optional());
+
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
   // UploadThing مزوّد الملفات القديم: اختياري متى ضُبطت R2 (NEXT_PUBLIC_MEDIA_PROVIDER=r2).
   UPLOADTHING_TOKEN: z.string().min(10).optional().or(z.literal("").transform(() => undefined)),
 
-  MORPHEUS_API_KEY: z.string().min(1),
+  MORPHEUS_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
   MORPHEUS_BASE_URL: z.string().url().default("https://api.mor.org/api/v1"),
   CLAUDE_MODEL: z.string().default("claude-sonnet-4.5"),
   CLAUDE_OPUS_MODEL: z.string().default("claude-opus-4.1"),
-  GROQ_API_KEY: z.string().min(1),
+  GROQ_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
   GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
   GROQ_WHISPER_MODEL: z.string().default("whisper-large-v3-turbo"),
-  GEMINI_API_KEY: z.string().min(1),
+  GEMINI_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
   GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
 
   META_APP_ID: z.string().optional(),
-  META_APP_SECRET: z.string().optional(),
+  META_APP_SECRET: optionalSecret,
   META_GRAPH_VERSION: z.string().default("v21.0"),
-  META_VERIFY_TOKEN: z.string().optional(),
-  META_PAGE_ACCESS_TOKEN: z.string().optional(),
-  META_INSTAGRAM_ACCESS_TOKEN: z.string().optional(),
-  META_PAGE_ID: z.string().optional(),
-  META_IG_ID: z.string().optional(),
+  META_VERIFY_TOKEN: optionalSecret,
+  META_PAGE_ACCESS_TOKEN: optionalSecret,
+  META_INSTAGRAM_ACCESS_TOKEN: optionalSecret,
+  // سر تطبيق إنستجرام (اختياري): إن كانت رسائل إنستجرام موقّعة بسر مختلف عن META_APP_SECRET (تطبيق «Instagram Login»).
+  META_INSTAGRAM_APP_SECRET: optionalSecret,
+  META_PAGE_ID: optionalSecret,
+  META_IG_ID: optionalSecret,
 
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),

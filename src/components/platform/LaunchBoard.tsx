@@ -4,11 +4,11 @@
 // الذكاء الاصطناعي. «أعد الفحص» يعيد تحميل الصفحة فتُجرى الفحوص من جديد على الخادم.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, CircleSlash, Loader2, Mail, RefreshCw, ScanSearch, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleSlash, Loader2, Mail, MessageCircle, RefreshCw, ScanSearch, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { CheckGroup, CheckStatus } from "@/server/launch-checks";
 import type { ProbeResult } from "@/ai/providers";
-import { resetVisionAction, sendTestEmailAction, testVisionAction } from "@/server/actions/launch";
+import { resetModelsAction, sendTestEmailAction, testChatAction, testVisionAction } from "@/server/actions/launch";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<CheckStatus, { Icon: typeof CheckCircle2; tone: string; label: string }> = {
@@ -31,16 +31,18 @@ const PURPOSE: Record<string, string> = {
 export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failures: Failure[] }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
-  const [vision, setVision] = useState<ProbeResult[] | null>(null);
-  const [busy, setBusy] = useState<"vision" | "reset" | "email" | null>(null);
+  const [probe, setProbe] = useState<{ tier: "visionFast" | "chat"; results: ProbeResult[] } | null>(null);
+  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | null>(null);
 
-  const testVision = async () => {
-    setBusy("vision");
-    const r = await testVisionAction().catch(() => ({ ok: false as const, error: "تعذر الاختبار" }));
+  const test = async (tier: "visionFast" | "chat") => {
+    setBusy(tier === "chat" ? "chat" : "vision");
+    const r = await (tier === "chat" ? testChatAction() : testVisionAction()).catch(() => ({ ok: false as const, error: "تعذر الاختبار" }));
     setBusy(null);
     if (!r.ok) return void toast.error(r.error);
-    setVision(r.results);
-    toast[r.results.some((x) => x.ok) ? "success" : "error"](r.results.some((x) => x.ok) ? "نموذج واحد على الأقل يقرأ الصور" : "كل نماذج قراءة الصور فشلت: السبب تحت كل نموذج");
+    setProbe({ tier, results: r.results });
+    const any = r.results.some((x) => x.ok);
+    const what = tier === "chat" ? "المحادثة" : "قراءة الصور";
+    toast[any ? "success" : "error"](any ? `نموذج ${what} واحد على الأقل يعمل` : `كل نماذج ${what} فشلت: السبب تحت كل نموذج`);
   };
 
   return (
@@ -49,8 +51,11 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
         <button type="button" onClick={() => startRefresh(() => router.refresh())} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black">
           {refreshing ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />} أعد الفحص
         </button>
-        <button type="button" disabled={busy !== null} onClick={testVision} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#8fa8ff] px-4 text-[13px] font-black text-[#07091a] disabled:opacity-50">
+        <button type="button" disabled={busy !== null} onClick={() => test("visionFast")} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#8fa8ff] px-4 text-[13px] font-black text-[#07091a] disabled:opacity-50">
           {busy === "vision" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ScanSearch className="size-4" aria-hidden="true" />} اختبر البحث بالصورة
+        </button>
+        <button type="button" disabled={busy !== null} onClick={() => test("chat")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50">
+          {busy === "chat" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <MessageCircle className="size-4" aria-hidden="true" />} اختبر وكيل الرسائل
         </button>
         <button
           type="button"
@@ -67,18 +72,18 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
         </button>
       </div>
 
-      {vision ? (
+      {probe ? (
         <section className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5" aria-live="polite">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-black">نماذج قراءة الصور (بالترتيب الذي يجربه المتجر)</h2>
+            <h2 className="text-sm font-black">{probe.tier === "chat" ? "نماذج المحادثة (بالترتيب الذي يجربه وكيل الرسائل)" : "نماذج قراءة الصور (بالترتيب الذي يجربه المتجر)"}</h2>
             <button
               type="button"
               disabled={busy !== null}
               onClick={async () => {
                 setBusy("reset");
-                await resetVisionAction().catch(() => null);
+                await resetModelsAction(probe.tier).catch(() => null);
                 setBusy(null);
-                toast.success("فُك الإيقاف المؤقت: ستُجرَّب كل النماذج في البحث التالي");
+                toast.success("فُك الإيقاف المؤقت: ستُجرَّب كل النماذج في الطلب التالي");
               }}
               className="text-[12px] font-bold text-[#8fa8ff] underline-offset-4 hover:underline"
             >
@@ -86,7 +91,7 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
             </button>
           </div>
           <ul className="space-y-2">
-            {vision.map((v) => (
+            {probe.results.map((v) => (
               <li key={v.model} className="rounded-2xl border border-white/10 p-3 text-[13px]">
                 <p className="flex flex-wrap items-center gap-2 font-bold">
                   {v.ok ? <CheckCircle2 className="size-4 text-emerald-300" aria-hidden="true" /> : <XCircle className="size-4 text-rose-300" aria-hidden="true" />}

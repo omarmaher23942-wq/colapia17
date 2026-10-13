@@ -1,5 +1,5 @@
 "use server";
-// launch.ts — أزرار مركز جاهزية الإطلاق: اختبار نماذج قراءة الصور فرادى، وفك إيقافها المؤقت، وبريد تجربة للمالك.
+// launch.ts — أزرار مركز جاهزية الإطلاق: اختبار نماذج قراءة الصور والمحادثة فرادى، وفك إيقافها المؤقت، وبريد تجربة للمالك.
 import { requirePlatformCap } from "@/server/platform-guard";
 import { probeTier, resetBreakers, type ProbeResult } from "@/ai/providers";
 import { sendEmail } from "@/lib/email";
@@ -25,9 +25,20 @@ export async function testVisionAction(): Promise<{ ok: true; results: ProbeResu
   }
 }
 
-export async function resetVisionAction(): Promise<{ ok: true }> {
+/** نماذج المحادثة (وكيل الرسائل) فرادى: سؤال قصير لكل نموذج بنفس ترتيب الوكيل، وسبب فشل كل واحد كما هو. */
+export async function testChatAction(): Promise<{ ok: true; results: ProbeResult[] } | { ok: false; error: string }> {
   await requirePlatformCap("settings");
-  await resetBreakers("visionFast");
+  try {
+    const results = await probeTier("chat", [{ role: "user", content: "رد بكلمة واحدة: تمام" }]);
+    return { ok: true, results };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 200) };
+  }
+}
+
+export async function resetModelsAction(tier: "visionFast" | "chat"): Promise<{ ok: true }> {
+  await requirePlatformCap("settings");
+  await resetBreakers(tier === "chat" ? "chat" : "visionFast");
   return { ok: true };
 }
 

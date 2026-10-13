@@ -69,6 +69,13 @@ const getVersion = () => {
 
 const base = () => `https://graph.facebook.com/${getVersion()}`;
 
+/**
+ * رمز «Instagram API with Instagram Login» يبدأ بـ IG (IGAA…) ولا يقبله إلا graph.instagram.com؛ إرساله إلى
+ * graph.facebook.com يُرفض بخطأ 190. رمز الصفحة (EAA…) يعمل على graph.facebook.com لماسنجر وإنستجرام معاً.
+ */
+export const isInstagramLoginToken = (tok: string) => /^IG/.test(tok);
+const hostFor = (tok: string) => (isInstagramLoginToken(tok) ? `https://graph.instagram.com/${getVersion()}` : base());
+
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function sanitize(s: string | undefined | null): string {
@@ -102,8 +109,8 @@ function messaging(ch: Channel, tag?: Tag) {
 
 async function call(ch: Channel, payload: Record<string, unknown>, opts: CallOpts = {}): Promise<SendResult> {
   const tok = token(ch);
-  const target = (env as any).META_PAGE_ID || "me";
-  const url = `${base()}/${target}/messages?access_token=${encodeURIComponent(tok)}`;
+  const target = isInstagramLoginToken(tok) ? "me" : env.META_PAGE_ID || "me";
+  const url = `${hostFor(tok)}/${target}/messages?access_token=${encodeURIComponent(tok)}`;
   const attempts = opts.retry === false ? 1 : MAX_ATTEMPTS;
   let lastError: Error = new Error("Meta send failed: no attempt made");
 
@@ -299,7 +306,7 @@ async function fetchProfile(ch: Channel, id: string): Promise<string | null> {
   try {
     const tok = token(ch);
     const fields = ch === "instagram" ? "name,username" : "first_name,last_name";
-    const r = await fetch(`${base()}/${id}?fields=${fields}&access_token=${encodeURIComponent(tok)}`, {
+    const r = await fetch(`${hostFor(tok)}/${id}?fields=${fields}&access_token=${encodeURIComponent(tok)}`, {
       headers: { Authorization: `Bearer ${tok}` },
       signal: AbortSignal.timeout(PROFILE_TIMEOUT_MS),
       cache: "no-store",
@@ -321,7 +328,7 @@ async function fetchUsername(ch: Channel, id: string): Promise<string | null> {
   if (ch !== "instagram") return null;
   try {
     const tok = token(ch);
-    const r = await fetch(`${base()}/${id}?fields=username&access_token=${encodeURIComponent(tok)}`, {
+    const r = await fetch(`${hostFor(tok)}/${id}?fields=username&access_token=${encodeURIComponent(tok)}`, {
       headers: { Authorization: `Bearer ${tok}` },
       signal: AbortSignal.timeout(PROFILE_TIMEOUT_MS),
       cache: "no-store",

@@ -64,14 +64,18 @@ const L = (provider: Provider, modelId: string): Link => ({
   cap: capOf(provider, modelId.trim()),
 });
 
+// Morpheus بوابة مزايدة: تفشل حين يتجاوز أقل عرض حدّها بالساعة («lowest usable bid … above the hosted gateway limit»).
+// لذلك لا تدخل السلاسل إلا بقرار صريح AI_USE_MORPHEUS=1 (أو بتجاوز نموذج مستوى من إعداد models في /admin/flags).
+const USE_MORPHEUS = process.env.AI_USE_MORPHEUS === "1";
 const dedupe = (links: Link[]) =>
   links.filter(
     (l, i) =>
       l.modelId &&
+      (l.provider !== "morpheus" || USE_MORPHEUS) &&
       links.findIndex((x) => x.provider === l.provider && x.modelId === l.modelId) === i
   );
 
-// تم إزالة Morpheus من الخيارات الأساسية لمنع الانهيار ووضعه فقط كخيار أخير للطوارئ
+// Morpheus آخر كل سلسلة، ولا يدخلها إلا بـ AI_USE_MORPHEUS=1 (انظر dedupe).
 const DEFAULT_CHAINS: Record<Tier, Link[]> = {
   chat: dedupe([
     L("google", MODELS.gemini),
@@ -131,6 +135,9 @@ const msgText = (m: ModelMessage) =>
 const requestTokens = (system?: string, prompt?: string, messages?: ModelMessage[], extra = "") =>
   estimateTokens((system ?? "") + (prompt ?? "") + (messages ?? []).map(msgText).join("\n") + extra);
 const fits = (l: Link, need: number) => need <= l.cap * 0.92;
+
+/** سطر لكل نموذج فشل (لا الأخير وحده): يظهر في السجلات فيُعرف سبب فشل كل مزوّد. */
+const failLine = (l: Link, e: unknown) => `${l.provider}:${l.modelId} → ${String((e as Error)?.message ?? e).replace(/\s+/g, " ").slice(0, 160)}`;
 
 const cbKey = (l: Link) => `ai:cb:${l.provider}:${l.modelId}`;
 const capKey = (modelId: string) => `ai:cap:${modelId}`;
@@ -193,7 +200,8 @@ async function chain(tier: Tier, need: number): Promise<Link[]> {
     if (o && o.includes(":")) {
       const [provider, modelId] = o.split(":") as [Provider, string];
       if (["morpheus", "groq", "google"].includes(provider)) {
-        base = dedupe([L(provider, modelId), ...base]);
+        // تجاوز صريح من المالك: يُقدَّم حتى لو كان Morpheus.
+        base = [L(provider, modelId), ...base.filter((x) => !(x.provider === provider && x.modelId === modelId))];
       }
     }
   } catch {}
@@ -266,6 +274,7 @@ export async function aiText(
   const need = requestTokens(args.system, undefined, args.messages) + maxOut;
   let fallbackFrom: string | undefined;
   let lastErr: unknown;
+  const fails: string[] = [];
 
   for (const l of await chain(tier, need)) {
     const left = deadline - Date.now();
@@ -293,12 +302,13 @@ export async function aiText(
       return { text: r.text, toolCalls: r.toolCalls, usage: r.usage, provider: `${l.provider}:${l.modelId}` };
     } catch (e) {
       lastErr = e;
+      fails.push(failLine(l, e));
       await afterFailure(l, e);
       await log(meta, l, t0, undefined, e, fallbackFrom);
       fallbackFrom = `${l.provider}:${l.modelId}`;
     }
   }
-  throw new Error(`كل المزوّدين فشلوا (${tier}): ${String(lastErr)}`);
+  throw new Error(`كل المزوّدين فشلوا (${tier}):\n${fails.join("\n") || String(lastErr)}`);
 }
 
 export function extractJson(text: string): unknown {
@@ -356,6 +366,7 @@ export async function aiObjectWithMeta<T extends z.ZodTypeAny>(
   const need = requestTokens(args.system, args.prompt, args.messages, schemaJson) + maxOut;
   let fallbackFrom: string | undefined;
   let lastErr: unknown;
+  const fails: string[] = [];
 
   const done = (
     object: z.infer<T>,
@@ -411,6 +422,7 @@ export async function aiObjectWithMeta<T extends z.ZodTypeAny>(
 
       if (c.kind === "rate" || c.kind === "credits" || c.kind === "too_large" || left() < MIN_ATTEMPT_MS) {
         lastErr = e1;
+        fails.push(failLine(l, e1));
         await log(meta, l, t0, undefined, e1, fallbackFrom);
         fallbackFrom = `${l.provider}:${l.modelId}`;
         continue;
@@ -456,6 +468,7 @@ export async function aiObjectWithMeta<T extends z.ZodTypeAny>(
         }
       } catch (e2) {
         lastErr = e2;
+        fails.push(`${failLine(l, e1)} | ${String((e2 as Error)?.message ?? e2).replace(/\s+/g, " ").slice(0, 120)}`);
         await afterFailure(l, e2);
         await log(
           meta,
@@ -470,7 +483,7 @@ export async function aiObjectWithMeta<T extends z.ZodTypeAny>(
     }
   }
 
-  throw new Error(`فشل توليد المخرجات المنظمة (${tier}): ${String(lastErr)}`);
+  throw new Error(`فشل توليد المخرجات المنظمة (${tier}):\n${fails.join("\n") || String(lastErr)}`);
 }
 
 export async function aiObject<T extends z.ZodTypeAny>(

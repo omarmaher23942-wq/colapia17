@@ -150,12 +150,31 @@ const checkMedia = () =>
 
 const checkMeta = () =>
   run("meta", "فيسبوك وإنستجرام (الوكيل)", async () => {
-    if (!env.META_PAGE_ACCESS_TOKEN) return { status: "skip", detail: "غير مربوط (الوكيل لا يرد على الرسائل)", fix: "docs/meta-agent.md" };
-    const r = await timed(`https://graph.facebook.com/${env.META_GRAPH_VERSION}/me?fields=id,name&access_token=${encodeURIComponent(env.META_PAGE_ACCESS_TOKEN)}`);
-    const body = (await r.json().catch(() => ({}))) as { name?: string; error?: { message?: string } };
-    if (!r.ok) return { status: "fail", detail: body.error?.message?.slice(0, 160) ?? `مرفوض (${r.status})`, fix: "أنشئ رمز صفحة دائم من Meta وضعه في META_PAGE_ACCESS_TOKEN (docs/meta-agent.md)" };
+    if (!env.META_PAGE_ACCESS_TOKEN && !env.META_INSTAGRAM_ACCESS_TOKEN) return { status: "skip", detail: "غير مربوط (الوكيل لا يرد على الرسائل)", fix: "docs/meta-agent.md" };
+    const v = env.META_GRAPH_VERSION.startsWith("v") ? env.META_GRAPH_VERSION : `v${env.META_GRAPH_VERSION}`;
+    // نفحص كل رمز يستخدمه الإرسال فعلاً: رمز الصفحة لماسنجر، ورمز إنستجرام (إن وُجد) يتقدم عليه في إنستجرام.
+    const probe = async (tok: string) => {
+      const host = /^IG/.test(tok) ? "graph.instagram.com" : "graph.facebook.com";
+      const r = await timed(`https://${host}/${v}/me?fields=id,${host === "graph.instagram.com" ? "username" : "name"}&access_token=${encodeURIComponent(tok)}`);
+      const body = (await r.json().catch(() => ({}))) as { name?: string; username?: string; error?: { message?: string; code?: number } };
+      return r.ok ? { ok: true as const, name: body.name ?? body.username ?? "" } : { ok: false as const, error: `${body.error?.message?.slice(0, 140) ?? `مرفوض (${r.status})`}${body.error?.code ? ` (code ${body.error.code})` : ""}` };
+    };
+    const fixTok = (name: string) => `الرمز تالف أو منتهٍ أو منسوخ ناقصاً: أنشئ رمزاً جديداً من Meta والصقه في ${name} كما هو بلا تنصيص ولا مسافات، ثم أعد النشر (docs/meta-agent.md)`;
+    const parts: string[] = [];
+    if (env.META_PAGE_ACCESS_TOKEN) {
+      const p = await probe(env.META_PAGE_ACCESS_TOKEN);
+      if (!p.ok) return { status: "fail", detail: `رمز الصفحة مرفوض: ${p.error}`, fix: fixTok("META_PAGE_ACCESS_TOKEN") };
+      parts.push(`الصفحة «${p.name}»`);
+    }
+    if (env.META_INSTAGRAM_ACCESS_TOKEN) {
+      const p = await probe(env.META_INSTAGRAM_ACCESS_TOKEN);
+      if (!p.ok) return { status: "fail", detail: `رمز إنستجرام مرفوض (وهو الذي يرد به الوكيل على إنستجرام): ${p.error}`, fix: `${fixTok("META_INSTAGRAM_ACCESS_TOKEN")}، أو احذفه ليُستخدم رمز الصفحة` };
+      parts.push(`إنستجرام «${p.name}»`);
+    }
     const missing = [!env.META_APP_SECRET && "META_APP_SECRET", !env.META_VERIFY_TOKEN && "META_VERIFY_TOKEN", !env.META_IG_ID && "META_IG_ID"].filter(Boolean);
-    return missing.length ? { status: "warn", detail: `الصفحة «${body.name}» مربوطة، وناقص: ${missing.join("، ")}` } : { status: "ok", detail: `الصفحة «${body.name}» مربوطة` };
+    return missing.length
+      ? { status: "warn", detail: `${parts.join(" و")} مربوطة، وناقص: ${missing.join("، ")}`, fix: "بدون META_APP_SECRET الصحيح تُرفض رسائل Meta بخطأ 401" }
+      : { status: "ok", detail: `${parts.join(" و")} مربوطة` };
   });
 
 const checkDomains = () =>

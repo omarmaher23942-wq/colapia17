@@ -36,12 +36,15 @@ function resolveChannel(object: unknown): Channel | null {
 }
 
 /** التحقق من توقيع Meta على البايتات الخام كما وصلت */
+// رسائل إنستجرام قد تُوقَّع بسر تطبيق إنستجرام (META_INSTAGRAM_APP_SECRET) لا بسر تطبيق ميتا؛ نقبل أيهما.
 function validSignature(raw: Buffer, header: string | null): boolean {
-  const secret = env.META_APP_SECRET;
-  if (!header || !secret) return false;
-  const expected = Buffer.from(`sha256=${createHmac("sha256", secret).update(raw).digest("hex")}`, "utf8");
+  if (!header) return false;
   const received = Buffer.from(header.trim(), "utf8");
-  return received.length === expected.length && timingSafeEqual(received, expected);
+  return [env.META_APP_SECRET, env.META_INSTAGRAM_APP_SECRET].some((secret) => {
+    if (!secret) return false;
+    const expected = Buffer.from(`sha256=${createHmac("sha256", secret).update(raw).digest("hex")}`, "utf8");
+    return received.length === expected.length && timingSafeEqual(received, expected);
+  });
 }
 
 function toPayload(channel: Channel, ev: any): InboundPayload | null {
@@ -154,7 +157,11 @@ export async function GET(req: Request) {
  */
 export async function POST(req: Request) {
   const raw = Buffer.from(await req.arrayBuffer());
-  if (!validSignature(raw, req.headers.get("x-hub-signature-256"))) {
+  const sig = req.headers.get("x-hub-signature-256");
+  if (!validSignature(raw, sig)) {
+    // سطر تشخيص بلا أسرار: نوع الحدث وهل وصل توقيع أصلاً، ليُعرف أي سر ناقص أو خاطئ.
+    const object = /"object"\s*:\s*"(\w+)"/.exec(raw.toString("utf8", 0, 200))?.[1] ?? "?";
+    console.warn(`[meta-webhook] 401 bad signature: object=${object} signed=${Boolean(sig)} app_secret=${Boolean(env.META_APP_SECRET)} ig_secret=${Boolean(env.META_INSTAGRAM_APP_SECRET)}`);
     return new Response("bad signature", { status: 401 });
   }
 

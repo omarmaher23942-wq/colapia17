@@ -25,6 +25,25 @@
 6. روابط مطلوبة في إعدادات التطبيق: سياسة الخصوصية `https://colapia.com/privacy` وتعليمات الحذف `https://colapia.com/data-deletion` (موجودتان).
 7. ضع الرموز في Railway: `META_APP_ID`، `META_APP_SECRET`، `META_VERIFY_TOKEN`، `META_PAGE_ACCESS_TOKEN`، `META_PAGE_ID`، وإن لزم `META_INSTAGRAM_ACCESS_TOKEN` و`META_IG_ID`.
 
+## الوكيل لا يرد؟ (بالترتيب)
+افتح `/admin/launch`: فحص «فيسبوك وإنستجرام» يجرّب كل رمز يستخدمه الإرسال فعلاً، وزر **«اختبر وكيل الرسائل»** يجرّب كل نموذج محادثة
+منفرداً ويعرض سبب فشله كما هو. ثم حسب ما يظهر في السجلات:
+
+| ما في السجلات | السبب | الحل |
+|---|---|---|
+| `The access token could not be decrypted` (code 190) | الرمز تالف أو منسوخ ناقصاً أو من تطبيق آخر. إنستجرام يستخدم `META_INSTAGRAM_ACCESS_TOKEN` إن وُجد، وإلا رمز الصفحة | أنشئ رمزاً جديداً (أدناه) والصقه كما هو. أو احذف `META_INSTAGRAM_ACCESS_TOKEN` ليُستخدم رمز الصفحة لإنستجرام أيضاً |
+| `POST /api/webhooks/meta 401` | التوقيع لا يطابق `META_APP_SECRET` (سر تطبيق آخر أو منسوخ خطأ). السجل يكتب `[meta-webhook] 401 bad signature: object=…` | developers.facebook.com ← التطبيق ← App settings ← Basic ← **App secret** ← Show ← انسخه إلى `META_APP_SECRET`. إن كانت `object=instagram` وحدها مرفوضة وتطبيق إنستجرام منفصل بسر خاص: ضعه في `META_INSTAGRAM_APP_SECRET` |
+| `فشل توليد المخرجات المنظمة (chat)` | كل نماذج المحادثة فشلت؛ الرسالة تكتب الآن سبب كل نموذج سطراً سطراً | زر «اختبر وكيل الرسائل» ثم «فك الإيقاف المؤقت»، وراجع مفتاحي `GROQ_API_KEY` و`GEMINI_API_KEY` |
+
+**رمز صفحة دائم (Page token):** developers.facebook.com/tools/explorer ← اختر تطبيقك ← «User Token» بالأذونات
+`pages_messaging` و`pages_manage_metadata` و`pages_show_list` و`instagram_basic` و`instagram_manage_messages` ← Generate ←
+ثم من نفس الأداة اختر صفحة Colapia في «Page» ليظهر رمز الصفحة. لجعله دائماً: Access Token Debugger ← **Extend Access Token**،
+ثم استخدم الرمز الطويل لطلب `GET /me/accounts`، ورمز الصفحة الناتج لا ينتهي. (البديل الأنظف: Business Settings ← System users ←
+Generate token للصفحة.) الرمز يبدأ بـ `EAA`، ويُلصق بلا تنصيص (الكود ينظف المسافات والتنصيص وسطر `NAME=` تلقائياً).
+وصفحة Colapia يجب أن تكون مربوطة بحساب إنستجرام Colapia (Business) من إعدادات الصفحة.
+
+**Morpheus** لم يعد ضمن نماذج المحادثة افتراضياً (بوابته ترفض حين يرتفع سعر المزايدة)؛ يُعاد بـ `AI_USE_MORPHEUS=1` فقط.
+
 ## سياسات Meta التي يحترمها التصميم [تحقق من الصفحة الرسمية]
 - **الإفصاح عن الرد الآلي:** تشترط سياسة Meta أن تُعلِم المستخدم أنه يتحدث مع خدمة آلية حيث يوجبه القانون، وتوصي به عموماً: يُنفَّذ في أول رد وبعد الانقطاع والعودة من بشري.
 - **نافذة 24 ساعة:** الرد الآلي داخل 24 ساعة من آخر رسالة للعميل فقط.
