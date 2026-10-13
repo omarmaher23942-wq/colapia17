@@ -41,6 +41,7 @@ import { CAMPAIGN_COOKIE, orderSourceFrom } from "@/lib/campaigns";
 import { metaCapiToken } from "@/server/store-secrets";
 import { sendCapiPurchase } from "@/server/meta-capi";
 import { newOrderCode } from "@/lib/ids";
+import { phoneOrderBlock } from "@/lib/order-spam";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import {
   emitOrderCreated,
@@ -463,6 +464,18 @@ export async function placeOrderAction(
     const owner = await getMerchantSession().catch(() => null);
     const isTest = Boolean(owner?.stores.some((x) => x.id === store.id));
     const counted = isTest ? 0 : 1;
+    if (!isTest) {
+      // حماية من الطلبات الوهمية المتكررة بنفس الرقم (lib/order-spam.ts).
+      const [c] = await db
+        .select({
+          open: sql<number>`count(*) filter (where ${orders.status} in ('new','confirmed'))::int`,
+          lastDay: sql<number>`count(*) filter (where ${orders.createdAt} > now() - interval '24 hours')::int`,
+        })
+        .from(orders)
+        .where(and(eq(orders.storeId, store.id), eq(orders.customerPhone, input.phone), eq(orders.isTest, false)));
+      const blocked = phoneOrderBlock({ open: Number(c?.open ?? 0), lastDay: Number(c?.lastDay ?? 0) });
+      if (blocked) throw new CheckoutError(blocked, "phone");
+    }
     const customerRef =
       sql`(select ${customers.id} from ${customers} where ${customers.storeId} = ${store.id} and ${customers.phone} = ${input.phone})`;
 

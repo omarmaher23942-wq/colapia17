@@ -90,13 +90,18 @@ const cspHeader = [
 
   "base-uri 'self'",
   "form-action 'self'",
-].join("; ");
+  "object-src 'none'",
+  isDev ? "" : "upgrade-insecure-requests",
+].filter(Boolean).join("; ");
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: cspHeader },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  { key: "X-XSS-Protection", value: "1; mode=block" },
+  // رأس قديم قد يفتح ثغرات في متصفحات قديمة؛ القيمة 0 هي التوصية الحالية (الحماية الحقيقية من CSP).
+  { key: "X-XSS-Protection", value: "0" },
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(self), microphone=(self), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
