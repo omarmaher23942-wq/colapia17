@@ -29,6 +29,7 @@ export type StoreCtx = {
   design: StoreBlueprint["design"];
   cardStyle: StoreBlueprint["theme"]["productCardStyle"];
   facts: StoreFact[];
+  sizeGuide?: StoreBlueprint["sizeGuide"];
 };
 
 const Ctx = createContext<StoreCtx | null>(null);

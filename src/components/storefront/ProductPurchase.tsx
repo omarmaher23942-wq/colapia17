@@ -17,6 +17,8 @@ import { flyToCart } from "./motion";
 import { groundedItems } from "@/blueprint/facts";
 import { cn } from "@/lib/utils";
 import type { Product, Variant } from "@/server/repos/catalog";
+import { chartFor, isSizeOption } from "@/lib/size-guide";
+import { SizeGuideButton } from "./SizeGuide";
 
 type PurchaseProduct = Product & { variants: Variant[] };
 
@@ -25,7 +27,7 @@ const TRUST_ORDER = ["cod", "inspection", "returns", "free_shipping_over", "free
 
 export function ProductPurchase({ product: p }: { product: PurchaseProduct; payments?: unknown }) {
   const router = useRouter();
-  const { conversion, facts } = useStore();
+  const { conversion, facts, sizeGuide, storeId } = useStore();
   const t = useCopy();
   const add = useCart((s) => s.add);
   const items = useCart((s) => s.items);
@@ -42,6 +44,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
   const stock = variant ? variant.stock : p.stock;
   const out = (p.trackStock && stock !== null && stock <= 0) || (variant && !variant.isAvailable);
 
+  const sizeChart = useMemo(() => chartFor(sizeGuide, p.categoryId, p.optionNames), [sizeGuide, p.categoryId, p.optionNames]);
   const optionValues = (i: number) => Array.from(new Set(p.variants.map((v) => v.optionValues[i]!)));
   const available = (i: number, val: string) =>
     p.variants.some(
@@ -151,9 +154,19 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
             const isColor = /لون|color/i.test(name);
             return (
               <div key={name}>
-                <p className="mb-2 text-xs font-bold">
-                  {name}: <span className={cn("font-normal", sel[i] ? "opacity-70" : missing ? "text-[var(--danger)]" : "opacity-70")}>{sel[i] || "اختيار"}</span>
-                </p>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold">
+                    {name}: <span className={cn("font-normal", sel[i] ? "opacity-70" : missing ? "text-[var(--danger)]" : "opacity-70")}>{sel[i] || "اختيار"}</span>
+                  </p>
+                  {sizeChart && isSizeOption(name) ? (
+                    <SizeGuideButton
+                      chart={sizeChart}
+                      storeId={storeId}
+                      isAvailable={(size) => values.includes(size) && available(i, size)}
+                      onPick={(size) => setSel((s) => s.map((x, k) => (k === i ? size : x)))}
+                    />
+                  ) : null}
+                </div>
                 <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={name}>
                   {values.map((val) => {
                     const ok = available(i, val);

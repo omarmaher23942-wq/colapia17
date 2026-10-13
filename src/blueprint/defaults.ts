@@ -589,5 +589,6 @@ export function defaultBlueprint(input: {
     seo: { noIndex: false },
     inventory: { tracking: true },
     campaigns: [],
+    sizeGuide: { charts: [] },
   };
 }

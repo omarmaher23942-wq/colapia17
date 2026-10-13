@@ -213,17 +213,16 @@ export function ConversionWidgets() {
 
   // ─── Smart WhatsApp message ─────────────────────────────────────────────
   const whatsappNum = conversion.whatsappButton === false ? null : channels.whatsappNumber || channels.phone;
+  // رابط الصفحة يُقرأ بعد التحميل فقط (لا يوجد على الخادم)، فلا يختلف ما يرسمه الخادم عما يرسمه المتصفح.
+  const [pageUrl, setPageUrl] = useState("");
+  useEffect(() => setPageUrl(window.location.href), [pathname]);
   const waMessage = useMemo(() => {
-    const base = "أهلاً بك! أرغب في الاستفسار عن";
-    if (pathname?.startsWith("/p/")) {
-      const slug = pathname.split("/p/")[1]?.split("/")[0] ?? "";
-      return `${base} المنتج من الرابط: ${typeof location !== "undefined" ? location.href : ""}`;
-    }
+    const base = "أهلاً، عندي استفسار عن";
+    if (pathname?.startsWith("/p/")) return pageUrl ? `${base} المنتج ده: ${pageUrl}` : `${base} منتج في متجركم.`;
     if (pathname?.startsWith("/checkout")) return `${base} إتمام طلب جديد.`;
     if (pathname?.startsWith("/cart")) return `${base} منتجات في سلتي.`;
-    if (slug_never) return base;
     return `${base} متجركم.`;
-  }, [pathname]);
+  }, [pathname, pageUrl]);
 
   const waHref = waLink(whatsappNum, waMessage);
 

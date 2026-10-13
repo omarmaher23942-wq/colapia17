@@ -161,6 +161,7 @@ export default async function StoreLayout({ children, params }: Props) {
         design: bp.design,
         cardStyle: bp.theme.productCardStyle,
         facts,
+        sizeGuide: bp.sizeGuide,
       }}
     >
       <EditorProvider>

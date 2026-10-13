@@ -4,6 +4,7 @@ import {
   BarChart3,
   CreditCard,
   FolderTree,
+  Ruler,
   KeyRound,
   LayoutDashboard,
   Package,
@@ -64,6 +65,7 @@ const ALL: NavSection[] = [
     items: [
       { label: "المنتجات", href: "/dashboard/products", icon: Package, badgeKey: "products", hint: "المنتجات والأسعار والمخزون", keywords: ["products", "مخزون", "اصناف"] },
       { label: "الأقسام", href: "/dashboard/categories", icon: FolderTree, hint: "أقسام المتجر وترتيبها", keywords: ["categories", "فئات", "تصنيفات"] },
+      { label: "دليل المقاسات", href: "/dashboard/size-guide", icon: Ruler, hint: "جدول المقاسات ومساعد اختيار المقاس", keywords: ["size", "مقاس", "مقاسات", "قياس"] },
       { label: "أكواد الخصم", href: "/dashboard/discounts", icon: TicketPercent, hint: "كوبونات وعروض", keywords: ["discounts", "كوبون", "خصم", "عروض"] },
       { label: "التسويق", href: "/dashboard/marketing", icon: Megaphone, hint: "بكسل الإعلانات وكتالوج المنتجات", keywords: ["marketing", "pixel", "بكسل", "اعلانات", "كتالوج", "فيسبوك", "تيك توك"] },
       { label: "الشحن", href: "/dashboard/shipping", icon: Truck, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },

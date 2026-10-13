@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sizeGuideSchema } from "@/lib/size-guide";
 
 const hex = z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "لون HEX غير صالح");
 
@@ -748,6 +749,8 @@ export const blueprintSchema = z.object({
   campaigns: z.array(campaignSchema).max(40).default([]),
   /** المخزون على مستوى المتجر: تتبع الكميات (ينفد المنتج عند صفر) أو كل المنتجات متاحة دائماً. يختاره التاجر صراحة. */
   inventory: z.object({ tracking: z.boolean().default(true) }).default({}),
+  /** جداول المقاسات ومساعد اختيار المقاس (الجولة 2.1، lib/size-guide.ts). */
+  sizeGuide: sizeGuideSchema,
 });
 
 export type StoreBlueprint = z.infer<typeof blueprintSchema>;

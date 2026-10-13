@@ -19,6 +19,7 @@ const TENANT_QUERY = new RegExp(
 const REVIEWED_MIXED = new Set([
   // التسويق: الـ Blueprint من قاعدة المنصة، والتحقق من وجهة الحملة وكودها من بيانات المتجر.
   "src/server/actions/marketing.ts",
+  "src/server/actions/size-guide.ts", // الـ Blueprint (تحكم) + التحقق من أقسام المتجر (بيانات)
   // التقرير الشهري: قائمة المتاجر وبريد أصحابها من قاعدة المنصة، والأرقام من بيانات كل متجر.
   "src/server/monthly-report.ts",
   "src/agency/provision.ts",
