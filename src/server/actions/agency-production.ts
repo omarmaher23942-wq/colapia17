@@ -286,8 +286,8 @@ const SECTION_LABELS: Record<string, string> = {
   products: "المنتجات",
   payment: "الدفع",
   delivery: "التوصيل",
+  returns: "الاستبدال",
   inspiration: "الإلهام",
-  voice: "تفريغ الصوت",
   notes: "الملاحظات",
 };
 
@@ -313,7 +313,7 @@ export async function editRequestDataAction(raw: z.input<typeof editSchema>): Pr
 
   const owned = new Set((await requestAssets(row.id)).map((x) => x.key));
   const keys = referencedKeys(data);
-  if (![...keys.images, keys.logo, keys.voice].every((k) => !k || owned.has(k))) return { ok: false, error: "ملف غير موجود في ملفات الطلب." };
+  if (![...keys.images, keys.logo].every((k) => !k || owned.has(k))) return { ok: false, error: "ملف غير موجود في ملفات الطلب." };
 
   const before = row.data as Record<string, unknown>;
   const changed = Object.keys(SECTION_LABELS).filter((k) => JSON.stringify(before?.[k] ?? null) !== JSON.stringify((data as Record<string, unknown>)[k] ?? null));

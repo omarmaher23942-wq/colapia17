@@ -2,16 +2,19 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// مساحة الملفات على R2 (PLAN 14): الرابط العام للعرض، ونقطة الرفع المباشر من المتصفح (روابط موقّعة).
+// مساحة الملفات على R2: الرابط العام للعرض (صريح من MEDIA_BASE_URL وإلا media.<النطاق الرئيسي>). الرفع يمر بالخادم
+// (app/api/upload) فلا يتصل المتصفح بـ R2 مباشرة ولا يحتاج هنا إلا لعرض الصور.
 const mediaOrigin = (() => {
+  const explicit = (process.env.MEDIA_BASE_URL || process.env.NEXT_PUBLIC_MEDIA_BASE_URL || "").trim();
+  const root = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || process.env.ROOT_DOMAIN || "").trim().toLowerCase();
   try {
-    return process.env.NEXT_PUBLIC_MEDIA_BASE_URL ? new URL(process.env.NEXT_PUBLIC_MEDIA_BASE_URL).origin : "";
+    if (explicit) return new URL(explicit).origin;
+    return root && !root.startsWith("localhost") ? `https://media.${root}` : "";
   } catch {
     return "";
   }
 })();
 const mediaHost = mediaOrigin ? new URL(mediaOrigin).hostname : "";
-const r2Upload = "https://*.r2.cloudflarestorage.com";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Content Security Policy — يشمل:
@@ -34,6 +37,8 @@ const cspHeader = [
     "https://www.googletagmanager.com",
     "https://analytics.tiktok.com",
     "https://va.vercel-scripts.com",
+    // قياس الزيارات من Cloudflare (Web Analytics) يحقن هذا السكربت تلقائياً متى فُعّل على الموقع.
+    "https://static.cloudflareinsights.com",
   ]
     .filter(Boolean)
     .join(" "),
@@ -49,14 +54,12 @@ const cspHeader = [
 
   [
     "connect-src 'self'",
-    // R2: الرفع المباشر من المتصفح
-    r2Upload,
     mediaOrigin,
-    // UploadThing
-    "https://*.uploadthing.com",
-    "https://*.ingest.uploadthing.com",
+    // ملفات UploadThing القديمة (عرضها وقراءتها فقط؛ الرفع كله يمر بالخادم).
     "https://utfs.io",
     "https://*.ufs.sh",
+    // قياس Cloudflare Web Analytics
+    "https://cloudflareinsights.com",
     // Social
     "https://connect.facebook.net",
     "https://www.facebook.com",

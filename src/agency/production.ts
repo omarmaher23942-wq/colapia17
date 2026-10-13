@@ -45,7 +45,7 @@ export type QaItem = { key: string; label: string; by: "builder" | "reviewer" };
 
 /** ما يثبته المنفّذ قبل الإرسال للمراجعة، ثم ما يثبته المراجع قبل الاعتماد. كل بند فعل حقيقي يمكن التحقق منه. */
 export const QA_ITEMS: readonly QaItem[] = [
-  { key: "brief", label: "قرأت الـ brief كاملاً، وشاهدت كل صور العميل، وسمعت رسالته الصوتية إن وُجدت", by: "builder" },
+  { key: "brief", label: "قرأت الـ brief كاملاً (نص كل منتج وسياسات الدفع والشحن)، وشاهدت كل صور العميل", by: "builder" },
   { key: "data", label: "المنتجات والأسعار من العميل فقط، ولا ادعاء ولا رقم بلا مصدر", by: "builder" },
   { key: "checks", label: "stores:check وفحص الأنواع ناجحان على الفرع", by: "builder" },
   { key: "screens", label: "راجعت كل الصفحات على 375px وسطح المكتب، بلا تمرير أفقي", by: "builder" },

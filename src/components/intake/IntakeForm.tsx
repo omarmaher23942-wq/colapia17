@@ -1,31 +1,38 @@
 "use client";
 
-// IntakeForm.tsx — استمارة طلب المتجر: صفحة واحدة تُملأ في دقيقتين من الموبايل. الإلزامي اسم المتجر ووسيلة تواصل
-// واحدة فقط، وكل سؤال تصميم فيه «سيبها للفريق». حفظ تلقائي من أول حرف، وزر الإرسال ظاهر دائماً في الشريط السفلي.
+// IntakeForm.tsx — استمارة طلب المتجر: صفحة واحدة تُملأ في دقائق من الموبايل. الإلزامي: اسم المتجر ووسيلة تواصل ومنتج
+// واحد على الأقل وطريقة دفع بتفاصيلها ونطاق التوصيل وسعر الشحن؛ وأسئلة التصميم فيها «يختارها الفريق». حفظ تلقائي من
+// أول حرف، وزر الإرسال ظاهر دائماً في الشريط السفلي.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { AtSign, Clock, Clapperboard, Globe, Loader2, MessageCircle, Mic, Package, Palette, Send, Sparkles, Store, Truck } from "lucide-react";
+import { AtSign, Clock, Clapperboard, Globe, Loader2, MessageCircle, MessageSquare, Package, Palette, RefreshCcw, Send, Sparkles, Store, Truck, Wallet } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
-import { completion, DELIVERY_OPTIONS, GOLDEN_SUGGESTED_PRODUCTS, PAYMENT_OPTIONS, validateSubmission, type IntakeData, type IntakeErrors, type PaymentId, type ProductMode } from "@/intake/schema";
+import {
+  COMPLETION_STEPS,
+  completion,
+  DELIVERY_OPTIONS,
+  FEE_OPTIONS,
+  GOLDEN_SUGGESTED_PRODUCTS,
+  INSPECTION_OPTIONS,
+  PAYMENT_OPTIONS,
+  RETURN_OPTIONS,
+  validateSubmission,
+  type IntakeData,
+  type IntakeErrors,
+  type PaymentId,
+} from "@/intake/schema";
 import { revealFirstError } from "@/lib/reveal-error";
 import { cn } from "@/lib/utils";
 import { Card, Choice, Field, SaveBadge, TeamToggle, inputCls } from "./ui";
 import { ContactHelp } from "./ContactHelp";
 import { DRAFT_STORAGE_KEY, useIntakeDraft } from "./useIntakeDraft";
-import { PhotoLines } from "./PhotoLines";
+import { ProductsEditor } from "./ProductsEditor";
 import { ColorChoice, LogoPicker } from "./LogoAndColors";
-import { VoiceNote } from "./VoiceNote";
 
 /** أقل زمن بين إنشاء المسودة والإرسال (الخادم يعامل الأسرع كبرنامج آلي). */
 const MIN_SUBMIT_MS = 9_000;
-
-const PRODUCT_MODES: { id: ProductMode; label: string }[] = [
-  { id: "list", label: "هضيف صور وسطر لكل منتج" },
-  { id: "team", label: "الفريق يجمعها من صفحتي" },
-  { id: "later", label: "هضيفها بنفسي بعدين" },
-];
 
 export function IntakeForm({
   initial,
@@ -48,7 +55,7 @@ export function IntakeForm({
   const [serverErrors, setServerErrors] = useState<IntakeErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  /** رفع صورة أو شعار أو تسجيل جارٍ: الإرسال ينتظره (وإلا يخرج الطلب بلا ما رفعه العميل ولا يعرف). */
+  /** رفع صورة أو شعار جارٍ: الإرسال ينتظره (وإلا يخرج الطلب بلا ما رفعه العميل ولا يعرف). */
   const [uploading, setUploading] = useState(0);
   const onBusy = useCallback((delta: 1 | -1) => setUploading((n) => Math.max(0, n + delta)), []);
   const hp = useRef<HTMLInputElement>(null);
@@ -89,7 +96,7 @@ export function IntakeForm({
       return;
     }
     if (uploading > 0) {
-      setSubmitError("لسه فيه صور أو تسجيل بيترفع. ثواني ونقدر نرسل الطلب.");
+      setSubmitError("لسه فيه صور بتترفع. ثواني ونقدر نرسل الطلب.");
       return;
     }
     setSending(true);
@@ -145,7 +152,6 @@ export function IntakeForm({
 
   const golden = data.offer === "golden";
   const paymentValue: PaymentId[] = data.payment.methods;
-  const productMode = data.products.mode;
 
   return (
     <Shell state={state} online={online}>
@@ -163,8 +169,8 @@ export function IntakeForm({
           <h1 className="text-[28px] font-black leading-tight tracking-tight text-ink sm:text-4xl">{golden ? "منتجاتك هنا، ومتجرك يبدأ" : "احكوا لنا عن متجركم، وإحنا نبنيه"}</h1>
           <p className="text-[15px] leading-8 text-ink-2">
             {golden
-              ? `صور ${GOLDEN_SUGGESTED_PRODUCTS} منتجات باسم وسعر كل منتج، وأي تفصيلة صغيرة زي الألوان والمقاسات. الباقي كله على فريق Colapia، والتسليم ${etaText} من وقت الإرسال.`
-              : "دقيقتين بس. فريق Colapia بيصمم متجرك وبيبنيه وبيراجعه قبل ما يوصلك. المطلوب اسم المتجر ووسيلة تواصل، والباقي اختياري أو «يختارها الفريق»."}
+              ? `ضيف ${GOLDEN_SUGGESTED_PRODUCTS} منتجات، وأي كلام عن كل منتج (الاسم، الألوان، المقاسات، السعر) وصوره لو موجودة. الباقي كله على فريق Colapia، والتسليم ${etaText} من وقت الإرسال.`
+              : "دقائق قليلة. فريق Colapia بيصمم متجرك وبيبنيه وبيراجعه قبل ما يوصلك. المطلوب: اسم المتجر ووسيلة تواصل ومنتجاتك وطريقة الدفع والتوصيل، والباقي اختياري أو «يختارها الفريق»."}
           </p>
         </motion.header>
 
@@ -251,24 +257,6 @@ export function IntakeForm({
               className={cn(inputCls, "text-end")}
             />
           </Field>
-          <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-edge/10 bg-edge/[0.03] p-3">
-            <input
-              type="checkbox"
-              checked={data.social.teamCollects}
-              onChange={(e) =>
-                set((d) => ({
-                  ...d,
-                  social: { ...d.social, teamCollects: e.target.checked },
-                  products: { ...d.products, mode: e.target.checked ? "team" : d.products.mode === "team" ? undefined : d.products.mode },
-                }))
-              }
-              className="mt-1 size-5 accent-[#6f86ff]"
-            />
-            <span className="text-[14px] font-bold leading-6 text-ink">
-              خلّوا الفريق يجمع منتجاتي من الصفحة
-              <span className="block text-[12.5px] font-medium text-ink-3">الصور والأسماء والأسعار، وتظهر في المتجر أول ما يوصل، وأي تعديل مطلوب يتعمل.</span>
-            </span>
-          </label>
         </Card>
 
         <Card
@@ -287,67 +275,159 @@ export function IntakeForm({
           </div>
         </Card>
 
-        <Card n={5} icon={Package} title="منتجاتك" sub="صورة وسطر لكل منتج يكفي، والفريق يرتب الباقي.">
-          <Choice
-            label="طريقة إضافة المنتجات"
-            options={PRODUCT_MODES}
-            value={productMode ? [productMode] : []}
-            onToggle={(id) =>
-              set((d) => {
-                const mode = d.products.mode === id ? undefined : id;
-                // «الفريق يجمعها من صفحتي» و«خلّوا الفريق يجمع منتجاتي» نفس الاختيار في مكانين.
-                const teamCollects = mode === "team" ? true : d.products.mode === "team" ? false : d.social.teamCollects;
-                return { ...d, products: { ...d.products, mode }, social: { ...d.social, teamCollects } };
-              })
-            }
-          />
-          {productMode === "list" ? (
-            <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
-          ) : productMode === "team" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">الفريق هيجمع المنتجات من الصفحة{data.social.url ? "" : "؛ رابطها مكانه خانة إنستجرام أو فيسبوك فوق"}.</p>
-          ) : productMode === "later" ? (
-            <p className="text-[13.5px] leading-7 text-ink-2">تمام، إضافتها من لوحة التحكم بعد التسليم سهلة جداً.</p>
+        <Card n={5} icon={Package} title="منتجاتك" sub="اضغط وسجّل كل منتج بكلمتين أو أكتر، وصوره لو موجودة.">
+          <ProductsEditor items={data.products.items} errors={errors} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
+        </Card>
+
+        <Card n={6} icon={Wallet} title="الدفع" sub="العملاء هيدفعوا إزاي؟ اختر كل الطرق اللي بتقبلوها.">
+          <Field label="طرق الدفع" error={errors["payment.methods"]}>
+            <Choice
+              label="طرق الدفع"
+              options={PAYMENT_OPTIONS}
+              value={paymentValue}
+              onToggle={(id) => set((d) => ({ ...d, payment: { ...d.payment, methods: d.payment.methods.includes(id) ? d.payment.methods.filter((m) => m !== id) : [...d.payment.methods, id] } }))}
+            />
+          </Field>
+          {paymentValue.includes("wallet") ? (
+            <Field label="رقم المحفظة اللي العملاء هيحوّلوا عليه" htmlFor="wallet-number" error={errors["payment.walletNumber"]} hint="فودافون كاش أو أي محفظة إلكترونية. الرقم هيظهر للعميل في صفحة الدفع.">
+              <input
+                id="wallet-number"
+                value={data.payment.walletNumber ?? ""}
+                maxLength={30}
+                inputMode="tel"
+                dir="ltr"
+                onChange={(e) => set((d) => ({ ...d, payment: { ...d.payment, walletNumber: e.target.value } }))}
+                placeholder="01012345678"
+                aria-invalid={Boolean(errors["payment.walletNumber"])}
+                className={cn(inputCls, "text-end font-mono")}
+              />
+            </Field>
+          ) : null}
+          {paymentValue.includes("instapay") ? (
+            <Field label="إنستاباي: الرقم أو العنوان أو اسم الحساب" htmlFor="instapay-address" error={errors["payment.instapayAddress"]} hint="اللي العميل هيكتبه وهو بيحوّل، مثل name@instapay أو رقم موبايلك.">
+              <input
+                id="instapay-address"
+                value={data.payment.instapayAddress ?? ""}
+                maxLength={80}
+                dir="ltr"
+                autoCapitalize="none"
+                autoCorrect="off"
+                onChange={(e) => set((d) => ({ ...d, payment: { ...d.payment, instapayAddress: e.target.value } }))}
+                placeholder="name@instapay"
+                aria-invalid={Boolean(errors["payment.instapayAddress"])}
+                className={cn(inputCls, "text-end")}
+              />
+            </Field>
+          ) : null}
+          {paymentValue.includes("cod") ? (
+            <Field label="هل المعاينة وفتح الشحنة متاحين؟" error={errors["payment.inspection"]} hint="في الدفع عند الاستلام: هل العميل يقدر يفتح الشحنة ويعاينها قبل ما يدفع؟ هنكتبها في المتجر زي ما تقول.">
+              <Choice
+                label="المعاينة وفتح الشحنة"
+                options={INSPECTION_OPTIONS}
+                value={data.payment.inspection ? [data.payment.inspection] : []}
+                onToggle={(id) => set((d) => ({ ...d, payment: { ...d.payment, inspection: d.payment.inspection === id ? undefined : id } }))}
+              />
+            </Field>
           ) : null}
         </Card>
 
-        <Card n={6} icon={Truck} title="الدفع والتوصيل">
-          <Field label="العملاء هيدفعوا إزاي؟">
-            <div className="flex flex-wrap items-center gap-2">
-              <Choice
-                label="طرق الدفع"
-                options={PAYMENT_OPTIONS}
-                value={data.payment.unsure ? [] : paymentValue}
-                onToggle={(id) =>
-                  set((d) => ({ ...d, payment: { unsure: false, methods: d.payment.methods.includes(id) ? d.payment.methods.filter((m) => m !== id) : [...d.payment.methods, id] } }))
-                }
-              />
-              <TeamToggle on={data.payment.unsure} ariaLabel="لسه مش محدد: طرق الدفع" onChange={(v) => set((d) => ({ ...d, payment: { methods: v ? [] : d.payment.methods, unsure: v } }))} label="لسه مش محدد" />
-            </div>
-          </Field>
-          <Field label="التوصيل لفين؟">
+        <Card n={7} icon={Truck} title="التوصيل والشحن" sub="نطاق التوصيل وسعر الشحن بتظهر للعميل في المتجر زي ما تكتبها.">
+          <Field label="التوصيل لفين؟" error={errors["delivery.scope"]}>
             <Choice
               label="نطاق التوصيل"
               options={DELIVERY_OPTIONS}
-              value={data.delivery.scope ? [data.delivery.scope] : []}
+              value={data.delivery.scope && data.delivery.scope !== "unsure" ? [data.delivery.scope] : []}
               onToggle={(id) => set((d) => ({ ...d, delivery: { ...d.delivery, scope: d.delivery.scope === id ? undefined : id } }))}
             />
           </Field>
           {data.delivery.scope === "custom" ? (
-            <Field label="المحافظات أو أي تفصيلة" htmlFor="delivery-note" optional>
+            <Field label="اكتب المحافظات" htmlFor="delivery-note" error={errors["delivery.note"]}>
               <input
                 id="delivery-note"
                 value={data.delivery.note ?? ""}
                 maxLength={200}
                 onChange={(e) => set((d) => ({ ...d, delivery: { ...d.delivery, note: e.target.value } }))}
-                placeholder="مثلاً: القاهرة والجيزة والإسكندرية، والشحن 60 جنيه"
+                placeholder="مثلاً: القاهرة والجيزة والإسكندرية"
+                aria-invalid={Boolean(errors["delivery.note"])}
                 className={inputCls}
+              />
+            </Field>
+          ) : null}
+          <Field label="سعر الشحن" error={errors["delivery.fee"]}>
+            <Choice
+              label="سعر الشحن"
+              options={FEE_OPTIONS}
+              value={data.delivery.fee ? [data.delivery.fee] : []}
+              onToggle={(id) => set((d) => ({ ...d, delivery: { ...d.delivery, fee: d.delivery.fee === id ? undefined : id } }))}
+            />
+          </Field>
+          {data.delivery.fee === "flat" ? (
+            <Field label="سعر الشحن بالجنيه" htmlFor="fee-amount" error={errors["delivery.feeAmount"]}>
+              <input
+                id="fee-amount"
+                value={data.delivery.feeAmount ?? ""}
+                inputMode="numeric"
+                dir="ltr"
+                maxLength={5}
+                onChange={(e) => set((d) => ({ ...d, delivery: { ...d.delivery, feeAmount: Number(e.target.value.replace(/\D/g, "")) || undefined } }))}
+                placeholder="60"
+                aria-invalid={Boolean(errors["delivery.feeAmount"])}
+                className={cn(inputCls, "text-end font-mono")}
+              />
+            </Field>
+          ) : null}
+          {data.delivery.fee === "varies" ? (
+            <Field label="أسعار المحافظات" htmlFor="fee-note" optional hint="اكتبها لو تقدر، أو هنسألك عليها على واتساب.">
+              <input
+                id="fee-note"
+                value={data.delivery.feeNote ?? ""}
+                maxLength={300}
+                onChange={(e) => set((d) => ({ ...d, delivery: { ...d.delivery, feeNote: e.target.value } }))}
+                placeholder="مثلاً: القاهرة 50، الإسكندرية 65، الصعيد 90"
+                className={inputCls}
+              />
+            </Field>
+          ) : null}
+          <Field label="مدة التوصيل" htmlFor="eta" optional>
+            <input
+              id="eta"
+              value={data.delivery.eta ?? ""}
+              maxLength={60}
+              onChange={(e) => set((d) => ({ ...d, delivery: { ...d.delivery, eta: e.target.value } }))}
+              placeholder="مثلاً: من 2 إلى 4 أيام"
+              className={inputCls}
+            />
+          </Field>
+        </Card>
+
+        <Card n={8} icon={RefreshCcw} title="الاستبدال والاسترجاع" sub="اختياري. لو سيبته هنسألك عليه.">
+          <Field label="سياسة المتجر">
+            <Choice
+              label="الاستبدال والاسترجاع"
+              options={RETURN_OPTIONS}
+              value={data.returns.mode ? [data.returns.mode] : []}
+              onToggle={(id) => set((d) => ({ ...d, returns: d.returns.mode === id ? {} : { mode: id, days: id === "none" ? undefined : d.returns.days } }))}
+            />
+          </Field>
+          {data.returns.mode === "full" || data.returns.mode === "exchange" ? (
+            <Field label="خلال كام يوم من الاستلام؟" htmlFor="return-days" error={errors["returns.days"]}>
+              <input
+                id="return-days"
+                value={data.returns.days ?? ""}
+                inputMode="numeric"
+                dir="ltr"
+                maxLength={2}
+                onChange={(e) => set((d) => ({ ...d, returns: { ...d.returns, days: Number(e.target.value.replace(/\D/g, "")) || undefined } }))}
+                placeholder="14"
+                aria-invalid={Boolean(errors["returns.days"])}
+                className={cn(inputCls, "text-end font-mono")}
               />
             </Field>
           ) : null}
         </Card>
 
         <Card
-          n={7}
+          n={9}
           icon={Globe}
           title="موقع عاجبك شكله"
           sub="أي متجر أو موقع (حتى لو أجنبي) يعجبك ستايله."
@@ -373,8 +453,7 @@ export function IntakeForm({
           )}
         </Card>
 
-        <Card n={8} icon={Mic} title="في إضافة؟" sub="رسالة صوتية بدل الكتابة، أو أي تفصيلة مكتوبة.">
-          <VoiceNote data={data} update={set} urls={urls} setUrl={setUrl} ensureToken={ensureToken} whatsappUrl={whatsappUrl} onBusy={onBusy} />
+        <Card n={10} icon={MessageSquare} title="في إضافة؟" sub="أي تفصيلة مهمة الفريق يعرفها.">
           <Field label="ملاحظات" htmlFor="notes" optional>
             <textarea
               id="notes"
@@ -427,7 +506,7 @@ export function IntakeForm({
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2 text-[12px] font-bold text-ink-3">
-              <span>{golden ? (done >= 1 ? "جاهز للإرسال" : `اكتمل ${Math.round(done * 100)}%`) : done >= 1 ? "كل الأسئلة متجاوب عليها" : `اتجاوب على ${Math.round(done * 10)} من 10`}</span>
+              <span>{golden ? (done >= 1 ? "جاهز للإرسال" : `اكتمل ${Math.round(done * 100)}%`) : done >= 1 ? "كل الأسئلة متجاوب عليها" : `اتجاوب على ${Math.round(done * COMPLETION_STEPS)} من ${COMPLETION_STEPS}`}</span>
               <SaveBadge state={state} online={online} />
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-edge/[0.08]" aria-hidden="true">
@@ -549,15 +628,18 @@ function GoldenCards({
         </Field>
       </Card>
 
-      <Card n={3} icon={Package} title={`منتجاتك (${GOLDEN_SUGGESTED_PRODUCTS} كفاية)`} sub="صورة لكل منتج، وسطر فيه الاسم والألوان والمقاسات والسعر. مثال: فستان كتان، أسود/بيج، S M L، 850">
-        <div>
-          <PhotoLines items={data.products.items} urls={urls} setUrl={setUrl} update={set} ensureToken={ensureToken} onBusy={onBusy} />
-          {errors.products ? (
-            <p role="alert" data-invalid="true" className="mt-2 text-[13px] font-bold text-rose-300">
-              {errors.products}
-            </p>
-          ) : null}
-        </div>
+      <Card n={3} icon={Package} title={`منتجاتك (${GOLDEN_SUGGESTED_PRODUCTS} كفاية)`} sub="اكتب أي كلام عن كل منتج: الاسم والألوان والمقاسات والسعر. وصوره لو موجودة.">
+        <ProductsEditor
+          items={data.products.items}
+          errors={errors}
+          urls={urls}
+          setUrl={setUrl}
+          update={set}
+          ensureToken={ensureToken}
+          onBusy={onBusy}
+          hint={`الأفضل ${GOLDEN_SUGGESTED_PRODUCTS} منتجات، و3 على الأقل.`}
+          textPlaceholder="مثلاً: فستان كتان، أسود وبيج، مقاسات S M L، السعر 850"
+        />
       </Card>
 
       <Card n={4} icon={Clapperboard} title="فيديو الإطلاق">

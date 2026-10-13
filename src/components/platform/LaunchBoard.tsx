@@ -4,11 +4,11 @@
 // الذكاء الاصطناعي. «أعد الفحص» يعيد تحميل الصفحة فتُجرى الفحوص من جديد على الخادم.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, CircleSlash, Loader2, Mail, MessageCircle, RefreshCw, ScanSearch, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CircleSlash, ImageUp, Loader2, Mail, MessageCircle, RefreshCw, ScanSearch, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { CheckGroup, CheckStatus } from "@/server/launch-checks";
 import type { ProbeResult } from "@/ai/providers";
-import { resetModelsAction, sendTestEmailAction, testChatAction, testVisionAction } from "@/server/actions/launch";
+import { cleanupMediaTestAction, resetModelsAction, sendTestEmailAction, testChatAction, testMediaAction, testVisionAction } from "@/server/actions/launch";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<CheckStatus, { Icon: typeof CheckCircle2; tone: string; label: string }> = {
@@ -32,7 +32,30 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [probe, setProbe] = useState<{ tier: "visionFast" | "chat"; results: ProbeResult[] } | null>(null);
-  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | null>(null);
+  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | null>(null);
+  const [media, setMedia] = useState<{ state: "ok" | "broken"; url: string; host: string } | null>(null);
+
+  /** يرفع صورة حقيقية ثم يعرضها في المتصفح من رابطها العام: الرفع وحده لا يكفي، العرض هو ما يراه الزائر. */
+  const testMedia = async () => {
+    setBusy("media");
+    setMedia(null);
+    const r = await testMediaAction().catch(() => ({ ok: false as const, error: "تعذر الاختبار" }));
+    if (!r.ok) {
+      setBusy(null);
+      return void toast.error(r.error);
+    }
+    const loaded = await new Promise<boolean>((resolve) => {
+      const img = new Image();
+      const t = setTimeout(() => resolve(false), 12_000);
+      img.onload = () => (clearTimeout(t), resolve(img.naturalWidth > 0));
+      img.onerror = () => (clearTimeout(t), resolve(false));
+      img.src = r.url;
+    });
+    setMedia({ state: loaded ? "ok" : "broken", url: r.url, host: r.host });
+    await cleanupMediaTestAction(r.key).catch(() => null);
+    setBusy(null);
+    toast[loaded ? "success" : "error"](loaded ? "الرفع والعرض يعملان" : "رُفعت الصورة لكن المتصفح لم يستطع عرضها: التفاصيل تحت الأزرار");
+  };
 
   const test = async (tier: "visionFast" | "chat") => {
     setBusy(tier === "chat" ? "chat" : "vision");
@@ -57,6 +80,9 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
         <button type="button" disabled={busy !== null} onClick={() => test("chat")} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50">
           {busy === "chat" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <MessageCircle className="size-4" aria-hidden="true" />} اختبر وكيل الرسائل
         </button>
+        <button type="button" disabled={busy !== null} onClick={testMedia} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50">
+          {busy === "media" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <ImageUp className="size-4" aria-hidden="true" />} اختبر رفع الصور وعرضها
+        </button>
         <button
           type="button"
           disabled={busy !== null}
@@ -71,6 +97,19 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
           {busy === "email" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Mail className="size-4" aria-hidden="true" />} أرسل لي بريد تجربة
         </button>
       </div>
+
+      {media ? (
+        <section className={cn("rounded-3xl border p-5 text-[13px]", media.state === "ok" ? "border-emerald-400/30 bg-emerald-500/5" : "border-rose-400/40 bg-rose-500/5")} aria-live="polite">
+          {media.state === "ok" ? (
+            <p className="font-bold text-emerald-200">الرفع والعرض يعملان: حُفظت الصورة وعُرضت من <span dir="ltr" className="font-mono">{media.host}</span>.</p>
+          ) : (
+            <div className="space-y-1.5 text-rose-100">
+              <p className="font-bold">حُفظت الصورة لكن المتصفح لم يستطع عرضها من <span dir="ltr" className="font-mono">{media.host}</span>.</p>
+              <p>غالباً الطلب لا يصل إلى مكانه الصحيح: تأكد أن لـ <span dir="ltr" className="font-mono">{media.host}</span> سجل DNS بسحابة برتقالية (يكفي سجل <span dir="ltr" className="font-mono">*</span> العام)، وأن مسار <span dir="ltr" className="font-mono">*.colapia.com/*</span> يشير إلى Worker المنصة، فهو من يخدم الصور من R2. وإن ضبطت <span dir="ltr" className="font-mono">MEDIA_BASE_URL</span> فتأكد أنه نطاق يصل إلى الصور فعلاً.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {probe ? (
         <section className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5" aria-live="polite">

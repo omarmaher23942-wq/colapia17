@@ -1,4 +1,4 @@
-// /admin/requests/[id] — كل ما أرسله العميل كما هو (والمتروك للفريق معلَّم صراحة)، وصوره ورسالته الصوتية، ونقل
+// /admin/requests/[id] — كل ما أرسله العميل كما هو (والمتروك للفريق معلَّم صراحة)، وصوره، ونقل
 // المرحلة بملاحظة للعميل، والملاحظات الداخلية، وسجل كامل، وBRIEF.md جاهز للنسخ (نفس أقسام stores/_template).
 import Image from "next/image";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import { platformUsers } from "@/db/schema";
 import { storeRequests } from "@/db/schema/agency";
 import { isMissingTable, readData, requestAssets, requestEvents } from "@/intake/repo";
 import { STAGE_INFO } from "@/intake/stages";
-import { DELIVERY_OPTIONS, PAYMENT_OPTIONS, safeUrl, socialUrl } from "@/intake/schema";
+import { DELIVERY_OPTIONS, FEE_OPTIONS, PAYMENT_OPTIONS, RETURN_OPTIONS, safeUrl, socialUrl } from "@/intake/schema";
 import { paletteById } from "@/intake/palettes";
 import { renderBrief } from "@/intake/brief";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -100,10 +100,9 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
   const palette = paletteById(d.colors.preset);
   const social = socialUrl(d.social.url);
   const inspiration = safeUrl(d.inspiration.url);
-  const voice = d.voice.key ? byKey.get(d.voice.key) : undefined;
   const logo = url(d.logo.key);
   const late = isLate(row);
-  const brief = renderBrief({ code: row.code, data: d, assets: assets.map((a) => ({ key: a.key, url: a.url, kind: a.kind, transcript: a.transcript })), submittedAt: row.submittedAt });
+  const brief = renderBrief({ code: row.code, data: d, assets: assets.filter((a) => a.kind === "image" || a.kind === "logo").map((a) => ({ key: a.key, url: a.url, kind: a.kind as "image" | "logo" })), submittedAt: row.submittedAt });
   const greet = `أهلاً، معاك فريق Colapia بخصوص طلب متجر «${row.storeName ?? ""}» (${row.code}).`;
 
   // النطاق: المحفوظ، وإلا اقتراح لا يصطدم بمتجر قائم (التثبيت عند حفظه أو التجهيز).
@@ -226,7 +225,6 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
             </Row>
             <Row label="الصفحة">
               {social ? <ExtLink href={social}>{social.replace(/^https:\/\//, "")}</ExtLink> : <Muted>—</Muted>}
-              {d.social.teamCollects ? <span className="mt-1.5 block w-fit rounded-full bg-[#6f86ff]/20 px-2 py-0.5 text-[11.5px] text-[#8fa8ff]">الفريق يجمع المنتجات منها</span> : null}
             </Row>
           </dl>
         </section>
@@ -269,10 +267,35 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
               )}
             </Row>
             <Row label="موقع إلهام">{inspiration ? <ExtLink href={inspiration}>{inspiration.replace(/^https:\/\//, "")}</ExtLink> : d.inspiration.team ? <Team /> : <Muted>—</Muted>}</Row>
-            <Row label="الدفع">{d.payment.unsure ? <Muted>مش متأكد</Muted> : d.payment.methods.map((m) => PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m).join("، ") || <Muted>—</Muted>}</Row>
+            <Row label="الدفع">
+              {d.payment.methods.length ? (
+                <ul className="space-y-1">
+                  {d.payment.methods.map((m) => (
+                    <li key={m}>
+                      {PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m}
+                      {m === "wallet" ? <span className="block font-medium text-[#c3cdf0]" dir="ltr">{d.payment.walletNumber || "—"}</span> : null}
+                      {m === "instapay" ? <span className="block font-medium text-[#c3cdf0]" dir="ltr">{d.payment.instapayAddress || "—"}</span> : null}
+                      {m === "cod" ? <span className="block font-medium text-[#c3cdf0]">المعاينة وفتح الشحنة: {d.payment.inspection === "yes" ? "متاحان" : d.payment.inspection === "no" ? "غير متاحين" : "لم يحدد"}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <Muted>—</Muted>
+              )}
+            </Row>
             <Row label="التوصيل">
               {DELIVERY_OPTIONS.find((o) => o.id === d.delivery.scope)?.label ?? <Muted>—</Muted>}
               {d.delivery.note ? <span className="block font-medium text-[#c3cdf0]">{d.delivery.note}</span> : null}
+              {d.delivery.fee ? (
+                <span className="block font-medium text-[#c3cdf0]">
+                  {d.delivery.fee === "flat" ? `الشحن ${d.delivery.feeAmount ?? "؟"} جنيه` : (FEE_OPTIONS.find((o) => o.id === d.delivery.fee)?.label ?? "")}
+                  {d.delivery.feeNote ? ` — ${d.delivery.feeNote}` : ""}
+                </span>
+              ) : null}
+              {d.delivery.eta ? <span className="block font-medium text-[#c3cdf0]">المدة: {d.delivery.eta}</span> : null}
+            </Row>
+            <Row label="الاستبدال">
+              {d.returns.mode ? `${RETURN_OPTIONS.find((o) => o.id === d.returns.mode)?.label ?? ""}${d.returns.days && d.returns.mode !== "none" ? ` خلال ${d.returns.days} يوماً` : ""}` : <Muted>لم يحدد</Muted>}
             </Row>
           </dl>
         </section>
@@ -280,23 +303,26 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
 
       <section className={card}>
         <h2 className="mb-3 text-sm font-black">
-          المنتجات{" "}
-          {d.products.mode === "team" ? <Team /> : d.products.mode === "later" ? <Muted>(يضيفها بنفسه بعد التسليم)</Muted> : <Muted>({d.products.items.length})</Muted>}
+          المنتجات <Muted>({d.products.items.length})</Muted>
         </h2>
         {d.products.items.length ? (
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid gap-3 sm:grid-cols-2">
             {d.products.items.map((p, i) => {
-              const img = url(p.key);
+              const imgs = p.images.map((k) => url(k)).filter((u): u is string => Boolean(u));
               return (
-                <li key={p.id} className="flex gap-3 rounded-2xl border border-white/10 bg-[#0e1424] p-2.5">
-                  {img ? (
-                    <a href={img} target="_blank" rel="noopener noreferrer" className="relative size-20 shrink-0 overflow-hidden rounded-xl">
-                      <Image src={img} alt={p.line || `منتج ${i + 1}`} fill sizes="80px" className="object-cover" unoptimized />
-                    </a>
+                <li key={p.id} className="space-y-2 rounded-2xl border border-white/10 bg-[#0e1424] p-3">
+                  <p className="whitespace-pre-line text-sm font-bold leading-6">{p.text || <Muted>(بلا وصف)</Muted>}</p>
+                  {imgs.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {imgs.map((img, n) => (
+                        <a key={img} href={img} target="_blank" rel="noopener noreferrer" className="relative size-16 shrink-0 overflow-hidden rounded-lg">
+                          <Image src={img} alt={`منتج ${i + 1} صورة ${n + 1}`} fill sizes="64px" className="object-cover" unoptimized />
+                        </a>
+                      ))}
+                    </div>
                   ) : (
-                    <span className="grid size-20 shrink-0 place-items-center rounded-xl bg-white/5 text-[11px] text-[#8d97c4]">بلا صورة</span>
+                    <span className="inline-block rounded-lg bg-white/5 px-2 py-1 text-[11px] text-[#8d97c4]">بلا صور</span>
                   )}
-                  <p className="min-w-0 text-sm font-bold leading-6">{p.line || <Muted>(بلا وصف)</Muted>}</p>
                 </li>
               );
             })}
@@ -304,18 +330,10 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
         ) : null}
       </section>
 
-      {voice || d.notes ? (
+      {d.notes ? (
         <section className={`${card} space-y-3`}>
           <h2 className="text-sm font-black">كلام العميل</h2>
-          {voice && isTrustedUploadUrl(voice.url) ? (
-            <div className="space-y-2">
-              <audio src={voice.url} controls preload="none" className="w-full" />
-              {d.voice.transcript ? <p className="rounded-xl bg-white/[0.04] p-3 text-sm leading-7">{d.voice.transcript}</p> : null}
-              {voice.transcript && voice.transcript !== d.voice.transcript ? <p className="text-xs leading-6 text-[#8d97c4]">التفريغ الآلي الأصلي: {voice.transcript}</p> : null}
-              {voice.transcriptStatus === "failed" && !d.voice.transcript ? <p className="text-xs text-amber-300">التفريغ الآلي فشل؛ اسمع التسجيل.</p> : null}
-            </div>
-          ) : null}
-          {d.notes ? <p className="whitespace-pre-line rounded-xl bg-white/[0.04] p-3 text-sm leading-7">{d.notes}</p> : null}
+          <p className="whitespace-pre-line rounded-xl bg-white/[0.04] p-3 text-sm leading-7">{d.notes}</p>
         </section>
       ) : null}
 

@@ -1,6 +1,6 @@
 import "server-only";
 // upload-policies.ts — من يحق له الرفع على كل مسار، ومن أي مساحة، وما يُسجَّل بعده. مصدر واحد يستخدمه مسار
-// UploadThing القديم (app/api/uploadthing/core.ts) ومسار R2 (app/api/upload). أي مسار جديد يُضاف هنا وفي lib/media.ts.
+// الرفع (app/api/upload). أي مسار جديد يُضاف هنا وفي lib/media.ts.
 import { and, count, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db/client";
@@ -16,8 +16,8 @@ import type { MediaRoute } from "@/lib/media";
 
 export class UploadPolicyError extends Error {}
 
-export const MAX_IMAGES_PER_REQUEST = 60;
-export const MAX_VOICE_PER_REQUEST = 6;
+// ستة منتجات × عشر صور = 60، وهامش لمن يبدّل صوره قبل الإرسال (الصور المحذوفة تُنظَّف بعد الإرسال).
+export const MAX_IMAGES_PER_REQUEST = 100;
 
 /** ما يُحفظ مع الرفع: بادئة المفتاح في R2 (مساحة كل متجر/طلب منفصلة) وبيانات خطوة ما بعد الرفع. */
 export type UploadGrant = { prefix: string; meta: Record<string, string | number | null> };
@@ -80,7 +80,7 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     if (!p.success) throw new UploadPolicyError("طلب غير صالح");
     const row = await openDraft(p.data.token);
     const ip = ipBucket(clientIp(headers));
-    if (!(await hit(`up:req:${row.id}`, 80, 3600)) || !(await hit(`up:ip:${ip}`, 150, 3600))) throw new UploadPolicyError("رفع كتير في وقت قصير، استنى دقيقة وكمّل.");
+    if (!(await hit(`up:req:${row.id}`, 150, 3600)) || !(await hit(`up:ip:${ip}`, 250, 3600))) throw new UploadPolicyError("رفع كتير في وقت قصير، انتظر دقيقة ثم كمّل.");
     const [c] = await db
       .select({ n: count() })
       .from(storeRequestAssets)
@@ -88,22 +88,9 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     if ((c?.n ?? 0) >= (p.data.kind === "logo" ? 10 : MAX_IMAGES_PER_REQUEST)) throw new UploadPolicyError("وصلت للحد الأقصى من الصور في الطلب.");
     return { prefix: `requests/${row.id}`, meta: { requestId: row.id, kind: p.data.kind } };
   },
-  async intakeVoice({ headers, input }) {
-    const p = z.object({ token: z.string().max(64), durationMs: z.number().int().min(0).max(10 * 60_000).optional() }).safeParse(input);
-    if (!p.success) throw new UploadPolicyError("طلب غير صالح");
-    const row = await openDraft(p.data.token);
-    const ip = ipBucket(clientIp(headers));
-    if (!(await hit(`upv:req:${row.id}`, 12, 3600)) || !(await hit(`upv:ip:${ip}`, 30, 3600))) throw new UploadPolicyError("محاولات تسجيل كتير، استنى دقيقة وكمّل.");
-    const [c] = await db
-      .select({ n: count() })
-      .from(storeRequestAssets)
-      .where(and(eq(storeRequestAssets.requestId, row.id), eq(storeRequestAssets.kind, "voice")));
-    if ((c?.n ?? 0) >= MAX_VOICE_PER_REQUEST) throw new UploadPolicyError("وصلت للحد الأقصى من الرسائل الصوتية في الطلب.");
-    return { prefix: `requests/${row.id}`, meta: { requestId: row.id, kind: "voice", durationMs: p.data.durationMs ?? null } };
-  },
   // بحث العميل بالصورة: متجر ظاهر، بحد معدل، والملف مؤقت في مساحة tmp (تحذفه قاعدة انتهاء في الـ bucket).
   async visualSearch({ headers, input }) {
-    if (!(await hit(`vs:ip:${ipBucket(clientIp(headers))}`, 30, 3600))) throw new UploadPolicyError("بحث كتير في وقت قصير، استنى شوية.");
+    if (!(await hit(`vs:ip:${ipBucket(clientIp(headers))}`, 30, 3600))) throw new UploadPolicyError("بحث كتير في وقت قصير، انتظر قليلاً.");
     const store = await publicStore(input);
     return { prefix: `tmp/vs/${store.id}`, meta: { storeId: store.id } };
   },
@@ -119,17 +106,16 @@ export async function afterUpload(
   meta: UploadGrant["meta"],
   file: { key: string; url: string; type: string; size: number }
 ): Promise<void> {
-  if (route !== "intakeImage" && route !== "intakeVoice") return;
+  if (route !== "intakeImage") return;
   await db
     .insert(storeRequestAssets)
     .values({
       requestId: String(meta.requestId),
       key: file.key,
       url: file.url,
-      kind: String(meta.kind) as "image" | "logo" | "voice",
+      kind: String(meta.kind) as "image" | "logo",
       mime: file.type,
       sizeBytes: file.size,
-      ...(route === "intakeVoice" ? { durationMs: typeof meta.durationMs === "number" ? meta.durationMs : null } : {}),
     })
     .onConflictDoNothing({ target: storeRequestAssets.key });
 }

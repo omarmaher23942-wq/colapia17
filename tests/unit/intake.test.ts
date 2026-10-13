@@ -10,6 +10,8 @@ import {
   socialUrl,
   validateSubmission,
   MAX_PRODUCTS,
+  MAX_PRODUCT_IMAGES,
+  PRODUCT_TEXT_MAX,
   type IntakeData,
 } from "@/intake/schema";
 import { canMoveStage, nextStage, stageIndex, STAGE_INFO, REQUEST_STAGES } from "@/intake/stages";
@@ -23,6 +25,16 @@ const make = (patch: (d: IntakeData) => void): IntakeData => {
   patch(d);
   return d;
 };
+/** استمارة عادية صالحة للإرسال بأقل ما يلزم: اسم، تواصل، منتج بنص، دفع عند الاستلام بإجابة المعاينة، توصيل بسعر موحد. */
+const valid = (patch: (d: IntakeData) => void = () => {}): IntakeData =>
+  make((d) => {
+    d.store.name = "متجر نور";
+    d.contact.whatsapp = "01012345678";
+    d.products.items = [{ id: "a", text: "تيشيرت قطن أسود 350", images: [] }];
+    d.payment = { methods: ["cod"], inspection: "yes" };
+    d.delivery = { scope: "all", fee: "flat", feeAmount: 60 };
+    patch(d);
+  });
 
 describe("بيانات الاستمارة", () => {
   it("مسودة فارغة صالحة بقيم افتراضية، والحقول الزائدة تُحذف", () => {
@@ -36,19 +48,86 @@ describe("بيانات الاستمارة", () => {
   it("الحدود مفروضة: طول النص وعدد المنتجات وصيغة مفاتيح الملفات والألوان", () => {
     expect(intakeDataSchema.safeParse({ store: { name: "x".repeat(61) } }).success).toBe(false);
     expect(intakeDataSchema.safeParse({ notes: "x".repeat(2001) }).success).toBe(false);
-    const items = Array.from({ length: MAX_PRODUCTS + 1 }, (_, i) => ({ id: String(i), line: "a" }));
-    expect(intakeDataSchema.safeParse({ products: { items } }).success).toBe(false);
+    // أكثر من الحد في طلب قديم يُقصّ بدل أن يفشل قراءته؛ والصور محدودة بعشر لكل منتج.
+    const items = Array.from({ length: MAX_PRODUCTS + 3 }, (_, i) => ({ id: String(i), text: "a" }));
+    expect(intakeDataSchema.parse({ products: { items } }).products.items).toHaveLength(MAX_PRODUCTS);
+    const eleven = Array.from({ length: MAX_PRODUCT_IMAGES + 1 }, (_, i) => `${KEY}${i}`);
+    expect(intakeDataSchema.safeParse({ products: { items: [{ id: "a", text: "x", images: eleven }] } }).success).toBe(false);
+    expect(intakeDataSchema.safeParse({ products: { items: [{ id: "a", text: "x".repeat(PRODUCT_TEXT_MAX + 1) }] } }).success).toBe(false);
     expect(intakeDataSchema.safeParse({ logo: { key: "../../etc/passwd" } }).success).toBe(false);
     expect(intakeDataSchema.safeParse({ logo: { key: "https://evil.example/x.png" } }).success).toBe(false);
     expect(intakeDataSchema.safeParse({ colors: { custom: "red" } }).success).toBe(false);
     expect(intakeDataSchema.safeParse({ payment: { methods: ["bitcoin"] } }).success).toBe(false);
   });
 
-  it("الإرسال يحتاج اسم المتجر ووسيلة تواصل واحدة فقط", () => {
-    expect(validateSubmission(emptyIntake())).toMatchObject({ "store.name": expect.any(String), "contact.whatsapp": expect.any(String) });
-    expect(validateSubmission(make((d) => ((d.store.name = "متجر نور"), (d.contact.whatsapp = "01012345678"))))).toEqual({});
-    expect(validateSubmission(make((d) => ((d.store.name = "متجر نور"), (d.contact.email = "Noor@Example.com"))))).toEqual({});
-    expect(validateSubmission(make((d) => ((d.store.name = "متجر نور"), (d.contact.whatsapp = "٠١٠١٢٣٤٥٦٧٨"))))).toEqual({});
+  it("الإرسال يحتاج اسم المتجر ووسيلة تواصل واحدة، ومنتجاً ودفعاً وتوصيلاً", () => {
+    expect(validateSubmission(emptyIntake())).toMatchObject({
+      "store.name": expect.any(String),
+      "contact.whatsapp": expect.any(String),
+      products: expect.any(String),
+      "payment.methods": expect.any(String),
+      "delivery.scope": expect.any(String),
+      "delivery.fee": expect.any(String),
+    });
+    expect(validateSubmission(valid())).toEqual({});
+    expect(validateSubmission(valid((d) => ((d.contact.whatsapp = undefined), (d.contact.email = "Noor@Example.com"))))).toEqual({});
+    expect(validateSubmission(valid((d) => (d.contact.whatsapp = "٠١٠١٢٣٤٥٦٧٨")))).toEqual({});
+  });
+
+  it("المنتج يلزمه نص، وصوره اختيارية، والبطاقة الفارغة تُتجاهل", () => {
+    expect(validateSubmission(valid((d) => (d.products.items = [{ id: "a", text: "جاكيت", images: [] }])))).toEqual({});
+    // صور بلا كلام: خطأ في مكانه
+    const e = validateSubmission(valid((d) => (d.products.items = [{ id: "a", text: "جاكيت", images: [] }, { id: "b", text: "  ", images: [`${KEY}1`] }])));
+    expect(e["products.b"]).toBeDefined();
+    expect(e["products.a"]).toBeUndefined();
+    // بطاقة فارغة تماماً بجانب منتج صحيح: لا خطأ، وتُحذف عند التطبيع
+    const withBlank = valid((d) => d.products.items.push({ id: "z", text: "", images: [] }));
+    expect(validateSubmission(withBlank)).toEqual({});
+    expect(normalizeIntake(withBlank).products.items.map((p) => p.id)).toEqual(["a"]);
+    // لا منتجات نصية = خطأ المنتجات
+    expect(validateSubmission(valid((d) => (d.products.items = [{ id: "z", text: "", images: [] }]))).products).toBeDefined();
+  });
+
+  it("الدفع: كل وسيلة تُطلب تفاصيلها (رقم المحفظة، إنستاباي، المعاينة عند الاستلام)", () => {
+    const pay = (methods: IntakeData["payment"]["methods"], extra: Partial<IntakeData["payment"]> = {}) => validateSubmission(valid((d) => (d.payment = { methods, ...extra })));
+    expect(pay([])["payment.methods"]).toBeDefined();
+    expect(pay(["wallet"])["payment.walletNumber"]).toBeDefined();
+    expect(pay(["wallet"], { walletNumber: "123" })["payment.walletNumber"]).toContain("غير صحيح");
+    expect(pay(["wallet"], { walletNumber: "٠١٠١٢٣٤٥٦٧٨" })).toEqual({});
+    expect(pay(["instapay"])["payment.instapayAddress"]).toBeDefined();
+    expect(pay(["instapay"], { instapayAddress: "noor@instapay" })).toEqual({});
+    expect(pay(["instapay"], { instapayAddress: "نور محمد" })).toEqual({});
+    expect(pay(["cod"])["payment.inspection"]).toBeDefined();
+    expect(pay(["cod"], { inspection: "no" })).toEqual({});
+    // تفاصيل وسيلة غير مختارة لا تُطلب
+    expect(pay(["cod"], { inspection: "yes" })).toEqual({});
+    expect(pay(["wallet", "instapay", "cod"], { walletNumber: "01012345678", instapayAddress: "x@instapay", inspection: "yes" })).toEqual({});
+  });
+
+  it("الشحن: النطاق (والمحافظات) وسعر الشحن (والمبلغ إن كان موحداً)", () => {
+    const ship = (delivery: IntakeData["delivery"]) => validateSubmission(valid((d) => (d.delivery = delivery)));
+    expect(ship({})).toMatchObject({ "delivery.scope": expect.any(String), "delivery.fee": expect.any(String) });
+    expect(ship({ scope: "custom", fee: "free" })["delivery.note"]).toBeDefined();
+    expect(ship({ scope: "custom", note: "القاهرة والجيزة", fee: "free" })).toEqual({});
+    expect(ship({ scope: "all", fee: "flat" })["delivery.feeAmount"]).toBeDefined();
+    expect(ship({ scope: "cairo_giza", fee: "varies" })).toEqual({});
+    // قيمة قديمة «لسه مش محدد» لا تُقبل جواباً جديداً
+    expect(ship({ scope: "unsure", fee: "free" })["delivery.scope"]).toBeDefined();
+  });
+
+  it("الاستبدال اختياري، لكن المدة تلزم متى قال استبدال", () => {
+    expect(validateSubmission(valid((d) => (d.returns = { mode: "full" }))) ["returns.days"]).toBeDefined();
+    expect(validateSubmission(valid((d) => (d.returns = { mode: "full", days: 14 })))).toEqual({});
+    expect(validateSubmission(valid((d) => (d.returns = { mode: "none" })))).toEqual({});
+  });
+
+  it("طلب قديم بصيغة {key, line} يُقرأ كمنتج بنص وصورة، ولا يبقى فيه حقل الصوت أو «الفريق يجمع»", () => {
+    const d = intakeDataSchema.parse({ social: { url: "@a", teamCollects: true }, voice: { key: KEY }, products: { mode: "team", items: [{ id: "a", key: `${KEY}1`, line: "تيشيرت 350" }, { id: "b", line: "جاكيت" }] } });
+    expect(d.products.items).toEqual([
+      { id: "a", text: "تيشيرت 350", images: [`${KEY}1`] },
+      { id: "b", text: "جاكيت", images: [] },
+    ]);
+    expect(JSON.stringify(d)).not.toMatch(/voice|teamCollects|"mode":"team"/);
   });
 
   it("وسيلة تواصل مكتوبة غلط ترفض الإرسال برسالة في مكانها", () => {
@@ -57,11 +136,9 @@ describe("بيانات الاستمارة", () => {
     expect(e["contact.email"]).toBeDefined();
   });
 
-  it("«الفريق يجمع منتجاتي» يحتاج رابط الصفحة، و«من الشعار» يحتاج شعاراً", () => {
-    const base = (d: IntakeData) => ((d.store.name = "نور"), (d.contact.whatsapp = "01012345678"));
-    expect(validateSubmission(make((d) => (base(d), (d.social.teamCollects = true))))["social.url"]).toBeDefined();
-    expect(validateSubmission(make((d) => (base(d), (d.colors.mode = "logo"))))["colors.mode"]).toBeDefined();
-    expect(validateSubmission(make((d) => (base(d), (d.colors.mode = "logo"), (d.logo.key = KEY))))).toEqual({});
+  it("«من الشعار» يحتاج شعاراً", () => {
+    expect(validateSubmission(valid((d) => (d.colors.mode = "logo")))["colors.mode"]).toBeDefined();
+    expect(validateSubmission(valid((d) => ((d.colors.mode = "logo"), (d.logo.key = KEY))))).toEqual({});
   });
 
   it("الروابط: https فقط ولا بروتوكولات خطرة، وحساب @اسم يصير إنستجرام", () => {
@@ -83,28 +160,34 @@ describe("بيانات الاستمارة", () => {
         d.store.name = "  متجر   نور ";
         d.contact.email = " Noor@Example.COM ";
         d.contact.whatsapp = "+20 101 234 5678";
-        d.products.items = [{ id: "a", line: "  " }, { id: "b", line: "تيشيرت قطن 350" }];
+        d.products.items = [{ id: "a", text: "  ", images: [] }, { id: "b", text: "تيشيرت   قطن 350\n\n\n\nأسود", images: [`${KEY}1`, `${KEY}1`] }];
       }),
     );
     expect(n.store.name).toBe("متجر نور");
     expect(n.contact.email).toBe("noor@example.com");
     expect(n.contact.whatsapp).toBe("01012345678");
-    expect(n.products.items).toEqual([{ id: "b", line: "تيشيرت قطن 350" }]);
+    expect(n.products.items).toEqual([{ id: "b", text: "تيشيرت قطن 350\n\nأسود", images: [`${KEY}1`] }]);
     expect(normalizeEmail("bad")).toBeNull();
   });
 
   it("مفاتيح الملفات المذكورة ونسبة الاكتمال", () => {
-    const d = make((x) => {
-      x.store.name = "نور";
-      x.contact.whatsapp = "01012345678";
+    const d = valid((x) => {
       x.logo.key = KEY;
-      x.products.items = [{ id: "1", key: `${KEY}1`, line: "x" }, { id: "2", line: "y" }];
-      x.voice.key = `${KEY}v`;
+      x.products.items = [{ id: "1", text: "x", images: [`${KEY}1`, `${KEY}2`] }, { id: "2", text: "y", images: [`${KEY}2`] }];
     });
-    expect(referencedKeys(d)).toEqual({ images: [`${KEY}1`], logo: KEY, voice: `${KEY}v` });
+    expect(referencedKeys(d)).toEqual({ images: [`${KEY}1`, `${KEY}2`], logo: KEY });
     expect(completion(emptyIntake())).toBe(0);
     expect(completion(d)).toBeGreaterThan(0.4);
     expect(completion(d)).toBeLessThan(1);
+    // كل الأسئلة مُجابة = 1
+    const all = valid((x) => {
+      x.social.url = "@noor";
+      x.colors = { mode: "team" };
+      x.logo = { team: true };
+      x.returns = { mode: "none" };
+      x.inspiration = { team: true };
+    });
+    expect(completion(all)).toBe(1);
   });
 });
 
@@ -169,14 +252,16 @@ describe("الـ brief", () => {
       x.store.oneLine = "تيشيرتات قطن";
       x.contact.whatsapp = "01012345678";
       x.social.url = "@noor.wear";
-      x.social.teamCollects = true;
       x.colors.mode = "preset";
       x.colors.preset = "soft-rose";
       x.logo.key = KEY;
-      x.products.mode = "list";
-      x.products.items = [{ id: "1", key: `${KEY}1`, line: "- تيشيرت أسود M L 350" }, { id: "2", key: "forgedKey12345", line: "بلا صورة مسجلة" }];
-      x.payment.methods = ["cod", "wallet"];
-      x.delivery.scope = "all";
+      x.products.items = [
+        { id: "1", text: "- تيشيرت أسود M L 350\n## قطن مصري", images: [`${KEY}1`, "forgedKey12345", `${KEY}2`] },
+        { id: "2", text: "بلا صورة مسجلة", images: [] },
+      ];
+      x.payment = { methods: ["cod", "wallet", "instapay"], walletNumber: "01112223334", instapayAddress: "noor@instapay", inspection: "no" };
+      x.delivery = { scope: "custom", note: "القاهرة والإسكندرية", fee: "flat", feeAmount: 60, eta: "من 2 إلى 4 أيام" };
+      x.returns = { mode: "full", days: 14 };
       x.notes = "عايزه بسيط\n## مش عنوان";
     });
     const md = renderBrief({
@@ -185,18 +270,27 @@ describe("الـ brief", () => {
       assets: [
         { key: KEY, url: "https://utfs.io/f/logo", kind: "logo" },
         { key: `${KEY}1`, url: "https://utfs.io/f/p1", kind: "image" },
+        { key: `${KEY}2`, url: "https://utfs.io/f/p2", kind: "image" },
       ],
       submittedAt: new Date("2026-10-11T10:00:00Z"),
     });
-    for (const h of ["## المتجر", "## التواصل", "## الهوية", "## السياسات", "## المنتجات", "## ملاحظات العميل", "## ملاحظات المالك والفريق"]) expect(md).toContain(h);
+    for (const h of ["## المتجر", "## التواصل", "## الهوية", "## السياسات", "## المنتجات (2)", "## ملاحظات العميل", "## ملاحظات المالك والفريق"]) expect(md).toContain(h);
     expect(md).toContain("# Brief — متجر نور");
     expect(md).toContain("https://www.instagram.com/noor.wear/");
-    expect(md).toContain("☑ الفريق يستخرج المنتجات");
     expect(md).toContain("وردي ناعم");
-    expect(md).toContain("1. تيشيرت أسود M L 350 — صورة: https://utfs.io/f/p1");
+    // المنتج: نصه كما كتبه (بلا عناوين Markdown مزروعة) وصوره المسجلة فقط
+    expect(md).toContain("1. تيشيرت أسود M L 350");
+    expect(md).toContain("صور (2): https://utfs.io/f/p1 https://utfs.io/f/p2");
     expect(md).toContain("2. بلا صورة مسجلة");
     expect(md).not.toContain("forgedKey12345");
-    expect(md).toContain("الدفع عند الاستلام، فودافون كاش / محافظ");
+    expect(md).not.toMatch(/^## قطن مصري/m);
+    // الدفع والشحن والاستبدال بتفاصيلها
+    expect(md).toContain("فودافون كاش / محافظ: الرقم 01112223334");
+    expect(md).toContain("إنستاباي: noor@instapay");
+    expect(md).toContain("المعاينة وفتح الشحنة **غير متاحين**");
+    expect(md).toContain("محافظات معينة (القاهرة والإسكندرية) · سعر موحّد 60 جنيه · مدة التوصيل: من 2 إلى 4 أيام");
+    expect(md).toContain("استبدال واسترجاع خلال 14 يوماً");
+    expect(md).not.toMatch(/صوت|تفريغ|يجمع/);
     expect(md).not.toMatch(/^## مش عنوان/m);
     expect(md).toContain("> مش عنوان");
   });

@@ -9,26 +9,25 @@ import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { categories, merchants, productVariants, products, shippingZones, storeBlueprints, stores } from "@/db/schema";
 import { storeRequests } from "@/db/schema/agency";
-import { defaultShippingZones } from "@/lib/egypt";
 import { buildSearchText, slugify } from "@/lib/arabic";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 import { dbErrorInfo, PG_UNIQUE } from "@/lib/db-errors";
 import { readData, requestAssets, type RequestRow } from "@/intake/repo";
+import type { IntakeData } from "@/intake/schema";
 import { renderBrief } from "@/intake/brief";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { blueprintSchema } from "@/blueprint/schema";
 import type { StoreSeed } from "@/stores/seed";
 import { buildDraft, storeFolderFiles, type Draft } from "./draft";
 import { branchFor } from "./prompt";
+import { zoneRows } from "./policies";
 
 
 const combos = (options: Record<string, string[]>): string[][] =>
   Object.values(options).reduce<string[][]>((acc, vals) => acc.flatMap((a) => vals.map((v) => [...a, v])), [[]]);
 
-/** المحافظات المفعّلة حسب اختيار العميل (كل مصر افتراضياً؛ «القاهرة والجيزة» = هما فقط). */
-function zonesFor(scope: string | undefined, storeId: string) {
-  return defaultShippingZones().map((z) => ({ ...z, storeId, isActive: scope === "cairo_giza" ? z.governorate === "cairo" || z.governorate === "giza" : true }));
-}
+/** مناطق الشحن حسب اختيار العميل: النطاق والسعر الموحد ومدة التوصيل (agency/policies.ts). */
+const zonesFor = (delivery: IntakeData["delivery"], storeId: string) => zoneRows(delivery).map((z) => ({ ...z, storeId }));
 
 async function seedCatalog(storeId: string, seed: StoreSeed) {
   const tdb = await getTenantDb(storeId);
@@ -80,7 +79,7 @@ export async function prepareFolder(row: RequestRow, slug: string): Promise<{ dr
     return u && isTrustedUploadUrl(u) ? u : null;
   };
   const draft = buildDraft({ slug, code: row.code, data: d, imageUrl });
-  const brief = renderBrief({ code: row.code, data: d, assets: assets.map((a) => ({ key: a.key, url: a.url, kind: a.kind, transcript: a.transcript })), submittedAt: row.submittedAt });
+  const brief = renderBrief({ code: row.code, data: d, assets: assets.filter((a) => a.kind === "image" || a.kind === "logo").map((a) => ({ key: a.key, url: a.url, kind: a.kind as "image" | "logo" })), submittedAt: row.submittedAt });
   const files = storeFolderFiles({
     slug,
     code: row.code,
@@ -136,7 +135,7 @@ export async function provisionStore(row: RequestRow, slug: string): Promise<Pro
 
   const bp = blueprintSchema.parse(draft.blueprint);
   await db.insert(storeBlueprints).values({ storeId, data: bp, updatedBy: "agency:provision" });
-  await (await getTenantDb(storeId)).insert(shippingZones).values(zonesFor(d.delivery.scope, storeId));
+  await (await getTenantDb(storeId)).insert(shippingZones).values(zonesFor(d.delivery, storeId));
   await seedCatalog(storeId, draft.seed);
   return { ok: true, storeId, draft, files };
 }

@@ -37,7 +37,7 @@ const optionalSecret = z.preprocess(cleanSecretValue, z.string().optional());
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
-  // UploadThing مزوّد الملفات القديم: اختياري متى ضُبطت R2 (NEXT_PUBLIC_MEDIA_PROVIDER=r2).
+  // UploadThing مزوّد الملفات القديم: اختياري متى ضُبطت مفاتيح R2 الأربعة (server/media-host.ts يفضّل R2).
   UPLOADTHING_TOKEN: z.string().min(10).optional().or(z.literal("").transform(() => undefined)),
 
   MORPHEUS_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
@@ -46,7 +46,6 @@ const serverSchema = z.object({
   CLAUDE_OPUS_MODEL: z.string().default("claude-opus-4.1"),
   GROQ_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
   GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
-  GROQ_WHISPER_MODEL: z.string().default("whisper-large-v3-turbo"),
   GEMINI_API_KEY: z.preprocess(cleanSecretValue, z.string().min(1)),
   GEMINI_MODEL: z.string().default("gemini-3.8-flash"),
 

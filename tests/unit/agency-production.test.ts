@@ -144,8 +144,8 @@ import { buildDraft, parseProductLine, storeFolderFiles } from "@/agency/draft";
 import { emptyIntake } from "@/intake/schema";
 import { blueprintSchema } from "@/blueprint/schema";
 
-describe("تحليل سطر المنتج", () => {
-  it("الاسم والألوان والمقاسات والسعر", () => {
+describe("تحليل كلام التاجر عن المنتج", () => {
+  it("الأسلوب القديم بفواصل: الاسم والألوان والمقاسات والسعر", () => {
     expect(parseProductLine("تيشيرت قطن، أسود/أبيض، M L XL، 350")).toEqual({ name: "تيشيرت قطن", price: 350, options: { اللون: ["أسود", "أبيض"], المقاس: ["M", "L", "XL"] } });
   });
   it("أرقام هندية وكلمة جنيه", () => {
@@ -157,6 +157,29 @@ describe("تحليل سطر المنتج", () => {
     expect(p.price).toBeNull();
     expect(p.note).toBe("مريحة للصيف");
   });
+  it("نص حر في جملة واحدة: علامات السعر والمقاس واللون", () => {
+    expect(parseProductLine("تيشيرت قطن أسود وأبيض مقاسات M L XL السعر 350 جنيه")).toEqual({
+      name: "تيشيرت قطن",
+      price: 350,
+      options: { المقاس: ["M", "L", "XL"], اللون: ["أسود", "أبيض"] },
+    });
+    const dress = parseProductLine("فستان سواريه\nاللون: أزرق\nالمقاس: S, M, L\n850 ج");
+    expect(dress.name).toBe("فستان سواريه");
+    expect(dress.price).toBe(850);
+    expect(dress.options).toEqual({ المقاس: ["S", "M", "L"], اللون: ["أزرق"] });
+  });
+  it("رقم وحيد بلا علامة = سعر، وأرقام المقاسات (حذاء) ليست سعراً", () => {
+    expect(parseProductLine("جاكيت جلد ٤٥٠").price).toBe(450);
+    expect(parseProductLine("حذاء رياضي مقاسات 40 41 42 السعر 600").price).toBe(600);
+    expect(parseProductLine("حذاء رياضي 40 41 42 43").price).toBeNull();
+    expect(parseProductLine("حقيبة بسعر1200").price).toBe(1200);
+    expect(parseProductLine("كتاب 5 أجزاء").price).toBeNull();
+  });
+  it("اسم قصير حتى لو الكلام طويل، وكل الكلام لا يضيع", () => {
+    const p = parseProductLine("هودي شتوي ثقيل جداً ومناسب للبرد القارس ومبطن من الداخل بفرو ناعم ومريح للغاية ويدوم سنوات طويلة بسعر 700");
+    expect(p.price).toBe(700);
+    expect(p.name.split(" ").length).toBeLessThanOrEqual(8);
+  });
 });
 
 describe("المسودة الأولى", () => {
@@ -164,10 +187,12 @@ describe("المسودة الأولى", () => {
     const d = emptyIntake();
     d.store.name = "بيبي كوتون";
     d.colors = { mode: "preset", preset: "soft-rose" };
-    d.payment = { methods: ["wallet"], unsure: false };
-    d.products = { mode: "list", items: [{ id: "a", line: "بيجامة، 350" }, { id: "b", line: "طقم بلا سعر" }] };
-    const draft = buildDraft({ slug: "baby", code: "REQ-1", data: d, imageUrl: () => null });
+    d.payment = { methods: ["wallet"], walletNumber: "01112223334" };
+    d.products = { items: [{ id: "a", text: "بيجامة، 350", images: ["k1"] }, { id: "b", text: "طقم بلا سعر", images: [] }] };
+    const draft = buildDraft({ slug: "baby", code: "REQ-1", data: d, imageUrl: (k) => (k ? `https://media.colapia.com/${k}.jpg` : null) });
     expect(draft.seed.products.map((p) => p.name)).toEqual(["بيجامة"]);
+    expect(draft.seed.products[0]!.images).toEqual(["https://media.colapia.com/k1.jpg"]);
+    expect(draft.blueprint.payments.vodafoneCash).toMatchObject({ enabled: true, number: "01112223334" });
     expect(draft.missingPrice).toEqual(["طقم بلا سعر"]);
     expect(draft.blueprint.brand.name).toBe("بيبي كوتون");
     expect(draft.blueprint.payments.cod.enabled).toBe(false);

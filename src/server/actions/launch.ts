@@ -4,6 +4,8 @@ import { requirePlatformCap } from "@/server/platform-guard";
 import { probeTier, resetBreakers, type ProbeResult } from "@/ai/providers";
 import { sendEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
+import { mediaApi } from "@/server/media-host";
+import { redis } from "@/lib/redis";
 
 /** صورة اختبار حقيقية: شعار Colapia من الأصول المنشورة (لا ملف من القرص: يعمل على Cloudflare أيضاً). */
 async function testImage(): Promise<Uint8Array> {
@@ -34,6 +36,32 @@ export async function testChatAction(): Promise<{ ok: true; results: ProbeResult
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 200) };
   }
+}
+
+/** اختبار الرفع الحقيقي: يحفظ صورة (شعار المنصة) في مساحة الملفات ويعيد رابطها، فيعرضها المتصفح ليتأكد الفريق أن العرض يعمل أيضاً. */
+export async function testMediaAction(): Promise<{ ok: true; url: string; key: string; host: string } | { ok: false; error: string }> {
+  await requirePlatformCap("settings");
+  try {
+    const api = await mediaApi();
+    if (!api) return { ok: false, error: "لا مساحة ملفات مضبوطة (R2 أو UploadThing): راجع فحص «مساحة الصور»" };
+    const bytes = await testImage();
+    const up = await api.upload({ bytes, name: "launch-check.png", type: "image/png", ext: "png", prefix: "tmp/launch-check" });
+    if (!up) return { ok: false, error: "رفض الخادم حفظ الصورة: راجع فحص «مساحة الصور» وسجلات الخادم" };
+    // نتذكر مفتاح ملف الاختبار وحده: التنظيف لا يحذف إلا ما أنشأه هذا الاختبار.
+    await redis.set(`launch:media-test:${up.key}`, "1", { ex: 600 }).catch(() => null);
+    return { ok: true, url: up.url, key: up.key, host: new URL(up.url).hostname };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 200) };
+  }
+}
+
+export async function cleanupMediaTestAction(key: string): Promise<{ ok: boolean }> {
+  await requirePlatformCap("settings");
+  if (typeof key !== "string" || key.length > 200 || !(await redis.get(`launch:media-test:${key}`).catch(() => null))) return { ok: false };
+  const api = await mediaApi();
+  const ok = Boolean(api && (await api.remove([key]).catch(() => false)));
+  if (ok) await redis.del(`launch:media-test:${key}`).catch(() => null);
+  return { ok };
 }
 
 export async function resetModelsAction(tier: "visionFast" | "chat"): Promise<{ ok: true }> {

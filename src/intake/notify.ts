@@ -12,7 +12,7 @@ import { sendTemplatedEmail } from "@/lib/email";
 import { redis } from "@/lib/redis";
 import { waLink } from "@/lib/whatsapp";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
-import { DELIVERY_OPTIONS, PAYMENT_OPTIONS, safeUrl, socialUrl, type IntakeData } from "./schema";
+import { DELIVERY_OPTIONS, FEE_OPTIONS, PAYMENT_OPTIONS, RETURN_OPTIONS, safeUrl, socialUrl, type IntakeData } from "./schema";
 import { paletteById } from "./palettes";
 import { STAGE_INFO } from "./stages";
 import { etaText } from "./eta";
@@ -46,19 +46,39 @@ function teamRows(r: RequestRow, d: IntakeData): TeamAlertRow[] {
   add("واتساب", r.whatsapp ?? d.contact.whatsapp);
   add("البريد (مالك اللوحة)", r.email ? `${r.email} (غير مؤكد بعد)` : null);
   const social = socialUrl(d.social.url);
-  add("الصفحة", social ? `${social}${d.social.teamCollects ? " — الفريق يجمع المنتجات منها" : ""}` : null);
+  add("الصفحة", social);
   const palette = paletteById(d.colors.preset);
   add(
     "الألوان",
     d.colors.mode === "preset" && palette ? palette.name : d.colors.mode === "logo" ? "من الشعار" : d.colors.mode === "custom" ? d.colors.custom : d.colors.mode === "team" ? "يختارها الفريق" : null,
   );
   add("الشعار", d.logo.key ? "مرفوع" : d.logo.team ? "يختارها الفريق" : null);
+  const imageCount = d.products.items.reduce((n, p) => n + p.images.length, 0);
+  add("المنتجات", d.products.items.length ? `${d.products.items.length} منتج${imageCount ? ` · ${imageCount} صورة` : " · بلا صور"}` : null);
   add(
-    "المنتجات",
-    d.products.mode === "team" ? "الفريق يجمعها" : d.products.mode === "later" ? "يضيفها بنفسه لاحقاً" : d.products.items.length ? `${d.products.items.length} (صورة وسطر)` : null,
+    "الدفع",
+    d.payment.methods
+      .map((m) => {
+        const label = PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m;
+        if (m === "wallet") return `${label} (${d.payment.walletNumber ?? "؟"})`;
+        if (m === "instapay") return `${label} (${d.payment.instapayAddress ?? "؟"})`;
+        if (m === "cod") return `${label} (المعاينة ${d.payment.inspection === "yes" ? "متاحة" : d.payment.inspection === "no" ? "غير متاحة" : "؟"})`;
+        return label;
+      })
+      .join("، "),
   );
-  add("الدفع", d.payment.unsure ? "لسه مش محدد" : d.payment.methods.map((m) => PAYMENT_OPTIONS.find((o) => o.id === m)?.label ?? m).join("، "));
-  add("الشحن", [DELIVERY_OPTIONS.find((o) => o.id === d.delivery.scope)?.label, d.delivery.note].filter(Boolean).join(" — "));
+  add(
+    "الشحن",
+    [
+      DELIVERY_OPTIONS.find((o) => o.id === d.delivery.scope)?.label,
+      d.delivery.note,
+      d.delivery.fee === "flat" ? `${d.delivery.feeAmount ?? "؟"} جنيه` : FEE_OPTIONS.find((o) => o.id === d.delivery.fee)?.label,
+      d.delivery.eta,
+    ]
+      .filter(Boolean)
+      .join(" — "),
+  );
+  add("الاستبدال", d.returns.mode ? `${RETURN_OPTIONS.find((o) => o.id === d.returns.mode)?.label ?? ""}${d.returns.days && d.returns.mode !== "none" ? ` (${d.returns.days} يوماً)` : ""}` : null);
   add("موقع إلهام", safeUrl(d.inspiration.url) ?? (d.inspiration.team ? "يختارها الفريق" : null));
   add("المصدر", [r.source, r.utm?.utm_source, r.utm?.utm_campaign].filter(Boolean).join(" / "));
   return rows;
@@ -107,8 +127,7 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
   if (teamTurn) {
     const to = await teamRecipients();
     const byKey = new Map(assets.map((a) => [a.key, a]));
-    const voice = d.voice.key ? byKey.get(d.voice.key) : undefined;
-    const images = [d.logo.key, ...d.products.items.map((p) => p.key)].map((k) => (k ? byKey.get(k)?.url : undefined)).filter((u): u is string => Boolean(u));
+    const images = [d.logo.key, ...d.products.items.flatMap((p) => p.images)].map((k) => (k ? byKey.get(k)?.url : undefined)).filter((u): u is string => Boolean(u)).slice(0, 12);
     if (to.length) {
       let ok = false;
       try {
@@ -122,8 +141,6 @@ export async function notifySubmitted(r: RequestRow, d: IntakeData, assets: Asse
             whatsappUrl: r.whatsapp ? waLink(r.whatsapp, `أهلاً، مع حضراتكم فريق Colapia بخصوص طلب متجر «${name}» (${r.code}).`) : null,
             rows: teamRows(r, d),
             images,
-            voiceUrl: voice?.url ?? null,
-            transcript: (d.voice.transcript ?? voice?.transcript ?? "").slice(0, 1200) || null,
             notes: d.notes?.slice(0, 1500) ?? null,
             etaText: eta,
           }),

@@ -62,7 +62,7 @@ export async function purgeExpiredDrafts(limit = 100): Promise<{ requests: numbe
  */
 export async function pruneUnreferencedAssets(requestId: string, data: IntakeData): Promise<number> {
   const refs = referencedKeys(data);
-  const keep = [...refs.images, refs.logo, refs.voice].filter((k): k is string => Boolean(k));
+  const keep = [...refs.images, refs.logo].filter((k): k is string => Boolean(k));
   const orphans = await db
     .select({ key: storeRequestAssets.key })
     .from(storeRequestAssets)

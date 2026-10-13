@@ -7,10 +7,10 @@ import { aiCalls } from "@/db/schema";
 import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { readTrace } from "@/lib/meta-trace";
-import { MEDIA_PROVIDER } from "@/lib/media";
+import { mediaBaseUrl } from "@/lib/media";
 import { MODELS } from "@/ai/providers";
 import { domainAutoConfigured, domainTarget } from "@/server/domains";
-import { deleteObjects, headObject, putObject, r2Configured } from "@/server/r2";
+import { deleteObjects, headObject, putObject, r2Configured, r2Missing } from "@/server/r2";
 import journal from "../../drizzle/meta/_journal.json";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -136,17 +136,27 @@ const checkGemini = () =>
 
 const checkMedia = () =>
   run("media", "مساحة الصور", async () => {
-    if (MEDIA_PROVIDER !== "r2") {
-      return env.UPLOADTHING_TOKEN
-        ? { status: "warn", detail: "على UploadThing (المزوّد القديم)", fix: "فعّل R2 بدليل docs/deploy-cloudflare.md القسم 3 ثم NEXT_PUBLIC_MEDIA_PROVIDER=r2" }
-        : { status: "fail", detail: "لا R2 ولا UploadThing: رفع الصور معطل", fix: "اتبع docs/deploy-cloudflare.md القسم 3" };
+    const missing = r2Missing();
+    if (r2Configured()) {
+      const host = new URL(mediaBaseUrl()!).hostname;
+      const key = `tmp/launch-check-${Date.now()}.txt`;
+      await putObject(key, new TextEncoder().encode("ok"), "text/plain");
+      const head = await headObject(key);
+      await deleteObjects([key]).catch(() => 0);
+      return head
+        ? { status: "ok", detail: `R2 يقبل الرفع والقراءة والحذف · الصور تُعرض من ${host}\nللتأكد من العرض نفسه اضغط «اختبر رفع الصور وعرضها» أعلاه.` }
+        : { status: "fail", detail: "رُفع الملف ولم يُعثر عليه", fix: "راجع اسم الـ bucket في R2_BUCKET" };
     }
-    if (!r2Configured()) return { status: "fail", detail: "مفعّلة في البناء لكن مفاتيح R2 ناقصة", fix: `أضف R2_ACCOUNT_ID وR2_ACCESS_KEY_ID وR2_SECRET_ACCESS_KEY وR2_BUCKET (${varsWhere()})` };
-    const key = `tmp/launch-check-${Date.now()}.txt`;
-    await putObject(key, new TextEncoder().encode("ok"), "text/plain");
-    const head = await headObject(key);
-    await deleteObjects([key]).catch(() => 0);
-    return head ? { status: "ok", detail: "R2 يقبل الرفع والقراءة والحذف" } : { status: "fail", detail: "رُفع الملف ولم يُعثر عليه", fix: "راجع اسم الـ bucket في R2_BUCKET" };
+    if (missing.length && missing.length < 4)
+      return { status: "fail", detail: `R2 مضبوط جزئياً وناقصه: ${missing.join("، ")}`, fix: `أضف المتغيرات الناقصة (${varsWhere()}) ثم أعد النشر. بدونها تُحفظ الصور على UploadThing إن وُجد.` };
+    if (env.UPLOADTHING_TOKEN) {
+      const { UTApi } = await import("uploadthing/server");
+      const ok = await new UTApi({ token: env.UPLOADTHING_TOKEN }).listFiles({ limit: 1 }).then(() => true, () => false);
+      return ok
+        ? { status: "warn", detail: "الصور تُحفظ على UploadThing (يعمل)", fix: "R2 أسرع وأرخص: أضف R2_ACCOUNT_ID وR2_ACCESS_KEY_ID وR2_SECRET_ACCESS_KEY وR2_BUCKET (docs/deploy-cloudflare.md القسم 3)" }
+        : { status: "fail", detail: "UPLOADTHING_TOKEN مرفوض: رفع الصور معطل", fix: `انسخ UPLOADTHING_TOKEN من uploadthing.com ← API Keys والصقه كما هو (${varsWhere()})، أو فعّل R2` };
+    }
+    return { status: "fail", detail: "لا R2 ولا UploadThing: رفع الصور معطل", fix: "أضف R2_ACCOUNT_ID وR2_ACCESS_KEY_ID وR2_SECRET_ACCESS_KEY وR2_BUCKET (docs/deploy-cloudflare.md القسم 3)" };
   });
 
 const checkMeta = () =>

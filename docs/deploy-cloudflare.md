@@ -129,16 +129,12 @@ R2 تخزن صور المنتجات والإيصالات وملفات الاست
 1. **فعّل R2:** القائمة اليسرى ← **R2 Object Storage** ← لو طلب **Purchase R2 / Subscribe**: وافق (الخطة مجانية ضمن الحدود،
    لكنه يطلب وسيلة الدفع التي أضفتها).
 2. **أنشئ الـ bucket:** **Create bucket** ← الاسم: `colapia-media` ← Location: **Automatic** ← **Create bucket**.
-3. **اربط نطاقاً لعرض الصور:** افتح `colapia-media` ← **Settings** ← **Custom Domains** ← **Connect Domain** ← اكتب
-   `media.colapia.com` ← **Continue** ← **Connect domain**. انتظر حتى تصبح الحالة **Active** (دقيقة إلى دقائق).
-4. **اسمح بالرفع من المتصفح (CORS):** نفس صفحة Settings ← **CORS Policy** ← **Add CORS policy** ← امسح الموجود والصق:
-   ```json
-   [{ "AllowedOrigins": ["*"], "AllowedMethods": ["PUT"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
-   ```
-   ← **Save**. (النجمة مقصودة لأن المتاجر تعمل على نطاقات عملائها أيضاً. الأمان من أن كل رابط رفع صالح 10 دقائق لملف واحد بنوعه وحجمه.)
-5. **احذف الملفات المؤقتة تلقائياً:** Settings ← **Object lifecycle rules** ← **Add rule** ← الاسم `tmp` ← Prefix: `tmp/` ←
+3. **لا تربط نطاقاً ولا تضبط CORS:** الرفع يمر عبر موقعك نفسه (المتصفح لا يتصل بـ R2 أبداً)، والعرض من `media.colapia.com` يخدمه
+   الـ Worker نفسه من الـ bucket (يكفي سجل DNS `*` البرتقالي الذي أضفته للمتاجر). لو ربطت نطاقاً مخصصاً على الـ bucket سابقاً
+   فلا بأس، يبقى يعمل.
+4. **احذف الملفات المؤقتة تلقائياً:** Settings ← **Object lifecycle rules** ← **Add rule** ← الاسم `tmp` ← Prefix: `tmp/` ←
    **Delete uploaded objects after 1 day** ← Save.
-6. **مفتاح الوصول:** ارجع لصفحة R2 الرئيسية ← **Manage API tokens** (أو API ← Manage R2 API Tokens) ← **Create API token** ←
+5. **مفتاح الوصول:** ارجع لصفحة R2 الرئيسية ← **Manage API tokens** (أو API ← Manage R2 API Tokens) ← **Create API token** ←
    - Token name: `colapia-app`
    - Permissions: **Object Read & Write**
    - Specify bucket: **Apply to specific buckets only** ← `colapia-media`
@@ -166,8 +162,6 @@ R2 تخزن صور المنتجات والإيصالات وملفات الاست
    |---|---|
    | `NEXT_PUBLIC_ROOT_DOMAIN` | `colapia.com` |
    | `NEXT_PUBLIC_APP_URL` | `https://colapia.com` |
-   | `NEXT_PUBLIC_MEDIA_PROVIDER` | `r2` |
-   | `NEXT_PUBLIC_MEDIA_BASE_URL` | `https://media.colapia.com` |
    | `NEXT_PUBLIC_PUSHER_KEY` | انسخها من Vercel إن وُجدت (وإلا لا تضفها) |
    | `NEXT_PUBLIC_PUSHER_CLUSTER` | انسخها من Vercel إن وُجدت |
    | `NODE_VERSION` | `22` |
@@ -178,8 +172,8 @@ R2 تخزن صور المنتجات والإيصالات وملفات الاست
      المشروع ← Deployments ← **Retry deployment**.
    - أكمل القسم 5 ثم أعد النشر.
 7. **تعرف أنه نجح:** في صفحة المشروع ستجد رابطاً مثل `colapia.<اسمك>.workers.dev` وحالة آخر نشر **Success**.
-8. **استثنِ نطاق الصور من الـ Worker (فوراً بعد أول نشر):** colapia.com ← **Workers Routes** ← **Add route** ←
-   Route: `media.colapia.com/*` ← Worker: **None** ← Save. (بدونه يلتقط الـ Worker طلبات الصور فلا تظهر.)
+8. **الصور:** لا شيء تفعله. الـ Worker يخدم `media.colapia.com` من R2 بنفسه. بعد النشر افتح `/admin/launch` ← **اختبر رفع الصور وعرضها**:
+   يحفظ صورة حقيقية ويعرضها لك من رابطها العام، فتعرف فوراً إن كان الرفع والعرض سليمين.
 
 > المشروع سيُعاد نشره تلقائياً مع كل تحديث يُرفع إلى `main` في GitHub. لا تحتاج تفعل شيئاً بعد اليوم.
 > ملف `wrangler.jsonc` فيه مساران (`colapia.com/*` و`*.colapia.com/*`) يلتقطان colapia.com والمتاجر، لكنه **لا يعمل** إلا على السجلات البرتقالية، والسجلات الآن رمادية،
@@ -216,10 +210,11 @@ Workers & Pages ← `colapia` ← **Settings** ← **Variables and Secrets** ←
 | الاسم | القيمة | لماذا |
 |---|---|---|
 | `CRON_SECRET` | أي نص عشوائي طويل (32 حرفاً فأكثر). إن كان موجوداً في Vercel انسخه كما هو | المهام المجدولة (التجارب، الحذف، التذكيرات) |
-| `R2_ACCOUNT_ID` | من القسم 3 خطوة 6 | الصور |
-| `R2_ACCESS_KEY_ID` | من القسم 3 خطوة 6 | الصور |
-| `R2_SECRET_ACCESS_KEY` | من القسم 3 خطوة 6 | الصور |
+| `R2_ACCOUNT_ID` | من القسم 3 خطوة 5 | الصور |
+| `R2_ACCESS_KEY_ID` | من القسم 3 خطوة 5 | الصور |
+| `R2_SECRET_ACCESS_KEY` | من القسم 3 خطوة 5 | الصور |
 | `R2_BUCKET` | `colapia-media` | الصور |
+| `MEDIA_BASE_URL` (اختياري) | `https://media.colapia.com` | الرابط العام للصور؛ الافتراضي `media.<نطاقك>` |
 | `STORES_GITHUB_TOKEN` | توكن GitHub (انظر تحت) إن لم يكن موجوداً | «نزّل مشروع المتجر» وتجهيز فروع المتاجر |
 | `STORES_GITHUB_REPO` | `omarmaher23942-wq/colapia17` | نفس السبب |
 
@@ -325,8 +320,8 @@ Workers & Pages ← `colapia` ← **Settings** ← **Variables and Secrets** ←
 | البريد توقف بعد نقل الـ Nameservers | سجلات Resend لم تُنسخ | resend.com/domains ← colapia.com ← انسخ السجلات الناقصة إلى Cloudflare كـ DNS only |
 | `/api/health` يقول `database: false` | `DATABASE_URL` ناقص أو خاطئ | انسخه من Vercel كما هو (يبدأ بـ `postgresql://`) |
 | صفحة بيضاء أو «Internal Server Error» | مفتاح إلزامي ناقص | Workers ← colapia ← Logs ← Begin log stream؛ اسم المتغير الناقص يظهر في السجل |
-| رفع الصور يفشل | CORS أو مفاتيح R2 | راجع القسم 3 خطوة 4 و6، وأن `NEXT_PUBLIC_MEDIA_BASE_URL` = `https://media.colapia.com` ثم أعد النشر |
-| صور المنتجات لا تظهر | نطاق media غير مفعّل | R2 ← colapia-media ← Settings ← Custom Domains: الحالة Active؟ ومسار `media.colapia.com/*` = None |
+| رفع الصور يفشل | مفاتيح R2 ناقصة أو خاطئة | `/admin/launch` ← فحص «مساحة الصور» يسمّي المتغير الناقص؛ المفاتيح الأربعة: `R2_ACCOUNT_ID` و`R2_ACCESS_KEY_ID` و`R2_SECRET_ACCESS_KEY` و`R2_BUCKET` ثم أعد النشر |
+| صور المنتجات لا تظهر | `media.colapia.com` لا يصل إلى الـ Worker | DNS ← سجل `*` (أو `media`) موجود وبرتقالي، ومسار `*.colapia.com/*` يشير إلى Worker colapia؛ ثم `/admin/launch` ← «اختبر رفع الصور وعرضها» |
 | المتاجر `اسم.colapia.com` لا تفتح | سجل `*` ناقص أو رمادي | DNS ← سجل `*` موجود وبرتقالي |
 | نطاق عميل عالق «بانتظار السجلات» | سجله لم يُضف أو الجذري لا يقبل CNAME | لوحة التاجر ← نطاقك الخاص تشرح له؛ أو انقل DNS نطاقه إلى Cloudflare مجاناً |
 | المهام المجدولة لا تعمل | `CRON_SECRET` ناقص | أضفه (القسم 5) وأعد النشر؛ تأكد من Workers ← colapia ← Settings ← Triggers فيها جدولان |

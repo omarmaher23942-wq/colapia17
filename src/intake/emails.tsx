@@ -60,8 +60,6 @@ export function RequestTeamAlertEmail(p: {
   whatsappUrl?: string | null;
   rows: TeamAlertRow[];
   images: string[];
-  voiceUrl?: string | null;
-  transcript?: string | null;
   notes?: string | null;
   etaText: string;
 }) {
@@ -86,16 +84,6 @@ export function RequestTeamAlertEmail(p: {
         <EmailInfoBox>
           <strong>ملاحظات العميل:</strong> {p.notes}
         </EmailInfoBox>
-      ) : null}
-      {p.transcript ? (
-        <EmailInfoBox tone="info">
-          <strong>تفريغ الرسالة الصوتية (آلي):</strong> {p.transcript}
-        </EmailInfoBox>
-      ) : null}
-      {p.voiceUrl && isTrustedUploadUrl(p.voiceUrl) ? (
-        <EmailParagraph>
-          <a href={p.voiceUrl}>اسمع الرسالة الصوتية</a>
-        </EmailParagraph>
       ) : null}
       {images.length ? (
         <p style={{ margin: "12px 0" }}>

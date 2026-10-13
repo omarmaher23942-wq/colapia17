@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { COLOR_MODES, DELIVERY_OPTIONS, PAYMENT_OPTIONS, PRODUCT_MODES, type IntakeData } from "@/intake/schema";
+import { COLOR_MODES, DELIVERY_OPTIONS, FEE_OPTIONS, INSPECTION_OPTIONS, PAYMENT_OPTIONS, PRODUCT_TEXT_MAX, RETURN_OPTIONS, type IntakeData } from "@/intake/schema";
 import { INTAKE_PALETTES } from "@/intake/palettes";
 import { editRequestDataAction } from "@/server/actions/agency-production";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 const input = "w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-[14px] text-[#eaf0ff] outline-none placeholder:text-[#8d97c4]/70 focus:border-[#6f86ff]";
 const label = "block text-[12.5px] font-black text-[#c3cdf0]";
 const COLOR_LABEL: Record<(typeof COLOR_MODES)[number], string> = { preset: "لوحة جاهزة", logo: "من الشعار", custom: "لون محدد", team: "سيبها للفريق" };
-const PRODUCT_LABEL: Record<(typeof PRODUCT_MODES)[number], string> = { list: "قائمة من العميل", team: "الفريق يجمعها", later: "يضيفها بنفسه لاحقاً" };
 
 export function RequestDataEditor({ id, data, version, imageUrls }: { id: string; data: IntakeData; version: string; imageUrls: Record<string, string> }) {
   const router = useRouter();
@@ -72,10 +71,6 @@ export function RequestDataEditor({ id, data, version, imageUrls }: { id: string
           رابط الصفحة
           <input className={cn(input, "mt-1.5")} dir="ltr" maxLength={300} value={d.social.url ?? ""} onChange={(e) => set("social", { ...d.social, url: e.target.value })} />
         </label>
-        <label className={cn(label, "flex items-center gap-2 self-end pb-3")}>
-          <input type="checkbox" checked={d.social.teamCollects} onChange={(e) => set("social", { ...d.social, teamCollects: e.target.checked })} className="size-4 accent-[#6f86ff]" />
-          الفريق يجمع المنتجات من الصفحة
-        </label>
       </div>
 
       <fieldset className="space-y-2">
@@ -116,32 +111,45 @@ export function RequestDataEditor({ id, data, version, imageUrls }: { id: string
 
       <fieldset className="space-y-2">
         <legend className={label}>المنتجات</legend>
-        <div className="flex flex-wrap gap-2">
-          {PRODUCT_MODES.map((m) => (
-            <button key={m} type="button" onClick={() => set("products", { ...d.products, mode: m })} className={cn("min-h-10 rounded-xl border px-3 text-[12.5px] font-black", d.products.mode === m ? "border-[#6f86ff] bg-[#6f86ff]/20 text-white" : "border-white/10 text-[#c3cdf0]")}>
-              {PRODUCT_LABEL[m]}
-            </button>
-          ))}
-        </div>
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {d.products.items.map((it, i) => (
-            <li key={it.id} className="flex items-center gap-2">
-              {it.key && imageUrls[it.key] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrls[it.key]} alt="" className="size-11 shrink-0 rounded-lg object-cover" />
-              ) : (
-                <span className="grid size-11 shrink-0 place-items-center rounded-lg bg-white/5 text-[10px] text-[#8d97c4]">{i + 1}</span>
-              )}
-              <input
-                className={input}
-                maxLength={200}
-                value={it.line ?? ""}
-                placeholder="الاسم، الألوان، المقاسات، السعر"
-                onChange={(e) => set("products", { ...d.products, items: d.products.items.map((x) => (x.id === it.id ? { ...x, line: e.target.value } : x)) })}
-              />
-              <button type="button" aria-label="احذف المنتج" onClick={() => set("products", { ...d.products, items: d.products.items.filter((x) => x.id !== it.id) })} className="grid size-11 shrink-0 place-items-center rounded-xl text-rose-300 hover:bg-rose-500/10">
-                <Trash2 className="size-4" aria-hidden="true" />
-              </button>
+            <li key={it.id} className="space-y-2 rounded-2xl border border-white/10 p-2.5">
+              <div className="flex items-start gap-2">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[11px] text-[#8d97c4]">{i + 1}</span>
+                <textarea
+                  className={cn(input, "leading-7")}
+                  rows={3}
+                  maxLength={PRODUCT_TEXT_MAX}
+                  value={it.text ?? ""}
+                  placeholder="كلام العميل عن المنتج (الاسم، اللون، المقاس، السعر…)"
+                  onChange={(e) => set("products", { ...d.products, items: d.products.items.map((x) => (x.id === it.id ? { ...x, text: e.target.value } : x)) })}
+                />
+                <button type="button" aria-label="احذف المنتج" onClick={() => set("products", { ...d.products, items: d.products.items.filter((x) => x.id !== it.id) })} className="grid size-11 shrink-0 place-items-center rounded-xl text-rose-300 hover:bg-rose-500/10">
+                  <Trash2 className="size-4" aria-hidden="true" />
+                </button>
+              </div>
+              {it.images.length ? (
+                <div className="flex flex-wrap gap-2 ps-10">
+                  {it.images.map((k) => (
+                    <span key={k} className="relative">
+                      {imageUrls[k] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={imageUrls[k]} alt="" className="size-14 rounded-lg object-cover" />
+                      ) : (
+                        <span className="grid size-14 place-items-center rounded-lg bg-white/5 text-[10px] text-[#8d97c4]">صورة</span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label="احذف الصورة"
+                        onClick={() => set("products", { ...d.products, items: d.products.items.map((x) => (x.id === it.id ? { ...x, images: x.images.filter((y) => y !== k) } : x)) })}
+                        className="absolute -end-1.5 -top-1.5 grid size-6 place-items-center rounded-full bg-rose-500 text-white"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -155,16 +163,28 @@ export function RequestDataEditor({ id, data, version, imageUrls }: { id: string
               <input
                 type="checkbox"
                 checked={d.payment.methods.includes(o.id)}
-                onChange={(e) => set("payment", { ...d.payment, methods: e.target.checked ? [...d.payment.methods, o.id] : d.payment.methods.filter((m) => m !== o.id), unsure: false })}
+                onChange={(e) => set("payment", { ...d.payment, methods: e.target.checked ? [...d.payment.methods, o.id] : d.payment.methods.filter((m) => m !== o.id) })}
                 className="size-4 accent-[#6f86ff]"
               />
               {o.label}
             </label>
           ))}
-          <label className="flex items-center gap-2 text-[13px] font-bold text-[#8d97c4]">
-            <input type="checkbox" checked={d.payment.unsure} onChange={(e) => set("payment", { methods: e.target.checked ? [] : d.payment.methods, unsure: e.target.checked })} className="size-4 accent-[#6f86ff]" />
-            مش متأكد
-          </label>
+          {d.payment.methods.includes("wallet") ? (
+            <input className={input} dir="ltr" inputMode="tel" maxLength={30} placeholder="رقم المحفظة" value={d.payment.walletNumber ?? ""} onChange={(e) => set("payment", { ...d.payment, walletNumber: e.target.value })} />
+          ) : null}
+          {d.payment.methods.includes("instapay") ? (
+            <input className={input} dir="ltr" maxLength={80} placeholder="إنستاباي: الرقم أو العنوان أو اسم الحساب" value={d.payment.instapayAddress ?? ""} onChange={(e) => set("payment", { ...d.payment, instapayAddress: e.target.value })} />
+          ) : null}
+          {d.payment.methods.includes("cod") ? (
+            <select value={d.payment.inspection ?? ""} onChange={(e) => set("payment", { ...d.payment, inspection: (e.target.value || undefined) as IntakeData["payment"]["inspection"] })} className={cn(input, "h-11 bg-[#07091a] py-0")} aria-label="المعاينة وفتح الشحنة">
+              <option value="">المعاينة وفتح الشحنة: —</option>
+              {INSPECTION_OPTIONS.map((o) => (
+                <option key={o.id} value={o.id}>
+                  المعاينة وفتح الشحنة: {o.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </fieldset>
         <fieldset className="space-y-2">
           <legend className={label}>التوصيل</legend>
@@ -176,20 +196,41 @@ export function RequestDataEditor({ id, data, version, imageUrls }: { id: string
               </option>
             ))}
           </select>
-          <input className={input} maxLength={200} placeholder="تفاصيل (محافظات، مدة، سعر)" value={d.delivery.note ?? ""} onChange={(e) => set("delivery", { ...d.delivery, note: e.target.value })} />
+          {d.delivery.scope === "custom" ? <input className={input} maxLength={200} placeholder="المحافظات" value={d.delivery.note ?? ""} onChange={(e) => set("delivery", { ...d.delivery, note: e.target.value })} /> : null}
+          <select value={d.delivery.fee ?? ""} onChange={(e) => set("delivery", { ...d.delivery, fee: (e.target.value || undefined) as IntakeData["delivery"]["fee"] })} className={cn(input, "h-11 bg-[#07091a] py-0")} aria-label="سعر الشحن">
+            <option value="">سعر الشحن: —</option>
+            {FEE_OPTIONS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          {d.delivery.fee === "flat" ? (
+            <input className={input} dir="ltr" inputMode="numeric" placeholder="السعر بالجنيه" value={d.delivery.feeAmount ?? ""} onChange={(e) => set("delivery", { ...d.delivery, feeAmount: Number(e.target.value.replace(/\D/g, "")) || undefined })} />
+          ) : null}
+          {d.delivery.fee === "varies" ? <input className={input} maxLength={300} placeholder="أسعار المحافظات" value={d.delivery.feeNote ?? ""} onChange={(e) => set("delivery", { ...d.delivery, feeNote: e.target.value })} /> : null}
+          <input className={input} maxLength={60} placeholder="مدة التوصيل" value={d.delivery.eta ?? ""} onChange={(e) => set("delivery", { ...d.delivery, eta: e.target.value })} />
         </fieldset>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className={label}>الاستبدال والاسترجاع</legend>
+        <div className="flex flex-wrap items-center gap-2">
+          {RETURN_OPTIONS.map((o) => (
+            <button key={o.id} type="button" onClick={() => set("returns", { ...d.returns, mode: o.id })} className={cn("min-h-10 rounded-xl border px-3 text-[12.5px] font-black", d.returns.mode === o.id ? "border-[#6f86ff] bg-[#6f86ff]/20 text-white" : "border-white/10 text-[#c3cdf0]")}>
+              {o.label}
+            </button>
+          ))}
+          {d.returns.mode === "full" || d.returns.mode === "exchange" ? (
+            <input className={cn(input, "w-28")} dir="ltr" inputMode="numeric" placeholder="الأيام" value={d.returns.days ?? ""} onChange={(e) => set("returns", { ...d.returns, days: Number(e.target.value.replace(/\D/g, "")) || undefined })} />
+          ) : null}
+        </div>
+      </fieldset>
 
       <label className={label}>
         موقع إلهام
         <input className={cn(input, "mt-1.5")} dir="ltr" maxLength={300} value={d.inspiration.url ?? ""} onChange={(e) => set("inspiration", { ...d.inspiration, url: e.target.value })} />
       </label>
-      {d.voice.key ? (
-        <label className={label}>
-          تفريغ الرسالة الصوتية (صحّحه بعد السماع)
-          <textarea className={cn(input, "mt-1.5 leading-7")} rows={4} maxLength={4000} value={d.voice.transcript ?? ""} onChange={(e) => set("voice", { ...d.voice, transcript: e.target.value })} />
-        </label>
-      ) : null}
       <label className={label}>
         ملاحظات العميل
         <textarea className={cn(input, "mt-1.5 leading-7")} rows={4} maxLength={2000} value={d.notes ?? ""} onChange={(e) => set("notes", e.target.value)} />

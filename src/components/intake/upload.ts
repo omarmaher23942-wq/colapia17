@@ -1,7 +1,7 @@
 "use client";
 
 // upload.ts — رفع ملفات الاستمارة من المتصفح: ضغط الصور قبل الرفع (شبكات الموبايل)، وتحويل أي صيغة غير مقبولة
-// (مثل HEIC من آيفون) إلى JPEG، ثم UploadThing بهوية رابط المسودة.
+// (مثل HEIC من آيفون) إلى JPEG، ثم الرفع عبر الخادم بهوية رابط المسودة.
 import imageCompression from "browser-image-compression";
 import { uploadDirect } from "@/lib/media-upload";
 
@@ -24,12 +24,6 @@ export async function prepareImage(f: File): Promise<File> {
 export async function uploadIntakeImage(token: string, file: File, kind: "image" | "logo"): Promise<{ key: string; url: string }> {
   const [r] = await uploadDirect("intakeImage", [file], { token, kind });
   if (!r) throw new Error("فشل رفع الصورة.");
-  return { key: r.key, url: r.ufsUrl };
-}
-
-export async function uploadIntakeVoice(token: string, file: File, durationMs: number): Promise<{ key: string; url: string }> {
-  const [r] = await uploadDirect("intakeVoice", [file], { token, durationMs: Math.round(durationMs) });
-  if (!r) throw new Error("فشل رفع التسجيل.");
   return { key: r.key, url: r.ufsUrl };
 }
 

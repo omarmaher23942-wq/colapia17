@@ -1,9 +1,11 @@
-// worker.ts — نقطة دخول Colapia على Cloudflare Workers: عامل OpenNext كما هو (fetch) + المهام المجدولة (scheduled)
-// بدل Vercel Cron وجداول QStash. المهمة تستدعي مسار المنصة نفسه داخلياً بسر CRON_SECRET (لا طلب عبر الإنترنت).
+// worker.ts — نقطة دخول Colapia على Cloudflare Workers: عامل OpenNext (fetch) + المهام المجدولة (scheduled) بدل
+// Vercel Cron وجداول QStash + خدمة ملفات المتاجر على media.<النطاق> من R2 (media.ts). المهمة المجدولة تستدعي مسار
+// المنصة نفسه داخلياً بسر CRON_SECRET (لا طلب عبر الإنترنت).
 // @ts-expect-error — يُولَّد عند البناء (opennextjs-cloudflare build).
 import { default as handler } from "../.open-next/worker.js";
+import { serveMedia, type MediaEnv } from "./media";
 
-type Env = { CRON_SECRET?: string; ROOT_DOMAIN?: string };
+type Env = { CRON_SECRET?: string } & MediaEnv;
 type Ctx = { waitUntil(p: Promise<unknown>): void };
 
 const JOBS: Record<string, string> = {
@@ -12,7 +14,9 @@ const JOBS: Record<string, string> = {
 };
 
 export default {
-  fetch: handler.fetch,
+  async fetch(request: Request, env: Env, ctx: Ctx) {
+    return (await serveMedia(request, env, ctx)) ?? handler.fetch(request, env, ctx);
+  },
   async scheduled(event: { cron: string }, env: Env, ctx: Ctx) {
     const path = JOBS[event.cron];
     if (!path || !env.CRON_SECRET) {

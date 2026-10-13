@@ -7,6 +7,9 @@
   "main": "cloudflare/worker.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // esbuild كان يحقن دالة __name داخل الدوال، فتنكسر السكربتات التي يكتبها React/Next نصاً داخل الصفحة
+  // (خطأ «__name is not defined» في المتصفح). التعطيل يمنع الحقن.
+  "keep_names": false,
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   // تحسين الصور (next/image) عبر Cloudflare Images.
   "images": { "binding": "IMAGES" },
@@ -17,7 +20,7 @@
   },
   // colapia.com والمتاجر <slug>.colapia.com. المسار «*/*» (يلتقط نطاقات العملاء أيضاً) يرفضه Cloudflare قبل تفعيل
   // Cloudflare for SaaS على المنطقة (خطأ 10022)، فنكتفي بمسارين صريحين الآن، ويُضاف «*/*» عند تفعيل النطاقات الخاصة
-  // (الدليل: docs/deploy-cloudflare.md القسم 8). media.colapia.com (صور R2) يُستثنى بمسار «None» من اللوحة.
+  // (الدليل: docs/deploy-cloudflare.md القسم 8). media.colapia.com (صور R2) يخدمه العامل نفسه من R2 (cloudflare/media.ts).
   "routes": [
     { "pattern": "colapia.com/*", "zone_name": "colapia.com" },
     { "pattern": "*.colapia.com/*", "zone_name": "colapia.com" }

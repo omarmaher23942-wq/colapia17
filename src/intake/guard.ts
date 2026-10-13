@@ -192,13 +192,3 @@ export async function checkIntake(input: { ip: string; email: string | null; wha
 
 /** يرفع عدّادات إرسال تم حفظه (بعد submitRequest). */
 export const commitIntake = (counters: IntakeCounters): Promise<void> => (counters.length ? bump(counters) : Promise.resolve());
-
-/** حدود التفريغ الصوتي (يكلف ويشارك مفتاح Groq مع وكيل الرسائل): لكل طلب ولكل شبكة وسقف يومي عام. */
-export async function allowTranscription(requestId: string, ip: string): Promise<boolean> {
-  const [perRequest, perIp, global] = await Promise.all([
-    hit(`tx:req:${requestId}`, 6, 86_400),
-    hit(`tx:ip:${ip}`, 12, 86_400),
-    hit(`tx:day:${cairoDay()}`, 300, 129_600),
-  ]);
-  return perRequest && perIp && global;
-}

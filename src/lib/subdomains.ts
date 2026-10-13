@@ -5,6 +5,8 @@
 export const RESERVED_SUBDOMAINS = new Set([
   "www", "admin", "api", "app", "mail", "cdn", "static", "assets", "help", "docs", "status",
   "colapia", "support", "blog", "dev", "staging", "test", "dashboard", "auth", "login",
+  // مضيفات الملفات والفيديو (media.<النطاق> يخدم صور المتاجر من R2).
+  "media", "img", "images", "files", "uploads", "video", "videos", "stream",
 ]);
 
 export function isReservedSubdomain(sub: string): boolean {

@@ -1,77 +1,80 @@
 "use client";
-// media-upload.ts — رفع الملفات من المتصفح بواجهة واحدة لكل الصفحات: R2 (إذن من /api/upload ← PUT مباشر إلى R2 ←
-// تأكيد من /api/upload/complete) متى كان NEXT_PUBLIC_MEDIA_PROVIDER=r2، وإلا UploadThing كما كان. النتيجة نفسها في
-// الحالتين: [{ key, url, ufsUrl, name, size, type }].
+// media-upload.ts — رفع الملفات من المتصفح بواجهة واحدة لكل الصفحات: كل ملف في طلب multipart إلى /api/upload
+// على موقعنا نفسه (الخادم يتحقق ويكتب في مساحة الملفات). لا اتصال بمضيف آخر من المتصفح. مشروع التاجر الخاص له نسخته
+// من هذا الملف (template/src/lib/media-upload.ts) على حساب UploadThing الخاص به.
 import { useCallback, useState } from "react";
-import { MEDIA_PROVIDER, type MediaRoute } from "@/lib/media";
-import { useUploadThing } from "@/lib/uploadthing-client";
-import { uploadFiles } from "@/lib/uploadthing-client-direct";
+import type { MediaRoute } from "@/lib/media";
 
 export type UploadedFile = { key: string; url: string; ufsUrl: string; name: string; size: number; type: string };
 type UploadError = { message: string };
 
-async function readError(r: Response, fallback: string): Promise<string> {
-  const j = (await r.json().catch(() => null)) as { error?: string } | null;
-  return j?.error || fallback;
+const TIMEOUT_MS = 120_000;
+const PARALLEL = 3;
+
+/** يرفع ملفاً واحداً. يرمي Error برسالة عربية مفهومة عند أي فشل. */
+async function uploadOne(route: MediaRoute, file: File, input?: unknown): Promise<UploadedFile> {
+  const fd = new FormData();
+  fd.set("route", route);
+  if (input !== undefined) fd.set("input", JSON.stringify(input));
+  fd.set("file", file, file.name || "image");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let r: Response;
+  try {
+    r = await fetch("/api/upload", { method: "POST", body: fd, signal: ctrl.signal, credentials: "same-origin" });
+  } catch (e) {
+    throw new Error((e as Error)?.name === "AbortError" ? "الرفع أخذ وقتاً طويلاً. تأكد من الاتصال وحاول مرة أخرى." : "تعذر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.");
+  } finally {
+    clearTimeout(timer);
+  }
+  const j = (await r.json().catch(() => null)) as { error?: string; files?: { key: string; url: string; type?: string; size?: number }[] } | null;
+  const f = j?.files?.[0];
+  if (!r.ok || !f) throw new Error(j?.error || (r.status === 413 ? "الصورة كبيرة. الحد الأقصى 8 ميجا." : "تعذر رفع الصورة. حاول مرة أخرى."));
+  return { key: f.key, url: f.url, ufsUrl: f.url, name: file.name, size: f.size ?? file.size, type: f.type ?? file.type };
 }
 
-/** رفع مباشر إلى R2 بثلاث خطوات (الإذن، الرفع، التأكيد). يرمي Error برسالة عربية مفهومة عند أي فشل. */
-export async function uploadToR2(route: MediaRoute, files: File[], input?: unknown): Promise<UploadedFile[]> {
-  const grant = await fetch("/api/upload", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ route, input, files: files.map((f) => ({ name: f.name, type: f.type, size: f.size })) }),
-  });
-  if (!grant.ok) throw new Error(await readError(grant, "تعذر بدء الرفع. حاول مرة أخرى."));
-  const { uploads } = (await grant.json()) as { uploads: { key: string; url: string; putUrl: string; headers: Record<string, string>; ticket: string }[] };
-  await Promise.all(
-    uploads.map(async (u, i) => {
-      const r = await fetch(u.putUrl, { method: "PUT", headers: u.headers, body: files[i] });
-      if (!r.ok) throw new Error("تعذر رفع الملف. تأكد من الاتصال وحاول مرة أخرى.");
-    })
-  );
-  const done = await fetch("/api/upload/complete", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ tickets: uploads.map((u) => u.ticket) }),
-  });
-  if (!done.ok) throw new Error(await readError(done, "تعذر تأكيد الرفع. حاول مرة أخرى."));
-  return uploads.map((u, i) => ({ key: u.key, url: u.url, ufsUrl: u.url, name: files[i]!.name, size: files[i]!.size, type: files[i]!.type }));
-}
-
-/** رفع خارج المكوّنات (الاستمارة): نفس نتيجة الخطاف. */
-export async function uploadDirect(route: MediaRoute, files: File[], input?: unknown): Promise<UploadedFile[]> {
-  if (MEDIA_PROVIDER === "r2") return uploadToR2(route, files, input);
-  const r = await (uploadFiles as unknown as (route: string, opts: { files: File[]; input?: unknown }) => Promise<{ key: string; ufsUrl: string; name: string; size: number; type: string }[]>)(route, { files, input });
-  return r.map((x) => ({ key: x.key, url: x.ufsUrl, ufsUrl: x.ufsUrl, name: x.name, size: x.size, type: x.type }));
-}
-
-/** خطاف الرفع لكل الصفحات (بدل useUploadThing). onUploadError يستلم رسالة عربية جاهزة للعرض. */
-export function useMediaUpload(route: MediaRoute, opts: { onUploadError?: (e: UploadError) => void } = {}) {
-  const ut = useUploadThing(route as never, { onUploadError: (e: UploadError) => opts.onUploadError?.(e) } as never) as unknown as {
-    startUpload: (files: File[], input?: unknown) => Promise<{ key: string; ufsUrl: string; name: string; size: number; type: string }[] | undefined>;
-    isUploading: boolean;
+/** رفع عدة ملفات (ثلاثة متوازية) مع حفظ الترتيب. يعيد ما نجح، وأول رسالة خطأ إن فشل بعضها. */
+export async function uploadMany(route: MediaRoute, files: File[], input?: unknown): Promise<{ done: UploadedFile[]; error: string | null }> {
+  const results: (UploadedFile | null)[] = files.map(() => null);
+  let error: string | null = null;
+  let next = 0;
+  const worker = async () => {
+    while (next < files.length) {
+      const i = next++;
+      try {
+        results[i] = await uploadOne(route, files[i]!, input);
+      } catch (e) {
+        error ??= e instanceof Error ? e.message : "تعذر رفع الصورة. حاول مرة أخرى.";
+      }
+    }
   };
-  const [busy, setBusy] = useState(false);
+  await Promise.all(Array.from({ length: Math.min(PARALLEL, files.length) }, worker));
+  return { done: results.filter((x): x is UploadedFile => x !== null), error };
+}
+
+/** رفع خارج المكوّنات (الاستمارة): نفس نتيجة الخطاف، ويرمي عند الفشل. */
+export async function uploadDirect(route: MediaRoute, files: File[], input?: unknown): Promise<UploadedFile[]> {
+  const { done, error } = await uploadMany(route, files, input);
+  if (error && !done.length) throw new Error(error);
+  return done;
+}
+
+/** خطاف الرفع لكل الصفحات. onUploadError يستلم رسالة عربية جاهزة للعرض؛ startUpload يعيد undefined إن لم ينجح أي ملف. */
+export function useMediaUpload(route: MediaRoute, opts: { onUploadError?: (e: UploadError) => void } = {}) {
+  const [busy, setBusy] = useState(0);
   const { onUploadError } = opts;
-  const utStart = ut.startUpload;
   const startUpload = useCallback(
     async (files: File[], input?: unknown): Promise<UploadedFile[] | undefined> => {
-      if (MEDIA_PROVIDER !== "r2") {
-        const r = await utStart(files, input);
-        return r?.map((x) => ({ key: x.key, url: x.ufsUrl, ufsUrl: x.ufsUrl, name: x.name, size: x.size, type: x.type }));
-      }
-      setBusy(true);
+      setBusy((n) => n + 1);
       try {
-        return await uploadToR2(route, files, input);
-      } catch (e) {
-        onUploadError?.({ message: e instanceof Error ? e.message : "تعذر رفع الملف" });
-        return undefined;
+        const { done, error } = await uploadMany(route, files, input);
+        if (error) onUploadError?.({ message: error });
+        return done.length ? done : undefined;
       } finally {
-        setBusy(false);
+        setBusy((n) => Math.max(0, n - 1));
       }
     },
-    [route, utStart, onUploadError]
+    [route, onUploadError]
   );
-  return { startUpload, isUploading: busy || ut.isUploading };
+  return { startUpload, isUploading: busy > 0 };
 }

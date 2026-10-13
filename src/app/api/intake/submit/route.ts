@@ -60,17 +60,17 @@ export async function POST(req: Request) {
     const errors = validateSubmission(data);
     if (Object.keys(errors).length) return json({ error: "invalid", errors }, 422);
 
-    // كل ملف مذكور يجب أن يكون مرفوعاً لهذا الطلب نفسه وبنوعه الصحيح ومن مضيف UploadThing.
+    // كل ملف مذكور يجب أن يكون مرفوعاً لهذا الطلب نفسه وبنوعه الصحيح ومن مساحة ملفاتنا.
     const assets = await requestAssets(row.id);
     const byKey = new Map(assets.map((a) => [a.key, a]));
     const keys = referencedKeys(data);
-    const owned = (key: string | null, kind: "image" | "logo" | "voice") => {
+    const owned = (key: string | null, kind: "image" | "logo") => {
       if (!key) return true;
       const a = byKey.get(key);
       return Boolean(a && a.kind === kind && isTrustedUploadUrl(a.url));
     };
-    if (!keys.images.every((k) => owned(k, "image")) || !owned(keys.logo, "logo") || !owned(keys.voice, "voice")) {
-      return json({ error: "files", message: "في صورة أو تسجيل لم يكتمل رفعه. احذفه وارفعه تاني." }, 422);
+    if (!keys.images.every((k) => owned(k, "image")) || !owned(keys.logo, "logo")) {
+      return json({ error: "files", message: "في صورة لم يكتمل رفعها. احذفها وارفعها تاني." }, 422);
     }
 
     const email = normalizeEmail(data.contact.email);

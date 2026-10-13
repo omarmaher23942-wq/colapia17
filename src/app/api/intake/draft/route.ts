@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
   const ip = requestIp(req);
-  if (!(await hit(`draft:ip:${ip}`, 240, 60))) return json({ error: "rate_limited", message: "حفظ كتير في وقت قصير، استنى ثانية." }, 429);
+  if (!(await hit(`draft:ip:${ip}`, 240, 60))) return json({ error: "rate_limited", message: "حفظ كتير في وقت قصير، انتظر ثانية." }, 429);
 
   const parsedBody = await readJson(req);
   if (!parsedBody.ok) return json({ error: "bad_request" }, parsedBody.status);

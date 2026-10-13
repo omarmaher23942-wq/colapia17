@@ -1,12 +1,24 @@
 import "server-only";
-// r2.ts — Cloudflare R2 بواجهة S3 (aws4fetch: توقيع SigV4 يعمل في Node وCloudflare Workers معاً). روابط رفع موقّعة
-// قصيرة العمر للمتصفح (النوع والحجم ضمن التوقيع)، وفحص الملف بعد الرفع، ورفع من الخادم، وحذف.
+// r2.ts — Cloudflare R2 بواجهة S3 (aws4fetch: توقيع SigV4 يعمل في Node وCloudflare Workers معاً): رفع من الخادم،
+// وفحص وجود الملف، وحذف. المتصفح لا يتصل بـ R2 أبداً: يرفع إلى /api/upload ويعرض الملفات من الرابط العام.
 import { AwsClient } from "aws4fetch";
 import { env } from "@/lib/env";
 import { mediaBaseUrl } from "@/lib/media";
 
+/** أسماء متغيرات R2 الناقصة (فارغة = مضبوطة كلها). الرابط العام له افتراضي media.<النطاق> فلا يُعدّ ناقصاً. */
+export function r2Missing(): string[] {
+  const need: [string, string | undefined][] = [
+    ["R2_ACCOUNT_ID", env.R2_ACCOUNT_ID],
+    ["R2_ACCESS_KEY_ID", env.R2_ACCESS_KEY_ID],
+    ["R2_SECRET_ACCESS_KEY", env.R2_SECRET_ACCESS_KEY],
+    ["R2_BUCKET", env.R2_BUCKET],
+  ];
+  return need.filter(([, v]) => !v).map(([k]) => k);
+}
+
+/** هل R2 هو مساحة الملفات؟ المفاتيح الأربعة مضبوطة ويوجد رابط عام (صريح أو media.<النطاق>). */
 export function r2Configured(): boolean {
-  return Boolean(env.R2_ACCOUNT_ID && env.R2_ACCESS_KEY_ID && env.R2_SECRET_ACCESS_KEY && env.R2_BUCKET && mediaBaseUrl());
+  return r2Missing().length === 0 && Boolean(mediaBaseUrl());
 }
 
 let client: AwsClient | null = null;
@@ -22,16 +34,6 @@ const objectUrl = (key: string) => `${endpoint()}/${env.R2_BUCKET}/${key.split("
 /** الرابط العام للعرض (نطاق الـ bucket المخصص). */
 export function publicUrl(key: string): string {
   return `${mediaBaseUrl()}/${key.split("/").map(encodeURIComponent).join("/")}`;
-}
-
-/** رابط PUT موقّع لعشر دقائق؛ يرفضه R2 إن اختلف النوع أو الحجم عما وُقّع. */
-export async function presignPut(key: string, contentType: string, size: number): Promise<{ url: string; headers: Record<string, string> }> {
-  const url = new URL(objectUrl(key));
-  url.searchParams.set("X-Amz-Expires", "600");
-  const headers = { "content-type": contentType, "content-length": String(size) };
-  const signed = await aws().sign(new Request(url, { method: "PUT", headers }), { aws: { signQuery: true, allHeaders: true } });
-  // المتصفح يضبط content-length بنفسه من حجم الملف؛ نرسل له النوع فقط.
-  return { url: signed.url, headers: { "content-type": contentType } };
 }
 
 /** بيانات ملف مرفوع (للتحقق بعد الرفع): الحجم والنوع، أو null إن لم يوجد. */
