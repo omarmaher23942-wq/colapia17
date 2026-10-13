@@ -1,133 +1,325 @@
-# دليل Colapia على Cloudflare (للمالك، خطوة بخطوة)
+# نقل Colapia من Vercel إلى Cloudflare — الدليل الكامل خطوة بخطوة
 
-> **الخلاصة أولاً:** الكود صار يعمل على Cloudflare Workers وعلى Vercel معاً، فلا شيء يتوقف قبل أن تكمل الخطوات.
-> **قياس فعلي (2026-10-13):** حزمة Colapia بعد الضغط **6.1 ميجابايت**. الخطة المجانية لـ Workers تقبل **3 ميجابايت** فقط
-> (ووقت معالجة 10 مللي ثانية لكل طلب، وصفحات المتجر تحتاج أكثر)، فالتطبيق **لا يُنشر على الخطة المجانية**. الخطة
-> المدفوعة **Workers Paid (5$ شهرياً)** تقبل 10 ميجابايت ووقتاً كافياً. التوصية: ابقَ على الاستضافة الحالية للتجربة،
-> وانقل إلى Cloudflare مع الاشتراك بـ 5$ عند أول متجر حقيقي (أو قبله إن أردت). R2 (القسم 1) مجاني حتى 10 جيجابايت
-> ويعمل الآن من أي استضافة.
+> **لمن هذا الدليل:** لك أنت (المالك)، بلا أي خبرة تقنية. كل خطوة مكتوب فيها: أين تضغط، وماذا تكتب، وكيف تعرف أنها نجحت.
+> **المدة:** حوالي ساعتين على مهل، ويمكن تقسيمها على يومين. **الموقع لا يتوقف لحظة واحدة** خلال كل الخطوات.
+> **القاعدة الذهبية:** لا تضع أي مفتاح في أي ملف داخل المشروع. المفاتيح مكانها لوحة Cloudflare فقط.
 
-> كل خطوة هنا تفعلها مرة واحدة. لا تضع أي مفتاح في المستودع: المفاتيح في لوحة Cloudflare فقط.
+---
 
-## 1) مساحة الصور (R2)
+## 0) الصورة الكاملة قبل أن تبدأ (اقرأها مرة واحدة)
 
-R2 هي مساحة الملفات الجديدة بدل UploadThing: الصور تُرفع من المتصفح مباشرة وتُعرض من نطاق Colapia بلا تكلفة تنزيل.
-الكود يعمل الآن على الطريقتين: ما لم تكمل هذه الخطوات يبقى الرفع على UploadThing كما هو، وبمجرد ضبط المتغيرات أدناه
-يتحول الرفع الجديد إلى R2. الصور القديمة على UploadThing تبقى ظاهرة.
+**الوضع الآن:** الموقع (colapia.com وكل المتاجر `اسم.colapia.com`) يعمل على Vercel، والصور على UploadThing.
 
-1. **أنشئ الـ bucket:** لوحة Cloudflare ← R2 ← Create bucket ← الاسم `colapia-media` ← الموقع Automatic.
-2. **اربط نطاقاً للعرض:** افتح الـ bucket ← Settings ← Custom Domains ← Connect Domain ← `media.colapia.com` (يتطلب أن
-   يكون colapia.com على Cloudflare). هذا رابط الصور العام.
-3. **اسمح بالرفع من المتصفح (CORS):** نفس الصفحة ← CORS Policy ← Add CORS policy، والصق:
+**بعد هذا الدليل:** الموقع يعمل على Cloudflare Workers، والصور على Cloudflare R2، ونطاقات عملائك الخاصة (مثل `brand.com`)
+تُربط تلقائياً. أما قاعدة البيانات (Neon) والبريد (Resend) وRedis وQStash (Upstash) والذكاء الاصطناعي (Groq/Gemini) فتبقى
+كما هي تماماً، لا تلمسها.
+
+**سر النقل بلا توقف:** سننقل «إدارة الدومين» إلى Cloudflare أولاً والموقع ما زال يعمل على Vercel. ثم نجهّز Cloudflare
+بالكامل ونختبره. ثم **نحوّل بضغطة واحدة**: نجعل سجلات الدومين «برتقالية» (Proxied) فيبدأ Cloudflare في خدمة الموقع.
+ولو حصلت أي مشكلة، **نرجع بضغطة واحدة**: نعيدها «رمادية» (DNS only) فيعود الموقع إلى Vercel فوراً.
+
+**الترتيب:**
+
+| # | الخطوة | الوقت | هل يتأثر الموقع؟ |
+|---|---|---|---|
+| 1 | حساب Cloudflare والدفع (5$) | 10 دقائق | لا |
+| 2 | نقل إدارة الدومين إلى Cloudflare | 15 دقيقة + انتظار | لا |
+| 3 | مساحة الصور R2 | 15 دقيقة | لا |
+| 4 | ربط GitHub وأول نشر | 20 دقيقة | لا |
+| 5 | نقل المفاتيح (الأسرار) | 15 دقيقة | لا |
+| 6 | الاختبار قبل التحويل | 15 دقيقة | لا |
+| 7 | **التحويل** (ضغطة واحدة) | دقيقتان | يبدأ العمل على Cloudflare |
+| 8 | النطاقات الخاصة للعملاء | 10 دقائق | لا |
+| 9 | التنظيف (Vercel وQStash) | 10 دقائق | لا |
+
+**ما تحتاجه قبل البدء:**
+- بريدك وكلمة سر جديدة لحساب Cloudflare.
+- بطاقة بنكية تعمل أونلاين بالدولار (فيزا أو ماستركارد، ويصلح الكثير من بطاقات الخصم المصرية بعد تفعيل «الشراء من الإنترنت/الدولي» من تطبيق البنك)، أو حساب PayPal.
+- الدخول لحساب Vercel وحساب GitHub.
+- معرفة أين اشتريت `colapia.com` (Vercel أو Namecheap أو GoDaddy أو غيرها). لو لا تتذكر: ادخل Vercel ← Domains؛ إن وجدته
+  هناك ومكتوب بجانبه «Registered with Vercel» فهو من Vercel.
+
+---
+
+## 1) حساب Cloudflare والاشتراك (5$ شهرياً)
+
+### 1.1 إنشاء الحساب
+1. افتح **dash.cloudflare.com/sign-up**.
+2. اكتب بريدك وكلمة سر قوية ← **Sign up** ← افتح بريدك واضغط رابط التأكيد.
+3. لو سألك عن «ماذا تريد أن تفعل» اضغط **Skip** أو أي خيار؛ لا يهم.
+
+### 1.2 تفعيل التحقق بخطوتين (مهم لحماية الحساب)
+1. أعلى اليمين: أيقونة الحساب ← **My Profile** ← **Authentication** ← **Two-Factor Authentication** ← **Set up**.
+2. امسح الرمز بتطبيق Google Authenticator على موبايلك واكتب الرقم. **احفظ رموز الاسترجاع** في مكان آمن.
+
+### 1.3 إضافة وسيلة الدفع
+1. من القائمة اليسرى: **Manage Account** ← **Billing** ← **Payment info** (أو Payment methods) ← **Add payment method**.
+2. اختر **Card** واكتب بيانات البطاقة، أو اختر **PayPal**.
+3. لو رُفضت البطاقة: افتح تطبيق البنك وفعّل «المعاملات الدولية / الشراء عبر الإنترنت»، ثم أعد المحاولة. ويمكن استخدام PayPal بدلها.
+
+### 1.4 الاشتراك في Workers Paid
+1. القائمة اليسرى: **Workers & Pages** ← **Plans** (أو زر **Upgrade** أعلى الصفحة).
+2. اختر **Workers Paid — $5/month** ← **Purchase / Upgrade** ← أكّد.
+3. **تعرف أنها نجحت:** في Billing ← Subscriptions ستجد «Workers Paid» بحالة Active.
+
+> **لماذا المدفوعة؟** قِسنا حجم المنصة فعلياً: 6.1 ميجابايت مضغوطة، والخطة المجانية لا تقبل أكثر من 3، وتسمح بوقت معالجة
+> قصير جداً لكل زيارة. الـ 5$ تشمل 10 ملايين زيارة شهرياً، وهذا يكفي مئات المتاجر.
+
+---
+
+## 2) نقل إدارة الدومين إلى Cloudflare (الموقع يبقى على Vercel)
+
+### 2.1 أضف colapia.com إلى Cloudflare
+1. من الصفحة الرئيسية للحساب: **Add a domain** (أو Add site).
+2. اكتب `colapia.com` ← اختر **Quick scan for DNS records** ← **Continue**.
+3. اختر خطة **Free** (خطة الدومين مجانية؛ المدفوع هو Workers فقط) ← **Continue**.
+4. ستظهر قائمة بسجلات DNS التي نسخها Cloudflare من الإعدادات الحالية. **لا تضغط Continue قبل الخطوة 2.2.**
+
+### 2.2 راجع السجلات المنسوخة (أهم خطوة في هذا القسم)
+افتح في تبويب آخر المكان الذي فيه سجلات الدومين الآن (Vercel ← Domains ← colapia.com ← DNS Records، أو لوحة شركة الدومين)،
+وتأكد أن كل سجل هناك موجود أيضاً في Cloudflare. ركّز على:
+
+| السجل | لماذا مهم | كيف يكون في Cloudflare |
+|---|---|---|
+| سجلات البريد من Resend (MX، وTXT فيه `v=spf1`، وسجلات `resend._domainkey` و`send`) | بدونها يتوقف إرسال كل البريد | **DNS only** (سحابة رمادية) |
+| أي TXT للتحقق من Google أو Meta (`google-site-verification`، `facebook-domain-verification`) | إثبات ملكية الدومين | كما هي |
+| `@` من نوع A بقيمة `76.76.21.21` (أو ALIAS إلى Vercel) | الموقع الرئيسي على Vercel الآن | **DNS only** (رمادية) — سنحوّلها لاحقاً |
+| `*` من نوع CNAME بقيمة `cname.vercel-dns.com` | كل المتاجر `اسم.colapia.com` | **DNS only** (رمادية) |
+| `www` من نوع CNAME بقيمة `cname.vercel-dns.com` | www.colapia.com | **DNS only** (رمادية) |
+
+- لإضافة سجل ناقص: **Add record** ← اختر النوع والاسم والقيمة كما في المصدر ← اجعل السحابة **رمادية** ← Save.
+- لجعل سجل رمادياً: اضغط **Edit** بجانبه ← انقر السحابة البرتقالية لتصبح رمادية (DNS only) ← Save.
+- **لماذا رمادي الآن؟** حتى يبقى الموقع يعمل على Vercel كما هو تماماً بعد النقل.
+- لو لم يكن عندك سجل `*` (المتاجر) في Vercel لأن Vercel كان يدير الدومين كاملاً: أضفه بنفسك: النوع `CNAME`، الاسم `*`، القيمة
+  `cname.vercel-dns.com`، رمادي. وكذلك `@`: النوع `A`، الاسم `@`، القيمة `76.76.21.21`، رمادي.
+
+ثم اضغط **Continue**. سيعطيك Cloudflare **اسمين (Nameservers)** مثل `anna.ns.cloudflare.com` و`bob.ns.cloudflare.com`.
+**انسخهما.**
+
+### 2.3 غيّر الـ Nameservers عند شركة الدومين
+**إن كان الدومين مسجلاً في Vercel:**
+1. Vercel ← **Domains** (من قائمة الحساب، لا المشروع) ← `colapia.com`.
+2. ابحث عن **Nameservers** ← **Edit** ← اختر **Custom** ← احذف القديم والصق اسمي Cloudflare ← **Save**.
+3. لا تنقل «تسجيل» الدومين نفسه من Vercel. تغيير الـ Nameservers وحده يكفي، ويبقى تجديد الدومين السنوي عند Vercel كما هو.
+
+**إن كان في Namecheap:** Domain List ← Manage ← Nameservers ← **Custom DNS** ← الصق الاسمين ← علامة ✓.
+**إن كان في GoDaddy:** My Products ← DNS ← Nameservers ← **Change** ← **Enter my own nameservers** ← الصق الاسمين ← Save.
+**غير ذلك:** ابحث في لوحة الشركة عن كلمة **Nameservers** وضع الاسمين مكان الموجود.
+
+### 2.4 انتظر التفعيل
+1. ارجع لـ Cloudflare ← colapia.com ← **Check nameservers now**.
+2. يستغرق من دقائق إلى ساعات (نادراً 24 ساعة). سيصلك بريد **«colapia.com is now active on Cloudflare»**.
+3. **تعرف أنها نجحت:** صفحة Overview للدومين مكتوب فيها **Active**. وافتح colapia.com: يعمل كما كان (ما زال على Vercel).
+4. افتح **SSL/TLS** ← **Overview** ← اختر **Full (strict)**. ثم **SSL/TLS** ← **Edge Certificates** ← **Always Use HTTPS** ← On.
+
+> **احتياط البريد:** بعد التفعيل أرسل لنفسك بريد تجربة من المنصة (مثلاً «ادخل برمز على بريدك» في `/login`)، وافتح
+> resend.com/domains وتأكد أن colapia.com ما زال **Verified**. لو لا، فسجلاً من سجلات Resend ناقص في Cloudflare: أضفه من
+> صفحة Resend نفسها (تعرض لك السجلات المطلوبة) كـ **DNS only**.
+
+---
+
+## 3) مساحة الصور (R2)
+
+R2 تخزن صور المنتجات والإيصالات وملفات الاستمارة، وتعرضها من نطاق Colapia بلا تكلفة تنزيل. أول 10 جيجابايت مجانية.
+
+1. **فعّل R2:** القائمة اليسرى ← **R2 Object Storage** ← لو طلب **Purchase R2 / Subscribe**: وافق (الخطة مجانية ضمن الحدود،
+   لكنه يطلب وسيلة الدفع التي أضفتها).
+2. **أنشئ الـ bucket:** **Create bucket** ← الاسم: `colapia-media` ← Location: **Automatic** ← **Create bucket**.
+3. **اربط نطاقاً لعرض الصور:** افتح `colapia-media` ← **Settings** ← **Custom Domains** ← **Connect Domain** ← اكتب
+   `media.colapia.com` ← **Continue** ← **Connect domain**. انتظر حتى تصبح الحالة **Active** (دقيقة إلى دقائق).
+4. **اسمح بالرفع من المتصفح (CORS):** نفس صفحة Settings ← **CORS Policy** ← **Add CORS policy** ← امسح الموجود والصق:
    ```json
    [{ "AllowedOrigins": ["*"], "AllowedMethods": ["PUT"], "AllowedHeaders": ["content-type"], "MaxAgeSeconds": 3600 }]
    ```
-   (`*` لأن المتاجر تعمل أيضاً على نطاقات عملائها الخاصة؛ الأمان من التوقيع: كل رابط رفع صالح 10 دقائق لملف واحد
-   بنوعه وحجمه فقط.)
-4. **احذف ملفات البحث بالصورة المؤقتة تلقائياً:** Settings ← Object lifecycle rules ← Add rule ← Prefix `tmp/` ← Delete
-   objects after **1 day**.
-5. **مفتاح الوصول:** R2 ← Manage R2 API Tokens ← Create API token ← الصلاحية **Object Read & Write** ← Apply to specific
-   bucket only ← `colapia-media` ← Create. انسخ: Access Key ID وSecret Access Key، ورقم الحساب (Account ID) من نفس الصفحة.
-6. **المتغيرات** (في إعدادات الاستضافة؛ على Vercel الآن، وعلى Cloudflare بعد النقل):
-   - `R2_ACCOUNT_ID` = رقم الحساب
-   - `R2_ACCESS_KEY_ID` و`R2_SECRET_ACCESS_KEY` = من الخطوة 5
-   - `R2_BUCKET` = `colapia-media`
-   - `NEXT_PUBLIC_MEDIA_BASE_URL` = `https://media.colapia.com`
-   - `NEXT_PUBLIC_MEDIA_PROVIDER` = `r2`  ← هذا ما يحوّل الرفع إلى R2 (يتطلب إعادة نشر).
-7. **جرّب:** ارفع صورة منتج من لوحة متجر تجريبي، وتأكد أن رابطها يبدأ بـ `https://media.colapia.com/`.
+   ← **Save**. (النجمة مقصودة لأن المتاجر تعمل على نطاقات عملائها أيضاً. الأمان من أن كل رابط رفع صالح 10 دقائق لملف واحد بنوعه وحجمه.)
+5. **احذف الملفات المؤقتة تلقائياً:** Settings ← **Object lifecycle rules** ← **Add rule** ← الاسم `tmp` ← Prefix: `tmp/` ←
+   **Delete uploaded objects after 1 day** ← Save.
+6. **مفتاح الوصول:** ارجع لصفحة R2 الرئيسية ← **Manage API tokens** (أو API ← Manage R2 API Tokens) ← **Create API token** ←
+   - Token name: `colapia-app`
+   - Permissions: **Object Read & Write**
+   - Specify bucket: **Apply to specific buckets only** ← `colapia-media`
+   - **Create API Token**.
+   ستظهر قيم **مرة واحدة فقط**؛ انسخها في ملف ملاحظات مؤقت على جهازك (ليس في المشروع):
+   - **Access Key ID** ← سيكون `R2_ACCESS_KEY_ID`
+   - **Secret Access Key** ← سيكون `R2_SECRET_ACCESS_KEY`
+   - **Account ID** (يظهر في صفحة R2 الرئيسية على اليمين، أو في رابط المتصفح بعد `dash.cloudflare.com/`) ← سيكون `R2_ACCOUNT_ID`
 
-بعد التحويل يمكن ترك `UPLOADTHING_TOKEN` حتى تُحذف الصور القديمة مع متاجرها، أو إزالته إن لم تبقَ صور قديمة.
+---
 
-## 2) الحساب والنطاق
+## 4) ربط المشروع من GitHub وأول نشر
 
-1. **أضف colapia.com إلى Cloudflare** (إن لم يكن): لوحة Cloudflare ← Add a domain ← `colapia.com` ← الخطة Free (خطة
-   النطاق مجانية؛ المدفوع هو Workers فقط) ← سيعطيك Cloudflare عنواني Nameservers: ضعهما مكان الحاليين عند الشركة التي
-   اشتريت منها النطاق. انتظر رسالة «Active» (دقائق إلى ساعات). **قبل تغيير الـ Nameservers** تأكد أن Cloudflare نسخ سجلات
-   البريد (MX وسجلات Resend TXT) من صفحة DNS، وإلا يتوقف البريد.
-2. **اشترك في Workers Paid:** Workers & Pages ← Plans ← Workers Paid (5$).
+1. القائمة اليسرى ← **Workers & Pages** ← **Create** ← تبويب **Workers** ← **Import a repository**.
+2. **Connect GitHub** ← سجّل دخول GitHub ← اختر **Only select repositories** ← `colapia17` ← **Install & Authorize**.
+3. اختر `omarmaher23942-wq/colapia17` ← **Next** واملأ:
+   - **Project name:** `colapia` (حرفياً، يجب أن يطابق ما في ملف `wrangler.jsonc`)
+   - **Production branch:** `main`
+   - **Build command:** `npx opennextjs-cloudflare build`
+   - **Deploy command:** `npx opennextjs-cloudflare deploy`
+   - **Root directory:** اتركه فارغاً (`/`)
+4. افتح **Advanced settings** ← **Build variables** وأضف (هذه ليست أسراراً؛ تدخل في الكود وقت البناء):
 
-## 3) ربط المستودع والنشر التلقائي
+   | الاسم | القيمة |
+   |---|---|
+   | `NEXT_PUBLIC_ROOT_DOMAIN` | `colapia.com` |
+   | `NEXT_PUBLIC_APP_URL` | `https://colapia.com` |
+   | `NEXT_PUBLIC_MEDIA_PROVIDER` | `r2` |
+   | `NEXT_PUBLIC_MEDIA_BASE_URL` | `https://media.colapia.com` |
+   | `NEXT_PUBLIC_PUSHER_KEY` | انسخها من Vercel إن وُجدت (وإلا لا تضفها) |
+   | `NEXT_PUBLIC_PUSHER_CLUSTER` | انسخها من Vercel إن وُجدت |
+   | `NODE_VERSION` | `22` |
 
-1. Workers & Pages ← Create ← Import a repository ← اربط GitHub واختر `colapia17`.
-2. الإعدادات:
-   - Project name: `colapia` (لازم يطابق `name` في `wrangler.jsonc`).
-   - Production branch: `main`.
-   - Build command: `npx opennextjs-cloudflare build`
-   - Deploy command: `npx opennextjs-cloudflare deploy`
-3. **Build variables** (تدخل في الكود وقت البناء، وليست أسراراً):
-   - `NEXT_PUBLIC_ROOT_DOMAIN` = `colapia.com`
-   - `NEXT_PUBLIC_APP_URL` = `https://colapia.com`
-   - `NEXT_PUBLIC_MEDIA_PROVIDER` = `r2` و`NEXT_PUBLIC_MEDIA_BASE_URL` = `https://media.colapia.com` (بعد القسم 1)
-   - `NEXT_PUBLIC_PUSHER_KEY` و`NEXT_PUBLIC_PUSHER_CLUSTER` إن كانا مضبوطين على Vercel.
-4. احفظ وانشر. أول نشر يعطيك رابطاً مثل `colapia.<حسابك>.workers.dev` (للفحص فقط؛ معاينة متجر عليه تحتاج
-   `?store=<slug>&key=<STORE_PREVIEW_KEY>`).
+5. **Create and deploy** (أو Save and Deploy). البناء يأخذ 5–10 دقائق. تابع السجل في صفحة **Deployments**.
+6. **قد يفشل أول نشر** لأن المفاتيح لم تُضف بعد، أو يفشل البناء بخطأ عن `IMAGES`. هذا طبيعي:
+   - خطأ `IMAGES` أو Images: القائمة اليسرى ← **Images** ← فعّل الخطة المجانية (Transformations ← Enable)، ثم من صفحة
+     المشروع ← Deployments ← **Retry deployment**.
+   - أكمل القسم 5 ثم أعد النشر.
+7. **تعرف أنه نجح:** في صفحة المشروع ستجد رابطاً مثل `colapia.<اسمك>.workers.dev` وحالة آخر نشر **Success**.
+8. **استثنِ نطاق الصور من الـ Worker (فوراً بعد أول نشر):** colapia.com ← **Workers Routes** ← **Add route** ←
+   Route: `media.colapia.com/*` ← Worker: **None** ← Save. (بدونه يلتقط الـ Worker طلبات الصور فلا تظهر.)
 
-## 4) المتغيرات والأسرار (وقت التشغيل)
+> المشروع سيُعاد نشره تلقائياً مع كل تحديث يُرفع إلى `main` في GitHub. لا تحتاج تفعل شيئاً بعد اليوم.
+> ملف `wrangler.jsonc` فيه مسار يلتقط colapia.com كله، لكنه **لا يعمل** إلا على السجلات البرتقالية، والسجلات الآن رمادية،
+> فالموقع ما زال على Vercel.
 
-مشروع `colapia` ← Settings ← Variables and Secrets ← Add، وانسخ **كل** المتغيرات الموجودة الآن في Vercel (Settings ←
-Environment Variables) بنفس الأسماء والقيم، ونوعها **Secret** لكل مفتاح. الأهم: `DATABASE_URL`، `AUTH_SECRET`،
-`UPSTASH_REDIS_REST_URL/TOKEN`، `QSTASH_*`، `RESEND_API_KEY`، `GOOGLE_CLIENT_ID/SECRET`، `GROQ_API_KEY`، `GEMINI_API_KEY`،
-`META_*`، `R2_*`، `STORE_PREVIEW_KEY`، **و`CRON_SECRET` إلزامي** (المهام المجدولة تتوقف بدونه). المتغيرات غير السرية
-(`ROOT_DOMAIN` و`TRUST_CF_CONNECTING_IP`) مكتوبة في `wrangler.jsonc` ولا تحتاج إدخالاً.
+---
 
-جديد على Cloudflare فقط:
-- **تسليم الكود** («نزّل مشروع المتجر ZIP»): Cloudflare لا يحمل ملفات المشروع، فتُقرأ من GitHub بنفس الإصدار المنشور.
-  أنشئ توكن: github.com ← Settings ← Developer settings ← Fine-grained tokens ← Repository access: `colapia17` وحده ←
-  Permissions: Contents = **Read and write** (نفس توكن التجهيز الآلي `STORES_GITHUB_TOKEN` إن كان موجوداً)، وضع
-  `STORES_GITHUB_TOKEN` و`STORES_GITHUB_REPO` = `omarmaher23942-wq/colapia17`.
-- **النطاقات الخاصة للعملاء:** القسم 6.
+## 5) نقل المفاتيح (الأسرار) من Vercel إلى Cloudflare
 
-## 5) توجيه colapia.com والمتاجر إلى Workers
+اختر طريقة واحدة:
 
-1. **DNS** (colapia.com ← DNS ← Records): احذف سجلات Vercel القديمة لـ `@` و`*` و`www`، ثم أضف (كلها Proxied، السحابة
-   البرتقالية):
-   - `AAAA` الاسم `@` القيمة `100::`
-   - `AAAA` الاسم `*` القيمة `100::`  (كل المتاجر `<slug>.colapia.com`)
-   - `AAAA` الاسم `customers` القيمة `100::`  (نطاق استقبال النطاقات الخاصة، القسم 6)
-   - `CNAME` الاسم `www` القيمة `colapia.com`
-   (`100::` عنوان رمزي: الطلب لا يذهب لأي خادم، بل يلتقطه الـ Worker.)
-2. **المسارات:** المسار `*/*` على colapia.com يُنشأ تلقائياً مع كل نشر (من `wrangler.jsonc`)، ويلتقط colapia.com والمتاجر
-   ونطاقات العملاء. أضف أنت استثناء الصور مرة واحدة: colapia.com ← Workers Routes ← Add route ← Route:
-   `media.colapia.com/*` ← Worker: **None** ← Save، حتى تبقى الصور تُخدم من R2 مباشرة.
-   (لذلك يجب أن يكون colapia.com على Cloudflare قبل أول نشر: القسم 2 أولاً.)
-3. **SSL/TLS** ← Overview ← Full (strict). وEdge Certificates ← Always Use HTTPS: On.
+### الطريقة (أ) الأسرع: أمر واحد من جهازك (موصى بها)
+على جهازك في مجلد المشروع (`git pull origin main` أولاً)، افتح الطرفية (Terminal / PowerShell) واكتب الأوامر واحداً واحداً:
+```bash
+npx vercel login
+npx vercel link
+npx vercel env pull .env.cloudflare --environment=production
+node scripts/ops/env-to-secrets.mjs .env.cloudflare > secrets.json
+npx wrangler login
+npx wrangler secret bulk secrets.json
+```
+- `vercel link`: اختر حسابك ثم مشروع colapia الحالي.
+- `wrangler login`: يفتح المتصفح، اضغط **Allow**.
+- السكربت يخبرك بعدد المفاتيح ويتخطى ما لا يلزم نقله، وينبهك إن كان `CRON_SECRET` ناقصاً.
+- **بعد النجاح احذف الملفين فوراً:** على ويندوز `del .env.cloudflare secrets.json`، وعلى ماك `rm .env.cloudflare secrets.json`.
+  (الملفان مستثنيان من git أصلاً، لكن لا تتركهما على جهازك.)
 
-## 6) النطاقات الخاصة للعملاء (Cloudflare for SaaS، أول 100 نطاق مجاناً)
+### الطريقة (ب) يدوياً من اللوحة
+Workers & Pages ← `colapia` ← **Settings** ← **Variables and Secrets** ← **Add** ← النوع **Secret** ← الاسم والقيمة ← Save.
+افتح Vercel ← المشروع ← Settings ← Environment Variables بجانبها، وانسخ **كل** المتغيرات بأسمائها وقيمها، **عدا**:
+ما يبدأ بـ `NEXT_PUBLIC_` (أضفته في القسم 4)، و`ROOT_DOMAIN` و`TRUST_CF_CONNECTING_IP` (موجودان في الملف).
 
-1. colapia.com ← SSL/TLS ← Custom Hostnames ← Enable (قد يطلب وسيلة دفع؛ أول 100 مجاناً).
-2. Fallback Origin ← `customers.colapia.com` ← Add (انتظر Active).
-3. توكن API: My Profile ← API Tokens ← Create Token ← Custom ← Permissions: Zone ← **SSL and Certificates** ← Edit ←
-   Zone Resources: Include ← Specific zone ← colapia.com ← Create. ضعه في `CF_API_TOKEN`، وضع رقم المنطقة (Zone ID من صفحة
-   Overview للنطاق، يمين الصفحة) في `CF_ZONE_ID`.
-4. من الآن: حين يكتب التاجر نطاقه في لوحته تُضاف نطاقاته لـ Cloudflare تلقائياً، ويرى سجلاً واحداً: `CNAME` إلى
-   `customers.colapia.com` (والجذري `CNAME @`، تسميه بعض الشركات ALIAS). متى أضافه تصدر الشهادة وحدها، والفحص الدوري
-   (أو زر «افحص الآن») يفعّله. بدون التوكن يظهر للتاجر نفس السجل، وتضيفه أنت يدوياً: Custom Hostnames ← Add ← ثم «أكّد» في
-   صفحة المتجر بلوحتك.
-5. نطاقات عملاء مربوطة سابقاً على Vercel: احذفها وأعد إضافتها من لوحة التاجر بعد النقل (لا يوجد عملاء بها الآن).
+### المفاتيح الجديدة التي لم تكن في Vercel (أضفها بأي طريقة)
+| الاسم | القيمة | لماذا |
+|---|---|---|
+| `CRON_SECRET` | أي نص عشوائي طويل (32 حرفاً فأكثر). إن كان موجوداً في Vercel انسخه كما هو | المهام المجدولة (التجارب، الحذف، التذكيرات) |
+| `R2_ACCOUNT_ID` | من القسم 3 خطوة 6 | الصور |
+| `R2_ACCESS_KEY_ID` | من القسم 3 خطوة 6 | الصور |
+| `R2_SECRET_ACCESS_KEY` | من القسم 3 خطوة 6 | الصور |
+| `R2_BUCKET` | `colapia-media` | الصور |
+| `STORES_GITHUB_TOKEN` | توكن GitHub (انظر تحت) إن لم يكن موجوداً | «نزّل مشروع المتجر» وتجهيز فروع المتاجر |
+| `STORES_GITHUB_REPO` | `omarmaher23942-wq/colapia17` | نفس السبب |
 
-## 7) المهام المجدولة
+**توكن GitHub:** github.com ← صورتك ← **Settings** ← **Developer settings** ← **Personal access tokens** ← **Fine-grained tokens**
+← **Generate new token** ← الاسم `colapia-stores` ← Expiration: سنة ← Repository access: **Only select repositories** ←
+`colapia17` ← Permissions ← Repository permissions ← **Contents: Read and write** ← **Generate token** ← انسخه.
 
-لا تحتاج شيئاً: `wrangler.jsonc` يشغّل `ops/sweep` كل 10 دقائق و`ops/tick` يومياً 04:00 UTC (06:00 القاهرة شتاءً)
-بسر `CRON_SECRET`. بعد النقل احذف جدولي `ops/sweep` و`ops/tick` من Upstash QStash ← Schedules إن كنت أنشأتهما (حتى لا
-تعمل المهمة مرتين). **لا تحذف حساب QStash نفسه:** رسائل التجربة والإيقاف والتذكير المؤجلة تستخدمه.
+بعد إضافة المفاتيح: Deployments ← آخر نشر ← **Retry deployment** (أو ارفع أي تحديث) حتى يعمل بالمفاتيح.
 
-## 8) بعد النقل: افحص
+---
 
-1. `https://colapia.com/api/health` ← `"ok": true` (القاعدة وRedis).
-2. الهبوط، و`/start` (أرسل طلباً تجريبياً)، ودخول لوحة الوكالة بـ Google (روابط Google لم تتغير لأن النطاق نفسه).
-3. متجر تجريبي `<slug>.colapia.com`: صفحة منتج، سلة، طلب، ثم لوحة التاجر.
-4. ارفع صورة منتج (R2)، وجرّب «دوّري بالصورة».
-5. رسالة لصفحة فيسبوك/إنستجرام: الوكيل يرد (رابط Webhook في Meta لم يتغير).
-6. في لوحة Cloudflare ← colapia ← Logs: لا أخطاء متكررة.
+## 6) الاختبار قبل التحويل (الموقع ما زال على Vercel)
 
-**الرجوع لو حدثت مشكلة:** أعد سجلات DNS في القسم 5 لقيم Vercel القديمة واجعلها DNS only (السحابة الرمادية)؛ Vercel يبقى منشوراً من `main`
-طوال الوقت حتى تقرر إيقافه.
+افتح رابط `colapia.<اسمك>.workers.dev` من القسم 4:
+1. `…workers.dev/api/health` ← يجب أن ترى `"ok":true`. لو ظهر `"database":{"ok":false}` فـ `DATABASE_URL` ناقص أو خطأ؛ ولو
+   `"redis":{"ok":false}` فمفاتيح `UPSTASH_REDIS_*`.
+2. الصفحة الرئيسية `…workers.dev/` تظهر كاملة بالسعر الصحيح.
+3. `…workers.dev/start` تفتح الاستمارة.
+4. (اختياري) متجر: `…workers.dev/?store=اسم-المتجر&key=قيمة-STORE_PREVIEW_KEY`.
+5. **لا تختبر الدخول بـ Google هنا** (Google يقبل colapia.com فقط)؛ يُختبر بعد التحويل.
 
-## 9) التكلفة الشهرية المتوقعة
+لو كل شيء سليم، انتقل للتحويل. لو هناك خطأ: Workers & Pages ← colapia ← **Logs** ← **Begin log stream** وافتح الصفحة؛ سترى سبب الخطأ.
 
-- Workers Paid: **5$** (يشمل 10 ملايين طلب و30 مليون مللي ثانية معالجة؛ الزيادة بسنتات).
-- R2: مجاني حتى 10 جيجابايت تخزين، والتنزيل مجاني دائماً.
-- تحسين الصور (Images): أول 5,000 تحويل فريد شهرياً مجاناً.
-- Custom Hostnames: أول 100 نطاق مجاناً، ثم 0.10$ للنطاق شهرياً.
-- Neon وUpstash وResend وGroq كما هي الآن.
+---
 
+## 7) التحويل إلى Cloudflare (ضغطة واحدة) — والرجوع بضغطة واحدة
+
+**الأفضل في وقت هادئ (بعد منتصف الليل مثلاً).**
+
+1. colapia.com ← **DNS** ← **Records**.
+2. لكل من السجلات `@` و`*` و`www`: **Edit** ← انقر السحابة الرمادية لتصبح **برتقالية (Proxied)** ← **Save**.
+3. أضف سجلاً جديداً لنطاق استقبال نطاقات العملاء: **Add record** ← النوع `AAAA` ← الاسم `customers` ← القيمة `100::` ←
+   **Proxied (برتقالي)** ← Save.
+4. انتظر دقيقة، ثم افتح في نافذة متصفح خاصة (Incognito):
+   - `https://colapia.com/api/health` ← `"ok":true` و`version` فيه رقم.
+   - الصفحة الرئيسية، و`/start`، ودخول لوحة الوكالة بـ Google، ومتجر `اسم.colapia.com`، وصفحة منتج، وطلب تجريبي.
+   - ارفع صورة منتج من لوحة متجر، وتأكد أن رابطها يبدأ بـ `https://media.colapia.com/`.
+   - جرّب «البحث بالصورة» في متجر فيه منتجات بصور.
+
+**الرجوع لو حدثت أي مشكلة:** DNS ← أعد السجلات `@` و`*` و`www` إلى **رمادي** ← Save. خلال دقيقة يعود الموقع إلى Vercel
+كما كان. Vercel يبقى منشوراً وجاهزاً حتى تحذفه أنت في القسم 9.
+
+---
+
+## 8) النطاقات الخاصة لعملائك (مثل brand.com) — أول 100 نطاق مجاناً
+
+1. colapia.com ← **SSL/TLS** ← **Custom Hostnames** ← **Enable Cloudflare for SaaS** (وافق؛ أول 100 مجاناً).
+2. **Fallback Origin** ← اكتب `customers.colapia.com` ← **Add Fallback Origin** ← انتظر **Active**.
+3. **توكن الربط الآلي:** أيقونة الحساب ← **My Profile** ← **API Tokens** ← **Create Token** ← **Create Custom Token** ←
+   - Token name: `colapia-domains`
+   - Permissions: `Zone` ← `SSL and Certificates` ← `Edit`
+   - Zone Resources: `Include` ← `Specific zone` ← `colapia.com`
+   - **Continue to summary** ← **Create Token** ← انسخه.
+4. أضف سرّين في المشروع (القسم 5 طريقة ب): `CF_API_TOKEN` = التوكن، و`CF_ZONE_ID` = **Zone ID** (colapia.com ← **Overview** ←
+   على اليمين تحت API). ثم أعد النشر.
+5. **كيف يعمل بعدها:** التاجر يكتب نطاقه في لوحته ← يُضاف لـ Cloudflare تلقائياً ← يظهر له سجل واحد يضيفه عند شركة نطاقه
+   (`CNAME` إلى `customers.colapia.com`) ← تصدر الشهادة الآمنة وحدها ← يعمل متجره على نطاقه. لا تفعل أنت شيئاً.
+
+---
+
+## 9) التنظيف بعد أسبوع من العمل المستقر
+
+1. **أوقف مهام Vercel المجدولة** (حتى لا تعمل مرتين): Vercel ← المشروع ← **Settings** ← **Cron Jobs** ← **Disable**.
+   افعلها **يوم التحويل نفسه**.
+2. **احذف جداول QStash القديمة إن وُجدت:** console.upstash.com ← QStash ← **Schedules** ← احذف أي جدول يستدعي `/api/ops/sweep`
+   أو `/api/ops/tick` (Cloudflare يشغّلهما الآن كل 10 دقائق ويومياً). **لا تحذف حساب QStash ولا مفاتيحه**: رسائل التجربة
+   والتذكيرات المؤجلة تستخدمه.
+3. **بعد أسبوع بلا مشاكل:** Vercel ← المشروع ← Settings ← Domains ← احذف colapia.com و`*.colapia.com` من المشروع، ثم
+   Settings ← General ← **Pause Project** (أو Delete). **لا تحذف الدومين نفسه** من Vercel Domains إن كان مسجلاً هناك:
+   التسجيل السنوي يبقى عند Vercel (أو انقله لاحقاً إلى Cloudflare Registrar بسعر أقل، خطوة اختيارية).
+4. **UploadThing:** الصور القديمة تبقى ظاهرة من UploadThing. اترك `UPLOADTHING_TOKEN` حتى لا يبقى متجر بصور قديمة، ثم ألغِ
+   اشتراك UploadThing إن كان مدفوعاً.
+
+---
+
+## 10) الدفع والتكلفة الشهرية
+
+| البند | التكلفة |
+|---|---|
+| Workers Paid | **5$ شهرياً** (يشمل 10 ملايين زيارة و30 مليون مللي ثانية معالجة؛ الزيادة بسنتات) |
+| R2 (الصور) | مجاني حتى 10 جيجابايت ومليون رفع شهرياً، والتنزيل مجاني دائماً |
+| Images (تصغير الصور) | أول 5,000 تحويل فريد شهرياً مجاناً |
+| Custom Hostnames (نطاقات العملاء) | أول 100 نطاق مجاناً، ثم 0.10$ للنطاق شهرياً |
+| خطة الدومين في Cloudflare | مجانية |
+| Neon وUpstash وResend وGroq | كما هي الآن |
+
+- **الفاتورة:** تُخصم شهرياً من البطاقة أو PayPal. تراها في Manage Account ← **Billing** ← **Invoices**.
+- **تنبيه قبل أي زيادة:** Billing ← **Billing notifications** (أو Notifications ← Add ← Usage Based Billing) ← ضع حداً مثل 10$
+  ليصلك بريد لو اقتربت التكلفة منه.
+- **تغيير البطاقة:** Billing ← Payment info ← Add ثم اجعلها Default واحذف القديمة.
+
+---
+
+## 11) مشاكل شائعة وحلها
+
+| ما تراه | السبب | الحل |
+|---|---|---|
+| البريد توقف بعد نقل الـ Nameservers | سجلات Resend لم تُنسخ | resend.com/domains ← colapia.com ← انسخ السجلات الناقصة إلى Cloudflare كـ DNS only |
+| `/api/health` يقول `database: false` | `DATABASE_URL` ناقص أو خاطئ | انسخه من Vercel كما هو (يبدأ بـ `postgresql://`) |
+| صفحة بيضاء أو «Internal Server Error» | مفتاح إلزامي ناقص | Workers ← colapia ← Logs ← Begin log stream؛ اسم المتغير الناقص يظهر في السجل |
+| رفع الصور يفشل | CORS أو مفاتيح R2 | راجع القسم 3 خطوة 4 و6، وأن `NEXT_PUBLIC_MEDIA_BASE_URL` = `https://media.colapia.com` ثم أعد النشر |
+| صور المنتجات لا تظهر | نطاق media غير مفعّل | R2 ← colapia-media ← Settings ← Custom Domains: الحالة Active؟ ومسار `media.colapia.com/*` = None |
+| المتاجر `اسم.colapia.com` لا تفتح | سجل `*` ناقص أو رمادي | DNS ← سجل `*` موجود وبرتقالي |
+| نطاق عميل عالق «بانتظار السجلات» | سجله لم يُضف أو الجذري لا يقبل CNAME | لوحة التاجر ← نطاقك الخاص تشرح له؛ أو انقل DNS نطاقه إلى Cloudflare مجاناً |
+| المهام المجدولة لا تعمل | `CRON_SECRET` ناقص | أضفه (القسم 5) وأعد النشر؛ تأكد من Workers ← colapia ← Settings ← Triggers فيها جدولان |
+
+**لو احتجت مساعدة:** ابعت لي لقطة شاشة للصفحة ونص الخطأ من **Logs**، وأخبرني بالخطوة التي توقفت عندها.
