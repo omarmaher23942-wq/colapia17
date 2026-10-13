@@ -8,7 +8,7 @@
 //     لموقعه الجديد، وتُحذف بيانات التجربة من المنصة (القاعدة والصور) بعد مهلة أمان.
 import { unmapDomain, removeDomainHostnames } from "@/server/domains";
 import "server-only";
-import { and, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
 import { mediaApi } from "@/server/media-host";
 import { mediaBaseUrl, r2KeyFromUrl } from "@/lib/media";

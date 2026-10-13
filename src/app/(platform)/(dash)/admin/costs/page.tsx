@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { sql, gte, desc, eq, and } from "drizzle-orm";
+import { sql, gte, desc } from "drizzle-orm";
 import { db } from "@/db/client";
-import { aiCalls, systemEvents, buildJobs, stores, scheduledJobs } from "@/db/schema";
+import { aiCalls } from "@/db/schema";
 import { CostLiveCounter } from "@/components/platform/CostLiveCounter";
 import { ProviderCostComparison } from "@/components/platform/ProviderCostComparison";
 import { requirePlatformPage } from "@/server/platform-guard";

@@ -1,7 +1,6 @@
 "use client";
 
 import { Brain, Database, Activity, Target, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const SW = 1.75;
 

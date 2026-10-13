@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
-import {
-  Pause, Play, Brain, Send, Sparkles, Activity, Mic, Paperclip, ArrowLeft,
-  Package, Star, Image as ImageIcon, Video, MessageSquare, ClipboardList, ShieldCheck, Database, CheckCircle2,
-  AlertTriangle
-} from "lucide-react";
+import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle } from "lucide-react";
 import { togglePauseAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
 import { AIReasoningPanel } from "./AIReasoningPanel";
 import { SentimentBadge } from "./SentimentBadge";
 import { LeadScoringCard } from "./LeadScoringCard";
-import { cn } from "@/lib/utils";
 
 const SW = 1.75;
 

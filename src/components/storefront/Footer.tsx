@@ -5,18 +5,7 @@
 // terms)، فيظهر كل رابط مرتين. الحل: فلترة الصفحات لاستثناء ما هو مُغطى في
 // POLICY_LINKS. كذلك إزالة تكرار الهاتف/واتساب عند تطابق الأرقام.
 import Link from "next/link";
-import {
-  Phone,
-  Banknote,
-  Smartphone,
-  Wallet,
-  ShieldCheck,
-  Truck,
-  RotateCcw,
-  FileText,
-  Package,
-  Mail,
-} from "lucide-react";
+import { Phone, Banknote, Smartphone, Wallet, Truck, RotateCcw, FileText, Package, Mail } from "lucide-react";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import type { StoreFact } from "@/blueprint/facts";
 import { Icon } from "./Icon";

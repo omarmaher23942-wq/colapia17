@@ -1,30 +1,7 @@
 // Landing — صفحة Colapia الرئيسية. تُرسم على الخادم بالكامل (سرعة وظهور في البحث)، والتفاعل في جزر صغيرة:
 // الهيدر، وزر Google، وعرض المتاجر المتبدلة. كل جملة هنا يجب أن تكون صحيحة عن الخدمة: بلا إشارة إلى أدوات الذكاء الاصطناعي ولا تقنيات التشغيل (لا قيمة للعميل فيها).
 import Link from "next/link";
-import {
-  Palette,
-  PenLine,
-  Clapperboard,
-  Wallet,
-  PackageCheck,
-  LayoutDashboard,
-  ShieldCheck,
-  Server,
-  Check,
-  X,
-  ArrowLeft,
-  Timer,
-  BadgePercent,
-  KeyRound,
-  ClipboardList,
-  Users,
-  Rocket,
-  ChevronDown,
-  Camera,
-  MessageCircle,
-  Megaphone,
-  Ruler,
-} from "lucide-react";
+import { Palette, PenLine, Clapperboard, Wallet, PackageCheck, LayoutDashboard, ShieldCheck, Server, Check, X, ArrowLeft, Timer, BadgePercent, ClipboardList, Users, Rocket, ChevronDown, Camera, MessageCircle, Megaphone, Ruler } from "lucide-react";
 import { CosmicBackdrop } from "./CosmicBackdrop";
 import { Header } from "./Header";
 import { Footer } from "./Footer";

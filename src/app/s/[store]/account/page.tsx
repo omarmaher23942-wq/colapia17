@@ -1,6 +1,5 @@
 // app/s/[store]/account/page.tsx — نظرة عامة لحساب المشتري.
 import Link from "next/link";
-import { Suspense } from "react";
 import {
   Package, Truck, CreditCard, ShoppingBag, ArrowLeft, User, Mail,
 } from "lucide-react";

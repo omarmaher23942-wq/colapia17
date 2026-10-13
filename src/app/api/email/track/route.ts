@@ -9,7 +9,6 @@
 //  - روابط redirect محدودة بـ appUrl فقط (منع open redirect).
 //  - Rate limit خفيف.
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
 

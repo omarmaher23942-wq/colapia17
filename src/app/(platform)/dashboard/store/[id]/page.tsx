@@ -7,17 +7,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, desc, eq, sql } from "drizzle-orm";
-import {
-  Store as StoreIcon,
-  ExternalLink,
-  ShoppingCart,
-  Wallet,
-  Package,
-  Users,
-  Settings,
-  ArrowLeft,
-  Sparkles,
-} from "lucide-react";
+import { ExternalLink, ShoppingCart, Wallet, Package, Users, Settings, ArrowLeft, Sparkles } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";

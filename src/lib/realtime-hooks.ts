@@ -13,13 +13,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  getPusher,
-  subscribe,
-  subscribePresence,
-  getConnectionState,
-  type getPusher as _getPusher,
-} from "./pusher-client";
+import { getPusher, subscribe, subscribePresence, getConnectionState } from "./pusher-client";
 import type {
   RealtimeEvent,
   OrderCreatedPayload,

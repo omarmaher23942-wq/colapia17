@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
-import { ArrowLeft, Eye, Percent, Plus, ShoppingCart, Sparkles, Wallet } from "lucide-react";
+import { Eye, Percent, Plus, ShoppingCart, Wallet } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
 import { EmptyStoreState } from "@/components/dashboard/EmptyStoreState";
 import { TrialCard } from "@/components/dashboard/TrialCard";
@@ -31,7 +31,7 @@ import {
 import { readinessScore, readinessSteps } from "@/lib/store-readiness";
 import { buildNotes } from "@/components/dashboard/overview/notes";
 import { overviewData, pctChange, OVERVIEW_RANGES, type OverviewRange } from "@/server/repos/overview";
-import { EDITION, INTEGRATIONS_NAV } from "@/lib/edition";
+import { EDITION } from "@/lib/edition";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";

@@ -7,23 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
-import {
-  Copy,
-  ExternalLink,
-  HelpCircle,
-  Loader2,
-  LogOut,
-  Moon,
-  Package,
-  Plus,
-  Search as SearchIcon,
-  ShoppingCart,
-  Sparkles,
-  TicketPercent,
-  Users,
-  Volume2,
-  type LucideIcon,
-} from "lucide-react";
+import { Copy, ExternalLink, HelpCircle, Loader2, LogOut, Moon, Package, Plus, Search as SearchIcon, ShoppingCart, TicketPercent, Users, Volume2, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 import { merchantLogoutAction } from "@/server/actions/auth";
 import { normalizeArabic } from "@/lib/arabic";

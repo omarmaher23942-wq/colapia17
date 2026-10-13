@@ -69,7 +69,6 @@ type QuoteOk = Extract<Quote, { ok: true }>;
 const F =
   "w-full rounded-xl border bg-[var(--background)] px-3.5 py-3 text-sm text-[var(--foreground)] outline-none transition-all placeholder:opacity-40 focus:ring-2 focus:ring-[var(--primary)]/30";
 const SW = 1.75;
-const SAVED_KEY = "clp-customer";
 
 function newKey(): string {
   try {

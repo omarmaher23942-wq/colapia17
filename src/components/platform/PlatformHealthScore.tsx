@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Database, Zap, Brain, Server, RefreshCw, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { Activity, Database, Zap, Brain, Server, RefreshCw } from "lucide-react";
+import { useReducedMotion } from "motion/react";
 import { checkSystemHealthAction } from "@/server/actions/platform-pipeline";
 import { cn } from "@/lib/utils";
 

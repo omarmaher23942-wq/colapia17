@@ -6,7 +6,7 @@
 // - WhatsApp floating button ذكي: الرسالة تتضمن اسم الصفحة/المنتج.
 import { BrandIcon } from "./brand-icons";
 import { waLink } from "@/lib/whatsapp";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -415,5 +415,3 @@ export function ConversionWidgets() {
   );
 }
 
-// متغيّر وهمي لإسكات تحذير TS (unused branch احتياطي).
-const slug_never = false as const;

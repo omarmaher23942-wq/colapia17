@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { can } from "@/agency/roles";
 import Link from "next/link";
-import { sql, gte, desc, eq, and, inArray } from "drizzle-orm";
-import { Workflow, MessagesSquare, Wallet, Store, TrendingUp, Flame, Activity, Mail, Star } from "lucide-react";
+import { sql, gte, eq, and, inArray } from "drizzle-orm";
+import { MessagesSquare, Wallet, Store, TrendingUp, Flame, Mail } from "lucide-react";
 import { db } from "@/db/client";
 import { groupStoresByTenantDb } from "@/db/tenant";
-import { stores, conversations, platformPayments, aiCalls, systemEvents, orders, platformReviews, merchants } from "@/db/schema";
+import { stores, conversations, platformPayments, orders, merchants } from "@/db/schema";
 import { formatEgp } from "@/lib/money";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { BroadcastEmailForm } from "@/components/platform/BroadcastEmailForm";
@@ -42,7 +42,6 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
   const range: FunnelRange = (FUNNEL_RANGES as readonly number[]).includes(Number(sp.range)) ? (Number(sp.range) as FunnelRange) : 30;
   const [funnel, ladder, seatsUsed] = await Promise.all([salesFunnel(range), priceLadder(), goldenSeatsUsed()]);
   const d30 = new Date(Date.now() - 30 * 864e5);
-  const d1 = new Date(Date.now() - 864e5);
 
   const [byStatus, [conv], [rev], [gmv], [merchantStats]] = await Promise.all([
     db.select({ status: stores.status, c: sql<number>`count(*)`.mapWith(Number) }).from(stores).groupBy(stores.status),

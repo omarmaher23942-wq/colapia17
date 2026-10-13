@@ -4,7 +4,7 @@
 // - كل خطوة تُعتبر مكتملة بناءً على حالة الحقول الفعلية.
 // - Progress bar يتحرك بسلاسة عند الإكمال.
 // - يعمل كـ sticky فوق نموذج الدفع.
-import { CheckCircle2, Circle, Truck, CreditCard, ClipboardCheck } from "lucide-react";
+import { CheckCircle2, Truck, CreditCard, ClipboardCheck } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "@/lib/utils";
 

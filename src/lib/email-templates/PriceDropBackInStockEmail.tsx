@@ -1,8 +1,5 @@
 // email-templates/PriceDropBackInStockEmail.tsx — تنبيه انخفاض سعر أو توفر.
-import {
-  EmailLayout, EmailHeading, EmailParagraph, EmailButton,
-  EmailDivider, EmailInfoBox,
-} from "./_layout";
+import { EmailLayout, EmailHeading, EmailParagraph, EmailButton, EmailDivider } from "./_layout";
 
 export function PriceDropBackInStockEmail({
   customerName, storeName, storeSubdomain,

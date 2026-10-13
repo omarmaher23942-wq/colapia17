@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Flame, MessageSquare, ArrowLeft, UserPlus } from "lucide-react";
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
-import { desc, eq, gte, notInArray, and } from "drizzle-orm";
+import { desc, gte, notInArray, and } from "drizzle-orm";
 
 const SW = 1.75;
 

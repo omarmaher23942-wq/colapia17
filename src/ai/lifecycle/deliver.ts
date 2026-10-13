@@ -8,7 +8,7 @@ import {
   storeBlueprints,
   stores,
 } from "@/db/schema";
-import { env, clientEnv } from "@/lib/env";
+import { clientEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/utils";
 import { secureToken, sha256 } from "@/lib/ids";
 import { notifyAdmin } from "@/ai/lifecycle/notify";

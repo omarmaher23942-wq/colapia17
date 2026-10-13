@@ -2,7 +2,7 @@
 // ملاحظة: كُتب هنا للتوثيق — الملف موجود أصلاً في المشروع.
 import Link from "next/link";
 import type { z } from "zod";
-import type { StoreBlueprint, Section } from "@/blueprint/schema";
+import type { StoreBlueprint } from "@/blueprint/schema";
 import { hrefFor } from "@/lib/links";
 import { cn } from "@/lib/utils";
 

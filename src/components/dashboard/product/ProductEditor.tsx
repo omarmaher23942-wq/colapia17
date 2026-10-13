@@ -70,7 +70,6 @@ export function ProductEditor({
   const variantStock = f.variants.reduce((a, v) => a + (v.isAvailable === false ? 0 : (v.stock ?? 0)), 0);
   const slug = f.slug ?? (slugify(f.name) || "item");
   const productUrl = storeUrl(subdomain, `/p/${encodeURIComponent(slug)}`);
-  const category = categories.find((c) => c.id === f.categoryId)?.name;
 
   // ─── الحفظ ────────────────────────────────────────────────────────────────
   const focusField = (k: keyof Errors) => {

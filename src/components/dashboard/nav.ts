@@ -1,30 +1,6 @@
 // nav.ts — خريطة صفحات لوحة التاجر: مصدر واحد للقائمة الجانبية ولوحة الأوامر (Ctrl/⌘+K).
 // الصفحات الخاصة بالمنصة (PLATFORM_ONLY_NAV) تُستبعد تلقائياً في مشروع التاجر.
-import {
-  BarChart3,
-  CreditCard,
-  FolderTree,
-  Ruler,
-  KeyRound,
-  LayoutDashboard,
-  Package,
-  Palette,
-  Settings,
-  ShieldCheck,
-  ShoppingCart,
-  Star,
-  Store,
-  TicketPercent,
-  Truck,
-  Users,
-  Wand2,
-  UserCog,
-  Globe,
-  FileArchive,
-  MessageSquarePlus,
-  Megaphone,
-  type LucideIcon,
-} from "lucide-react";
+import { BarChart3, CreditCard, FolderTree, Ruler, LayoutDashboard, Package, Palette, Settings, ShieldCheck, ShoppingCart, Star, Store, TicketPercent, Truck, Users, Wand2, UserCog, Globe, FileArchive, MessageSquarePlus, Megaphone, type LucideIcon } from "lucide-react";
 import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
 import { allows, areaForPath, type StorePerms } from "@/lib/store-perms";
 

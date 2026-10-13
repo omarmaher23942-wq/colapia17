@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
-import { Flame, MessagesSquare, Search, Filter, Bot, User } from "lucide-react";
+import { Flame, MessagesSquare, Search, Bot, User } from "lucide-react";
 import { db } from "@/db/client";
 import { conversations, messages, stores, intakes } from "@/db/schema";
 import { ConversationView } from "@/components/platform/ConversationView";

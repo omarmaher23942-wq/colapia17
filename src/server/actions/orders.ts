@@ -4,23 +4,19 @@
 // كل إجراء يعيد { ok } أو { ok: false, error } برسالة عربية واضحة بدل رمي الأخطاء للواجهة.
 // المخزون: الإلغاء والارتجاع يعيدان الكمية، وإعادة فتح طلب ملغي تخصمها من جديد (أو تُرفض إن لم يكفِ المخزون).
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { applyOrderStatus } from "@/server/order-status-change";
 import { getTenantDb } from "@/db/tenant";
-import { orders, payments, orderItems } from "@/db/schema";
+import { orders, payments } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
-import { stockMovement } from "@/server/inventory";
-import { emitOrderStatusChanged, emitPaymentConfirmed } from "@/server/realtime/emitters";
-import { dbErrorInfo, PG_CHECK } from "@/lib/db-errors";
+import { emitPaymentConfirmed } from "@/server/realtime/emitters";
 
 type Status = (typeof orders.$inferSelect)["status"];
 export type OrderActionResult = { ok: true } | { ok: false; error: string };
 
 const statusSchema = z.enum(["new", "confirmed", "preparing", "shipped", "delivered", "returned", "cancelled"]);
 const uuid = z.string().uuid();
-const CLOSED = new Set<Status>(["cancelled", "returned"]);
 
 async function own() {
   const s = await storeFor("orders");

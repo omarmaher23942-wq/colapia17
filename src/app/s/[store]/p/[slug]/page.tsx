@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fragment, Suspense, cache } from "react";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { Star } from "lucide-react";
 import { requireStore, getBlueprint, getStoreBySubdomain } from "@/lib/tenant";

@@ -6,8 +6,7 @@
 //  3) تصميm يستخدم CSS vars من المتجر (لا هوية Colapia).
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
-import { User, Sparkles, Mail, ShieldCheck } from "lucide-react";
+import { User, ShieldCheck } from "lucide-react";
 import { requireStore } from "@/lib/tenant";
 import { getCustomerSession } from "@/server/auth";
 import { CustomerGoogleAuthButton } from "@/components/storefront/CustomerGoogleAuthButton";

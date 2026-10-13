@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, Thermometer, MessageSquare, Phone, ArrowUpRight } from "lucide-react";
+import { Activity, Thermometer, MessageSquare, Phone } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 

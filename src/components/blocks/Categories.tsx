@@ -48,7 +48,6 @@ export function Categories({
 
   const variant = (s.variant ?? "circles") as string;
   const visible = categories.slice(0, 12);
-  const cardLikeVariants = new Set(["cards", "bento", "grid", "cards_overlay"]);
 
   return (
     <section

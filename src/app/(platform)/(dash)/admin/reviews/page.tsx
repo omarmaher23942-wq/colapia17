@@ -2,17 +2,8 @@
 // - Tabs: pending | approved | featured | all.
 // - Audio player + rating + approve/feature/reject actions.
 import Link from "next/link";
-import { and, desc, eq, sql } from "drizzle-orm";
-import {
-  Star,
-  Volume2,
-  CheckCircle2,
-  XCircle,
-  Sparkles,
-  Trash2,
-  Inbox,
-  Filter,
-} from "lucide-react";
+import { desc, eq, sql } from "drizzle-orm";
+import { Star, Inbox, Filter } from "lucide-react";
 import { db } from "@/db/client";
 import { platformReviews } from "@/db/schema/platform";
 import { cn } from "@/lib/utils";
