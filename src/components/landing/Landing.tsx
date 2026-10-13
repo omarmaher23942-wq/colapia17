@@ -20,6 +20,10 @@ import {
   Users,
   Rocket,
   ChevronDown,
+  Camera,
+  MessageCircle,
+  Megaphone,
+  Ruler,
 } from "lucide-react";
 import { CosmicBackdrop } from "./CosmicBackdrop";
 import { Header } from "./Header";
@@ -30,11 +34,10 @@ import { MINI_STORES, StoreMini } from "./StoreMini";
 import { CTA_GHOST, CTA_PRIMARY, Eyebrow, fmtEGP } from "./shared";
 import type { LandingPricing, LandingReview, SessionState } from "./types";
 
-type Props = { session: SessionState; reviews: LandingReview[]; pricing: LandingPricing; trialHours: number };
+type Props = { session: SessionState; reviews: LandingReview[]; pricing: LandingPricing; trialHours: number; changesPerMonth: number };
 
-export function Landing({ session, reviews, pricing, trialHours }: Props) {
+export function Landing({ session, reviews, pricing, trialHours, changesPerMonth }: Props) {
   const merchant = session === "merchant";
-  const discount = Math.max(0, Math.round(100 - (pricing.price / pricing.basePrice) * 100));
 
   // كل الطرق تبدأ من استمارة الطلب (لا تسجيل ولا حساب قبلها). من لديه متجر يفتح لوحته من الهيدر.
   const Primary = ({ label }: { label: string }) =>
@@ -61,16 +64,16 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section className="container-x grid items-center gap-12 pb-20 pt-8 sm:pt-14 lg:grid-cols-[1.15fr_1fr] lg:gap-8 lg:pb-28">
           <div className="land-rise flex flex-col items-start gap-6">
             <Eyebrow>
-              <Users className="size-3.5 text-[#8fa8ff]" aria-hidden="true" /> فريق Colapia يبني متجرك، لمصر
+              <Users className="size-3.5 text-[#8fa8ff]" aria-hidden="true" /> لبراندات الملابس على إنستجرام وتيك توك
             </Eyebrow>
             <h1 className="text-[2.2rem] font-black leading-[1.15] tracking-tight sm:text-5xl lg:text-[3.6rem]">
-              نبني لك متجراً <span className="land-gradient-text">على مقاس نشاطك</span>
+              متجر لبراندك <span className="land-gradient-text">يبيع وأنت بتنشر</span>
               <br />
-              ونستضيفه ونشغّله لك
+              نبنيه ونستضيفه ونشغّله لك
             </h1>
             <p className="max-w-xl text-base leading-8 text-[#c3cdf0]/85 sm:text-lg">
-              احكيلنا عن نشاطك في استمارة من دقيقتين. فريقنا يصمم متجرك ويبنيه ويراجعه، ويسلّمه لك جاهزاً خلال 12 ساعة إلى 4 أيام. تجرّبه {trialHours} ساعة قبل أي دفع،
-              وإن أعجبك فباقة واحدة تشمل متجرك وسنة استضافة كاملة، بلا عمولة على مبيعاتك.
+              بدل «السعر في الخاص» وطلبات تضيع في الرسائل: متجر باسم براندك، العميلة تختار المقاس واللون وتطلب في دقيقة، والطلب يوصلك منظماً في لوحتك. فريقنا يصممه
+              ويبنيه ويراجعه ويسلّمه خلال 12 ساعة إلى 4 أيام، وتجرّبه {trialHours} ساعة قبل أي دفع.
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Primary label="اطلب متجرك" />
@@ -79,7 +82,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
               </a>
             </div>
             <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] text-[#c3cdf0]/75">
-              {["الطلب مجاني بلا التزام", "سنة استضافة مشمولة", "بلا عمولة على مبيعاتك"].map((t) => (
+              {["الطلب مجاني بلا التزام", "سنة استضافة مشمولة", "بلا عمولة على مبيعاتك", "دوّري بالصورة داخل متجرك"].map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
                   <Check className="size-4 text-emerald-400" aria-hidden="true" /> {t}
                 </li>
@@ -155,6 +158,37 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
           </div>
         </section>
 
+        {/* ─── البيع من السوشيال ─── */}
+        <section id="social" className="container-x scroll-mt-24 pt-24 sm:pt-32">
+          <Heading
+            eyebrow="مبني لطريقة بيعك"
+            title="عميلتك شافت القطعة في الريلز. الباقي علينا."
+            subtitle="أدوات معمولة لبراند ملابس بيبيع من إنستجرام وتيك توك، وكلها شغالة في متجرك من أول يوم."
+          />
+          <div className="mt-14 grid gap-4 md:grid-cols-2">
+            <Feature
+              icon={Camera}
+              title="«دوّري بالصورة»"
+              text="العميلة ترفع سكرين شوت من الريلز أو أي صورة، فيفتح لها المتجر القطعة نفسها بسعرها، أو أقرب القطع لها، أو يحوّلها لواتساب متجرك لو مش موجودة. والقطع اللي اتسألت عليها ومش عندك تشوفها في لوحتك."
+            />
+            <Feature
+              icon={ShieldCheck}
+              title="درع الدفع عند الاستلام"
+              text="رابط تأكيد يرسله العميل بنفسه قبل الشحن، وتقدير لمخاطرة كل طلب من تاريخه معك (رفض استلام سابق، طلب مكرر، رقم أو عنوان غير مكتمل)، وطلب عربون بضغطة للطلبات المقلقة. القرار دائماً لك."
+            />
+            <Feature
+              icon={MessageCircle}
+              title="الطلب يوصلك برقمه على واتساب"
+              text="العميلة تكمل الطلب في المتجر فيتسجل في لوحتك، وبعدها زر يبعت لك رسالة واتساب جاهزة فيها رقم الطلب وأصنافه والإجمالي. لا طلبات ضايعة في الشات."
+            />
+            <Feature
+              icon={Megaphone}
+              title="جاهز لإعلاناتك"
+              text="روابط حملات تقيس النقرات والطلبات والمبيعات لكل إعلان، وبكسل ميتا وتيك توك وتحليلات جوجل، وكتالوج منتجات تلقائي لإعلانات ميتا، وصور ستوري وبوست جاهزة بألوان براندك."
+            />
+          </div>
+        </section>
+
         {/* ─── المميزات ─── */}
         <section id="features" className="container-x scroll-mt-24 py-24 sm:py-32">
           <Heading eyebrow="ما تحصل عليه" title="متجر احترافي ولوحة تحكم كاملة، لا نسخة مبسطة" />
@@ -164,6 +198,8 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
             <Feature className="md:col-span-2" icon={Clapperboard} title="حركة بمستوى تختاره" text="عناوين تتكشف وبطاقات تميل مع المؤشر. تختار المستوى: هادئ أو حيوي أو سينمائي." />
             <Feature className="md:col-span-2" icon={Wallet} title="شراء بسيط" text="العميل يختار متى يدفع: عند الاستلام برسومها الحقيقية، أو مقدماً بفودافون كاش وإنستاباي بالمبلغ المطلوب بالضبط." />
             <Feature className="md:col-span-2" icon={PackageCheck} title="«طلباتي» بلا حسابات" text="كل طلب يُحفظ على جهاز العميل؛ يرى حالته في أي وقت دون تسجيل، ويصله بريد مع كل خطوة إن كتب بريده." />
+            <Feature className="md:col-span-3" icon={Ruler} title="مقاسات وألوان ومخزون" text="كل لون بمقاساته وكميته، وصورة لكل لون تظهر لما العميلة تختاره، والمقاس اللي خلص يظهر مشطوباً ولا يمكن طلبه." />
+            <Feature className="md:col-span-3" icon={Palette} title="نطاقك الخاص" text="متجرك يعمل على رابط باسمه من أول يوم، وتقدر تربط دومين براندك (مثل yourbrand.com) من لوحتك، والشهادة الآمنة تُصدر تلقائياً." />
             <Feature className="md:col-span-6" icon={LayoutDashboard} title="لوحة تحكم تدير بها كل شيء" text="منتجات بمقاسات وألوان ومخزون، وطلبات بحالاتها، وعملاء، وأكواد خصم، ومناطق شحن، وفواتير للطباعة برمز تتبع، وتصدير Excel، وإحصاءات زيارات حقيقية." />
           </div>
         </section>
@@ -192,30 +228,22 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
           <Heading eyebrow="السعر" title="باقة واحدة. وتجديدها معلن من اليوم الأول." />
           <div className="mx-auto mt-14 grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_1fr]">
             <div className="relative overflow-hidden rounded-[2rem] border border-[#8fa8ff]/30 bg-gradient-to-b from-[#8fa8ff]/12 via-[#0e1430] to-[#0b1026] p-8 shadow-[0_40px_120px_-30px_rgba(111,134,255,0.45)] sm:p-10">
-              {discount ? (
-                <span className="absolute end-6 top-6 rounded-full bg-[#8fa8ff]/15 px-3 py-1 text-xs font-black text-[#c9d4ff]">خصم {fmtEGP(discount)}%</span>
-              ) : null}
               <p className="text-sm font-bold text-[#c3cdf0]/70">الباقة: متجرك كاملاً + سنة استضافة</p>
               <div className="mt-3 flex items-end gap-3">
                 <span className="text-6xl font-black tabular-nums">{fmtEGP(pricing.price)}</span>
                 <span className="mb-2 text-lg font-bold text-[#c3cdf0]/70">ج.م</span>
-                {pricing.basePrice > pricing.price ? <span className="mb-2.5 text-sm text-[#c3cdf0]/50 line-through">{fmtEGP(pricing.basePrice)} ج.م</span> : null}
               </div>
               <p className="mt-1 text-[13px] text-[#c3cdf0]/70">
-                {pricing.remaining !== null && pricing.remaining !== undefined ? (
-                  <b className="text-[#c9d4ff]">
-                    باقٍ {fmtEGP(pricing.remaining)} {pricing.remaining === 1 ? "متجر" : pricing.remaining <= 10 ? "متاجر" : "متجراً"} بهذا السعر{pricing.nextPrice ? `، ثم ${fmtEGP(pricing.nextPrice)} ج.م` : ""}.{" "}
-                  </b>
-                ) : null}
-                ثم {fmtEGP(pricing.renewal)} ج.م لكل سنة بعدها. وبعد تسليم متجرك تجربه {trialHours} ساعة قبل أن تدفع.
+                بناء متجرك + السنة الأولى، ثم {fmtEGP(pricing.renewal)} ج.م لكل سنة بعدها. وبعد تسليم متجرك تجربه {trialHours} ساعة قبل أن تدفع.
               </p>
               <ul className="mt-8 space-y-3 text-[14px]">
                 {[
                   "متجر كامل يصممه ويبنيه ويراجعه فريقنا لنشاطك",
                   "لوحة تحكم كاملة بالطلبات والفواتير والإحصاءات",
+                  "دوّري بالصورة ودرع الدفع عند الاستلام وروابط الحملات",
                   "سنة استضافة وتشغيل كاملة وتحديثات",
+                  changesPerMonth ? `${changesLabel(changesPerMonth)} شهرياً ينفذها فريقنا` : "متابعة معك بعد التسليم",
                   "بلا عمولة على مبيعاتك",
-                  "متابعة معك بعد التسليم",
                 ].map((b) => (
                   <li key={b} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 size-4.5 shrink-0 text-emerald-400" aria-hidden="true" /> {b}
@@ -274,7 +302,7 @@ export function Landing({ session, reviews, pricing, trialHours }: Props) {
         <section id="faq" className="container-x scroll-mt-24 py-24 sm:py-32">
           <Heading eyebrow="أسئلة" title="قبل ما تبدأ" />
           <div className="mx-auto mt-12 max-w-3xl space-y-3">
-            {faq(trialHours, pricing).map(([q, a]) => (
+            {faq(trialHours, pricing, changesPerMonth).map(([q, a]) => (
               <details key={q} className="land-card group rounded-2xl px-5 py-4 open:bg-white/[0.05]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[15px] font-black">
                   {q}
@@ -331,17 +359,26 @@ function Feature({ icon: Icon, title, text, className }: { icon: typeof Palette;
   );
 }
 
-function faq(h: number, pricing: LandingPricing): [string, string][] {
+/** «طلب تعديل واحد» / «طلبا تعديل» / «3 طلبات تعديل» / «11 طلب تعديل». */
+function changesLabel(n: number): string {
+  if (n === 1) return "طلب تعديل واحد";
+  if (n === 2) return "طلبا تعديل";
+  return `${fmtEGP(n)} ${n <= 10 ? "طلبات" : "طلب"} تعديل`;
+}
+
+function faq(h: number, pricing: LandingPricing, changes: number): [string, string][] {
   return [
     ["كم يستغرق تسليم متجري؟", "من 12 ساعة إلى 4 أيام من وقت إرسال الطلب، وقد يطول قليلاً لو عندنا طلبات كثيرة قبلك، وبنقول لك الموعد الفعلي عند الإرسال. وتتابع المرحلة من صفحة طلبك."],
     ["ماذا أحتاج لأطلب متجري؟", "اسم المتجر ووسيلة تواصل فقط. الباقي (الألوان والشعار والمنتجات وطرق الدفع والشحن) اختياري أو تقول عليه «سيبها للفريق». تقدر تسجّل رسالة صوتية بدل الكتابة."],
     ["هل التجربة مجانية فعلاً؟", `نعم. بعد التسليم تجرّب متجرك ولوحة تحكمه ${h} ساعة بلا بطاقة بنكية. لو لم يعجبك لا تدفع شيئاً.`],
     ["كيف أدفع، ومتى يتفعّل متجري؟", "تحوّل المبلغ بفودافون كاش أو إنستاباي وترفع صورة الإيصال من لوحتك. نراجع الإيصال بأنفسنا ونفعّل متجرك، ويصلك بريد فور التفعيل."],
     ["هل أحتاج خبرة تقنية؟", "لا. نحن نبني متجرك ونستضيفه ونشغّله. وتدير منتجاتك وطلباتك من لوحة تحكم مكتوبة بالعربي وتعمل من الموبايل."],
-    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل متجرك وسنة استضافة كاملة${pricing.basePrice > pricing.price ? ` (بدل ${fmtEGP(pricing.basePrice)} ج.م${pricing.remaining ? `، وباقٍ ${fmtEGP(pricing.remaining)} بهذا السعر` : ""})` : ""}. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
+    ["كم أدفع؟ وماذا بعد السنة الأولى؟", `الباقة ${fmtEGP(pricing.price)} ج.م وتشمل بناء متجرك وسنة استضافة كاملة. من السنة الثانية التجديد ${fmtEGP(pricing.renewal)} ج.م للسنة، تدفعه قبل الانتهاء وتُضاف السنة لنهاية اشتراكك فلا تخسر يوماً. لا عمولة على مبيعاتك أبداً.`],
     ["ماذا لو لم أجدد؟", "بعد انتهاء السنة يبقى متجرك يعمل أسبوعين إضافيين، ثم يتوقف عن الظهور للزوار. لا نحذف أي شيء بسبب التأخر، وبمجرد التجديد يعود متجرك بنفس الرابط. ونذكّرك بالبريد قبل الانتهاء."],
-    ["هل أقدر أربط نطاقي الخاص (دومين)؟", "غير متاح حالياً. كل متجر يعمل على رابط باسمه مثل اسمك.colapia.com."],
-    ["هل أقدر أطلب تعديلات بعد التسليم؟", "نعم، تعديلات متجرك تطلبها منا ونتابعها معك، ومن لوحتك تعدّل الألوان والنصوص والسياسات والمنتجات بنفسك."],
+    ["هل أقدر أربط نطاقي الخاص (دومين)؟", "نعم. متجرك يعمل من أول يوم على رابط باسمه مثل اسمك.colapia.com، ومن لوحتك تكتب دومين براندك فتظهر لك السجلات التي تضيفها عند الشركة التي اشتريته منها، ونفعّله والشهادة الآمنة تلقائياً متى أشار إلينا."],
+    ["هل أقدر أطلب تعديلات بعد التسليم؟", `نعم.${changes ? ` بعد التفعيل لك ${changesLabel(changes)} كل شهر من لوحتك ينفذها فريقنا،` : " تطلب التعديلات من لوحتك وينفذها فريقنا،"} ومن لوحتك تعدّل المنتجات والأسعار والنصوص والسياسات بنفسك في أي وقت.`],
+    ["إيه هي «دوّري بالصورة»؟", "زر كاميرا في متجرك: العميلة ترفع سكرين شوت للقطعة اللي شافتها في الريلز، فيفتح لها المتجر القطعة نفسها أو أقرب القطع لها من منتجاتك. لو مش موجودة يظهر لها زر واتساب لمتجرك، وتشوف أنت في لوحتك القطع اللي اتسألت عليها."],
+    ["كيف تقلّلون رفض الاستلام؟", "كل طلب دفع عند الاستلام يصل بتقدير لمخاطرته وأسبابه، ومعه رسالة تأكيد جاهزة برابط يؤكد منه العميل طلبه بنفسه، وللطلبات المقلقة رسالة طلب عربون بوسائل التحويل في متجرك. لا نرفض طلباً آلياً: القرار لك."],
     ["هل يحتاج عملائي لإنشاء حساب؟", "لا. العميل يطلب باسمه ورقمه، ويجد طلباته محفوظة على جهازه في «طلباتي» بحالتها الحية، ويصله بريد مع كل خطوة إن كتب بريده."],
   ];
 }

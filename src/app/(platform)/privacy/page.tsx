@@ -3,7 +3,7 @@ import { Markdown } from "@/components/storefront/Markdown";
 export const metadata = { title: "سياسة الخصوصية | Colapia" };
 
 const BODY = `## Privacy Policy (English summary)
-Colapia designs, builds and hosts e-commerce stores for merchants. When you fill in our store request form or message our Facebook Page or Instagram account we receive what you send (store details, WhatsApp number, email, page link, photos, logo, voice notes and notes), solely to build your store and contact you about it. Voice notes are converted to text automatically by a service provider so our team can read them. Unsent form drafts are deleted with their files after 21 days. Merchant store data (products, orders, customers) is processed on behalf of the merchant and hosted with our infrastructure providers (Vercel, Neon, UploadThing, Upstash, Resend). A paid store is never deleted automatically; the merchant may export and delete their data at any time. We do not sell data. Contact: privacy@colapia.com. Data deletion: see /data-deletion.
+Colapia designs, builds and hosts e-commerce stores for merchants. When you fill in our store request form or message our Facebook Page or Instagram account we receive what you send (store details, WhatsApp number, email, page link, photos, logo, voice notes and notes), solely to build your store and contact you about it. Voice notes are converted to text automatically by a service provider so our team can read them. Unsent form drafts are deleted with their files after 21 days. Merchant store data (products, orders, customers) is processed on behalf of the merchant and hosted with our infrastructure providers (cloud application hosting and file storage, a cloud database, caching and job scheduling, and email delivery). Images a shopper uploads to a store's visual search are analysed automatically by a service provider to find matching products and are not stored. A paid store is never deleted automatically; the merchant may export and delete their data at any time. We do not sell data. Contact: privacy@colapia.com. Data deletion: see /data-deletion.
 
 ## من نحن وما نجمعه
 Colapia فريق يصمم المتاجر الإلكترونية ويبنيها ويستضيفها للتجار.
@@ -12,10 +12,11 @@ Colapia فريق يصمم المتاجر الإلكترونية ويبنيها �
 نستخدم ذلك فقط لبناء متجرك والتواصل معك بخصوصه. الرسائل الصوتية تُحوَّل إلى نص آلياً عبر مزوّد خدمة ليقرأها الفريق، ويبقى التسجيل نفسه متاحاً لهم.
 
 ## بيانات متجرك
-منتجاتك وطلباتك وبيانات عملائك تُعالج لحسابك أنت كتاجر، وتُخزَّن لدى مزوّدي بنية تشغيل نعتمد عليهم: Vercel (تشغيل التطبيق)، Neon (قاعدة البيانات)، UploadThing (الصور والملفات)، Upstash (التخزين المؤقت والمهام المجدولة)، Resend (البريد). وقد يعمل فريقنا على بيانات طلبك (الاسم ووسائل التواصل والصور ونص رسالتك الصوتية) باستخدام أدوات عمل مقدّمة من مزوّدي خدمات، ولا يُشارك منها إلا ما يلزم لتجهيز متجرك. لا نبيع بياناتك ولا نشاركها مع طرف ثالث إلا لتقديم الخدمة.
+منتجاتك وطلباتك وبيانات عملائك تُعالج لحسابك أنت كتاجر، وتُخزَّن لدى مزوّدي بنية تشغيل نعتمد عليهم: مزوّد استضافة سحابية (تشغيل التطبيق وتخزين الصور والملفات)، وقاعدة بيانات سحابية، ومزوّد للتخزين المؤقت والمهام المجدولة، ومزوّد لإرسال البريد. وقد يعمل فريقنا على بيانات طلبك (الاسم ووسائل التواصل والصور ونص رسالتك الصوتية) باستخدام أدوات عمل مقدّمة من مزوّدي خدمات، ولا يُشارك منها إلا ما يلزم لتجهيز متجرك. لا نبيع بياناتك ولا نشاركها مع طرف ثالث إلا لتقديم الخدمة.
 
 ## بيانات العملاء النهائيين
 عند الطلب من متجر تاجر نجمع الاسم ورقم الموبايل والعنوان لإتمام التوصيل فقط، ويحتفظ بها التاجر لإدارة طلباته. ونحفظ في متصفح الزائر معرّف جهاز عشوائياً (كوكي) لعدّ الزيارات وربط «طلباتي» بجهازه، دون أي بيانات شخصية فيه.
+- **«دوّري بالصورة»:** الصورة التي يرفعها الزائر للبحث تُحلَّل آلياً لدى مزوّد خدمة لمعرفة القطعة ومطابقتها بمنتجات المتجر، ثم تُهمَل ولا نخزّنها. ويُحفظ للتاجر وصف نصي قصير للقطع التي لم يجدها البحث (بلا الصورة ولا أي بيانات عن الزائر) ليعرف ما يطلبه عملاؤه.
 
 ## الاحتفاظ والحذف
 - استمارة بدأتها ولم ترسلها تُحذف مع صورها وتسجيلاتها بعد 21 يوماً من آخر تعديل.

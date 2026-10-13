@@ -4,6 +4,8 @@
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
 import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
+import { getFlag } from "@/lib/flags";
+import { perMonthFrom } from "@/lib/change-requests";
 import { cookies } from "next/headers";
 import { cached } from "@/lib/redis";
 import { and, desc, eq } from "drizzle-orm";
@@ -54,7 +56,11 @@ export default async function Page() {
     getSessionState(),
   ]);
 
-  const [{ price, basePrice, renewal, remaining, nextPrice }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
+  const [{ price, renewal }, timings, changes] = await Promise.all([
+    currentPricing(),
+    lifecycleTimings(),
+    getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
+  ]);
 
-  return <Landing session={session} reviews={reviews} pricing={{ price, basePrice, renewal, remaining, nextPrice }} trialHours={timings.trialHours} />;
+  return <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerMonth={perMonthFrom(changes.config)} />;
 }

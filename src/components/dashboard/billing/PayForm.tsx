@@ -166,7 +166,7 @@ export function PayForm({
           applied ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ok/30 bg-ok/[0.06] px-3 py-2.5 text-[12.5px]">
               <span className="font-bold text-ink">
-                الكود <span dir="ltr" className="font-mono">{applied.code}</span>: {fmtNum(applied.price)} ج.م مرة واحدة، واستضافة ودعم مدى الحياة.
+                الكود <span dir="ltr" className="font-mono">{applied.code}</span>: {fmtNum(applied.price)} ج.م مرة واحدة، والاستضافة والدعم طوال تشغيل Colapia للخدمة بلا تجديد سنوي.
               </span>
               <button type="button" onClick={() => setApplied(null)} className="text-[12px] font-bold text-ink-3 hover:text-ink">
                 إلغاء الكود

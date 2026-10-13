@@ -6,7 +6,7 @@ export const metadata = { title: "الشروط والأحكام | Colapia" };
 export const dynamic = "force-dynamic";
 
 const body = (price: number, renewal: number) => `## Terms of Service (English summary)
-Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
+Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. Invited "Golden Circle" brands receive a one-time package that includes hosting and support for as long as Colapia operates the service, under fair-use limits. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
 
 ## 1. الخدمة
 Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
@@ -22,8 +22,18 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 ## 3. الباقة والأسعار
 - الباقة: **${fmtNum(price)} ج.م**، وتشمل إنشاء متجرك وأول سنة استضافة وتشغيل (الخادم، قاعدة البيانات، تخزين الصور، التحديثات، والدعم الفني).
 - التجديد: **${fmtNum(renewal)} ج.م** لكل سنة بعد الأولى، وتُضاف السنة الجديدة إلى نهاية اشتراكك الحالي.
-- لا عمولة على مبيعاتك ولا رسوم خفية. قد يكون سعر الباقة عرضاً لفترة وعدد محدودين من المتاجر، وسعر التجديد معلن في صفحة الدفع.
+- لا عمولة على مبيعاتك ولا رسوم خفية. السعر الذي تدفعه هو المعلن في صفحة الدفع لحظة دفعك، وسعر التجديد معلن فيها أيضاً.
+- بعد التفعيل يشمل اشتراكك عدداً من طلبات التعديل الشهرية ينفذها فريقنا (يظهر رصيدك في صفحة «طلبات التعديل» بلوحتك)، وما زاد عليها نتفق عليه معك قبل تنفيذه.
 - يجوز أن نغيّر الأسعار للمشتركين الجدد في أي وقت، ولا يسري تغيير على اشتراك قائم قبل تجديده التالي، ونعلنك به مسبقاً.
+
+## 3.1 عرض «الدائرة الذهبية»
+- عرض بدعوة منا لعدد محدود من براندات الملابس (خمسة براندات بحد أقصى)، يُفعَّل بكود عرض في صفحة الدفع، ويتوقف الكود تلقائياً عند اكتمال العدد.
+- يُدفع مرة واحدة بالسعر المعلن في الدعوة، ويشمل بناء المتجر واستضافته وتشغيله والدعم الفني **طوال تشغيل Colapia للخدمة**، دون رسوم تجديد سنوية.
+- مقابل العرض يصوّر صاحب البراند فيديو قصيراً عن تجربته مع متجره، يراجعه فريقنا ويُنتجه ويُنشر منشوراً مشتركاً (Collab) على حسابي البراند وColapia بعد موافقته على النسخة النهائية.
+- يسري على العرض ما يسري على كل المتاجر من هذه الشروط، ومنه حدود الاستخدام العادل في البند 3.2. ولو أوقفنا الخدمة يوماً نُعلمك قبلها بمدة كافية ونسلّمك نسخة كاملة من متجرك وبياناته (البند 6).
+
+## 3.2 الاستخدام العادل
+بعض ميزات المتجر تعمل بحدود شهرية لكل متجر حتى تبقى الخدمة سريعة ومتاحة للجميع، ومنها «دوّري بالصورة». عند بلوغ الحد يظهر للزائر البحث بالكلمات وزر التواصل مع متجرك، ويعود البحث بالصورة مع بداية الشهر التالي. نراجع الحدود دورياً ونعلنك قبل أي تخفيض لها.
 
 ## 4. الدفع والتفعيل
 الدفع بتحويل فودافون كاش أو إنستاباي مع رفع صورة الإيصال من لوحتك. نراجع كل إيصال بأنفسنا، ونفعّل متجرك أو نمد استضافته عند قبوله. نحتفظ بحق رفض إيصال لا يطابق المبلغ أو الرقم أو يبدو مخالفاً، مع إبلاغك بالسبب.
@@ -40,7 +50,8 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 ## 7. مسؤولية التاجر
 1. أنت المسؤول عن منتجاتك وأسعارك وجودتها وتوصيلها وخدمة عملائك والتعامل المالي المباشر معهم وعن مطابقة ذلك للقانون.
 2. يُمنع بيع أي منتجات مخالفة للقانون أو معتدية على الملكية الفكرية أو خادعة للعملاء.
-3. أنت مسؤول عن سرية حسابك، وعن صحة ما تكتبه من سياسات (الشحن والاستبدال) لأن متجرك يعرضها لعملائك.
+3. أنت مسؤول عن سرية حسابك، وعن صحة ما تكتبه من سياسات (الشحن والاستبدال والمعاينة) لأن متجرك يعرضها لعملائك.
+4. «تقدير المخاطرة» على طلبات الدفع عند الاستلام إرشادي مبني على بيانات متجرك، لا حكم على العميل. قرار تأكيد الطلب أو طلب عربون أو إلغائه لك، وأنت المسؤول عن تعاملك مع عملائك فيه.
 
 ## 8. مراجعة محتوى متجرك
 نبذل جهدنا ليكون كل ما في متجرك من نصوص وأسعار وسياسات مطابقاً للبيانات التي أعطيتنا إياها، لكن عليك مراجعته عند التسليم وإبلاغنا بأي تعديل. أنت المسؤول عن صحة المعلومات التي تقدمها لنا.

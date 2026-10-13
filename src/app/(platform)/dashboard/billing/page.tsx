@@ -186,11 +186,10 @@ function Offer({ price, basePrice, renewal }: { price: number; basePrice: number
         {off ? (
           <>
             <s className="text-[13px] tabular-nums text-ink-3">{fmtNum(basePrice)} ج.م</s>
-            <span className="rounded-md bg-ok/10 px-1.5 py-0.5 text-[11px] font-black text-ok">عرض الإطلاق: خصم {fmtNum(off)}%</span>
+            <span className="rounded-md bg-ok/10 px-1.5 py-0.5 text-[11px] font-black text-ok">خصم {fmtNum(off)}%</span>
           </>
         ) : null}
       </div>
-      {off ? <p className="mt-1 text-[11.5px] text-ink-3">لفترة محدودة ولعدد محدود من المتاجر.</p> : null}
       <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
         {[
           "متجرك بتصميمه الحالي ولوحة تحكمه، مفتوح لعملائك على رابطه نفسه.",
