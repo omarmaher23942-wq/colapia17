@@ -6,6 +6,7 @@ import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
 import { conversations, messages } from "@/db/schema";
 import { meta as metaApi } from "@/channels/meta";
+import { trace } from "@/lib/meta-trace";
 import { aiObjectWithMeta } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
@@ -224,6 +225,7 @@ export async function handleInbound(
       "[closer] AI call failed, applying guaranteed button fallback:",
       err
     );
+    await trace("ai-fail", String((err as Error)?.message ?? err));
     if (outreach) {
       // رد عام بالفورم قد يصل لمشرف لا لصاحب البراند: الصمت أسلم، وننبّه المالك ليرد بنفسه.
       await notifyAdmin("تعذر رد الوكيل في محادثة «الدائرة الذهبية»، رد بنفسك من لوحة المحادثات.", { conversationId: conv.id }).catch(() => {});

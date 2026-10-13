@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { aiCalls } from "@/db/schema";
 import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
+import { readTrace } from "@/lib/meta-trace";
 import { MEDIA_PROVIDER } from "@/lib/media";
 import { MODELS } from "@/ai/providers";
 import { domainAutoConfigured, domainTarget } from "@/server/domains";
@@ -177,6 +178,28 @@ const checkMeta = () =>
       : { status: "ok", detail: `${parts.join(" و")} مربوطة` };
   });
 
+const STEP_LABEL: Record<string, string> = {
+  webhook: "وصل من ميتا",
+  "webhook-401": "رُفض التوقيع (401)",
+  "webhook-publish-failed": "فشل وضع الرسالة في الطابور",
+  inbound: "بدأت المعالجة",
+  "inbound-done": "انتهت المعالجة",
+  "inbound-error": "فشلت المعالجة",
+  "ai-fail": "فشل الذكاء الاصطناعي",
+  "send-ok": "أُرسل الرد بنجاح",
+  "send-fail": "فشل إرسال الرد",
+};
+const checkTrace = () =>
+  run("meta-trace", "آخر ما حدث لرسائل الوكيل (الأحدث أولاً)", async () => {
+    const rows = await readTrace();
+    if (!rows.length) return { status: "skip", detail: "لا أحداث بعد: أرسل رسالة للصفحة ثم أعد الفحص", fix: undefined };
+    const hasFail = rows.slice(0, 6).some((r) => /fail|error|401/.test(r.step));
+    const detail = rows
+      .map((r) => `${ago(r.at) ?? ""} · ${STEP_LABEL[r.step] ?? r.step}${r.detail ? ` · ${r.detail}` : ""}`)
+      .join("\n");
+    return { status: hasFail ? "warn" : "ok", detail, fix: hasFail ? "سبب الفشل مكتوب في السطر نفسه" : undefined };
+  });
+
 const checkDomains = () =>
   run("domains", "النطاقات الخاصة للعملاء", async () => {
     const t = domainTarget();
@@ -211,12 +234,12 @@ function configChecks(): Check[] {
 }
 
 export async function runLaunchChecks(): Promise<CheckGroup[]> {
-  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, dom, gh] = await Promise.all([
-    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkDomains(), checkGithub(),
+  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh] = await Promise.all([
+    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(),
   ]);
   return [
     { title: "الأساس", checks: [db1, mig, red, cron, q] },
-    { title: "البريد والرسائل", checks: [mail, meta] },
+    { title: "البريد والرسائل", checks: [mail, meta, metaTrace] },
     { title: "الذكاء الاصطناعي", checks: [groq, gem] },
     { title: "الصور والنطاقات والكود", checks: [media, dom, gh] },
     { title: "إعداداتك", checks: configChecks() },

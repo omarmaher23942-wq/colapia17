@@ -1,3 +1,4 @@
+import { trace } from "@/lib/meta-trace";
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Client } from "@upstash/qstash";
@@ -162,6 +163,7 @@ export async function POST(req: Request) {
     // سطر تشخيص بلا أسرار: نوع الحدث وهل وصل توقيع أصلاً، ليُعرف أي سر ناقص أو خاطئ.
     const object = /"object"\s*:\s*"(\w+)"/.exec(raw.toString("utf8", 0, 200))?.[1] ?? "?";
     console.warn(`[meta-webhook] 401 bad signature: object=${object} signed=${Boolean(sig)} app_secret=${Boolean(env.META_APP_SECRET)} ig_secret=${Boolean(env.META_INSTAGRAM_APP_SECRET)}`);
+    await trace("webhook-401", `object=${object} signed=${Boolean(sig)}`);
     return new Response("bad signature", { status: 401 });
   }
 
@@ -192,10 +194,12 @@ export async function POST(req: Request) {
   }
   // سطر تشخيص بلا محتوى: يوضح لماذا لم يُنشر شيء (صدى؟ حدث بلا رسالة؟ شكل غير متوقع؟).
   console.info(`[meta-webhook] ${channel}: queued=${payloads.length} echoes=${echoes} entriesWithoutMessaging=${others}${others ? ` keys=${Object.keys(body?.entry?.[0] ?? {}).join(",")}` : ""}`);
+  await trace("webhook", `${channel} queued=${payloads.length} echoes=${echoes} noMessaging=${others} bytes=${raw.length}`);
   if (!payloads.length) return NextResponse.json({ ok: true, queued: 0 });
 
   const results = await Promise.allSettled(payloads.map(dispatch));
   const failed = results.filter((r) => r.status === "rejected" || !r.value).length;
+  if (failed) await trace("webhook-publish-failed", `${channel} failed=${failed}`);
   if (failed) return NextResponse.json({ ok: false, failed }, { status: 500 });
 
   return NextResponse.json({ ok: true, queued: payloads.length });

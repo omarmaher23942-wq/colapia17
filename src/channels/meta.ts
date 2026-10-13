@@ -1,3 +1,4 @@
+import { trace } from "@/lib/meta-trace";
 import "server-only";
 import { env } from "@/lib/env";
 
@@ -116,10 +117,13 @@ async function call(ch: Channel, payload: Record<string, unknown>, opts: CallOpt
   let last: unknown;
   for (const [i, tok] of list.entries()) {
     try {
-      return await callWith(tok, payload, opts);
+      const r = await callWith(tok, payload, opts);
+      if (!("sender_action" in payload)) await trace("send-ok", `${ch} token#${i + 1}/${list.length} (${tok.slice(0, 3)}…)`);
+      return r;
     } catch (e) {
       last = e;
       const more = i < list.length - 1;
+      if (!("sender_action" in payload)) await trace("send-fail", `${ch} token#${i + 1}/${list.length} (${tok.slice(0, 3)}…) ${String((e as Error)?.message ?? e).slice(0, 200)}`);
       console.error(`[meta-send] ${ch} token#${i + 1}/${list.length} (${tok.slice(0, 3)}…) failed${more && isAuthFailure(e) ? ", trying next token" : ""}:`, String((e as Error)?.message ?? e).slice(0, 300));
       if (!(more && isAuthFailure(e))) break;
     }

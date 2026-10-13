@@ -5,6 +5,7 @@ import { Client } from "@upstash/qstash";
 import { env, clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { sleep } from "@/lib/utils";
+import { trace } from "@/lib/meta-trace";
 import { handleInbound } from "@/ai/agents/closer/runtime";
 import { emitConversationMessage } from "@/server/realtime/emitters";
 
@@ -97,6 +98,7 @@ export const POST = verifiedByQStash(async (req: Request) => {
   const key = `inbox:${channel}:${senderId}`;
   const lockKey = `lock:${key}`;
   const isDrain = ev.drain === true;
+  await trace("inbound", `${channel} …${String(senderId).slice(-4)}${isDrain ? " drain" : ""}`);
 
   if (!isDrain) {
     const seenKey =
@@ -159,9 +161,11 @@ export const POST = verifiedByQStash(async (req: Request) => {
       try {
         await handleInbound(channel, senderId, items as never);
         processed += items.length;
+        await trace("inbound-done", `${channel} messages=${items.length}`);
       } catch (e) {
         // eslint-disable-next-line no-console
         console.error("[agents/inbound] handleInbound failed", e);
+        await trace("inbound-error", String((e as Error)?.message ?? e));
         break;
       }
     }

@@ -116,7 +116,7 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
                   <s.Icon className={cn("mt-0.5 size-5 shrink-0", s.tone)} aria-label={s.label} />
                   <div className="min-w-0 flex-1">
                     <p className="text-[14px] font-black">{c.label}</p>
-                    <p dir="auto" className="mt-0.5 break-words text-[12.5px] text-[#c3cdf0]">{c.detail}</p>
+                    <p dir="auto" className="mt-0.5 whitespace-pre-line break-words text-[12.5px] text-[#c3cdf0]">{c.detail}</p>
                     {c.fix && c.status !== "ok" ? <p className="mt-1 text-[12px] text-amber-200/90">الحل: {c.fix}</p> : null}
                   </div>
                 </li>

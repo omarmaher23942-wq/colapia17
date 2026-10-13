@@ -79,6 +79,8 @@
 
 - **متابعة (بعد النقل لـ Cloudflare):** ماسنجر يرد وإنستجرام لا يرد رغم 200 من الـ webhook (التوقيع سليم) ← الرد يخرج برمز `META_INSTAGRAM_ACCESS_TOKEN` الذي يتقدم على رمز الصفحة، وهو الأرجح تالفاً. `channels/meta.ts`: `tokens(ch)` ثم `call` يجرّب الرمز التالي (رمز الصفحة) تلقائياً عند رفض الرمز (190/102/10/401) ويكتب سطر `[meta-send]` بأول 3 أحرف فقط من الرمز. الـ webhook يكتب `[meta-webhook] <channel>: queued=… echoes=… entriesWithoutMessaging=…` ليظهر ما حدث للحدث. تحقق أيضاً من مفتاح `bot.instagram` في `/admin/flags`.
 
+- **أثر رحلة الرسالة (2026-10-13):** سجلات Workers لا تُظهر `/api/agents/inbound` ولا أخطاء الإرسال (ولا `console.info`)، فصار `lib/meta-trace.ts` يحفظ آخر 40 خطوة في Redis (`meta:trace`): وصول الـ webhook (`webhook`/`webhook-401`)، بدء المعالجة وانتهاؤها (`inbound`/`inbound-done`/`inbound-error`)، فشل الذكاء الاصطناعي (`ai-fail`)، ونتيجة كل إرسال برمزه (`send-ok`/`send-fail` بأول 3 أحرف فقط). تُعرض في `/admin/launch` تحت «آخر ما حدث لرسائل الوكيل». قراءتها تحدد أين تتوقف الرسالة: لا `inbound` بعد `webhook` = QStash لا يصل للـ Worker (جدار Cloudflare أو مفاتيح QStash)، `ai-fail` = النماذج، `send-fail` = رمز/صلاحية Meta.
+
 ### مراجعة المراحل 3–9 (2026-10-12) — ما أُصلح
 - **حالة الطلب:** `applyOrderStatus` صار مشروطاً بالحالة المقروءة (`status = prev`) وحركة المخزون مشروطة بنجاح ذلك التحديث (`stockMovement(..., guard)`)، ورابط التأكيد يمرّر `expect: "new"`: لا تكرار لإرجاع المخزون ولا كتابة فوق حالة غيّرها التاجر.
 - **البكسلات:** الزيارة الأولى كانت تضيع (السكربت يتأخر عن الـeffect)؛ صار كل سكربت يرسل زيارته الأولى بنفسه.
