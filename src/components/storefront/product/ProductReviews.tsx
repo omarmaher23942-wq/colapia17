@@ -12,10 +12,14 @@ type Review = {
   createdAt: Date;
 };
 
-const fmtDate = (d: Date) => new Intl.DateTimeFormat("ar-EG", { day: "numeric", month: "long", year: "numeric" }).format(d);
+const fmtDate = (d: Date) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(d);
 
-export function ProductReviews({ reviews, avg, count }: { reviews: Review[]; avg: number; count: number }) {
-  if (!count && !reviews.length) return null;
+export function ProductReviews({ reviews, avg: storedAvg, count: storedCount }: { reviews: Review[]; avg: number; count: number }) {
+  if (!storedCount && !reviews.length) return null;
+  // العدّاد المخزّن قد يتأخر عن التقييمات الظاهرة (بيانات مستوردة أو قديمة): لا يظهر «0 تقييم» فوق تقييم معروض.
+  const fromList = reviews.length > storedCount;
+  const count = fromList ? reviews.length : storedCount;
+  const avg = fromList ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : storedAvg;
   const dist = [5, 4, 3, 2, 1].map((n) => ({ n, c: reviews.filter((r) => r.rating === n).length }));
   const max = Math.max(1, ...dist.map((d) => d.c));
 
@@ -31,7 +35,7 @@ export function ProductReviews({ reviews, avg, count }: { reviews: Review[]; avg
             <span className="pb-1 text-sm opacity-60">من 5</span>
           </div>
           <Stars value={avg} />
-          <p className="text-xs opacity-70">بناءً على {count} تقييم</p>
+          <p className="text-xs opacity-70">بناءً على {count} {count === 1 ? "تقييم" : count === 2 ? "تقييمين" : count <= 10 ? "تقييمات" : "تقييماً"}</p>
           <ul className="space-y-1.5">
             {dist.map((d) => (
               <li key={d.n} className="flex items-center gap-2 text-xs">

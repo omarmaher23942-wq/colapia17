@@ -16,6 +16,8 @@ import { useCart } from "@/store/cart";
 import { flyToCart } from "./motion";
 import { groundedItems } from "@/blueprint/facts";
 import { cn } from "@/lib/utils";
+import { waLink } from "@/lib/whatsapp";
+import { BrandIcon } from "./brand-icons";
 import type { Product, Variant } from "@/server/repos/catalog";
 import { chartFor, isSizeOption } from "@/lib/size-guide";
 import { SizeGuideButton } from "./SizeGuide";
@@ -28,7 +30,7 @@ const TRUST_ORDER = ["cod", "inspection", "returns", "free_shipping_over", "free
 
 export function ProductPurchase({ product: p }: { product: PurchaseProduct; payments?: unknown }) {
   const router = useRouter();
-  const { conversion, facts, sizeGuide, storeId, subdomain } = useStore();
+  const { conversion, facts, sizeGuide, storeId, subdomain, channels } = useStore();
   const t = useCopy();
   const add = useCart((s) => s.add);
   const items = useCart((s) => s.items);
@@ -97,6 +99,12 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
     closeCart();
     router.push("/checkout");
   };
+
+  // سؤال عن المنتج على واتساب المتجر: الرابط والاختيار الحالي في الرسالة (الرابط بعد التحميل فقط).
+  const [pageUrl, setPageUrl] = useState("");
+  useEffect(() => setPageUrl(window.location.href.split("?")[0]!), []);
+  const chosen = p.optionNames.map((n, i) => (sel[i] ? `${n}: ${sel[i]}` : "")).filter(Boolean).join("، ");
+  const askHref = waLink(channels.whatsappNumber, `أهلاً، عندي سؤال عن «${p.name}»${chosen ? ` (${chosen})` : ""}${pageUrl ? `\n${pageUrl}` : ""}`);
 
   const share = async () => {
     const url = window.location.href;
@@ -245,10 +253,18 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
         </ul>
       ) : null}
 
-      <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
-        <Share2 className="size-3.5" aria-hidden="true" />
-        <span>مشاركة المنتج</span>
-      </button>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {askHref ? (
+          <a href={askHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold opacity-80 transition-opacity hover:opacity-100">
+            <BrandIcon brand="whatsapp" className="size-3.5" />
+            <span>سؤال عن المنتج على واتساب</span>
+          </a>
+        ) : null}
+        <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
+          <Share2 className="size-3.5" aria-hidden="true" />
+          <span>مشاركة المنتج</span>
+        </button>
+      </div>
     </div>
   );
 }

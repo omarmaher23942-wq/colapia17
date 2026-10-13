@@ -15,5 +15,5 @@ export const PLATFORM_ONLY_NAV = ["/dashboard/billing", "/dashboard/store", "/da
 /** دخولك للوحة بالبريد وكلمة المرور (تغييرها من الإعدادات). */
 export const OWNER_LOGIN = "password" as "google" | "password";
 
-/** «دوّري بالصورة» في المتجر: على المنصة (بمفاتيح المنصة وحدها الشهري)؛ مشروع التاجر الخاص بلا هذه الميزة. */
+/** «البحث بالصورة» في المتجر: على المنصة (بمفاتيح المنصة وحدها الشهري)؛ مشروع التاجر الخاص بلا هذه الميزة. */
 export const VISUAL_SEARCH = false as boolean;
