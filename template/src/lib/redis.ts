@@ -121,6 +121,22 @@ export const redis = {
     if (!e) return -2;
     return e.exp ? Math.ceil((e.exp - Date.now()) / 1000) : -1;
   },
+  async lpush(key: string, ...values: unknown[]): Promise<number> {
+    const e = live(key);
+    const list = Array.isArray(e?.v) ? (e!.v as unknown[]) : [];
+    list.unshift(...values.reverse());
+    store.set(key, { v: list, exp: e?.exp ?? 0 });
+    return list.length;
+  },
+  async ltrim(key: string, start: number, stop: number): Promise<"OK"> {
+    const e = live(key);
+    if (e && Array.isArray(e.v)) e.v = (e.v as unknown[]).slice(start, stop < 0 ? undefined : stop + 1);
+    return "OK";
+  },
+  async lrange<T = unknown>(key: string, start: number, stop: number): Promise<T[]> {
+    const e = live(key);
+    return Array.isArray(e?.v) ? ((e!.v as unknown[]).slice(start, stop < 0 ? undefined : stop + 1) as T[]) : [];
+  },
 };
 
 export const rkeys = {

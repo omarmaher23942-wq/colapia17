@@ -22,3 +22,6 @@ export const PLATFORM_ONLY_NAV = ["/dashboard/billing", "/dashboard/store", "/da
 
 /** دخول صاحب المتجر: في المنصة بـ Google (فلا كلمة مرور تُغيَّر)، وفي مشروع التاجر بالبريد وكلمة المرور. */
 export const OWNER_LOGIN = "google" as "google" | "password";
+
+/** «دوّري بالصورة» في المتجر: على المنصة (بمفاتيح المنصة وحدها الشهري)؛ مشروع التاجر الخاص بلا هذه الميزة. */
+export const VISUAL_SEARCH = true as boolean;

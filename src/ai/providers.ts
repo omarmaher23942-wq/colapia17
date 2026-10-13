@@ -20,7 +20,7 @@ const morpheus = createOpenAICompatible({
 const groq = createGroq({ apiKey: env.GROQ_API_KEY });
 const google = createGoogleGenerativeAI({ apiKey: env.GEMINI_API_KEY });
 
-export type Tier = "chat" | "compose" | "architect" | "fast" | "vision";
+export type Tier = "chat" | "compose" | "architect" | "fast" | "vision" | "visionFast";
 export type Provider = "morpheus" | "groq" | "google";
 type Link = { provider: Provider; modelId: string; cap: number };
 
@@ -38,6 +38,8 @@ export const MODELS = {
   gptOss: "openai/gpt-oss-120b",
   gemini: current(env.GEMINI_MODEL, "gemini-3.8-flash"),
   geminiLite: "gemini-3.5-flash-lite",
+  // نموذج يقرأ الصور على Groq (البحث بالصورة في المتجر). يُغيَّر بـ GROQ_VISION_MODEL إن أوقفته Groq.
+  groqVision: clean(process.env.GROQ_VISION_MODEL, "meta-llama/llama-4-scout-17b-16e-instruct"),
   claude: clean(env.CLAUDE_MODEL, "claude-3-5-sonnet-20241022"),
   opus: clean(env.CLAUDE_OPUS_MODEL, "claude-3-opus-20240229"),
 } as const;
@@ -93,6 +95,11 @@ const DEFAULT_CHAINS: Record<Tier, Link[]> = {
     L("morpheus", MODELS.claude),
   ]),
   vision: dedupe([
+    L("google", MODELS.gemini),
+  ]),
+  // البحث بالصورة: Groq أولاً (أسرع وأرخص)، وGemini احتياطاً.
+  visionFast: dedupe([
+    L("groq", MODELS.groqVision),
     L("google", MODELS.gemini),
   ]),
 };

@@ -13,7 +13,8 @@ import { PendingImages } from "@/components/dashboard/products/ImageMover";
 import { InventoryMode } from "@/components/dashboard/products/InventoryMode";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
-import { NO_STORE_HREF } from "@/lib/edition";
+import { NO_STORE_HREF, VISUAL_SEARCH } from "@/lib/edition";
+import { visualSearchMisses } from "@/server/visual-search-misses";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,11 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
   await requireStoreArea("products");
   const store = session.store;
   const query = parseProductsQuery(await searchParams);
-  const [data, bp] = await Promise.all([listProducts(store.id, query), getBlueprintOrNull(store.id)]);
+  const [data, bp, misses] = await Promise.all([
+    listProducts(store.id, query),
+    getBlueprintOrNull(store.id),
+    VISUAL_SEARCH ? visualSearchMisses(store.id).catch(() => []) : Promise.resolve([]),
+  ]);
   const { counts } = data;
 
   const narrowed = Boolean(query.q || query.category); // يغيّر الأعداد نفسها
@@ -97,6 +102,7 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
         <>
           {!narrowed ? <PendingImages count={counts.externalImages} /> : null}
           {!narrowed ? <InventoryMode tracking={bp?.inventory.tracking ?? true} compact /> : null}
+          {!narrowed && misses.length ? <VisualMisses misses={misses} /> : null}
           <nav aria-label="حالة المنتج" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
             {STATUS_TABS.map((t) => {
               const active = query.status === t.key;
@@ -240,5 +246,27 @@ function PageLink({ href, label, dir, disabled }: { href: string; label: string;
     <Link href={href} className={cn(cls, "text-ink-2 transition-colors hover:bg-edge/5 hover:text-ink")}>
       {body}
     </Link>
+  );
+}
+
+/** ما بحث عنه العملاء بالصورة ولم يجدوه في المتجر: طلب حقيقي يستحق أن يُضاف (وصف نصي فقط، الصورة لا تُحفظ). */
+function VisualMisses({ misses }: { misses: { at: string; seen: string }[] }) {
+  const recent = misses.slice(0, 6);
+  return (
+    <details className="dash-card group p-4">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[13px] font-black text-ink">
+        <span>عملاء دوّروا بالصورة على قطع مش عندك ({fmtNum(misses.length)})</span>
+        <span className="text-[11.5px] font-bold text-ink-3 group-open:hidden">اعرض</span>
+      </summary>
+      <ul className="mt-3 space-y-1.5 text-[12.5px] leading-6 text-ink-2">
+        {recent.map((m, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="shrink-0 tabular-nums text-ink-3">{new Date(m.at).toLocaleDateString("ar-EG-u-nu-latn", { day: "numeric", month: "short", timeZone: "Africa/Cairo" })}</span>
+            <span>{m.seen}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11.5px] text-ink-3">لو القطعة عندك ومش ظاهرة، تأكد إنها منشورة وليها صورة واضحة.</p>
+    </details>
   );
 }
