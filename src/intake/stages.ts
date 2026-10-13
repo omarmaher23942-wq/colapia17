@@ -5,11 +5,11 @@ import { REQUEST_STAGES, type RequestStage } from "./constants";
 export { REQUEST_STAGES, type RequestStage };
 
 export const STAGE_INFO: Record<RequestStage, { label: string; client: string }> = {
-  received: { label: "استلمنا طلبك", client: "الفريق يراجع معلوماتك وصورك، وهيراسلك لو احتاج أي تفصيلة." },
-  design: { label: "التصميم", client: "بنختار الألوان والخطوط وشكل الصفحات اللي يناسب نشاطك وزبونك." },
-  build: { label: "البناء", client: "بنبني صفحات متجرك ونكتب نصوصه، ونجهّز المنتجات اللي اتفقنا عليها." },
-  review: { label: "المراجعة", client: "بنراجع صفحات متجرك على الموبايل والكمبيوتر ونتأكد إن الطلب بيتم صح قبل ما نسلّمه." },
-  delivery: { label: "التسليم", client: "متجرك جاهز، وهيوصلك رابطه وطريقة الدخول للوحة التحكم." },
+  received: { label: "استلمنا الطلب", client: "الفريق يراجع المعلومات والصور، وهيراسلكم لو احتاج أي تفصيلة." },
+  design: { label: "التصميم", client: "بنختار الألوان والخطوط وشكل الصفحات اللي يناسب نشاطكم وعملاءكم." },
+  build: { label: "البناء", client: "بنبني صفحات المتجر ونكتب نصوصه، ونجهّز المنتجات اللي اتفقنا عليها." },
+  review: { label: "المراجعة", client: "بنراجع صفحات المتجر على الموبايل والكمبيوتر ونتأكد إن الطلب بيتم صح قبل التسليم." },
+  delivery: { label: "التسليم", client: "المتجر جاهز: رابطه والدخول للوحة التحكم هنا تحت وعلى البريد." },
 };
 
 export const isStage = (v: unknown): v is RequestStage => typeof v === "string" && (REQUEST_STAGES as readonly string[]).includes(v);

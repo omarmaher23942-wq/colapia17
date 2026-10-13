@@ -14,7 +14,7 @@ export function FollowActions({ code, storeName }: { code: string; storeName: st
     try {
       await navigator.clipboard.writeText(url());
       setCopied(true);
-      toast.success("الرابط اتنسخ. احفظه عندك.");
+      toast.success("الرابط اتنسخ، واحتفظوا به للمتابعة.");
       setTimeout(() => setCopied(false), 2500);
     } catch {
       toast.message(url());

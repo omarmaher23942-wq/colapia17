@@ -43,7 +43,9 @@ export default async function DashboardLayout({
 
   if (!session) {
     log.info("auth", "dashboard_unauthorized_redirect", { reqId });
-    redirect("/login?redirect=/dashboard&reason=no_session");
+    // يعود بعد الدخول للصفحة التي فتحها (رابط «تفعيل المتجر» في بريد أو صفحة المتابعة مثلاً).
+    const back = (await headers()).get("x-pathname") ?? "/dashboard";
+    redirect(`/login?redirect=${encodeURIComponent(back.startsWith("/dashboard") ? back : "/dashboard")}&reason=no_session`);
   }
 
   // بيانات المتجر حُذفت من المنصة بطلب صاحبه (بعد نقله لموقعه): تبقى صفحة واحدة بلا قائمة: روابط موقعه الجديد.

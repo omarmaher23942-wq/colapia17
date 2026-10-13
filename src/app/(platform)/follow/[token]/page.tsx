@@ -10,7 +10,8 @@ import { findByTrackToken, isMissingTable, requestEvents, touch } from "@/intake
 import { REQUEST_STAGES, STAGE_INFO, stageIndex } from "@/intake/stages";
 import { agencyWhatsappUrl } from "@/intake/notify";
 import { ContactHelp } from "@/components/intake/ContactHelp";
-import { cn, storeUrl } from "@/lib/utils";
+import { cn, publicStoreUrl } from "@/lib/utils";
+import { fmtNum } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { stores } from "@/db/schema";
@@ -76,10 +77,10 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
             <span className="grid size-11 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300">
               <PartyPopper className="size-5" aria-hidden="true" />
             </span>
-            <h1 className="text-[24px] font-black leading-tight text-ink">وصلنا طلبك، شكراً لثقتك</h1>
+            <h1 className="text-[24px] font-black leading-tight text-ink">وصلنا الطلب، شكراً لثقتكم</h1>
             <p className="text-[14.5px] leading-7 text-ink-2">
-              الفريق هيبدأ يراجع معلوماتك، ولو احتاج أي تفصيلة هيراسلك. <strong className="text-ink">احفظ رابط الصفحة دي</strong>: منها تتابع متجرك مرحلة بمرحلة.
-              {row.email ? " وهنبعتلك نسخة منه على بريدك." : ""}
+              الفريق هيبدأ يراجع المعلومات، ولو احتاج أي تفصيلة هيراسلكم. <strong className="text-ink">رابط الصفحة دي مهم</strong>: منه متابعة المتجر مرحلة بمرحلة.
+              {row.email ? " ونسخة منه في الطريق للبريد." : ""}
             </p>
             <FollowActions code={row.code} storeName={row.storeName ?? ""} />
           </section>
@@ -87,7 +88,7 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
 
         {confirmed ? (
           <p role="status" className="flex items-center gap-2 rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-3 text-[13.5px] font-bold text-emerald-200">
-            <MailCheck className="size-4 shrink-0" aria-hidden="true" /> تم تأكيد بريدك. شكراً.
+            <MailCheck className="size-4 shrink-0" aria-hidden="true" /> تم تأكيد البريد. شكراً.
           </p>
         ) : null}
 
@@ -96,11 +97,11 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
           <Name className="text-[24px] font-black leading-tight text-ink">{row.storeName || "متجرك"}</Name>
           {overdue ? (
             <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[14px] font-bold leading-7 text-amber-200">
-              اتأخرنا عن الموعد اللي قلناه لك. الفريق شغال على متجرك وهنبلغك أول ما يجهز.
+              اتأخرنا عن الموعد اللي وعدنا به، والاعتذار واجب. الفريق شغال على المتجر وهنبلغكم أول ما يجهز.
             </p>
           ) : !delivered && row.etaFrom && row.etaTo ? (
             <p className="text-[14px] leading-7 text-ink-2">
-              التسليم المتوقع بين <strong className="text-ink">{day(row.etaFrom)}</strong> و<strong className="text-ink">{day(row.etaTo)}</strong>، وممكن نخلّصه أسرع. والفريق بيراجع المتجر قبل ما يسلّمه لك.
+              التسليم المتوقع بين <strong className="text-ink">{day(row.etaFrom)}</strong> و<strong className="text-ink">{day(row.etaTo)}</strong>، وممكن نخلّصه أسرع. والفريق بيراجع المتجر قبل التسليم.
             </p>
           ) : null}
         </section>
@@ -108,16 +109,33 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
         {store && (store.status === "trial" || store.status === "active" || store.status === "frozen") ? (
           <section className="dash-card space-y-3 border-emerald-400/25 p-5 sm:p-6">
             <h2 className="text-[18px] font-black text-ink">{store.status === "frozen" ? "متجرك متوقف مؤقتاً" : "متجرك جاهز"}</h2>
-            <a href={storeUrl(store.subdomain)} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-xl bg-nova px-4 text-[14px] font-black text-space" dir="ltr">
-              {storeUrl(store.subdomain).replace(/^https?:\/\//, "")}
-            </a>
-            <p className="text-[13.5px] leading-7 text-ink-2">رابط لوحة التحكم وصلك على بريدك، ومنها تدار منتجاتك وطلباتك.</p>
+            <div className="flex flex-wrap gap-2">
+              <a href={publicStoreUrl(store)} target="_blank" rel="noopener" className="inline-flex min-h-11 items-center rounded-xl bg-nova px-4 text-[14px] font-black text-space" dir="ltr">
+                {publicStoreUrl(store).replace(/^https?:\/\//, "")}
+              </a>
+              <a href="/dashboard" className="inline-flex min-h-11 items-center rounded-xl border border-edge/15 px-4 text-[14px] font-black text-ink">
+                دخول لوحة التحكم
+              </a>
+            </div>
+            <p className="text-[13.5px] leading-7 text-ink-2">الدخول للوحة بحساب Google أو برمز يصل على البريد المكتوب في الاستمارة{row.email ? ` (${row.email})` : ""}.</p>
+            {store.status === "trial" ? (
+              <ol className="space-y-1.5 rounded-xl bg-edge/[0.04] p-3 text-[13.5px] leading-7 text-ink-2">
+                <li>1. طلب منتج من المتجر كأنكم عملاء: يظهر في اللوحة «تجريبي» ولا يخصم من المخزون.</li>
+                <li>2. مراجعة المنتجات والأسعار والشحن من اللوحة، وأي تعديل في الشكل نعمله لكم.</li>
+                <li>3. التفعيل قبل نهاية التجربة ليبقى المتجر مفتوحاً لعملائكم بنفس الرابط.</li>
+              </ol>
+            ) : null}
             {store.status === "trial" && store.trialEndsAt ? (
               <TrialCountdownCard expiresAt={store.trialEndsAt.toISOString()} startedAt={store.deliveredAt?.toISOString() ?? null} serverNow={Date.now()} planPrice={price} />
             ) : null}
+            {store.status === "frozen" ? (
+              <a href="/dashboard/billing" className="inline-flex min-h-11 items-center rounded-xl bg-gradient-to-b from-nova to-nova-deep px-4 text-[14px] font-black text-white">
+                تفعيل المتجر ({fmtNum(price)} ج)
+              </a>
+            ) : null}
             {store.status === "frozen" && store.purgeAt ? (
               <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[14px] font-bold leading-7 text-amber-200">
-                انتهت التجربة. متجرك محفوظ لحد {day(store.purgeAt)} وبعدها يُحذف نهائياً. ادفع الباقة ({price} ج تشمل سنة استضافة) من لوحة التحكم ← الاشتراك، ويرجع فوراً.
+                انتهت التجربة. المتجر محفوظ لحد {day(store.purgeAt)} وبعدها يُحذف نهائياً. بالتفعيل ({fmtNum(price)} ج تشمل سنة استضافة) يرجع فوراً بنفس الرابط.
               </p>
             ) : null}
           </section>
@@ -165,8 +183,8 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
         </section>
 
         <section className="space-y-2 px-1 text-[13px] leading-7 text-ink-3">
-          <p>عند التسليم هيوصلك رابط متجرك وطريقة الدخول للوحة التحكم، وهنشرح لك وقتها خطوات التجربة والتفعيل.</p>
-          <p className="font-bold text-ink-2">عندك سؤال؟</p>
+          {!delivered ? <p>عند التسليم يظهر هنا رابط المتجر والدخول للوحة التحكم وخطوات التجربة، ويصل نفس الشيء على البريد.</p> : null}
+          <p className="font-bold text-ink-2">في أي سؤال؟</p>
           <ContactHelp whatsappUrl={wa} />
         </section>
       </main>
