@@ -33,6 +33,8 @@ type Props = {
   courierName: string | null;
   trackingNumber: string | null;
   internalNotes: string | null;
+  /** درع الدفع عند الاستلام: تأكيد طلب مخاطِر لم يؤكده العميل يمر بتنبيه. */
+  riskLevel?: "trusted" | "none" | "low" | "medium" | "high" | null;
 };
 
 type Pending = { to: OrderStatus; title: string; description: string; confirmLabel: string; tone: "primary" | "danger"; noteLabel?: string } | null;
@@ -72,6 +74,15 @@ export function OrderStatusPanel(p: Props) {
         title: "تأكيد طلب لم يُراجَع تحويله",
         description: "إيصال التحويل لم يُراجَع بعد. الأفضل أن تتأكد من وصول المبلغ أولاً من بطاقة الإيصال. تريد تأكيد الطلب الآن؟",
         confirmLabel: "أكّد الطلب",
+        tone: "primary",
+      });
+    }
+    if (next.to === "confirmed" && cod && (p.riskLevel === "high" || p.riskLevel === "medium")) {
+      return setConfirming({
+        to: "confirmed",
+        title: p.riskLevel === "high" ? "طلب بمخاطرة عالية" : "طلب يحتاج تأكيداً",
+        description: "العميل لم يؤكد الطلب بنفسه بعد. الأفضل أن ترسل له رابط التأكيد أو تتصل به (أو تطلب عربوناً) قبل التجهيز. تريد تأكيده الآن على أي حال؟",
+        confirmLabel: "أكّده على أي حال",
         tone: "primary",
       });
     }

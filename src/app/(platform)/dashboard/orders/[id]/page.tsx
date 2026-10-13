@@ -14,7 +14,8 @@ import { formatEgp } from "@/lib/money";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
 import { governorateName } from "@/lib/egypt";
 import { cn } from "@/lib/utils";
-import { collectNote, shippingLabelText, type MessageOrder } from "@/lib/order-messages";
+import { collectNote, shippingLabelText, suggestedDeposit, type MessageOrder } from "@/lib/order-messages";
+import { DepositRequest } from "@/components/dashboard/order/DepositRequest";
 import { confirmToken, reviewToken } from "@/lib/order-access";
 import { storeUrl } from "@/lib/utils";
 import { getBlueprintOrNull } from "@/lib/tenant";
@@ -112,7 +113,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     reviewUrl: o.status === "delivered" ? storeUrl(store.subdomain, `/review?o=${encodeURIComponent(o.code)}&t=${reviewToken(store.id, o.id)}`) : null,
   };
   const collect = collectNote(o);
-  const campaign = o.source.startsWith("campaign:") ? (await getBlueprintOrNull(store.id))?.campaigns.find((c) => `campaign:${c.slug}` === o.source) ?? { name: o.source.slice(9) } : null;
+  const bp = await getBlueprintOrNull(store.id);
+  const campaign = o.source.startsWith("campaign:") ? bp?.campaigns.find((c) => `campaign:${c.slug}` === o.source) ?? { name: o.source.slice(9) } : null;
   const timeline = [...o.statusHistory].reverse();
 
   return (
@@ -310,6 +312,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   ))}
                 </ul>
                 <p className="mt-1.5 font-bold text-ink">{RISK_ADVICE[risk.level]}</p>
+                {bp && (risk.level === "medium" || risk.level === "high") && o.paymentMethod === "cod" && (o.status === "new" || o.status === "confirmed") ? (
+                  <DepositRequest
+                    order={{ customerName: o.customerName, customerPhone: o.customerPhone, code: o.code, totalPiasters: o.totalPiasters }}
+                    storeName={bp.brand.name || store.name}
+                    suggestedPiasters={suggestedDeposit(o)}
+                    pay={{
+                      vodafone: bp.payments.vodafoneCash.enabled ? bp.payments.vodafoneCash.number : null,
+                      instapay: bp.payments.instapay.enabled ? (bp.payments.instapay.address ?? bp.payments.instapay.number) : null,
+                    }}
+                  />
+                ) : null}
               </div>
             ) : null}
 
@@ -344,6 +357,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               courierName={o.courierName}
               trackingNumber={o.trackingNumber}
               internalNotes={o.internalNotes}
+              riskLevel={risk?.level ?? null}
             />
           </div>
           <div className="order-5 lg:order-none">

@@ -69,3 +69,20 @@ describe("customer order whatsapp", () => {
     expect(t).toContain("الإجمالي: 459 ج");
   });
 });
+
+import { depositMessage, suggestedDeposit } from "@/lib/order-messages";
+describe("COD shield deposit", () => {
+  it("suggests shipping or 10% (min 50, rounded to 10) and never above total", () => {
+    expect(suggestedDeposit({ totalPiasters: 90000, shippingPiasters: 6000 })).toBe(6000);
+    expect(suggestedDeposit({ totalPiasters: 123400, shippingPiasters: 0 })).toBe(13000);
+    expect(suggestedDeposit({ totalPiasters: 20000, shippingPiasters: 0 })).toBe(5000);
+    expect(suggestedDeposit({ totalPiasters: 3000, shippingPiasters: 0 })).toBe(3000);
+  });
+  it("states amount, real payment ways and the remainder", () => {
+    const t = depositMessage({ customerName: "مريم أحمد", code: "CLP-1", totalPiasters: 90000 }, "نوفا", 6000, { vodafone: "01012345678", instapay: null });
+    expect(t).toContain("أهلاً مريم");
+    expect(t).toContain("فودافون كاش على 01012345678");
+    expect(t).not.toContain("إنستاباي");
+    expect(t).toMatch(/الباقي عند الاستلام: 840/);
+  });
+});

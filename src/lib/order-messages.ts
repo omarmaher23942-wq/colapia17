@@ -128,3 +128,30 @@ export function customerOrderWhatsApp(
   if (o.items.length > 6) items.push(`• و${o.items.length - 6} أصناف أخرى`);
   return [`أهلاً ${storeName}، لسه عامل طلب من المتجر.`, `رقم الطلب: ${o.code}`, ...items, `الإجمالي: ${fmt(o.totalPiasters)}`, `الاسم: ${o.customerName}`].join("\n");
 }
+
+/** عربون مقترح لطلب مخاطِر بالدفع عند الاستلام: مصاريف الشحن إن وُجدت، وإلا 10% من الإجمالي (50 ج على الأقل)، مقرّب لأقرب 10 ج. */
+export function suggestedDeposit(o: { totalPiasters: number; shippingPiasters: number }): number {
+  const base = o.shippingPiasters > 0 ? o.shippingPiasters : Math.round(o.totalPiasters * 0.1);
+  const egp = Math.max(50, Math.ceil(base / 100 / 10) * 10);
+  return Math.min(egp * 100, o.totalPiasters);
+}
+
+/**
+ * رسالة طلب عربون (درع الدفع عند الاستلام): المبلغ ووسائل التحويل الحقيقية للمتجر، والباقي عند الاستلام. القرار
+ * للتاجر؛ الرسالة لا تذكر «مخاطرة» ولا تتهم العميل.
+ */
+export function depositMessage(
+  o: Pick<MessageOrder, "customerName" | "code" | "totalPiasters">,
+  storeName: string,
+  depositPiasters: number,
+  pay: { vodafone?: string | null; instapay?: string | null }
+): string {
+  const ways = [pay.vodafone ? `فودافون كاش على ${pay.vodafone}` : null, pay.instapay ? `إنستاباي على ${pay.instapay}` : null].filter(Boolean).join(" أو ");
+  const rest = Math.max(0, o.totalPiasters - depositPiasters);
+  return [
+    `أهلاً ${first(o.customerName)}، معك ${storeName}.`,
+    `لتأكيد طلبك ${o.code} وبدء تجهيزه، محتاجين عربون ${formatEgp(depositPiasters)}${ways ? ` ${ways}` : ""}، ويتخصم من الإجمالي.`,
+    `الباقي عند الاستلام: ${formatEgp(rest)}.`,
+    "ابعتلنا صورة التحويل هنا ونأكد طلبك فوراً.",
+  ].join("\n");
+}
