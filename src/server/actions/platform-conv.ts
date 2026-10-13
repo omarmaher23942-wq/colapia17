@@ -11,10 +11,7 @@ async function guard() { return requirePlatformCap("conversations", "غير مص
 
 export async function togglePauseAction(id: string, paused: boolean) {
   const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return;
-  // إعادة التشغيل تفك أيضاً «إغلاق» محادثة الدائرة الذهبية (رفض المشرف) حتى يعود الوكيل للرد فيها.
-  const memory = (c.memory ?? {}) as Record<string, unknown>;
-  const outreach = memory.outreach && typeof memory.outreach === "object" ? (memory.outreach as Record<string, unknown>) : null;
-  await db.update(conversations).set({ botPaused: paused, stage: paused ? "human" : c.stage === "human" ? "persuasion" : c.stage, ...(!paused && outreach?.closed ? { memory: { ...memory, outreach: { ...outreach, closed: false } } } : {}), updatedAt: new Date() }).where(eq(conversations.id, id));
+  await db.update(conversations).set({ botPaused: paused, stage: paused ? "human" : c.stage === "human" ? "persuasion" : c.stage, updatedAt: new Date() }).where(eq(conversations.id, id));
   await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: paused ? "إيقاف المساعد (Takeover)" : "إعادة تشغيل المساعد", data: { conversationId: id } });
   revalidatePath("/admin/conversations");
 }

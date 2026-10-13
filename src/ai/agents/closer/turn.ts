@@ -11,9 +11,6 @@ function clean(value: unknown, max = 1000): string {
     .slice(0, max);
 }
 
-const DEFAULT_REPLY =
-  "أهلاً بك في Colapia. فريقنا بيبني لك متجر إلكتروني كامل لنشاطك ويستضيفه ويشغّله، وتجربه قبل ما تدفع. قولي بتبيع إيه؟";
-
 const DEFAULT_BUTTON = "ابدأ استمارة متجرك";
 
 export const closerTurnSchema = z.object({
@@ -22,15 +19,13 @@ export const closerTurnSchema = z.object({
     .nullish()
     .transform((s) => clean(s, 400)),
 
+  // قد يأتي فارغاً من نموذج مضطرب: المستدعي يعامل الفارغ كفشل ويرد بالقواعد (لا رد عام ثابت).
   reply: z
     .string()
     .nullish()
-    .transform((s) => clean(s, 1000) || DEFAULT_REPLY),
+    .transform((s) => clean(s, 700)),
 
-  issueLink: z.boolean().default(false),
-
-  // محادثة الدائرة الذهبية: المشرف رفض بأدب، فنرد مرة ونتوقف (لا يرد الوكيل بعدها في هذه المحادثة).
-  close: z.boolean().nullish().transform((v) => v === true),
+  issueLink: z.boolean().nullish().transform((v) => v === true),
 
   buttonTitle: z
     .string()

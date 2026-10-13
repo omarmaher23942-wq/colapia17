@@ -1,14 +1,14 @@
 import { trace } from "@/lib/meta-trace";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Client } from "@upstash/qstash";
 import { env, clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, messages } from "@/db/schema";
 import { meta } from "@/channels/meta";
-import { linkOutreachConversation } from "@/server/ig-outreach";
+import { wasSentByBot } from "@/lib/bot-outbound";
 
 type Channel = "messenger" | "instagram";
 
@@ -76,16 +76,19 @@ function toPayload(channel: Channel, ev: any): InboundPayload | null {
 }
 
 /**
- * صدى رسالة خرجت من صفحتنا (is_echo) ولم يرسلها تطبيقنا: رسالة كتبها فريقنا بنفسه من صندوق الصفحة أو من تطبيق
- * إنستجرام. **لا توقف الوكيل** (قرار المالك 2026-10-12): الإيقاف لمحادثة بعينها يكون من لوحة المحادثات فقط.
- * أول رسالة منّا قبل أي رسالة من الطرف الآخر = «رسالة افتتاحية» لبراند (الدائرة الذهبية): تُحفظ في ذاكرة المحادثة
- * فيعرف الوكيل عند الرد أن الفريق بدأ الكلام وماذا قال، ويتعامل مع المشرف أو صاحب البراند (closer.outreach).
+ * صدى رسالة خرجت من صفحتنا (is_echo): إما رد وكيلنا نفسه (يُتجاهل: معرّفها مسجّل عند إرسالها، أو نصها يطابق آخر رد
+ * للوكيل قبل لحظات)، أو رسالة كتبها فريقنا بنفسه من صندوق الصفحة أو تطبيق إنستجرام فتُحفظ «ردّ موظف» في المحادثة.
+ * **لا توقف الوكيل** (قرار المالك 2026-10-12): الإيقاف لمحادثة بعينها يكون من لوحة المحادثات فقط. كان الصدى يُحفظ ردَّ
+ * موظف حتى لو كان ردّ الوكيل (معرّف تطبيق إنستجرام غير معرّف تطبيق ميتا) فيتكرر الرد في السجل ويظن الوكيل أن إنساناً
+ * تدخل. يعمل بعد الرد على Meta (after) لأنه قد ينتظر ثوانٍ لوصول تسجيل معرّف الرسالة.
  */
 async function handleEcho(channel: Channel, ev: any): Promise<void> {
   const msg = ev?.message;
   if (!msg?.is_echo) return;
   const appId = msg.app_id != null ? String(msg.app_id) : "";
   if (appId && env.META_APP_ID && appId === env.META_APP_ID) return; // رسالتنا نحن (الوكيل)
+  const mid = msg.mid ? String(msg.mid) : null;
+  if (await wasSentByBot(mid)) return;
   const customerId = ev?.recipient?.id ? String(ev.recipient.id) : null;
   if (!customerId) return;
   const text = typeof msg.text === "string" && msg.text ? msg.text.slice(0, 4000) : "[مرفق]";
@@ -98,22 +101,18 @@ async function handleEcho(channel: Channel, ev: any): Promise<void> {
       conv ??= (await db.select().from(conversations).where(where).limit(1))[0];
     }
     if (!conv) return;
-    const [inbound] = await db
-      .select({ id: messages.id })
+    // احتياط ثانٍ: نص يطابق آخر رد للوكيل قبل دقائق = صداه (إن فاتنا تسجيل معرّفه).
+    const [lastBot] = await db
+      .select({ text: messages.text, at: messages.createdAt })
       .from(messages)
-      .where(and(eq(messages.conversationId, conv.id), eq(messages.role, "user")))
+      .where(and(eq(messages.conversationId, conv.id), eq(messages.role, "assistant")))
+      .orderBy(desc(messages.createdAt))
       .limit(1);
-    const memory = (conv.memory ?? {}) as Record<string, unknown>;
-    if (!inbound && !memory.outreach) {
-      await db
-        .update(conversations)
-        .set({ memory: { ...memory, outreach: { at: new Date().toISOString(), text: text.slice(0, 1000) } }, updatedAt: new Date() })
-        .where(eq(conversations.id, conv.id));
-      await linkOutreachConversation(conv.id, channel, customerId).catch((e) => console.error("[webhooks/meta] outreach link failed", e));
-    }
+    const flat = (v: string) => v.replace(/\n?\[زر الاستمارة[^\]]*\]/g, "").replace(/\s+/g, " ").trim();
+    if (lastBot?.text && Date.now() - lastBot.at.getTime() < 5 * 60_000 && text !== "[مرفق]" && flat(lastBot.text).includes(flat(text).slice(0, 80))) return;
     await db
       .insert(messages)
-      .values({ conversationId: conv.id, role: "human_agent", externalMid: msg.mid ? String(msg.mid) : undefined, text })
+      .values({ conversationId: conv.id, role: "human_agent", externalMid: mid ?? undefined, text })
       .onConflictDoNothing();
   } catch (e) {
     console.error("[webhooks/meta] echo handling failed", e);
@@ -185,7 +184,7 @@ export async function POST(req: Request) {
     for (const ev of entry?.messaging ?? []) {
       if (ev?.message?.is_echo) {
         echoes++;
-        await handleEcho(channel, ev);
+        after(() => handleEcho(channel, ev));
         continue;
       }
       const p = toPayload(channel, ev);

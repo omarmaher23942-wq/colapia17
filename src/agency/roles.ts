@@ -82,7 +82,6 @@ export const ADMIN_PAGES = {
   "/admin/payments": "payments.decide",
   "/admin/reviews": "stores.manage",
   "/admin/leads": "leads",
-  "/admin/outreach": "leads", // قائمة تواصل Colapia مع البراندات (الدائرة الذهبية)
   "/admin/audience": "audience",
   "/admin/stores": "stores.manage",
   "/admin/costs": "costs",

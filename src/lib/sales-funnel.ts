@@ -5,9 +5,7 @@ export const FUNNEL_RANGES = [7, 30, 90] as const;
 export type FunnelRange = (typeof FUNNEL_RANGES)[number];
 
 export type FunnelCounts = {
-  /** رسائل تواصل أرسلها المالك من /admin/outreach في الفترة، ومن ردّ منهم، ومن وصل منهم للاستمارة أو أبعد. */
-  outreach: { sent: number; replied: number; reachedForm: number };
-  /** محادثات جديدة (إعلانات ورسائل وتواصل) في الفترة. */
+  /** محادثات جديدة (إعلانات ورسائل) في الفترة. */
   conversations: number;
   /** استمارات أُرسلت في الفترة. */
   submitted: number;
@@ -28,18 +26,10 @@ const rate = (n: number, d: number) => (d > 0 ? Math.min(100, Math.round((n / d)
 
 export function funnelSteps(c: FunnelCounts): FunnelStep[] {
   return [
-    { key: "conversations", label: "محادثات جديدة", value: c.conversations, rate: null, hint: "من الإعلانات ورسائل التواصل" },
+    { key: "conversations", label: "محادثات جديدة", value: c.conversations, rate: null, hint: "من الإعلانات والرسائل" },
     { key: "submitted", label: "أرسلوا الاستمارة", value: c.submitted, rate: rate(c.submitted, c.conversations), hint: "من المحادثات" },
     { key: "delivered", label: "استلموا متاجرهم", value: c.delivered, rate: rate(c.delivered, c.submitted), hint: "من الاستمارات" },
     { key: "paid", label: "دفعوا", value: c.paid, rate: rate(c.paid, c.delivered), hint: "من المتاجر المسلّمة" },
-  ];
-}
-
-export function outreachSteps(o: FunnelCounts["outreach"]): FunnelStep[] {
-  return [
-    { key: "sent", label: "رسائل أُرسلت", value: o.sent, rate: null, hint: "من قائمة التواصل" },
-    { key: "replied", label: "ردّوا", value: o.replied, rate: rate(o.replied, o.sent), hint: "من المُرسل لهم" },
-    { key: "form", label: "وصلوا للاستمارة", value: o.reachedForm, rate: rate(o.reachedForm, o.replied), hint: "من الذين ردّوا" },
   ];
 }
 
@@ -59,6 +49,4 @@ export const STEP_ADVICE: Record<string, string> = {
   submitted: "المحادثات لا تصل للاستمارة: راجع برومبت الوكيل وردوده في «المحادثات»، وهل يرسل الرابط مبكراً بما يكفي.",
   delivered: "استمارات لا تتحول لمتاجر مسلّمة: افتح لوحة الإنتاج وراجع المتأخر و«بانتظار العميل».",
   paid: "متاجر تُسلَّم ولا تدفع: راجع رسائل التجربة وصفحة الدفع، واتصل بمن انتهت تجربته اليوم.",
-  replied: "قليلون يردّون على رسائل التواصل: جرّب صياغة افتتاحية أخرى أو حسابات أنسب لعرضك.",
-  form: "يردّون ولا يصلون للاستمارة: المحادثة بعد الرد تحتاج متابعة أسرع منك أو من الوكيل.",
 };

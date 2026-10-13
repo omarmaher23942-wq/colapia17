@@ -1,6 +1,7 @@
 "use server";
 // launch.ts — أزرار مركز جاهزية الإطلاق: اختبار نماذج قراءة الصور والمحادثة فرادى، وفك إيقافها المؤقت، وبريد تجربة للمالك.
 import { requirePlatformCap } from "@/server/platform-guard";
+import { probeAgent } from "@/ai/agents/closer/runtime";
 import { probeTier, resetBreakers, type ProbeResult } from "@/ai/providers";
 import { sendEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
@@ -36,6 +37,13 @@ export async function testChatAction(): Promise<{ ok: true; results: ProbeResult
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 200) };
   }
+}
+
+/** رد كامل من الوكيل على رسالة تجريبية (نفس البرومبت والمخطط والسلسلة، بلا إرسال لأحد ولا حفظ). */
+export async function testAgentAction(text: string): Promise<{ ok: true; reply: string; issueLink: boolean; provider: string; mode: string; ms: number } | { ok: false; error: string }> {
+  await requirePlatformCap("settings");
+  const t = typeof text === "string" ? text.trim() : "";
+  return probeAgent(t || "هاي");
 }
 
 /** اختبار الرفع الحقيقي: يحفظ صورة (شعار المنصة) في مساحة الملفات ويعيد رابطها، فيعرضها المتصفح ليتأكد الفريق أن العرض يعمل أيضاً. */

@@ -1,16 +1,15 @@
 // SalesFunnel — قمع المبيعات في مركز القيادة (الجولة 4.1): المحادثات ← الاستمارات ← التسليم ← الدفع بنسبة كل خطوة،
-// وقمع رسائل التواصل، ومقاعد «الدائرة الذهبية»، وتحويل التجربة لمن سُلّموا في الفترة، وأضعف خطوة مع نصيحة.
+// ومقاعد «الدائرة الذهبية»، وتحويل التجربة لمن سُلّموا في الفترة، وأضعف خطوة مع نصيحة.
 import Link from "next/link";
 import { Crown, TrendingDown } from "lucide-react";
 import { formatEgp } from "@/lib/money";
-import { FUNNEL_RANGES, STEP_ADVICE, funnelSteps, outreachSteps, weakestStep, type FunnelCounts, type FunnelRange, type FunnelStep } from "@/lib/sales-funnel";
+import { FUNNEL_RANGES, STEP_ADVICE, funnelSteps, weakestStep, type FunnelCounts, type FunnelRange, type FunnelStep } from "@/lib/sales-funnel";
 
 const n = (v: number) => v.toLocaleString("en-US");
 
 export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; range: FunnelRange; golden: { code: string; used: number; seats: number } }) {
   const main = funnelSteps(counts);
-  const out = outreachSteps(counts.outreach);
-  const weak = weakestStep(main) ?? (counts.outreach.sent ? weakestStep(out) : null);
+  const weak = weakestStep(main);
   const trialRate = counts.delivered > 0 ? Math.round((counts.deliveredCohortPaid / counts.delivered) * 100) : null;
   const seatsLeft = Math.max(0, golden.seats - golden.used);
 
@@ -46,13 +45,6 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
         </Link>
       </div>
 
-      {counts.outreach.sent > 0 ? (
-        <div className="space-y-2">
-          <p className="text-xs font-black text-[#c5cdf0]">رسائل التواصل مع البراندات</p>
-          <Steps steps={out} small />
-        </div>
-      ) : null}
-
       {weak && STEP_ADVICE[weak.key] ? (
         <p className="flex items-start gap-2 rounded-2xl border border-rose-400/20 bg-rose-500/[0.06] p-3 text-xs leading-6 text-rose-100">
           <TrendingDown className="mt-1 size-4 shrink-0 text-rose-300" aria-hidden="true" />
@@ -65,14 +57,14 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
   );
 }
 
-function Steps({ steps, small }: { steps: FunnelStep[]; small?: boolean }) {
+function Steps({ steps }: { steps: FunnelStep[] }) {
   const max = Math.max(1, ...steps.map((s) => s.value));
   return (
-    <ol className={`grid gap-2 ${small ? "grid-cols-3" : "grid-cols-2 lg:grid-cols-4"}`}>
+    <ol className="grid grid-cols-2 gap-2 lg:grid-cols-4">
       {steps.map((s) => (
         <li key={s.key} className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <p className="text-[11px] font-bold text-[#8d97c4]">{s.label}</p>
-          <p className={`font-mono font-black text-white ${small ? "text-lg" : "text-2xl"}`}>{n(s.value)}</p>
+          <p className="font-mono text-2xl font-black text-white">{n(s.value)}</p>
           <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/[0.06]">
             <div className="h-full rounded-full bg-[#6f86ff]" style={{ width: `${Math.round((s.value / max) * 100)}%` }} />
           </div>

@@ -1,5 +1,5 @@
 // sales-funnel.ts — أعداد قمع مبيعات الوكالة لفترة (قاعدة المنصة وحدها). كل استعلام مستقل بـ catch حتى لا يُسقط
-// جدولٌ لم تُطبَّق migration الخاصة به (ig_leads قبل 0013) بقيةَ القمع.
+// جدولٌ لم تُطبَّق migration الخاصة به بقيةَ القمع.
 import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -21,12 +21,7 @@ async function one(q: ReturnType<typeof sql>): Promise<Record<string, unknown>> 
 
 export async function salesFunnel(days: number): Promise<FunnelCounts> {
   const since = new Date(Date.now() - days * 864e5).toISOString();
-  const [o, c, r, s, p] = await Promise.all([
-    one(sql`
-      select count(*) as sent,
-             count(*) filter (where replied_at is not null) as replied,
-             count(*) filter (where status in ('form','won')) as reached_form
-      from ig_leads where sent_at >= ${since}::timestamptz`),
+  const [c, r, s, p] = await Promise.all([
     one(sql`select count(*) as n from conversations where created_at >= ${since}::timestamptz`),
     one(sql`select count(*) as n from store_requests where submitted_at >= ${since}::timestamptz and status <> 'spam'`),
     one(sql`
@@ -40,7 +35,6 @@ export async function salesFunnel(days: number): Promise<FunnelCounts> {
       from platform_payments where status = 'confirmed' and coalesce(reviewed_at, created_at) >= ${since}::timestamptz`),
   ]);
   return {
-    outreach: { sent: num(o.sent), replied: num(o.replied), reachedForm: num(o.reached_form) },
     conversations: num(c.n),
     submitted: num(r.n),
     delivered: num(s.delivered),

@@ -4,11 +4,11 @@
 // الذكاء الاصطناعي. «أعد الفحص» يعيد تحميل الصفحة فتُجرى الفحوص من جديد على الخادم.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, CheckCircle2, CircleSlash, ImageUp, Loader2, Mail, MessageCircle, RefreshCw, ScanSearch, XCircle } from "lucide-react";
+import { AlertTriangle, Bot, CheckCircle2, CircleSlash, ImageUp, Loader2, Mail, MessageCircle, RefreshCw, ScanSearch, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { CheckGroup, CheckStatus } from "@/server/launch-checks";
 import type { ProbeResult } from "@/ai/providers";
-import { cleanupMediaTestAction, resetModelsAction, sendTestEmailAction, testChatAction, testMediaAction, testVisionAction } from "@/server/actions/launch";
+import { cleanupMediaTestAction, resetModelsAction, sendTestEmailAction, testAgentAction, testChatAction, testMediaAction, testVisionAction } from "@/server/actions/launch";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<CheckStatus, { Icon: typeof CheckCircle2; tone: string; label: string }> = {
@@ -24,7 +24,7 @@ const PURPOSE: Record<string, string> = {
   visual_search_read: "البحث بالصورة (قراءة)",
   visual_search_compare: "البحث بالصورة (مقارنة)",
   closer: "وكيل الرسائل",
-  outreach_opener: "رسالة التواصل",
+  closer_probe: "اختبار رد الوكيل",
   verify_payment: "فحص إيصال",
 };
 
@@ -32,7 +32,9 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [probe, setProbe] = useState<{ tier: "visionFast" | "chat"; results: ProbeResult[] } | null>(null);
-  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | null>(null);
+  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | "agent" | null>(null);
+  const [agentText, setAgentText] = useState("هاي، عندي براند ملابس على إنستجرام");
+  const [agent, setAgent] = useState<Awaited<ReturnType<typeof testAgentAction>> | null>(null);
   const [media, setMedia] = useState<{ state: "ok" | "broken"; url: string; host: string } | null>(null);
 
   /** يرفع صورة حقيقية ثم يعرضها في المتصفح من رابطها العام: الرفع وحده لا يكفي، العرض هو ما يراه الزائر. */
@@ -55,6 +57,15 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
     await cleanupMediaTestAction(r.key).catch(() => null);
     setBusy(null);
     toast[loaded ? "success" : "error"](loaded ? "الرفع والعرض يعملان" : "رُفعت الصورة لكن المتصفح لم يستطع عرضها: التفاصيل تحت الأزرار");
+  };
+
+  /** رد كامل من الوكيل بالبرومبت والمخرجات المنظمة الحقيقية، دون إرسال لأحد. */
+  const testAgent = async () => {
+    setBusy("agent");
+    const r = await testAgentAction(agentText).catch(() => ({ ok: false as const, error: "تعذر الاختبار" }));
+    setBusy(null);
+    setAgent(r);
+    toast[r.ok ? "success" : "error"](r.ok ? "الوكيل رد: الرد تحت الأزرار" : "الوكيل لم يستطع الرد: السبب تحت الأزرار");
   };
 
   const test = async (tier: "visionFast" | "chat") => {
@@ -97,6 +108,41 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
           {busy === "email" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Mail className="size-4" aria-hidden="true" />} أرسل لي بريد تجربة
         </button>
       </div>
+
+      <div className="flex flex-wrap items-stretch gap-2 rounded-2xl border border-white/10 p-3">
+        <label className="min-w-0 flex-1 basis-60">
+          <span className="mb-1 block text-[12px] font-bold text-[#8d97c4]">جرّب رد الوكيل على رسالة (لا تُرسل لأحد)</span>
+          <input
+            dir="auto"
+            value={agentText}
+            maxLength={300}
+            onChange={(e) => setAgentText(e.target.value)}
+            className="h-10 w-full rounded-xl border border-white/15 bg-transparent px-3 text-[13px] outline-none focus:border-[#8fa8ff]"
+          />
+        </label>
+        <button type="button" disabled={busy !== null || !agentText.trim()} onClick={testAgent} className="inline-flex min-h-10 items-center gap-2 self-end rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50">
+          {busy === "agent" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bot className="size-4" aria-hidden="true" />} جرّب رداً كاملاً
+        </button>
+      </div>
+
+      {agent ? (
+        <section className={cn("rounded-3xl border p-5 text-[13px]", agent.ok ? "border-emerald-400/30 bg-emerald-500/5" : "border-rose-400/40 bg-rose-500/5")} aria-live="polite">
+          {agent.ok ? (
+            <div className="space-y-1.5">
+              <p dir="auto" className="whitespace-pre-line break-words text-[14px] font-bold text-emerald-100">{agent.reply || "رد فارغ"}</p>
+              <p className="text-[12px] text-[#8d97c4]">
+                <span dir="ltr" className="font-mono">{agent.provider}</span> · {agent.ms}ms · {agent.mode === "object" ? "مخرجات منظمة" : "مخرجات مُصلحة من نص"} · {agent.issueLink ? "سيرسل زر الاستمارة" : "بلا زر"}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 text-rose-100">
+              <p className="font-bold">لم يستطع أي نموذج الرد، فيرد الوكيل الآن بالقواعد الاحتياطية (أبسط).</p>
+              <p dir="auto" className="whitespace-pre-line break-words text-[12px]">{agent.error}</p>
+              <p className="text-[12px]">الغالب أن مفتاح Groq أو Gemini منتهٍ أو خاطئ: أنشئ مفتاحاً جديداً وضعه في المتغيرات كما هو دون مسافات أو تنصيص، أعد النشر، ثم اضغط «فك الإيقاف المؤقت» وجرّب ثانية.</p>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       {media ? (
         <section className={cn("rounded-3xl border p-5 text-[13px]", media.state === "ok" ? "border-emerald-400/30 bg-emerald-500/5" : "border-rose-400/40 bg-rose-500/5")} aria-live="polite">
