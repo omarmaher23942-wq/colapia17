@@ -68,7 +68,7 @@ export function PayForm({
   async function pick(files: FileList | File[] | null) {
     const f = files ? Array.from(files)[0] : undefined;
     if (!f) return;
-    if (!IMAGE_TYPES.includes(f.type) && !f.type.startsWith("image/")) return setReceiptError("ارفع صورة (لقطة شاشة للإيصال)، لا ملفاً آخر");
+    if (!IMAGE_TYPES.includes(f.type) && !f.type.startsWith("image/")) return setReceiptError("المطلوب صورة (لقطة شاشة للإيصال)، لا ملف آخر");
     setReceiptError("");
     setUploading(true);
     const preview = URL.createObjectURL(f);
@@ -94,7 +94,7 @@ export function PayForm({
   function checkPhone(): string | null {
     const n = normalizeEgyptianPhone(phone);
     if (!n) {
-      setPhoneError(phone.trim() ? "رقم غير صحيح: 11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015" : "اكتب رقم المحفظة أو الحساب الذي حوّلت منه");
+      setPhoneError(phone.trim() ? "رقم غير صحيح: 11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015" : "رقم المحفظة أو الحساب الذي تم التحويل منه مطلوب");
       return null;
     }
     setPhoneError("");
@@ -104,7 +104,7 @@ export function PayForm({
 
   async function submit() {
     const n = checkPhone();
-    if (!receipt) setReceiptError("ارفع صورة الإيصال");
+    if (!receipt) setReceiptError("صورة الإيصال مطلوبة");
     if (!n) return void document.getElementById("pay-phone")?.focus();
     if (!receipt) return void fileRef.current?.closest("section")?.scrollIntoView({ block: "center", behavior: "smooth" });
     setSending(true);
@@ -124,7 +124,7 @@ export function PayForm({
   return (
     <div className="space-y-4">
       {/* 1) التحويل */}
-      <Step n={1} title="حوّل المبلغ">
+      <Step n={1} title="تحويل المبلغ">
         <div role="radiogroup" aria-label="وسيلة التحويل" className="grid grid-cols-2 gap-2">
           {(
             [
@@ -158,10 +158,10 @@ export function PayForm({
         </div>
 
         <dl className="mt-3 divide-y divide-edge/10 rounded-xl border border-edge/10 bg-edge/[0.02]">
-          <CopyRow label={method === "vodafone_cash" ? "حوّل إلى رقم المحفظة" : "حوّل إلى الرقم المربوط بإنستاباي"} display={prettyPhone(target)} value={target} />
+          <CopyRow label={method === "vodafone_cash" ? "التحويل إلى رقم المحفظة" : "التحويل إلى الرقم المربوط بإنستاباي"} display={prettyPhone(target)} value={target} />
           <CopyRow label="المبلغ بالضبط" display={`${fmtNum(price)} ج.م`} value={String(price)} />
         </dl>
-        <p className="mt-2 text-[11.5px] leading-5 text-ink-3">حوّل المبلغ كاملاً في تحويل واحد، ثم التقط صورة لشاشة نجاح التحويل.</p>
+        <p className="mt-2 text-[11.5px] leading-5 text-ink-3">المبلغ كاملاً في تحويل واحد، ثم لقطة شاشة لنجاح التحويل.</p>
         {coupons ? (
           applied ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ok/30 bg-ok/[0.06] px-3 py-2.5 text-[12.5px]">
@@ -201,9 +201,9 @@ export function PayForm({
       </Step>
 
       {/* 2) الرقم المحوَّل منه */}
-      <Step n={2} title="الرقم الذي حوّلت منه">
+      <Step n={2} title="الرقم الذي تم التحويل منه">
         <label htmlFor="pay-phone" className="sr-only">
-          الرقم الذي حوّلت منه
+          الرقم الذي تم التحويل منه
         </label>
         <input
           id="pay-phone"
@@ -273,7 +273,7 @@ export function PayForm({
             )}
           >
             {uploading ? <Loader2 className="size-6 animate-spin text-nova-2" aria-hidden="true" /> : <ImagePlus className="size-6 text-ink-3" aria-hidden="true" />}
-            <span className="text-[13px] font-black text-ink">{uploading ? "نرفع الصورة…" : "اختر صورة الإيصال"}</span>
+            <span className="text-[13px] font-black text-ink">{uploading ? "نرفع الصورة…" : "اختيار صورة الإيصال"}</span>
             <span className="text-[11.5px] text-ink-3">لقطة شاشة من المحفظة أو التطبيق، حتى 8 ميجابايت</span>
           </button>
         )}
@@ -289,7 +289,7 @@ export function PayForm({
         className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[14px] font-black text-white shadow-lg shadow-nova/20 transition hover:shadow-xl disabled:opacity-60"
       >
         {sending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
-        {sending ? "نرسل الإيصال…" : "أرسل الإيصال للمراجعة"}
+        {sending ? "نرسل الإيصال…" : "إرسال الإيصال للمراجعة"}
       </button>
       <p className="text-center text-[11.5px] leading-5 text-ink-3">نراجع كل إيصال بأنفسنا. عند القبول يُفعَّل متجرك ويصلك بريد، ولا يُجمَّد متجرك ولا يُحذف أثناء المراجعة.</p>
     </div>

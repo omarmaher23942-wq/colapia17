@@ -20,6 +20,9 @@ const ROOTS = [
   "src/blueprint/facts.ts",
   "src/blueprint/schema.ts",
   "src/lib/order-messages.ts",
+  "src/lifecycle/templates.ts",
+  "src/lifecycle/handlers.ts",
+  "src/components/dashboard/billing",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.

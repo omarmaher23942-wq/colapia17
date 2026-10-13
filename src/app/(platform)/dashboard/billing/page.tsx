@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { formatEgp } from "@/lib/money";
 import { prettyPhone } from "@/lib/phone";
+import { trialFacts, type TrialFacts } from "@/server/repos/trial-facts";
 import { currentPricing } from "@/server/pricing";
 import { billingStage, type BillingPayment, type BillingStage } from "@/lib/billing-stage";
 import { canRenewNow, HOSTING_GRACE_DAYS, RENEW_OPEN_DAYS, type HostingState } from "@/lib/hosting";
@@ -84,6 +85,7 @@ export default async function BillingPage() {
   const pricing = { price: store.priceLockedEgp ?? current.price, basePrice: current.basePrice, renewal: current.renewal };
 
   const renewing = stage.kind === "active" && Boolean(stage.renewalPending);
+  const facts = stage.kind === "pay" ? await trialFacts(store).catch(() => null) : null;
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       {stage.kind === "review" || renewing ? <AutoRefresh everyMs={15000} /> : null}
@@ -98,6 +100,7 @@ export default async function BillingPage() {
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
           <div className="space-y-4">
             <PhaseBanner stage={stage} now={now} />
+            {facts ? <SoFar facts={facts} /> : null}
             <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} coupons suggestCoupon={suggestCoupon} />
           </div>
           <Offer price={pricing.price} basePrice={pricing.basePrice} renewal={pricing.renewal} />
@@ -119,6 +122,30 @@ export default async function BillingPage() {
   );
 }
 
+/** ما في المتجر الآن ويبقى كما هو بالتفعيل: أرقام حقيقية فقط، وما لم يحدث لا يُذكر. */
+function SoFar({ facts }: { facts: TrialFacts }) {
+  const items = [
+    { n: facts.products, label: "منتج منشور" },
+    facts.visitors > 0 ? { n: facts.visitors, label: "زائر منذ التسليم" } : null,
+    facts.realOrders > 0 ? { n: facts.realOrders, label: "طلب حقيقي" } : null,
+    facts.orders > 0 ? { n: facts.orders, label: "طلب تجريبي" } : null,
+  ].filter((x): x is { n: number; label: string } => x !== null);
+  return (
+    <section className="dash-card p-4" aria-label="متجرك حتى الآن">
+      <p className="text-[13px] font-black text-ink">كل هذا يبقى كما هو بالتفعيل</p>
+      <ul className={`mt-2.5 grid gap-2 ${items.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}>
+        {items.map((x) => (
+          <li key={x.label} className="rounded-xl bg-edge/[0.04] p-2.5">
+            <p className="text-lg font-black tabular-nums text-ink">{fmtNum(x.n)}</p>
+            <p className="text-[11.5px] text-ink-3">{x.label}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2.5 text-[11.5px] leading-5 text-ink-3">نفس الرابط والتصميم والمنتجات والإعدادات، وطلبات عملائك تبدأ من أول دقيقة بعد قبول الإيصال.</p>
+    </section>
+  );
+}
+
 function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay" }>; now: number }) {
   const del = stage.deleteAt;
   const rejected = stage.rejected ? (
@@ -127,7 +154,7 @@ function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay
       <div className="min-w-0 text-[12.5px] leading-6">
         <p className="font-black text-ink">لم نقبل إيصالك السابق</p>
         <p className="text-ink-2">{stage.rejected.reviewNote?.trim() || "لم نتمكن من التأكد من وصول التحويل."}</p>
-        <p className="text-ink-3">إن كنت حوّلت فعلاً، أرسل صورة أوضح يظهر فيها المبلغ والتاريخ ورقم العملية.</p>
+        <p className="text-ink-3">إن تم التحويل فعلاً، المطلوب صورة أوضح يظهر فيها المبلغ والتاريخ ورقم العملية.</p>
       </div>
     </div>
   ) : null;
@@ -138,7 +165,7 @@ function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay
         <StateCard tone="warn" icon={Hourglass} title={`تجربتك تنتهي ${inTime(stage.freezeAt, now)}`} compact>
           <p>
             {when(stage.freezeAt)}. بعدها يُجمَّد المتجر فلا يراه العملاء ولا يستقبل طلبات
-            {del ? `، ثم يُحذف نهائياً ${when(del)} إن لم تدفع` : ""}.
+            {del ? `، ثم يُحذف نهائياً ${when(del)} إن لم يتم الدفع` : ""}.
           </p>
         </StateCard>
       );
@@ -161,7 +188,7 @@ function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay
       );
     }
     return (
-      <StateCard tone="bad" icon={AlertTriangle} title={del ? `متجرك محفوظ حتى ${when(del)}` : "أرسل إيصالاً صحيحاً"} compact>
+      <StateCard tone="bad" icon={AlertTriangle} title={del ? `متجرك محفوظ حتى ${when(del)}` : "المطلوب إيصال صحيح"} compact>
         <p>{del ? `${inTime(del, now)} يُحذف المتجر نهائياً إن لم يصلنا إيصال صحيح.` : "متجرك ينتظر إيصالاً صحيحاً ليُفعَّل."}</p>
       </StateCard>
     );
@@ -255,7 +282,7 @@ function InReview({ payment, renewal }: { payment: BillingPayment; renewal?: boo
       {payment.screenshotUrl ? (
         <a href={payment.screenshotUrl} target="_blank" rel="noopener noreferrer" className="group block w-full max-w-[11rem] justify-self-center md:justify-self-end">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={payment.screenshotUrl} alt="صورة الإيصال الذي أرسلته" className="h-56 w-full rounded-xl border border-edge/10 bg-edge/5 object-cover object-top" />
+          <img src={payment.screenshotUrl} alt="صورة الإيصال المرسَل" className="h-56 w-full rounded-xl border border-edge/10 bg-edge/5 object-cover object-top" />
           <span className="mt-1.5 flex items-center justify-center gap-1 text-[11.5px] font-bold text-ink-3 group-hover:text-ink">
             الإيصال المرسَل <ExternalLink className="size-3" aria-hidden="true" />
           </span>
