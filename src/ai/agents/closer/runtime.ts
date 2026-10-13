@@ -102,16 +102,19 @@ function stateBlock(input: { replies: number; linkSentAt: number | null; priceMe
 /** دور واحد مع النموذج: نص بصيغة JSON نحلله بتسامح (لا مخرجات منظمة تتعثر)، ونص عادي بلا JSON يُقبل رداً. */
 async function converse(system: string, messages: ModelMessage[], conversationId?: string): Promise<{ turn: CloserTurn; provider: string }> {
   const instruction = `${system}\n\nأخرج JSON فقط بلا Markdown ولا أي نص خارجه.`;
-  const r = await aiText("chat", { system: instruction, messages, temperature: 0.7, maxTokens: 900, timeoutMs: AI_ATTEMPT_MS }, { purpose: "closer", conversationId });
-  const raw = r.text.trim();
-  let obj: unknown = null;
-  try {
-    obj = extractJson(raw);
-  } catch {
-    obj = null;
-  }
-  const parsed = closerTurnSchema.safeParse(obj ?? { reply: raw.replace(/[{}"]/g, "") });
-  if (!parsed.success) throw new Error(`unparseable model output: ${raw.slice(0, 120)}`);
+  // ناتج صالح = رد غير فارغ أو طلب تحويل لموظف؛ غير ذلك (نص فارغ من نموذج يستهلك مخرجاته في التفكير مثلاً) يجرّب النموذج التالي.
+  const parse = (raw: string) => {
+    let obj: unknown = null;
+    try {
+      obj = extractJson(raw);
+    } catch {
+      obj = null;
+    }
+    const p = closerTurnSchema.safeParse(obj ?? { reply: raw.replace(/[{}"]/g, "") });
+    return p.success && (p.data.reply || p.data.requestHuman) ? p.data : null;
+  };
+  const r = await aiText("chat", { system: instruction, messages, temperature: 0.7, maxTokens: 1600, timeoutMs: AI_ATTEMPT_MS, accept: (t) => parse(t.trim()) !== null }, { purpose: "closer", conversationId });
+  const parsed = { success: true as const, data: parse(r.text.trim())! };
   return { turn: parsed.data, provider: r.provider };
 }
 

@@ -263,6 +263,8 @@ export async function aiText(
     maxTokens?: number;
     timeoutMs?: number;
     budgetMs?: number;
+    /** يرفض ناتجاً غير صالح (نص فارغ مثلاً) فيُجرَّب النموذج التالي بدل إعادته. */
+    accept?: (text: string) => boolean;
   },
   meta: Meta
 ) {
@@ -295,6 +297,7 @@ export async function aiText(
         }),
         ms
       );
+      if (args.accept && !args.accept(r.text)) throw new Error(`unusable output: ${JSON.stringify(r.text.slice(0, 80))}`);
       await log(meta, l, t0, r.usage, undefined, fallbackFrom);
       return { text: r.text, toolCalls: r.toolCalls, usage: r.usage, provider: `${l.provider}:${l.modelId}` };
     } catch (e) {
