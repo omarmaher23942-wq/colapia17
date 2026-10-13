@@ -121,6 +121,9 @@ export function CheckoutForm({
   const router = useRouter();
   const methods = useMemo(() => methodsOf(payments), [payments]);
 
+  // الحقول الاختيارية مطوية حتى يطلبها العميل (أو كانت مكتوبة): صفحة أقصر وطلب أسرع.
+  const [extras, setExtras] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
   const [f, setF] = useState<Form>(() => ({
     name: "",
     phone: "",
@@ -358,6 +361,8 @@ export function CheckoutForm({
     ) : null;
 
   const shownSub = quote?.subtotal ?? localSub;
+  const showExtras = extras || Boolean(f.email || f.notes) || err?.field === "email";
+  const showCode = codeOpen || Boolean(f.discountCode) || Boolean(quote?.discountError);
   const shippingReady = !!quote && quote.shipping !== null;
 
   const inputStyle: React.CSSProperties = {
@@ -372,6 +377,14 @@ export function CheckoutForm({
           current={progress.current}
         />
 
+        {/* على الموبايل الملخص تحت الاستمارة: سطر الإجمالي هنا يغني عن النزول، ويفتح الملخص كاملاً. */}
+        <a href="#order-summary" className="mb-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm lg:hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+          <span className="flex items-center gap-2 font-bold">
+            <ShoppingBag className="size-4" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" />
+            طلبك: {items.reduce((a, i) => a + i.qty, 0)} {items.reduce((a, i) => a + i.qty, 0) === 1 ? "قطعة" : "قطع"}
+          </span>
+          <span className="font-mono font-black">{formatEgp(shippingReady && quote ? quote.total : shownSub)}{shippingReady && quote ? "" : " + الشحن"}</span>
+        </a>
         <form
           className="space-y-6"
           onSubmit={(e) => {
@@ -422,13 +435,13 @@ export function CheckoutForm({
                 <label htmlFor="co-phone" className="mb-1 block text-xs font-bold">رقم الموبايل *</label>
                 <div className="relative">
                   <Phone
-                    className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 opacity-40"
+                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-40"
                     strokeWidth={SW}
                     aria-hidden="true"
                   />
                   <input
                     id="co-phone"
-                    className={cn(F, "pe-9 font-mono")}
+                    className={cn(F, "pl-9 font-mono")}
                     style={inputStyle}
                     placeholder="01xxxxxxxxx"
                     inputMode="tel"
@@ -447,6 +460,7 @@ export function CheckoutForm({
                 {fieldError("phone")}
               </div>
 
+              {showExtras ? (
               <div className="sm:col-span-2">
                 <label htmlFor="co-email" className="mb-1 block text-xs font-bold">
                   بريدك <span className="font-medium opacity-60">(اختياري: نبلغك عليه بكل خطوة في طلبك)</span>
@@ -467,6 +481,7 @@ export function CheckoutForm({
                 />
                 {fieldError("email")}
               </div>
+              ) : null}
 
               <div>
                 <label htmlFor="co-gov" className="mb-1 block text-xs font-bold">المحافظة *</label>
@@ -536,6 +551,7 @@ export function CheckoutForm({
               {fieldError("address")}
             </div>
 
+            {showExtras ? (
             <div>
               <label htmlFor="co-notes" className="mb-1 block text-xs font-bold">ملاحظات للطلب (اختياري)</label>
               <input
@@ -548,6 +564,11 @@ export function CheckoutForm({
                 maxLength={300}
               />
             </div>
+            ) : (
+              <button type="button" onClick={() => setExtras(true)} className="text-xs font-bold underline underline-offset-4 opacity-70 hover:opacity-100">
+                + بريد لمتابعة الطلب أو ملاحظة (اختياري)
+              </button>
+            )}
           </section>
 
           {/* Step 2 — Payment */}
@@ -556,7 +577,7 @@ export function CheckoutForm({
             style={{ background: "var(--card)", borderColor: "var(--border)" }}
           >
             <h2 className="border-b pb-3 font-heading text-base font-black" style={{ borderColor: "var(--border)" }}>
-              متى تحب تدفع؟
+              طريقة الدفع
             </h2>
 
             {/* سؤال واحد واضح: الآن بالتحويل أم عند الاستلام. لا اختيار مفروض، ولا رسوم مخفية. */}
@@ -742,8 +763,14 @@ export function CheckoutForm({
             className="space-y-4 rounded-3xl border p-6 shadow-xs sm:p-7"
             style={{ background: "var(--card)", borderColor: "var(--border)" }}
           >
+            {!showCode ? (
+              <button type="button" onClick={() => setCodeOpen(true)} className="text-sm font-bold underline underline-offset-4 opacity-80 hover:opacity-100">
+                عندك كود خصم؟
+              </button>
+            ) : (
+            <>
             <h2 className="border-b pb-3 font-heading text-base font-black" style={{ borderColor: "var(--border)" }}>
-              هل لديك كود خصم؟
+              كود الخصم
             </h2>
             <input
               className={cn(F, "font-mono font-bold uppercase")}
@@ -767,6 +794,8 @@ export function CheckoutForm({
                 تم تطبيق خصم بقيمة {formatEgp(quote.discount)}
               </p>
             ) : null}
+            </>
+            )}
           </section>
 
           {err && !err.field ? (
@@ -805,7 +834,8 @@ export function CheckoutForm({
 
       {/* Sidebar Summary */}
       <aside
-        className="h-fit space-y-5 rounded-3xl border p-6 shadow-xs lg:sticky lg:top-32"
+        id="order-summary"
+        className="scroll-mt-24 h-fit space-y-5 rounded-3xl border p-6 shadow-xs lg:sticky lg:top-32"
         style={{ background: "var(--card)", borderColor: "var(--border)" }}
       >
         <h2

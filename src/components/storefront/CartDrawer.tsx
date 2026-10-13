@@ -7,6 +7,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import {
   X,
   Minus,
@@ -44,6 +45,10 @@ export function CartDrawer() {
   const remaining =
     threshold !== null ? Math.max(0, threshold - subtotal) : 0;
   const progress = threshold ? Math.min(100, (subtotal / threshold) * 100) : 100;
+
+  // أي انتقال لصفحة أخرى (الدفع مثلاً) يغلق الدرج: لا يبقى فوق الصفحة الجديدة.
+  const pathname = usePathname();
+  useEffect(() => close(), [pathname, close]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -300,7 +300,8 @@ export function ConversionWidgets() {
       </AnimatePresence>
 
       {/* ─── WhatsApp Floating Button ─────────────────────────────────── */}
-      {waHref ? (
+      {/* في صفحة الدفع يختفي الزر العائم: لا يغطي الحقول ولا يشتت عن إتمام الطلب. */}
+      {waHref && !pathname?.startsWith("/checkout") ? (
         <a
           href={waHref}
           target="_blank"

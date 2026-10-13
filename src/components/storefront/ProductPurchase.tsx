@@ -32,6 +32,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
   const t = useCopy();
   const add = useCart((s) => s.add);
   const items = useCart((s) => s.items);
+  const closeCart = useCart((s) => s.close);
 
   const [sel, setSel] = useState<string[]>(p.optionNames.map(() => ""));
   const [qty, setQty] = useState(1);
@@ -92,6 +93,8 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
     // لا نكرر المنتج لو كان في السلة بنفس الاختيار: نذهب مباشرة لإتمام الطلب.
     const inCart = items.some((x) => x.productId === p.id && (x.variantId ?? null) === (variant?.id ?? null));
     if (!inCart) add(item(), qty);
+    // الإضافة تفتح درج السلة؛ «شراء الآن» يذهب للدفع مباشرة فلا يبقى الدرج فوق صفحة الدفع.
+    closeCart();
     router.push("/checkout");
   };
 
