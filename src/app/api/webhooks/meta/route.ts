@@ -176,9 +176,13 @@ export async function POST(req: Request) {
   if (!channel) return NextResponse.json({ ok: true, ignored: "unknown-object" });
 
   const payloads: InboundPayload[] = [];
+  let echoes = 0;
+  let others = 0;
   for (const entry of body?.entry ?? []) {
+    if (!Array.isArray(entry?.messaging) || !entry.messaging.length) others++;
     for (const ev of entry?.messaging ?? []) {
       if (ev?.message?.is_echo) {
+        echoes++;
         await handleEcho(channel, ev);
         continue;
       }
@@ -186,6 +190,8 @@ export async function POST(req: Request) {
       if (p) payloads.push(p);
     }
   }
+  // سطر تشخيص بلا محتوى: يوضح لماذا لم يُنشر شيء (صدى؟ حدث بلا رسالة؟ شكل غير متوقع؟).
+  console.info(`[meta-webhook] ${channel}: queued=${payloads.length} echoes=${echoes} entriesWithoutMessaging=${others}${others ? ` keys=${Object.keys(body?.entry?.[0] ?? {}).join(",")}` : ""}`);
   if (!payloads.length) return NextResponse.json({ ok: true, queued: 0 });
 
   const results = await Promise.allSettled(payloads.map(dispatch));

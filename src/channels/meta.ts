@@ -48,18 +48,22 @@ export class MetaSendError extends Error {
   }
 }
 
-const token = (ch: Channel) => {
-  const tok =
-    ch === "instagram"
-      ? env.META_INSTAGRAM_ACCESS_TOKEN ?? env.META_PAGE_ACCESS_TOKEN
-      : env.META_PAGE_ACCESS_TOKEN;
-  if (!tok) {
+/** كل الرموز الممكنة للقناة بالترتيب: رمز إنستجرام الخاص (إن وُجد) ثم رمز الصفحة. بلا تكرار. */
+const tokens = (ch: Channel): string[] => {
+  const list = ch === "instagram" ? [env.META_INSTAGRAM_ACCESS_TOKEN, env.META_PAGE_ACCESS_TOKEN] : [env.META_PAGE_ACCESS_TOKEN];
+  const out = [...new Set(list.filter((t): t is string => Boolean(t)))];
+  if (!out.length) {
     throw new Error(
       `Meta access token is missing for channel: ${ch}. Make sure META_PAGE_ACCESS_TOKEN is configured in environment variables.`
     );
   }
-  return tok;
+  return out;
 };
+const token = (ch: Channel) => tokens(ch)[0]!;
+
+/** رمز مرفوض (منتهٍ/تالف/غير مصرّح): نجرب الرمز التالي بدل أن يصمت الوكيل. */
+const isAuthFailure = (e: unknown) =>
+  e instanceof MetaSendError && (e.code === 190 || e.code === 102 || e.code === 10 || e.status === 401);
 
 // ضمان أن الإصدار يبدأ بحرف v دائماً لتجنب خطأ Code 2500
 const getVersion = () => {
@@ -108,7 +112,22 @@ function messaging(ch: Channel, tag?: Tag) {
 }
 
 async function call(ch: Channel, payload: Record<string, unknown>, opts: CallOpts = {}): Promise<SendResult> {
-  const tok = token(ch);
+  const list = tokens(ch);
+  let last: unknown;
+  for (const [i, tok] of list.entries()) {
+    try {
+      return await callWith(tok, payload, opts);
+    } catch (e) {
+      last = e;
+      const more = i < list.length - 1;
+      console.error(`[meta-send] ${ch} token#${i + 1}/${list.length} (${tok.slice(0, 3)}…) failed${more && isAuthFailure(e) ? ", trying next token" : ""}:`, String((e as Error)?.message ?? e).slice(0, 300));
+      if (!(more && isAuthFailure(e))) break;
+    }
+  }
+  throw last;
+}
+
+async function callWith(tok: string, payload: Record<string, unknown>, opts: CallOpts): Promise<SendResult> {
   const target = isInstagramLoginToken(tok) ? "me" : env.META_PAGE_ID || "me";
   const url = `${hostFor(tok)}/${target}/messages?access_token=${encodeURIComponent(tok)}`;
   const attempts = opts.retry === false ? 1 : MAX_ATTEMPTS;
