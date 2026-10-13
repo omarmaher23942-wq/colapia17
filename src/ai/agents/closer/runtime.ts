@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 import { conversations, messages } from "@/db/schema";
 import { meta as metaApi } from "@/channels/meta";
 import { trace } from "@/lib/meta-trace";
-import { aiObjectWithMeta } from "@/ai/providers";
+import { aiText, extractJson } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
 import { issueIntakeLink, type IntakePrefill } from "@/intake/link";
@@ -17,8 +17,7 @@ import { redis } from "@/lib/redis";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { alertAgentDegraded } from "./alerts";
 import { closerTurnSchema, type CloserTurn } from "./turn";
-import { ASK_BOT_REPLY, HANDOFF_REPLY, LINK_REPEAT_MS, MAX_MESSAGES_PER_HOUR, RATE_NOTICE, asksIfBot, wantsHuman } from "./policy";
-import { ruleReply, type ReplyVars } from "./replies";
+import { LINK_REPEAT_MS, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
 
 type Channel = "messenger" | "instagram";
 type InboundAttachment = { type: "image" | "video" | "audio" | "file"; url?: string };
@@ -32,14 +31,12 @@ type Inbound = {
 type Conv = typeof conversations.$inferSelect;
 
 const AI_ATTEMPT_MS = 14_000;
-const HISTORY_LIMIT = 16;
+const HISTORY_LIMIT = 30;
 /** علامة في نص رسالة الوكيل المحفوظة تدل على أن زر الاستمارة أُرسل معها (يُستخدم لعدم تكراره). */
 const LINK_MARK = "[زر الاستمارة:";
 const LINK_MARK_RE = /\n?\[زر الاستمارة:[^\]]*\]/g;
-const EXPLICIT_LINK_RE = /(ابعت|ابعتلي|ابعتيلي|هات|فين)\s*(الفورم|الرابط|اللينك|الاستمارة|الزر)|(نبدأ|نبدا|يلا\s*بينا|موافق|ابعته|ابعتها)/i;
-const MENTIONS_LINK_RE = /(الزر|الزرار|الرابط|اللينك|الاستمارة|استمارة|التسجيل)/i;
 
-async function interpolateVars(): Promise<Record<string, string> & ReplyVars> {
+async function interpolateVars(): Promise<Record<string, string>> {
   const [{ price, basePrice, renewal, remaining }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
   const discounted = basePrice > price;
   return {
@@ -85,20 +82,37 @@ function modelHistory(rows: Row[]): ModelMessage[] {
   return out.length ? out : [{ role: "user", content: "مرحباً" }];
 }
 
-/** حالة المحادثة التي تُلحق بالتعليمات: ما قيل وهل أُرسل الزر، حتى لا يكرر الوكيل نفسه. */
-function stateBlock(input: { replies: number; linkSentAt: number | null; priceMentioned: boolean; known: { business?: string; storeName?: string }; now: number }): string {
+/** حالة المحادثة التي تُلحق بالتعليمات: ما قيل وهل أُرسل الزر وذاكرة الوكيل، حتى لا يكرر نفسه ويبني على ما عرفه. */
+function stateBlock(input: { replies: number; linkSentAt: number | null; priceMentioned: boolean; summary: string; known: { business?: string; storeName?: string }; now: number }): string {
   const link =
     input.linkSentAt === null
       ? "لم يُرسل بعد"
-      : `أُرسل قبل ${Math.max(1, Math.round((input.now - input.linkSentAt) / 60_000))} دقيقة (لا تطلبه ثانية ولا تذكر الزر إلا إن طلبه العميل)`;
+      : `أُرسل قبل ${Math.max(1, Math.round((input.now - input.linkSentAt) / 60_000))} دقيقة (لا تعرضه ثانية إلا إن طلبه)`;
   return [
     "",
     "# حالة هذه المحادثة (للعلم، لا تذكرها في ردك):",
-    `- ردودك السابقة: ${input.replies}${input.replies === 0 ? " (هذا أول رد: ترحيب بجملة واحدة)" : " (لا ترحب ولا تعرّف بنفسك مجدداً)"}`,
+    `- ردودك السابقة: ${input.replies}${input.replies === 0 ? " (هذا أول رد)" : " (لا ترحب ولا تعرّف بنفسك مجدداً)"}`,
     `- زر الاستمارة: ${link}`,
-    `- السعر: ${input.priceMentioned ? "ذُكر سابقاً (لا تعد ذكره إلا إن سأل)" : "لم يُذكر بعد"}`,
-    input.known.business || input.known.storeName ? `- ما عرفناه عنه: ${[input.known.business && `نشاطه: ${input.known.business}`, input.known.storeName && `اسم متجره: ${input.known.storeName}`].filter(Boolean).join("، ")}` : "- لا نعرف نشاطه بعد",
+    `- السعر: ${input.priceMentioned ? "ذُكر سابقاً" : "لم يُذكر بعد"}`,
+    input.known.business || input.known.storeName ? `- ما عرفناه: ${[input.known.business && `نشاطه: ${input.known.business}`, input.known.storeName && `اسم متجره: ${input.known.storeName}`].filter(Boolean).join("، ")}` : "- لا نعرف نشاطه بعد",
+    input.summary ? `- ذاكرتك عنه (من أدوارك السابقة، حدّثها في الحقل memory):\n${input.summary}` : "- ذاكرتك عنه: فارغة (ابدأ تدوينها في الحقل memory)",
   ].join("\n");
+}
+
+/** دور واحد مع النموذج: نص بصيغة JSON نحلله بتسامح (لا مخرجات منظمة تتعثر)، ونص عادي بلا JSON يُقبل رداً. */
+async function converse(system: string, messages: ModelMessage[], conversationId?: string): Promise<{ turn: CloserTurn; provider: string }> {
+  const instruction = `${system}\n\nأخرج JSON فقط بلا Markdown ولا أي نص خارجه.`;
+  const r = await aiText("chat", { system: instruction, messages, temperature: 0.7, maxTokens: 900, timeoutMs: AI_ATTEMPT_MS }, { purpose: "closer", conversationId });
+  const raw = r.text.trim();
+  let obj: unknown = null;
+  try {
+    obj = extractJson(raw);
+  } catch {
+    obj = null;
+  }
+  const parsed = closerTurnSchema.safeParse(obj ?? { reply: raw.replace(/[{}"]/g, "") });
+  if (!parsed.success) throw new Error(`unparseable model output: ${raw.slice(0, 120)}`);
+  return { turn: parsed.data, provider: r.provider };
 }
 
 const norm = (s: string) => s.replace(LINK_MARK_RE, "").replace(/\s+/g, " ").trim();
@@ -158,128 +172,79 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     return;
   }
 
-  // «انت بوت ولا إنسان؟»: جواب صادق بلا ذكاء اصطناعي ولا تحويل. وطلب صريح لموظف: نوقف الوكيل ونحوّل لفريقنا.
-  if (lastUserMessage && asksIfBot(lastUserMessage)) {
-    await sendText(channel, senderId, conv, ASK_BOT_REPLY);
-    return;
-  }
-  if (lastUserMessage && wantsHuman(lastUserMessage)) {
-    await handoffToHuman(channel, senderId, conv, "طلب العميل موظفاً");
-    return;
-  }
-
   const [vars, rows, linkRow] = await Promise.all([interpolateVars(), recentRows(conv.id), lastLinkAt(conv.id)]);
   const linkSentAt = linkRow?.getTime() ?? null;
   const now = Date.now();
-  // ما قلناه سابقاً (ردود الوكيل وردود الموظفين) لمنع التكرار.
-  const before = rows;
-  const assistantTexts = before.filter((r) => r.role !== "user").map((r) => norm(r.text ?? ""));
-  const priceMentioned = before.some((r) => r.role !== "user" && (r.text ?? "").includes(formatEgpNumber(Number(vars.price))));
-  const known = ((conv.memory as Record<string, unknown> | null)?.known ?? {}) as { business?: string; storeName?: string };
-
-  await metaApi.typing(channel, senderId, true);
+  const assistantTexts = rows.filter((r) => r.role !== "user").map((r) => norm(r.text ?? ""));
+  const priceMentioned = rows.some((r) => r.role !== "user" && (r.text ?? "").includes(formatEgpNumber(Number(vars.price))));
+  const mem = (conv.memory as Record<string, unknown> | null) ?? {};
+  const known = (mem.known ?? {}) as { business?: string; storeName?: string };
+  const summary = typeof mem.summary === "string" ? mem.summary : "";
 
   // رسالة بلا نص (صورة أو رسالة صوتية أو ملف): لا نخمّن محتواها.
   if (!lastUserMessage) {
     await sendText(channel, senderId, conv, "وصلتنا رسالتكم. ممكن تكتبوا سؤالكم نصاً عشان نرد عليكم بدقة؟");
-    await metaApi.typing(channel, senderId, false);
     return;
   }
 
-  type Decision = { reply: string; issueLink: boolean; buttonTitle: string; requestHuman?: string | null; prefill: IntakePrefill; source: "ai" | "rules" };
-  let decision: Decision;
-  let turn: CloserTurn | null = null;
+  await metaApi.typing(channel, senderId, true);
+
+  let turn: CloserTurn;
   try {
-    const system =
-      (await getPrompt("closer.chat", vars)) +
-      stateBlock({ replies: assistantTexts.length, linkSentAt, priceMentioned, known, now });
-    const r = await aiObjectWithMeta(
-      "chat",
-      {
-        schema: closerTurnSchema,
-        schemaName: "CloserTurn",
-        system,
-        messages: modelHistory(rows),
-        temperature: 0.6,
-        maxTokens: 600,
-        timeoutMs: AI_ATTEMPT_MS,
-      },
-      { purpose: "closer", conversationId: conv.id }
-    );
-    turn = r.object;
+    const system = (await getPrompt("closer.chat", vars)) + stateBlock({ replies: assistantTexts.length, linkSentAt, priceMentioned, summary, known, now });
+    ({ turn } = await converse(system, modelHistory(rows), conv.id));
     if (!turn.reply && !turn.requestHuman) throw new Error("empty reply from model");
-    decision = {
-      reply: turn.reply,
-      issueLink: turn.issueLink,
-      buttonTitle: turn.buttonTitle,
-      requestHuman: turn.requestHuman,
-      prefill: { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp },
-      source: "ai",
-    };
-    // نفس رد سبق حرفياً: لا نعيده (يحدث مع نموذج متعثر)؛ ردّ القواعد يختار صيغة جديدة.
-    if (!decision.requestHuman && assistantTexts.slice(-4).includes(norm(decision.reply))) throw new Error("repeated reply");
+    // نفس رد سبق حرفياً (نموذج متعثر): محاولة ثانية بتنبيه صريح، فإن تكرر لا نرسله.
+    if (!turn.requestHuman && assistantTexts.slice(-4).includes(norm(turn.reply))) {
+      ({ turn } = await converse(system + `\n- تنبيه: ردك السابق كان بنفس هذا النص حرفياً. أجب بما هو جديد ومفيد، لا تكرر.`, modelHistory(rows), conv.id));
+      if (assistantTexts.slice(-4).includes(norm(turn.reply))) throw new Error("repeated reply");
+    }
   } catch (err) {
+    // لا ردود احتياطية جاهزة (قرار المالك): الصمت أفضل من رد غبي. المحادثة تبقى «غير مقروءة» للفريق ويصل المالك تنبيه بالسبب.
     const why = String((err as Error)?.message ?? err);
-    console.error("[closer] AI turn unusable, using rule-based reply:", why);
+    console.error("[closer] AI turn failed, staying silent:", why);
     await trace("ai-fail", why);
-    // ننبّه المالك فقط حين يكون السبب تعطل الذكاء الاصطناعي لا تكرار رد.
-    if (!/repeated reply/.test(why)) await alertAgentDegraded(why, conv.id).catch(() => {});
-    const r = ruleReply({
-      text: lastUserMessage,
-      history: before.map((x) => ({ role: x.role === "user" ? ("user" as const) : ("assistant" as const), text: x.text ?? "" })),
-      linkSentAt,
-      now,
-      vars,
-    });
-    decision = { reply: r.reply, issueLink: r.issueLink, buttonTitle: r.buttonTitle, requestHuman: r.requestHuman, prefill: {}, source: "rules" };
-  }
-
-  // الذكاء الاصطناعي (أو القواعد) رأى أن الموقف يحتاج إنساناً.
-  if (decision.requestHuman) {
-    await handoffToHuman(channel, senderId, conv, decision.requestHuman);
+    await alertAgentDegraded(why, conv.id).catch(() => {});
     await metaApi.typing(channel, senderId, false);
     return;
   }
 
-  // ما عرفناه من كلامه يُحفظ لدور لاحق (النشاط والاسم).
-  if (decision.prefill.oneLine || decision.prefill.storeName) {
-    const nextKnown = { ...known, ...(decision.prefill.oneLine ? { business: decision.prefill.oneLine } : {}), ...(decision.prefill.storeName ? { storeName: decision.prefill.storeName } : {}) };
-    await db
-      .update(conversations)
-      .set({ memory: { ...((conv.memory as Record<string, unknown> | null) ?? {}), known: nextKnown } })
-      .where(eq(conversations.id, conv.id))
-      .catch(() => {});
+  // الوكيل رأى أن الموقف يحتاج إنساناً: يرد بما كتبه ثم نوقفه ونبلّغ الفريق.
+  if (turn.requestHuman) {
+    await handoffToHuman(channel, senderId, conv, turn.requestHuman, turn.reply);
+    await metaApi.typing(channel, senderId, false);
+    return;
   }
 
-  // ─── قواعد تفعيل الرابط: مرة، ولا يتكرر إلا بطلب صريح ────────────────────
-  const explicit = EXPLICIT_LINK_RE.test(lastUserMessage);
-  const linkRecent = linkSentAt !== null && now - linkSentAt < LINK_REPEAT_MS;
-  // رد يعد بزر/رابط دون أن نرسله يربك العميل: إن ذكر الرد الرابط والنموذج لم يطلبه نرسله (إلا إن أُرسل قبل قليل).
-  const promisesLink = decision.source === "ai" && MENTIONS_LINK_RE.test(decision.reply);
-  const sendLink = (decision.issueLink || explicit || promisesLink) && (!linkRecent || explicit);
+  // ذاكرة الدور: ملاحظات الوكيل المضغوطة + ما قاله العميل صراحة.
+  const nextKnown = { ...known, ...(turn.business ? { business: turn.business } : {}), ...(turn.storeName ? { storeName: turn.storeName } : {}) };
+  await db
+    .update(conversations)
+    .set({ memory: { ...mem, known: nextKnown, ...(turn.memory ? { summary: turn.memory } : {}) } })
+    .where(eq(conversations.id, conv.id))
+    .catch(() => {});
 
-  if (sendLink) {
+  // الزر: قرار الوكيل وحده، لكن لا يتكرر خلال 20 دقيقة.
+  const linkRecent = linkSentAt !== null && now - linkSentAt < LINK_REPEAT_MS;
+  if (turn.issueLink && !linkRecent) {
     try {
-      const issued = await linkFor(conv, channel, decision.prefill);
+      const issued = await linkFor(conv, channel, { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp });
       if (!issued) {
-        await handoffToHuman(channel, senderId, conv, "طلب سابق مغلق لنفس المحادثة");
+        await handoffToHuman(channel, senderId, conv, "طلب سابق مغلق لنفس المحادثة", turn.reply);
         await metaApi.typing(channel, senderId, false);
         return;
       }
-      const buttonTitle = issued.kind === "follow" ? "متابعة متجرك" : decision.buttonTitle || "ابدأ استمارة متجرك";
-      const text = issued.kind === "follow" ? `${decision.reply}\n\nاستمارتكم وصلتنا، وتتابعوا متجركم من هنا:` : decision.reply;
+      const buttonTitle = issued.kind === "follow" ? "متابعة متجرك" : turn.buttonTitle || "ابدأ استمارة متجرك";
+      const text = issued.kind === "follow" ? `${turn.reply}\n\nاستمارتكم وصلتنا، وتتابعوا متجركم من هنا:` : turn.reply;
       await metaApi.buttons(channel, senderId, text, [{ title: buttonTitle, url: issued.url }]);
       await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text: `${text}\n${LINK_MARK} ${buttonTitle} -> ${issued.url}]` });
-      await db
-        .update(conversations)
-        .set({ stage: "link_sent", lastBotMessageAt: new Date(), updatedAt: new Date() })
-        .where(eq(conversations.id, conv.id));
+      await db.update(conversations).set({ stage: "link_sent", lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, conv.id));
     } catch (e) {
       console.error("[closer] intake link failed:", e);
-      await sendText(channel, senderId, conv, decision.reply);
+      await sendText(channel, senderId, conv, turn.reply);
     }
   } else {
-    await sendText(channel, senderId, conv, decision.reply, conv.stage === "greeting" ? "discovery" : undefined);
+    await sendText(channel, senderId, conv, turn.reply, conv.stage === "greeting" ? "discovery" : undefined);
   }
 
   await metaApi.typing(channel, senderId, false);
@@ -290,16 +255,13 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
  * سيرد به على رسالة حقيقية (أو سبب العجز بنص خطأ كل نموذج). اختبار «نموذج يرد بكلمة» وحده لا يكشف فشل المخرجات المنظمة.
  */
 export async function probeAgent(text: string): Promise<{ ok: true; reply: string; issueLink: boolean; provider: string; mode: string; ms: number } | { ok: false; error: string }> {
+  const t0 = Date.now();
   try {
     const vars = await interpolateVars();
-    const system = (await getPrompt("closer.chat", vars)) + stateBlock({ replies: 0, linkSentAt: null, priceMentioned: false, known: {}, now: Date.now() });
-    const r = await aiObjectWithMeta(
-      "chat",
-      { schema: closerTurnSchema, schemaName: "CloserTurn", system, messages: [{ role: "user", content: text.slice(0, 300) }], temperature: 0.6, maxTokens: 600, timeoutMs: AI_ATTEMPT_MS },
-      { purpose: "closer_probe" }
-    );
-    const reply = r.object.reply || (r.object.requestHuman ? "(حوّل لموظف) " + r.object.requestHuman : "");
-    return { ok: true, reply, issueLink: r.object.issueLink, provider: r.provider, mode: r.mode, ms: r.latencyMs };
+    const system = (await getPrompt("closer.chat", vars)) + stateBlock({ replies: 0, linkSentAt: null, priceMentioned: false, summary: "", known: {}, now: Date.now() });
+    const { turn, provider } = await converse(system, [{ role: "user", content: text.slice(0, 300) }]);
+    const reply = turn.reply || (turn.requestHuman ? "(حوّل لموظف) " + turn.requestHuman : "");
+    return { ok: true, reply, issueLink: turn.issueLink, provider, mode: "object", ms: Date.now() - t0 };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 700) };
   }
@@ -337,14 +299,12 @@ async function lastLinkAt(conversationId: string): Promise<Date | null> {
   return row?.at ?? null;
 }
 
-/** يوقف الوكيل لهذه المحادثة، يخبر العميل، وينبّه المالك. المحادثة تظهر في /admin/conversations بحالة «تدخل بشري». */
-async function handoffToHuman(channel: Channel, senderId: string, conv: Conv, reason: string) {
-  await db
-    .update(conversations)
-    .set({ botPaused: true, stage: "human", lastBotMessageAt: new Date(), updatedAt: new Date() })
-    .where(eq(conversations.id, conv.id));
-  await metaApi.text(channel, senderId, HANDOFF_REPLY).catch((e) => console.error("[closer] handoff reply failed", e));
-  await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text: HANDOFF_REPLY });
+/** يرسل ردّ الوكيل الأخير (إن كتب)، ثم يوقفه لهذه المحادثة وينبّه المالك. تظهر بحالة «تدخل بشري» في /admin/conversations. */
+async function handoffToHuman(channel: Channel, senderId: string, conv: Conv, reason: string, reply?: string) {
+  const text = reply?.trim() || "تمام، هحوّل المحادثة لحد من فريق Colapia وهيرد عليكم.";
+  await metaApi.text(channel, senderId, text).catch((e) => console.error("[closer] handoff reply failed", e));
+  await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text });
+  await db.update(conversations).set({ botPaused: true, stage: "human", lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, conv.id));
   await notifyAdmin(`محادثة تحتاج موظفاً بشرياً (${channel}): ${reason.slice(0, 160)}`, { conversationId: conv.id });
 }
 

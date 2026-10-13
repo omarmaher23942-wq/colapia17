@@ -80,7 +80,6 @@ const DEFAULT_CHAINS: Record<Tier, Link[]> = {
   chat: dedupe([
     L("google", MODELS.gemini),
     L("groq", MODELS.gptOss),
-    L("groq", MODELS.groq70b),
     L("morpheus", MODELS.claude),
   ]),
   fast: dedupe([
@@ -90,13 +89,11 @@ const DEFAULT_CHAINS: Record<Tier, Link[]> = {
   architect: dedupe([
     L("google", MODELS.gemini),
     L("groq", MODELS.gptOss),
-    L("groq", MODELS.groq70b),
     L("morpheus", MODELS.opus),
   ]),
   compose: dedupe([
     L("google", MODELS.gemini),
     L("groq", MODELS.gptOss),
-    L("groq", MODELS.groq70b),
     L("morpheus", MODELS.claude),
   ]),
   vision: dedupe([

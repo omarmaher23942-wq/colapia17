@@ -37,6 +37,9 @@ export const closerTurnSchema = z.object({
     .nullish()
     .transform((s) => clean(s, 200) || null),
 
+  // ذاكرة المحادثة: ملاحظات مضغوطة يعيد الوكيل كتابتها كل دور (نشاطه، منتجاته، ألمه، اعتراضاته، ما شُرح، أين وصلنا).
+  memory: z.string().nullish().transform((s) => clean(s, 900)),
+
   // ما كتبه العميل بنفسه ويملأ الاستمارة مسبقاً (الفارغ فقط؛ intake/link.ts applyPrefill).
   storeName: z.string().nullish().transform((s) => clean(s, 60) || null),
   business: z.string().nullish().transform((s) => clean(s, 200) || null),
