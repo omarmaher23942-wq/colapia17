@@ -5,13 +5,13 @@
 import { useState } from "react";
 import imageCompression from "browser-image-compression";
 import { toast } from "sonner";
-import { useUploadThing } from "@/lib/uploadthing-client";
+import { useMediaUpload } from "@/lib/media-upload";
 
 const OK_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
 
 export function useImageUpload() {
   const [busy, setBusy] = useState(0);
-  const { startUpload } = useUploadThing("brandAsset", {
+  const { startUpload } = useMediaUpload("brandAsset", {
     onUploadError: (e) => {
       toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى");
     },

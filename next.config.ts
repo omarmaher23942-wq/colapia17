@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+// مساحة الملفات على R2 (PLAN 14): الرابط العام للعرض، ونقطة الرفع المباشر من المتصفح (روابط موقّعة).
+const mediaOrigin = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_MEDIA_BASE_URL ? new URL(process.env.NEXT_PUBLIC_MEDIA_BASE_URL).origin : "";
+  } catch {
+    return "";
+  }
+})();
+const mediaHost = mediaOrigin ? new URL(mediaOrigin).hostname : "";
+const r2Upload = "https://*.r2.cloudflarestorage.com";
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Content Security Policy — يشمل:
 //  - Pusher WebSocket + SockJS fallback + stats
@@ -12,9 +23,9 @@ const isDev = process.env.NODE_ENV === "development";
 const cspHeader = [
   "default-src 'self'",
 
-  "img-src 'self' data: blob: https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com",
+  `img-src 'self' data: blob: ${mediaOrigin} https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com`,
 
-  "media-src 'self' data: blob: https://utfs.io https://*.ufs.sh",
+  `media-src 'self' data: blob: ${mediaOrigin} https://utfs.io https://*.ufs.sh`,
 
   [
     "script-src 'self' 'unsafe-inline'",
@@ -38,6 +49,9 @@ const cspHeader = [
 
   [
     "connect-src 'self'",
+    // R2: الرفع المباشر من المتصفح
+    r2Upload,
+    mediaOrigin,
     // UploadThing
     "https://*.uploadthing.com",
     "https://*.ingest.uploadthing.com",
@@ -103,6 +117,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000,
     remotePatterns: [
+      ...(mediaHost ? [{ protocol: "https" as const, hostname: mediaHost }] : []),
       { protocol: "https", hostname: "utfs.io" },
       { protocol: "https", hostname: "*.ufs.sh" },
       { protocol: "https", hostname: "*.fbcdn.net" },

@@ -23,7 +23,8 @@ export const optionalEmail = z.preprocess((v) => {
 const serverSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   DATABASE_URL: z.string().url(),
-  UPLOADTHING_TOKEN: z.string().min(10),
+  // UploadThing مزوّد الملفات القديم: اختياري متى ضُبطت R2 (NEXT_PUBLIC_MEDIA_PROVIDER=r2).
+  UPLOADTHING_TOKEN: z.string().min(10).optional().or(z.literal("").transform(() => undefined)),
 
   MORPHEUS_API_KEY: z.string().min(1),
   MORPHEUS_BASE_URL: z.string().url().default("https://api.mor.org/api/v1"),
@@ -108,6 +109,13 @@ const serverSchema = z.object({
   VERCEL_PROJECT_ID: z.string().min(3).optional().or(z.literal("").transform(() => undefined)),
   VERCEL_TEAM_ID: z.string().min(3).optional().or(z.literal("").transform(() => undefined)),
   STORES_GITHUB_REPO: z.string().regex(/^[\w.-]+\/[\w.-]+$/).optional().or(z.literal("").transform(() => undefined)),
+  // Cloudflare R2 (مساحة الملفات، PLAN 14): مفاتيح API token بصلاحية Object Read & Write على الـ bucket وحده.
+  R2_ACCOUNT_ID: z.string().min(8).optional().or(z.literal("").transform(() => undefined)),
+  R2_ACCESS_KEY_ID: z.string().min(8).optional().or(z.literal("").transform(() => undefined)),
+  R2_SECRET_ACCESS_KEY: z.string().min(16).optional().or(z.literal("").transform(() => undefined)),
+  R2_BUCKET: z.string().min(3).optional().or(z.literal("").transform(() => undefined)),
+  // اختياري للتطوير المحلي فقط (بديل https://<account>.r2.cloudflarestorage.com).
+  R2_ENDPOINT: z.string().url().optional().or(z.literal("").transform(() => undefined)),
 
 });
 

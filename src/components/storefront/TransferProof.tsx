@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-import { UploadButton } from "@/lib/uploadthing-client";
+import { MediaUploadButton } from "@/components/storefront/MediaUploadButton";
 import { submitTransferProofAction } from "@/server/actions/checkout";
 import { normalizeEgyptianPhone } from "@/lib/phone";
 
@@ -66,14 +66,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
           </button>
         </div>
       ) : (
-        <UploadButton
-          endpoint="transferProof"
-          input={{ subdomain }}
-          onClientUploadComplete={(r) => setUrl(r[0]?.ufsUrl ?? r[0]?.url ?? "")}
-          onUploadError={(e) => { toast.error(e.message || "فشل رفع الصورة"); }}
-          content={{ button: "ارفع صورة التحويل" }}
-          appearance={{ button: "btn-brand w-full" }}
-        />
+        <MediaUploadButton route="transferProof" input={{ subdomain }} label="ارفع صورة التحويل" onUploaded={setUrl} onError={(m) => toast.error(m)} />
       )}
 
       {err && <p className="text-sm text-danger">{err}</p>}

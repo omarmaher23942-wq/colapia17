@@ -32,7 +32,9 @@ export const PRODUCT_MODES = ["list", "team", "later"] as const;
 export type ProductMode = (typeof PRODUCT_MODES)[number];
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
-const KEY_RE = /^[A-Za-z0-9_-]{8,128}$/;
+// مفتاح ملف: UploadThing (حروف وأرقام) أو R2 (مسار مثل requests/<id>/<uuid>.jpg)، بلا «..».
+export const FILE_KEY_RE = /^(?!.*\.\.)[A-Za-z0-9_][A-Za-z0-9_./-]{7,199}$/;
+const KEY_RE = FILE_KEY_RE;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 const text = (max: number) => z.string().max(max).optional();

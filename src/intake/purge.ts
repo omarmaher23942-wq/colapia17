@@ -1,5 +1,5 @@
 import "server-only";
-// purge.ts — حذف بيانات استمارة الطلب مع ملفاتها من UploadThing:
+// purge.ts — حذف بيانات استمارة الطلب مع ملفاتها من مساحة الملفات (R2 أو UploadThing):
 //   - مسودات انتهت مهلتها ولم تُرسل (يشغّله ops/tick يومياً)،
 //   - ملفات رفعها العميل ثم حذفها أو استبدلها قبل الإرسال (بعد الإرسال مباشرة)،
 //   - حذف طلب نهائياً بطلب العميل (من لوحة الفريق).
@@ -19,8 +19,7 @@ export async function deleteStoredFiles(keys: string[]): Promise<boolean> {
   const api = await mediaApi();
   if (!api) return false;
   for (let i = 0; i < keys.length; i += CHUNK) {
-    const res = await api.deleteFiles(keys.slice(i, i + CHUNK)).catch(() => null);
-    if (!res?.success) return false;
+    if (!(await api.remove(keys.slice(i, i + CHUNK)).catch(() => false))) return false;
   }
   return true;
 }

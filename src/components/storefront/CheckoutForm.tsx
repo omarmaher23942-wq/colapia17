@@ -39,7 +39,7 @@ import {
   saveAbandonedAction,
   type Quote,
 } from "@/server/actions/checkout";
-import { UploadButton } from "@/lib/uploadthing-client";
+import { MediaUploadButton } from "@/components/storefront/MediaUploadButton";
 import { paymentMethods } from "@/lib/payment-methods";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import { useHydrated } from "./CartView";
@@ -721,19 +721,15 @@ export function CheckoutForm({
                       </button>
                     </div>
                   ) : (
-                    <UploadButton
-                      endpoint="transferProof"
+                    <MediaUploadButton
+                      route="transferProof"
                       input={{ subdomain }}
-                      onClientUploadComplete={(res) => {
-                        const url = res?.[0]?.ufsUrl ?? res?.[0]?.url;
-                        if (url) {
-                          set("transferScreenshotUrl", url);
-                          toast.success("تم إرفاق الإيصال");
-                        }
+                      label="ارفع صورة الإيصال"
+                      onUploaded={(url) => {
+                        set("transferScreenshotUrl", url);
+                        toast.success("تم إرفاق الإيصال");
                       }}
-                      onUploadError={(e) => {
-                        toast.error(e?.message || "فشل الرفع");
-                      }}
+                      onError={(m) => toast.error(m)}
                     />
                   )}
                 </div>

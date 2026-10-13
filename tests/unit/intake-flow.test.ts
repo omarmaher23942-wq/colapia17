@@ -58,7 +58,11 @@ vi.mock("@/lib/redis", () => ({
 vi.mock("@/ai/lifecycle/notify", () => ({ notifyAdmin: vi.fn(async () => undefined) }));
 vi.mock("@/lib/flags", () => ({ getFlag: vi.fn(async () => ({ enabled: true, config: null })) }));
 vi.mock("@/lib/email", () => ({ sendTemplatedEmail: (...a: unknown[]) => h.sendTemplatedEmail(...a) }));
-vi.mock("@/server/media-host", () => ({ mediaApi: vi.fn(async () => (h.mediaApiNull.v ? null : { deleteFiles: h.deleteFiles })) }));
+vi.mock("@/server/media-host", () => ({
+  mediaApi: vi.fn(async () =>
+    h.mediaApiNull.v ? null : { remove: async (keys: string[]) => Boolean(((await h.deleteFiles(keys)) as { success?: boolean } | undefined)?.success) }
+  ),
+}));
 vi.mock("@/lib/env", async (orig) => ({
   ...(await orig<typeof import("@/lib/env")>()),
   env: { AUTH_SECRET: "unit-test-secret-unit-test-secret-1234", INTAKE_REPLY_TO: undefined, AGENCY_WHATSAPP: undefined },

@@ -8,7 +8,7 @@ import imageCompression from "browser-image-compression";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { CATEGORY_DESCRIPTION_MAX, CATEGORY_NAME_MAX } from "@/lib/catalog-limits";
-import { useUploadThing } from "@/lib/uploadthing-client";
+import { useMediaUpload } from "@/lib/media-upload";
 import { saveCategoryAction } from "@/server/actions/categories";
 import type { CategoryRow } from "@/server/repos/categories-list";
 import { DashDialog } from "../ui/DashDialog";
@@ -39,7 +39,7 @@ export function CategoryDialog({
     setError(null);
   }, [open, category]);
 
-  const { startUpload } = useUploadThing("productImage", {
+  const { startUpload } = useMediaUpload("productImage", {
     onUploadError: (e) => {
       toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. حاول مرة أخرى");
     },

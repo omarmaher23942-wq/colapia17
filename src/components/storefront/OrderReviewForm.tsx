@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Camera, CheckCircle2, Loader2, Star, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useUploadThing } from "@/lib/uploadthing-client";
+import { useMediaUpload } from "@/lib/media-upload";
 import { submitOrderReviewsAction } from "@/server/actions/reviews";
 
 const SW = 1.75;
@@ -22,7 +22,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<Set<string>>(new Set());
-  const { startUpload } = useUploadThing("customerReviewImage", {
+  const { startUpload } = useMediaUpload("customerReviewImage", {
     onUploadError: (e) => {
       toast.error(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. حاول مرة أخرى");
     },

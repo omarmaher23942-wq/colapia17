@@ -10,7 +10,8 @@ import { unmapDomain, removeFromVercel } from "@/server/domains";
 import "server-only";
 import { and, count, eq, inArray, isNull, lte, sql } from "drizzle-orm";
 import { getTableConfig, type PgTable } from "drizzle-orm/pg-core";
-import { UTApi } from "uploadthing/server";
+import { mediaApi } from "@/server/media-host";
+import { mediaBaseUrl, r2KeyFromUrl } from "@/lib/media";
 import { db } from "@/db/client";
 import { stores, storeTransfers, merchants, storeSecrets } from "@/db/schema";
 import { MEDIA_FREE_TABLES } from "@/db/transfer-tables";
@@ -110,7 +111,15 @@ async function countRows(spec: TransferSpec, store: Store): Promise<number> {
   return r?.n ?? 0;
 }
 
-const MEDIA_RE = /https:\/\/(?:utfs\.io|[a-z0-9-]+\.ufs\.sh)\/[^\s"'<>)\\]+/gi;
+const UT_MEDIA_RE = /https:\/\/(?:utfs\.io|[a-z0-9-]+\.ufs\.sh)\/[^\s"'<>)\\]+/gi;
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+/** روابط ملفات المتجر: UploadThing القديمة، وروابط مساحة R2 إن ضُبطت. */
+function mediaUrlsIn(text: string): string[] {
+  const out = [...text.matchAll(UT_MEDIA_RE)].map((m) => m[0]);
+  const base = mediaBaseUrl();
+  if (base) out.push(...[...text.matchAll(new RegExp(`${escapeRe(base)}/[^\\s"'<>)\\\\]+`, "g"))].map((m) => m[0]));
+  return out;
+}
 
 /** كل روابط الصور والملفات الصوتية في بيانات المتجر (لينسخها مشروع التاجر لحسابه). */
 async function collectMedia(store: Store): Promise<string[]> {
@@ -118,7 +127,7 @@ async function collectMedia(store: Store): Promise<string[]> {
   for (const spec of PLAN) {
     if (MEDIA_FREE_TABLES.has(tableName(spec.table))) continue;
     const rows = await db.select().from(spec.table).where(spec.scope(store.id, store.merchantId));
-    for (const m of JSON.stringify(rows).matchAll(MEDIA_RE)) urls.add(m[0]);
+    for (const u of mediaUrlsIn(JSON.stringify(rows))) urls.add(u);
   }
   return [...urls];
 }
@@ -229,7 +238,12 @@ export async function purgeStore(store: Store): Promise<boolean> {
     for (const spec of PLAN) {
       if (MEDIA_FREE_TABLES.has(tableName(spec.table))) continue;
       const rows = await db.select().from(spec.table).where(spec.scope(store.id, store.merchantId));
-      for (const m of JSON.stringify(rows).matchAll(UT_KEY_RE)) keys.add(m[1]!);
+      const text = JSON.stringify(rows);
+      for (const m of text.matchAll(UT_KEY_RE)) keys.add(m[1]!);
+      for (const u of mediaUrlsIn(text)) {
+        const k = r2KeyFromUrl(u);
+        if (k) keys.add(k);
+      }
     }
     // صف المتجر والتاجر يبقيان (سجل الدفع، والتحويل للموقع الجديد، وبريد التاجر)؛ كل بيانات المتجر تُحذف.
     const deletable = PLAN.filter((p) => !["merchants", "stores"].includes(tableName(p.table))).reverse();
@@ -243,9 +257,9 @@ export async function purgeStore(store: Store): Promise<boolean> {
       await db.update(stores).set({ customDomain: null, customDomainStatus: null }).where(eq(stores.id, store.id)).catch(() => {});
     }
     if (keys.size) {
-      const ut = new UTApi();
-      const list = [...keys];
-      for (let i = 0; i < list.length; i += 100) await ut.deleteFiles(list.slice(i, i + 100));
+      const api = await mediaApi();
+      // الصفوف حُذفت بالفعل؛ فشل حذف الملفات يُسجَّل ولا يوقف إنهاء الحذف (إعادة المحاولة لن تجد مفاتيحها).
+      if (!api || !(await api.remove([...keys]).catch(() => false))) log.error("store", "purge_media_failed", { storeId: store.id, files: keys.size }, "");
     }
     await db.update(stores).set({ purgedAt: new Date() }).where(and(eq(stores.id, store.id), isNull(stores.purgedAt)));
     log.info("store", "owned_store_purged", { storeId: store.id, files: keys.size });

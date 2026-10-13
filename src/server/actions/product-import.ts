@@ -3,7 +3,6 @@
 // product-import.ts — استيراد المنتجات من CSV بعد معاينة التاجر: يُعاد التحقق من كل صف على الخادم بنفس قواعد المعاينة،
 // وتُربط الأقسام بأسمائها (ويُنشأ الجديد منها)، وتُولَّد روابط فريدة دون استعلام لكل منتج، ويُكتب الكل في معاملة واحدة.
 import { revalidatePath } from "next/cache";
-import { UTFile } from "uploadthing/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
@@ -159,12 +158,15 @@ export async function rehostProductImagesAction(raw: unknown): Promise<RehostRes
           else kept++;
           return;
         }
-        const up = await api
-          .uploadFiles(new UTFile([got.image.bytes], `product-${parsed.data.id.slice(0, 8)}-${i + k + 1}.${got.image.ext}`, { type: got.image.type }))
-          .catch(() => null);
-        if (up?.data?.ufsUrl) moved.set(url, { url: up.data.ufsUrl, key: up.data.key });
+        const up = await api.upload({
+          bytes: got.image.bytes,
+          name: `product-${parsed.data.id.slice(0, 8)}-${i + k + 1}.${got.image.ext}`,
+          type: got.image.type,
+          ext: got.image.ext,
+          prefix: `stores/${s.storeId}/products`,
+        });
+        if (up) moved.set(url, up);
         else {
-          if (up?.error) console.error("[rehostProductImagesAction] upload", up.error.code, up.error.message);
           uploadFailures++;
           kept++;
         }

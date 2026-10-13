@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { normalizeEgyptianPhone, prettyPhone } from "@/lib/phone";
-import { useUploadThing } from "@/lib/uploadthing-client";
+import { useMediaUpload } from "@/lib/media-upload";
 import { checkCouponAction, submitPlatformPaymentAction } from "@/server/actions/platform";
 import { requestPulse } from "../DashboardPulse";
 import { inputCls } from "../product/parts";
@@ -61,7 +61,7 @@ export function PayForm({
   const fileRef = useRef<HTMLInputElement>(null);
   const target = method === "vodafone_cash" ? vodafone : instapay;
 
-  const { startUpload } = useUploadThing("platformReceipt", {
+  const { startUpload } = useMediaUpload("platformReceipt", {
     onUploadError: (e) => setReceiptError(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى"),
   });
 

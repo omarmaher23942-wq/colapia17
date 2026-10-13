@@ -1,3 +1,5 @@
+import { mediaBaseUrl } from "@/lib/media";
+
 /**
  * تنقية CSS المخصص: يمنع التحميل الخارجي وأي شيء غير تنسيق بصري، ويحصر كل المحددات داخل .storefront
  * (بما فيها المحددات داخل @media و @supports).
@@ -5,6 +7,12 @@
  */
 const MAX_CSS = 50_000;
 const ALLOWED_URL = /^\s*['"]?(?:data:image\/|https:\/\/utfs\.io\/|https:\/\/[a-z0-9-]+\.ufs\.sh\/)/i;
+/** رابط من مساحة R2 الخاصة بنا (NEXT_PUBLIC_MEDIA_BASE_URL) مقبول كذلك. */
+function allowedUrl(v: string): boolean {
+  if (ALLOWED_URL.test(v)) return true;
+  const base = mediaBaseUrl();
+  return Boolean(base && v.replace(/^\s*['"]?/, "").startsWith(base + "/"));
+}
 const KEYFRAME_SEL = /^(?:from|to|\d+(?:\.\d+)?%)(?:\s*,\s*(?:from|to|\d+(?:\.\d+)?%))*$/i;
 const ROOT_SEL = /^(?:html|body|:root)$/i;
 
@@ -38,6 +46,6 @@ export function sanitizeCss(input: string): string {
   css = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\*|\*\//g, "");
   css = stripUntilStable(css, /@(?:import|charset|namespace)\b[^;{}]*;?/gi);
   css = stripUntilStable(css, /expression\s*\(|behavior\s*:|-moz-binding\s*:|javascript\s*:/gi);
-  css = css.replace(/url\(\s*([^)]*)\)/gi, (m, inner: string) => (ALLOWED_URL.test(inner) ? m : "url()"));
+  css = css.replace(/url\(\s*([^)]*)\)/gi, (m, inner: string) => (allowedUrl(inner) ? m : "url()"));
   return scopeSelectors(css);
 }

@@ -1,101 +1,53 @@
-// uploadthing/core.ts — File Router لمنصة Colapia.
-// التعديل: إضافة endpoint merchantAvatar لصورة التاجر (4MB، صورة واحدة).
-// نستخدم getMerchantSession للتحقق، ونُعيد key + url + merchantId.
+// uploadthing/core.ts — مسار الرفع القديم (UploadThing) ما دام NEXT_PUBLIC_MEDIA_PROVIDER ليس r2. الصلاحيات والتسجيل
+// بعد الرفع من مصدر واحد مع مسار R2: server/upload-policies.ts.
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 import { z } from "zod";
-import { getMerchantSession } from "@/server/auth";
-import { ownerStore, storeFor } from "@/server/merchant-guard";
-import { getStoreBySubdomain, isStorePubliclyVisible } from "@/lib/tenant";
-import { allow, clientIp } from "@/lib/ratelimit";
-import { intakeImageRoute, intakeVoiceRoute } from "@/intake/uploader";
+import { afterUpload, authorizeUpload, UploadPolicyError } from "@/server/upload-policies";
+import type { MediaRoute } from "@/lib/media";
 
 const f = createUploadthing();
 
+const guard =
+  (route: MediaRoute) =>
+  async ({ req, input }: { req: Request; input?: unknown }) => {
+    try {
+      return (await authorizeUpload(route, { headers: req.headers, input })).meta;
+    } catch (e) {
+      if (e instanceof UploadPolicyError) throw new UploadThingError(e.message);
+      throw e;
+    }
+  };
+
+const done =
+  (route: MediaRoute) =>
+  async ({ file, metadata }: { file: { key: string; ufsUrl: string; type: string; size: number }; metadata: Record<string, string | number | null> }) => {
+    await afterUpload(route, metadata, { key: file.key, url: file.ufsUrl, type: file.type, size: file.size });
+    return { url: file.ufsUrl, key: file.key };
+  };
+
+const subdomain = z.object({ subdomain: z.string().min(1).max(63) });
+
 export const fileRouter = {
-  productImage: f({ image: { maxFileSize: "8MB", maxFileCount: 10 } })
-    .middleware(async () => {
-      // صور المنتجات وصور محرر المحتوى: لمن يدير المنتجات أو المحتوى.
-      const s = (await storeFor("products")) ?? (await storeFor("content"));
-      if (!s) throw new UploadThingError("غير مصرح");
-      return { storeId: s.storeId };
-    })
-    .onUploadComplete(async ({ file, metadata }) => ({
-      url: file.ufsUrl,
-      key: file.key,
-      storeId: metadata.storeId,
-    })),
-
-  brandAsset: f({
-    image: { maxFileSize: "4MB", maxFileCount: 1 },
+  productImage: f({ image: { maxFileSize: "8MB", maxFileCount: 10 } }).middleware(guard("productImage")).onUploadComplete(done("productImage")),
+  brandAsset: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } }).middleware(guard("brandAsset")).onUploadComplete(done("brandAsset")),
+  platformReceipt: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } }).middleware(guard("platformReceipt")).onUploadComplete(done("platformReceipt")),
+  transferProof: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } }).input(subdomain).middleware(guard("transferProof")).onUploadComplete(done("transferProof")),
+  customerReviewImage: f({ image: { maxFileSize: "4MB", maxFileCount: 3 } }).input(subdomain).middleware(guard("customerReviewImage")).onUploadComplete(done("customerReviewImage")),
+  merchantAvatar: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } }).middleware(guard("merchantAvatar")).onUploadComplete(done("merchantAvatar")),
+  // استمارة طلب المتجر: أنواع الصور صراحةً (لا SVG)، والصوت "audio" العام (webm على Chrome وmp4 على Safari).
+  intakeImage: f({
+    "image/jpeg": { maxFileSize: "8MB", maxFileCount: 1 },
+    "image/png": { maxFileSize: "8MB", maxFileCount: 1 },
+    "image/webp": { maxFileSize: "8MB", maxFileCount: 1 },
   })
-    .middleware(async () => {
-      const s = (await storeFor("content")) ?? (await storeFor("settings")) ?? (await storeFor("products"));
-      if (!s) throw new UploadThingError("غير مصرح");
-      return { storeId: s.storeId };
-    })
-    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl, key: file.key })),
-
-  // إيصال تحويل التاجر للمنصة (صفحة الدفع): لصاحب المتجر المسجّل فقط، ويعمل والمتجر مجمّد (حين يحتاجه أكثر).
-  platformReceipt: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
-    .middleware(async () => {
-      const s = await ownerStore();
-      if (!s?.store) throw new UploadThingError("الدفع لصاحب المتجر فقط. ادخل بحسابه.");
-      if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) {
-        throw new UploadThingError("محاولات كثيرة، حاول بعد دقائق");
-      }
-      return { storeId: s.store.id };
-    })
-    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
-
-  transferProof: f({ image: { maxFileSize: "8MB", maxFileCount: 1 } })
-    .input(z.object({ subdomain: z.string().min(1).max(63) }))
-    .middleware(async ({ req, input }) => {
-      if (!(await allow("proof", `ut:${clientIp(req.headers)}`))) {
-        throw new UploadThingError("محاولات كثيرة، حاول بعد دقائق");
-      }
-      const store = await getStoreBySubdomain(input.subdomain);
-      if (!store || !isStorePubliclyVisible(store)) {
-        throw new UploadThingError("متجر غير متاح");
-      }
-      return { storeId: store.id };
-    })
-    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl })),
-
-  // صور تقييم العميل (صفحة «قيّم مشترياتك»): 3 صور بحد أقصى، بحد معدل لكل عنوان، لمتجر ظاهر فقط.
-  customerReviewImage: f({ image: { maxFileSize: "4MB", maxFileCount: 3 } })
-    .input(z.object({ subdomain: z.string().min(1).max(63) }))
-    .middleware(async ({ req, input }) => {
-      if (!(await allow("review", `ut_review:${clientIp(req.headers)}`))) {
-        throw new UploadThingError("محاولات كثيرة، حاول بعد دقائق");
-      }
-      const store = await getStoreBySubdomain(input.subdomain);
-      if (!store || !isStorePubliclyVisible(store)) {
-        throw new UploadThingError("متجر غير متاح");
-      }
-      return { storeId: store.id };
-    })
-    .onUploadComplete(async ({ file }) => ({ url: file.ufsUrl, key: file.key })),
-
-  // endpoint جديد لصورة التاجر الشخصية.
-  // يقبل صورة واحدة بحجم أقصى 4MB، ويتحقق من جلسة التاجر.
-  merchantAvatar: f({
-    image: { maxFileSize: "4MB", maxFileCount: 1 },
-  })
-    .middleware(async () => {
-      const s = await getMerchantSession();
-      if (!s) throw new UploadThingError("غير مصرح");
-      return { merchantId: s.merchantId };
-    })
-    .onUploadComplete(async ({ file, metadata }) => ({
-      url: file.ufsUrl,
-      key: file.key,
-      merchantId: metadata.merchantId,
-    })),
-
-  // استمارة طلب المتجر (نموذج الوكالة): بلا تسجيل دخول، الهوية رابط المسودة السري (src/intake/uploader.ts).
-  intakeImage: intakeImageRoute(f),
-  intakeVoice: intakeVoiceRoute(f),
+    .input(z.object({ token: z.string().max(64), kind: z.enum(["image", "logo"]) }))
+    .middleware(guard("intakeImage"))
+    .onUploadComplete(done("intakeImage")),
+  intakeVoice: f({ audio: { maxFileSize: "8MB", maxFileCount: 1 } })
+    .input(z.object({ token: z.string().max(64), durationMs: z.number().int().min(0).max(10 * 60_000).optional() }))
+    .middleware(guard("intakeVoice"))
+    .onUploadComplete(done("intakeVoice")),
 } satisfies FileRouter;
 
 export type AppFileRouter = typeof fileRouter;

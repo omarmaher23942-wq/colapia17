@@ -2,6 +2,7 @@
 // وفرانكو وكود المنتج)، وترتيب (الأحدث، الأكثر مبيعاً، السعر، الكمية)، وصفحات حقيقية، ولكل منتج ما يلزم التاجر:
 // عدد تركيباته وما نفد منها، ومبيعاته، وهل له وصف.
 import "server-only";
+import { mediaBaseUrl } from "@/lib/media";
 import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
@@ -53,8 +54,10 @@ function stockCond(stock: ProductsQuery["stock"]): SQL | undefined {
 
 const noImageSql = sql`coalesce(jsonb_array_length(${products.images}), 0) = 0`;
 /** منتج له صورة على مضيف خارجي (لا تظهر في المتجر حتى تُنقل لمساحة الرفع). نفس قاعدة isHostedImage. */
+// مساحة R2 (إن ضُبطت) تُعدّ مستضافة كذلك: رابطها العام يُمرَّر معاملاً لا نصاً في الاستعلام.
+const mediaPrefix = (mediaBaseUrl() ?? "https://media.invalid") + "/";
 export const externalImagesSql = sql`exists (select 1 from jsonb_array_elements(${products.images}) e
-  where not ((e->>'url') ~* '^(https://(utfs\\.io|[a-z0-9-]+\\.ufs\\.sh)/|data:|blob:|/)'))`;
+  where not ((e->>'url') ~* '^(https://(utfs\\.io|[a-z0-9-]+\\.ufs\\.sh)/|data:|blob:|/)' or starts_with(e->>'url', ${mediaPrefix})))`;
 export const noDescriptionSql = sql`coalesce(length(trim(${products.description})), 0) = 0`;
 
 function needCond(need: ProductsQuery["need"]): SQL | undefined {

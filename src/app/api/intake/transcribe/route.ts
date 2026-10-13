@@ -1,4 +1,5 @@
 // تفريغ الرسالة الصوتية بعد رفعها، ليراه العميل ويصححه قبل الإرسال. الملف يجب أن يكون مسجلاً لنفس المسودة.
+import { FILE_KEY_RE } from "@/intake/schema";
 import { draftIsOpen, findByDraftToken, isMissingTable } from "@/intake/repo";
 import { allowTranscription, json, requestIp, sameOrigin } from "@/intake/guard";
 import { readJson } from "@/intake/http";
@@ -12,7 +13,7 @@ export async function POST(req: Request) {
   const parsedBody = await readJson(req, 2048);
   if (!parsedBody.ok) return json({ error: "bad_request" }, parsedBody.status);
   const { token, key } = parsedBody.body;
-  if (typeof key !== "string" || !/^[A-Za-z0-9_-]{8,128}$/.test(key)) return json({ error: "bad_request" }, 400);
+  if (typeof key !== "string" || !FILE_KEY_RE.test(key)) return json({ error: "bad_request" }, 400);
   try {
     const row = await findByDraftToken(token);
     if (!row || !draftIsOpen(row)) return json({ error: "not_found" }, 404);

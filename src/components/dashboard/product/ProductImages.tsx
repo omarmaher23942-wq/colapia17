@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, ImagePlus, Loader2, Star, Trash2 } from "luc
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
-import { useUploadThing } from "@/lib/uploadthing-client";
+import { useMediaUpload } from "@/lib/media-upload";
 import { isHostedImage } from "@/lib/media-hosts";
 
 export type ProductImage = { url: string; key?: string; alt?: string };
@@ -27,7 +27,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
     latest.current = value;
   }, [value]);
 
-  const { startUpload } = useUploadThing("productImage", {
+  const { startUpload } = useMediaUpload("productImage", {
     onUploadError: (e) => {
       // رسائلنا العربية (مثل «أضف مفتاح UploadThing» في مشروع التاجر) تُعرض كما هي، وغيرها برسالة مفهومة.
       toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى");
