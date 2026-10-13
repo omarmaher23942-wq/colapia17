@@ -22,7 +22,6 @@ const ENTRY_FILES = [
   "src/app/error.tsx",
   "src/app/global-error.tsx",
   "src/app/not-found.tsx",
-  "src/app/loading.tsx",
   "src/app/api/track/route.ts",
   "src/app/api/proof/route.ts",
   "src/app/api/live/route.ts",
