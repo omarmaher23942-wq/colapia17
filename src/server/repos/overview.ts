@@ -131,6 +131,8 @@ export type Readiness = {
   hasContact: boolean;
   activeShippingZones: number;
   hasOrders: boolean;
+  hasTestOrder: boolean;
+  sizeProducts: number;
 };
 
 async function readiness(storeId: string): Promise<Omit<Readiness, "hasLogo" | "hasContact">> {
@@ -141,6 +143,7 @@ async function readiness(storeId: string): Promise<Omit<Readiness, "hasLogo" | "
         active: sql<number>`count(*)`.mapWith(Number),
         noImages: sql<number>`count(*) filter (where jsonb_array_length(${products.images}) = 0)`.mapWith(Number),
         withCost: sql<number>`count(*) filter (where ${products.costPiasters} is not null)`.mapWith(Number),
+        sized: sql<number>`count(*) filter (where exists (select 1 from jsonb_array_elements_text(${products.optionNames}) n where n ~* '(مقاس|قياس|size)'))`.mapWith(Number),
       })
       .from(products)
       .where(and(eq(products.storeId, storeId), eq(products.status, "active"), isNull(products.deletedAt))),
@@ -149,9 +152,12 @@ async function readiness(storeId: string): Promise<Omit<Readiness, "hasLogo" | "
       .from(shippingZones)
       .where(and(eq(shippingZones.storeId, storeId), eq(shippingZones.isActive, true))),
     db
-      .select({ c: sql<number>`count(*)`.mapWith(Number) })
+      .select({
+        c: sql<number>`count(*) filter (where ${orders.isTest} = false)`.mapWith(Number),
+        t: sql<number>`count(*) filter (where ${orders.isTest} = true)`.mapWith(Number),
+      })
       .from(orders)
-      .where(and(eq(orders.storeId, storeId), eq(orders.isTest, false))),
+      .where(eq(orders.storeId, storeId)),
   ]);
   return {
     activeProducts: p?.active ?? 0,
@@ -159,6 +165,8 @@ async function readiness(storeId: string): Promise<Omit<Readiness, "hasLogo" | "
     activeWithCost: p?.withCost ?? 0,
     activeShippingZones: z?.c ?? 0,
     hasOrders: (o?.c ?? 0) > 0,
+    hasTestOrder: (o?.t ?? 0) > 0,
+    sizeProducts: p?.sized ?? 0,
   };
 }
 

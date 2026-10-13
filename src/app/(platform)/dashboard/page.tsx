@@ -27,8 +27,8 @@ import {
   ReadinessCard,
   RecentOrdersCard,
   TopProductsCard,
-  readinessItems,
 } from "@/components/dashboard/overview/OverviewCards";
+import { readinessScore, readinessSteps } from "@/lib/store-readiness";
 import { buildNotes } from "@/components/dashboard/overview/notes";
 import { overviewData, pctChange, OVERVIEW_RANGES, type OverviewRange } from "@/server/repos/overview";
 import { EDITION, INTEGRATIONS_NAV } from "@/lib/edition";
@@ -90,7 +90,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
       </Suspense>
 
       <Suspense key={range} fallback={<OverviewSkeleton />}>
-        <OverviewBody storeId={store.id} subdomain={store.subdomain} storeName={store.name} range={range} />
+        <OverviewBody storeId={store.id} subdomain={store.subdomain} storeName={store.name} range={range} customDomainActive={store.customDomainStatus === "active"} />
       </Suspense>
     </div>
   );
@@ -112,7 +112,7 @@ async function TodaySection({ storeId, subdomain, storeName, canMessage }: { sto
   return <TodayTasks extras={extras} asks={asks} asksTotal={reviewAsksTotal} canMessage={canMessage} />;
 }
 
-async function OverviewBody({ storeId, subdomain, storeName, range }: { storeId: string; subdomain: string; storeName: string; range: OverviewRange }) {
+async function OverviewBody({ storeId, subdomain, storeName, range, customDomainActive }: { storeId: string; subdomain: string; storeName: string; range: OverviewRange; customDomainActive: boolean }) {
   const [data, bp] = await Promise.all([overviewData(storeId, range), getBlueprintOrNull(storeId)]);
   const { current: c, previous: p, series } = data;
   const shareHref = EDITION === "store" ? "/" : "/dashboard/store";
@@ -128,15 +128,26 @@ async function OverviewBody({ storeId, subdomain, storeName, range }: { storeId:
   const ordersDelta = pctChange(c.orders, p.orders);
   const visitsDelta = pctChange(c.visits, p.visits);
 
-  const ready = readinessItems(
+  const pm = bp?.payments;
+  const ready = readinessSteps(
     {
       ...data.readiness,
+      flatShipping: bp?.shipping.flatRatePiasters != null,
+      hasSizeChart: Boolean(bp?.sizeGuide?.charts.some((c) => c.rows.length)),
       hasLogo: Boolean(bp?.brand.logo),
-      hasContact: Boolean(bp?.channels.whatsappNumber || bp?.channels.phone),
+      hasWhatsapp: Boolean(bp?.channels.whatsappNumber),
+      payments: {
+        cod: Boolean(pm?.cod.enabled),
+        vodafoneCash: { enabled: Boolean(pm?.vodafoneCash.enabled), ready: Boolean(pm?.vodafoneCash.number) },
+        instapay: { enabled: Boolean(pm?.instapay.enabled), ready: Boolean(pm?.instapay.address || pm?.instapay.number) },
+      },
+      policySet: Boolean(bp && (bp.returns.windowDays > 0 || bp.returns.allowExchange || bp.returns.allowRefund || bp.returns.defectPolicy !== "none")),
+      hasPixel: Boolean(bp?.seo?.metaPixelId || bp?.seo?.tiktokPixelId || bp?.seo?.gaMeasurementId),
+      customDomain: EDITION === "platform" ? Boolean(customDomainActive) : null,
     },
     shareHref
   );
-  const readyDone = ready.every((i) => i.ok);
+  const readyDone = readinessScore(ready).pct === 100;
 
   const notes = buildNotes({
     days: range,
@@ -200,7 +211,7 @@ async function OverviewBody({ storeId, subdomain, storeName, range }: { storeId:
 
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
         <RecentOrdersCard rows={data.recentOrders} />
-        {readyDone ? <TopProductsCard rows={data.topProducts} days={range} /> : <ReadinessCard items={ready} />}
+        {readyDone ? <TopProductsCard rows={data.topProducts} days={range} /> : <ReadinessCard steps={ready} />}
       </div>
 
       <AbandonedCarts

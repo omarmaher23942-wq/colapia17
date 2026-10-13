@@ -19,6 +19,7 @@ import { governorateName } from "@/lib/egypt";
 import { orderStatusLabel, orderStatusTone, TONE_CHIP } from "@/lib/order-status";
 import type { OverviewData, OverviewRange } from "@/server/repos/overview";
 import type { Note } from "./notes";
+import { GROUP_LABEL, readinessScore, type ReadyGroup, type ReadyStep } from "@/lib/store-readiness";
 
 const RANGE_LABEL: Record<OverviewRange, string> = { 7: "7 أيام", 30: "30 يوماً", 90: "90 يوماً" };
 
@@ -146,60 +147,54 @@ export function RecentOrdersCard({ rows }: { rows: OverviewData["recentOrders"] 
   );
 }
 
-type ReadyItem = { ok: boolean; label: string; detail?: string; href: string };
-
-/** بنود جاهزية المتجر المحسوبة فعلاً؛ تُعاد فارغة إن اكتملت كلها. */
-export function readinessItems(r: OverviewData["readiness"] & { hasLogo: boolean; hasContact: boolean }, shareHref: string): ReadyItem[] {
-  return [
-    { ok: r.activeProducts >= 5, label: "5 منتجات منشورة على الأقل", detail: `${fmtNum(Math.min(r.activeProducts, 5))}/5`, href: "/dashboard/products" },
-    {
-      ok: r.activeProducts > 0 && r.activeWithoutImages === 0,
-      label: "صورة لكل منتج منشور",
-      detail: r.activeWithoutImages > 0 ? `${arCount(r.activeWithoutImages, NOUN.product)} بلا صورة` : undefined,
-      href: r.activeWithoutImages > 0 ? "/dashboard/products?status=active&need=image" : "/dashboard/products",
-    },
-    { ok: r.hasLogo, label: "شعار المتجر", href: "/dashboard/content" },
-    { ok: r.hasContact, label: "رقم واتساب أو هاتف للتواصل", href: "/dashboard/settings" },
-    { ok: r.activeShippingZones > 0, label: "أسعار الشحن للمحافظات", href: "/dashboard/shipping" },
-    {
-      ok: r.activeProducts > 0 && r.activeWithCost === r.activeProducts,
-      label: "سعر التكلفة لكل منتج (لحساب ربحك)",
-      detail: r.activeProducts > 0 ? `${fmtNum(r.activeWithCost)}/${fmtNum(r.activeProducts)}` : undefined,
-      href: r.activeProducts > r.activeWithCost ? "/dashboard/products?status=active&need=cost" : "/dashboard/products",
-    },
-    { ok: r.hasOrders, label: "أول طلب: شارك رابط متجرك", href: shareHref },
-  ];
-}
-
-export function ReadinessCard({ items }: { items: ReadyItem[] }) {
-  const done = items.filter((i) => i.ok).length;
-  const pct = Math.round((done / items.length) * 100);
+export function ReadinessCard({ steps }: { steps: ReadyStep[] }) {
+  const { pct, done, total } = readinessScore(steps);
+  const groups = (Object.keys(GROUP_LABEL) as ReadyGroup[]).map((g) => ({ g, items: steps.filter((s) => s.group === g) })).filter((x) => x.items.length);
+  const next = steps.find((s) => !s.ok && !s.optional);
   return (
-    <Card title="جاهزية متجرك" action={<span className="text-[13px] font-black tabular-nums text-nova-2">{fmtNum(pct)}%</span>}>
+    <Card title="جاهزية متجرك" action={<span className="text-[13px] font-black tabular-nums text-nova-2">{fmtNum(done)}/{fmtNum(total)}</span>}>
       <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-edge/[0.06]" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="نسبة الجاهزية">
         <div className="h-full rounded-full bg-gradient-to-l from-nova to-aurora" style={{ width: `${pct}%` }} />
       </div>
-      <ul className="-mx-1.5 space-y-0.5">
-        {items.map((c) => (
-          <li key={c.label}>
-            <Link
-              href={c.href}
-              className={cn(
-                "flex min-h-11 items-center gap-2.5 rounded-lg px-1.5 text-[12.5px] transition-colors hover:bg-edge/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova",
-                c.ok ? "text-ink-3" : "font-bold text-ink"
-              )}
-            >
-              {c.ok ? (
-                <CheckCircle2 className="size-4 shrink-0 text-ok" strokeWidth={2.25} aria-label="مكتمل" />
-              ) : (
-                <Circle className="size-4 shrink-0 text-ink-3/60" strokeWidth={1.75} aria-label="غير مكتمل" />
-              )}
-              <span className={cn("min-w-0 flex-1", c.ok && "line-through decoration-ink-3/40")}>{c.label}</span>
-              {c.detail && !c.ok ? <span className="shrink-0 text-[11px] font-bold tabular-nums text-ink-3">{c.detail}</span> : null}
-            </Link>
-          </li>
+      {next ? (
+        <Link href={next.href} className="mb-3 block rounded-xl bg-nova/10 p-3 transition hover:bg-nova/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova">
+          <span className="block text-[11px] font-bold text-ink-3">الخطوة التالية</span>
+          <span className="block text-[13px] font-black text-ink">{next.label}</span>
+          <span className="mt-0.5 block text-[11.5px] leading-5 text-ink-3">{next.why}</span>
+        </Link>
+      ) : null}
+      <div className="space-y-3">
+        {groups.map(({ g, items }) => (
+          <div key={g}>
+            <p className="mb-1 text-[11px] font-black text-ink-3">{GROUP_LABEL[g]}</p>
+            <ul className="-mx-1.5 space-y-0.5">
+              {items.map((c) => (
+                <li key={c.key}>
+                  <Link
+                    href={c.href}
+                    title={c.why}
+                    className={cn(
+                      "flex min-h-10 items-center gap-2.5 rounded-lg px-1.5 text-[12.5px] transition-colors hover:bg-edge/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova",
+                      c.ok ? "text-ink-3" : "font-bold text-ink"
+                    )}
+                  >
+                    {c.ok ? (
+                      <CheckCircle2 className="size-4 shrink-0 text-ok" strokeWidth={2.25} aria-label="مكتمل" />
+                    ) : (
+                      <Circle className="size-4 shrink-0 text-ink-3/60" strokeWidth={1.75} aria-label="غير مكتمل" />
+                    )}
+                    <span className={cn("min-w-0 flex-1", c.ok && "line-through decoration-ink-3/40")}>
+                      {c.label}
+                      {c.optional ? <span className="ms-1 text-[10.5px] font-normal text-ink-3">(اختياري)</span> : null}
+                    </span>
+                    {c.detail && !c.ok ? <span className="shrink-0 text-[11px] font-bold tabular-nums text-ink-3">{c.detail}</span> : null}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
+      </div>
     </Card>
   );
 }
