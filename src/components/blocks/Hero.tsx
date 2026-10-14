@@ -30,6 +30,8 @@ function layoutOf(s: HeroSection, spotlight: HeroSpotlight): Layout {
         : v === "carousel"
           ? "split"
           : "centered";
+  // واجهة بلا صور: صورة منتج حقيقية أفضل من خلفية نصية فارغة.
+  if (spotlight?.image && (want === "centered" || (!imgs && want !== "product_spotlight"))) return "product_spotlight";
   // لا تخطيط يعتمد على صور غير موجودة.
   if (want === "product_spotlight" && !spotlight?.image) return imgs ? "split" : "centered";
   if (want === "collage" && imgs < 3) return imgs ? "split" : "centered";

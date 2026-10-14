@@ -25,7 +25,10 @@ const pick = <T,>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)]!;
 const sha = (t: string) => crypto.createHash("sha256").update(t).digest("hex");
 
 /** صورة منتج تجريبية بلا شبكة: SVG بلون مختلف لكل منتج وحرفه الأول. */
+const DEV_PHOTOS = ["tee-white", "outfit-yellow", "shirts-green", "sneaker-white", "knit", "tee-black", "shoe-green", "bag", "sneaker-red"];
 function productImage(name: string, i: number): string {
+  // صور حقيقية مضغوطة في public/dev لمعاينة محلية واقعية (الإيصالات وما شابه تبقى SVG).
+  if (!name.includes("إيصال")) return `/dev/${DEV_PHOTOS[i % DEV_PHOTOS.length]}.webp`;
   const hues = [18, 200, 330, 150, 45, 260, 0, 95, 220];
   const h = hues[i % hues.length];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 750"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${h} 55% 78%)"/><stop offset="1" stop-color="hsl(${h} 45% 52%)"/></linearGradient></defs><rect width="600" height="750" fill="url(#g)"/><text x="300" y="430" font-family="sans-serif" font-size="220" font-weight="700" text-anchor="middle" fill="rgba(255,255,255,.85)">${name.charAt(0)}</text></svg>`;

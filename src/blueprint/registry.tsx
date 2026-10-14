@@ -52,8 +52,11 @@ export async function renderCoreSection(
   switch (s.type) {
     case "hero": {
       let spotlight = null;
-      if (s.variant === "product_spotlight" && s.spotlightProductSlug) {
-        const [p] = await fetchProductsForSource(ctx.storeId, { type: "manual", slugs: [s.spotlightProductSlug] }, 1);
+      // واجهة بلا صور تستعير صورة أفضل منتج (النجم المختار وإلا الأحدث ظهوراً) بدل واجهة نصية فارغة.
+      const wantsSpotlight = s.variant === "product_spotlight" || s.variant === "centered" || s.images.length === 0;
+      if (wantsSpotlight) {
+        const source = s.spotlightProductSlug ? { type: "manual" as const, slugs: [s.spotlightProductSlug] } : { type: "featured" as const };
+        const [p] = (await fetchProductsForSource(ctx.storeId, source, 1)).concat(s.spotlightProductSlug ? [] : await fetchProductsForSource(ctx.storeId, { type: "newest" }, 1));
         if (p) spotlight = { slug: p.slug, name: p.name, pricePiasters: p.pricePiasters, compareAtPiasters: p.compareAtPiasters, image: (p.images as { url: string }[])?.[0]?.url };
       }
       return <Block.Hero key={s.id} s={s} spotlight={spotlight} />;
