@@ -2,7 +2,7 @@ import { trace } from "@/lib/meta-trace";
 import { after, NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Client } from "@upstash/qstash";
-import { env, clientEnv } from "@/lib/env";
+import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -120,9 +120,10 @@ async function handleEcho(channel: Channel, ev: any): Promise<void> {
   }
 }
 
-async function viaQStash(p: InboundPayload) {
+async function viaQStash(p: InboundPayload, origin: string) {
   await qstash().publishJSON({
-    url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/agents/inbound`,
+    // أصل الطلب نفسه (هذا الخادم) لا NEXT_PUBLIC_APP_URL: لو أشار المتغير لنشر قديم لعولجت الرسائل هناك بمفاتيح قديمة.
+    url: `${origin}/api/agents/inbound`,
     body: p,
     headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
     deduplicationId: p.mid,
@@ -134,7 +135,7 @@ async function viaQStash(p: InboundPayload) {
  * يسجّل الرسالة كمُستلمة ثم يعالجها **مباشرة** داخل هذا العامل بعد الرد على Meta (after) بدل المرور بـ QStash: كان الرد
  * يتوقف كلياً إن لم يصل QStash إلى الموقع (جدار، مفاتيح، رابط). لو فشلت المعالجة المباشرة نرسلها إلى QStash كاحتياط.
  */
-async function dispatch(p: InboundPayload): Promise<boolean> {
+async function dispatch(p: InboundPayload, origin: string): Promise<boolean> {
   const dedupKey = `meta:mid:${p.mid}`;
   const fresh = await redis.set(dedupKey, 1, { nx: true, ex: DEDUP_TTL_S });
   if (!fresh) return true; // تكرار من Meta
@@ -148,7 +149,7 @@ async function dispatch(p: InboundPayload): Promise<boolean> {
       await trace("direct-failed", String((e as Error)?.message ?? e));
       try {
         await redis.del(`seen:mid:${p.mid}`).catch(() => {});
-        await viaQStash(p);
+        await viaQStash(p, origin);
       } catch (e2) {
         console.error("[webhooks/meta] publish failed", p.mid, e2);
         await trace("webhook-publish-failed", String((e2 as Error)?.message ?? e2));
@@ -213,7 +214,8 @@ export async function POST(req: Request) {
   await trace("webhook", `${channel} queued=${payloads.length} echoes=${echoes} noMessaging=${others} bytes=${raw.length}`);
   if (!payloads.length) return NextResponse.json({ ok: true, queued: 0 });
 
-  const results = await Promise.allSettled(payloads.map(dispatch));
+  const origin = new URL(req.url).origin;
+  const results = await Promise.allSettled(payloads.map((p) => dispatch(p, origin)));
   const failed = results.filter((r) => r.status === "rejected" || !r.value).length;
   if (failed) await trace("webhook-publish-failed", `${channel} failed=${failed}`);
   if (failed) return NextResponse.json({ ok: false, failed }, { status: 500 });

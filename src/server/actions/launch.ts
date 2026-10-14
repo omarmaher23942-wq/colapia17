@@ -7,6 +7,9 @@ import { sendEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
 import { mediaApi } from "@/server/media-host";
 import { redis } from "@/lib/redis";
+import { eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { conversations } from "@/db/schema";
 
 /** صورة اختبار حقيقية: شعار Colapia من الأصول المنشورة (لا ملف من القرص: يعمل على Cloudflare أيضاً). */
 async function testImage(): Promise<Uint8Array> {
@@ -88,4 +91,15 @@ export async function sendTestEmailAction(): Promise<{ ok: boolean; to?: string;
     paragraphs: ["وصلتك هذه الرسالة من مركز جاهزية الإطلاق، فإرسال البريد من المنصة سليم."],
   }).catch(() => false);
   return ok ? { ok: true, to: u.email } : { ok: false, error: "تعذر الإرسال: راجع فحص البريد (Resend) في الصفحة" };
+}
+
+/** يعيد الوكيل للعمل في كل المحادثات الموقوفة على «تدخل بشري» (يدوياً أو بتحويل الوكيل). */
+export async function resumeAllAgentAction(): Promise<{ ok: true; count: number }> {
+  await requirePlatformCap("settings", "غير مصرح");
+  const rows = await db
+    .update(conversations)
+    .set({ botPaused: false, stage: "persuasion", updatedAt: new Date() })
+    .where(eq(conversations.botPaused, true))
+    .returning({ id: conversations.id });
+  return { ok: true, count: rows.length };
 }

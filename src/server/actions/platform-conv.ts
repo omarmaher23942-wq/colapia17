@@ -11,7 +11,9 @@ async function guard() { return requirePlatformCap("conversations", "غير مص
 
 export async function togglePauseAction(id: string, paused: boolean) {
   const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return;
-  await db.update(conversations).set({ botPaused: paused, stage: paused ? "human" : c.stage === "human" ? "persuasion" : c.stage, updatedAt: new Date() }).where(eq(conversations.id, id));
+  // إيقاف يدوي من الفريق يبقى حتى يُلغى: نمسح علامة تحويل الوكيل (التي تعود وحدها بعد 3 ساعات).
+  const { handoffBy: _b, handoffAt: _a, ...mem } = (c.memory as Record<string, unknown> | null) ?? {};
+  await db.update(conversations).set({ botPaused: paused, stage: paused ? "human" : c.stage === "human" ? "persuasion" : c.stage, memory: mem, updatedAt: new Date() }).where(eq(conversations.id, id));
   await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: paused ? "إيقاف المساعد (Takeover)" : "إعادة تشغيل المساعد", data: { conversationId: id } });
   revalidatePath("/admin/conversations");
 }

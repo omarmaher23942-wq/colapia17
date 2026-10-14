@@ -8,7 +8,7 @@ import { AlertTriangle, Bot, CheckCircle2, CircleSlash, ImageUp, Loader2, Mail, 
 import { toast } from "sonner";
 import type { CheckGroup, CheckStatus } from "@/server/launch-checks";
 import type { ProbeResult } from "@/ai/providers";
-import { cleanupMediaTestAction, resetModelsAction, sendTestEmailAction, testAgentAction, testChatAction, testMediaAction, testVisionAction } from "@/server/actions/launch";
+import { cleanupMediaTestAction, resetModelsAction, resumeAllAgentAction, sendTestEmailAction, testAgentAction, testChatAction, testMediaAction, testVisionAction } from "@/server/actions/launch";
 import { cn } from "@/lib/utils";
 
 const ICON: Record<CheckStatus, { Icon: typeof CheckCircle2; tone: string; label: string }> = {
@@ -32,7 +32,7 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [probe, setProbe] = useState<{ tier: "visionFast" | "chat"; results: ProbeResult[] } | null>(null);
-  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | "agent" | null>(null);
+  const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | "agent" | "resume" | null>(null);
   const [agentText, setAgentText] = useState("هاي، عندي براند ملابس على إنستجرام");
   const [agent, setAgent] = useState<Awaited<ReturnType<typeof testAgentAction>> | null>(null);
   const [media, setMedia] = useState<{ state: "ok" | "broken"; url: string; host: string } | null>(null);
@@ -120,6 +120,19 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
             className="h-10 w-full rounded-xl border border-white/15 bg-transparent px-3 text-[13px] outline-none focus:border-[#8fa8ff]"
           />
         </label>
+        <button
+          type="button"
+          disabled={busy !== null}
+          onClick={async () => {
+            setBusy("resume");
+            const r = await resumeAllAgentAction().catch(() => null);
+            setBusy(null);
+            r ? toast.success(r.count ? `عاد الوكيل للعمل في ${r.count} محادثة كانت موقوفة` : "لا توجد محادثات موقوفة") : toast.error("تعذر الاستئناف");
+          }}
+          className="inline-flex min-h-10 items-center gap-2 self-end rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50"
+        >
+          {busy === "resume" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-4" aria-hidden="true" />} استئناف الوكيل في كل المحادثات
+        </button>
         <button type="button" disabled={busy !== null || !agentText.trim()} onClick={testAgent} className="inline-flex min-h-10 items-center gap-2 self-end rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50">
           {busy === "agent" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Bot className="size-4" aria-hidden="true" />} جرّب رداً كاملاً
         </button>

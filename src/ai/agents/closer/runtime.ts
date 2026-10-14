@@ -15,9 +15,9 @@ import { derivedToken } from "@/intake/tokens";
 import { clientEnv } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
-import { alertAgentDegraded } from "./alerts";
+import { alertAgentDegraded, alertAgentSilent } from "./alerts";
 import { closerTurnSchema, type CloserTurn } from "./turn";
-import { LINK_REPEAT_MS, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
+import { AI_HANDOFF_PAUSE_MS, LINK_REPEAT_MS, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
 
 type Channel = "messenger" | "instagram";
 type InboundAttachment = { type: "image" | "video" | "audio" | "file"; url?: string };
@@ -155,10 +155,29 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     })
     .where(eq(conversations.id, conv.id));
 
-  // الوكيل يتوقف في هذه المحادثة فقط إن أوقفه المالك من لوحة المحادثات (أو حوّلها الوكيل لموظف).
-  if (conv.botPaused && conv.stage === "human") return;
+  // كل خروج بلا رد يُسجَّل في الأثر ويُبلَّغ به المالك بسببه: لا صمت بلا تفسير.
+  const silent = async (kind: string, why: string) => {
+    await trace("skip", `${kind}: ${why}`);
+    await alertAgentSilent(kind, why, conv.id).catch(() => {});
+  };
 
-  if (!botOn) return;
+  // الوكيل يتوقف في هذه المحادثة إن أوقفه المالك من لوحة المحادثات (حتى يُلغى)، أو حوّلها الوكيل نفسه لموظف (3 ساعات ثم يعود).
+  if (conv.botPaused && conv.stage === "human") {
+    const m = (conv.memory as Record<string, unknown> | null) ?? {};
+    const handoffAt = typeof m.handoffAt === "string" ? Date.parse(m.handoffAt) : NaN;
+    if (m.handoffBy === "ai" && Number.isFinite(handoffAt) && Date.now() - handoffAt > AI_HANDOFF_PAUSE_MS) {
+      await db.update(conversations).set({ botPaused: false, stage: "persuasion", updatedAt: new Date() }).where(eq(conversations.id, conv.id));
+      await trace("resume", "انتهت مهلة التحويل لموظف فعاد الوكيل");
+    } else {
+      await silent("paused", `المحادثة (${conv.profileName ?? senderId}) موقوفة على «تدخل بشري»${m.handoffBy === "ai" ? " لأن الوكيل حوّلها لموظف (يعود بعد 3 ساعات)" : ""}. ألغِ الإيقاف من لوحة المحادثات أو اضغط «استئناف الوكيل في كل المحادثات» في جاهزية الإطلاق.`);
+      return;
+    }
+  }
+
+  if (!botOn) {
+    await silent("disabled", "الوكيل مطفأ من /admin/flags (المفتاح bot.enabled أو bot.instagram). فعّله ليعود الرد.");
+    return;
+  }
 
   const lastUserMessage = userTexts.join(" ").trim();
 
@@ -173,6 +192,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
   if (used > MAX_MESSAGES_PER_HOUR) {
     // تنبيه واحد فقط لكل ساعة ثم صمت.
     if (used === MAX_MESSAGES_PER_HOUR + 1) await metaApi.text(channel, senderId, RATE_NOTICE).catch(() => {});
+    await silent("rate", `المرسل تجاوز ${MAX_MESSAGES_PER_HOUR} رسالة في الساعة فتوقف الوكيل معه ساعة (حماية من الإغراق).`);
     return;
   }
 
@@ -228,6 +248,17 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     .where(eq(conversations.id, conv.id))
     .catch(() => {});
 
+  try {
+    await deliverTurn(channel, senderId, conv, turn, linkSentAt, now);
+    await trace("reply-sent", `${channel} …${String(senderId).slice(-4)}`);
+  } catch (e) {
+    const why = String((e as Error)?.message ?? e);
+    await silent("send", `الذكاء الاصطناعي كتب الرد لكن إرساله إلى Meta فشل: ${why}. الغالب رمز الصفحة أو صلاحية instagram_manage_messages.`);
+  }
+  await metaApi.typing(channel, senderId, false).catch(() => {});
+}
+
+async function deliverTurn(channel: Channel, senderId: string, conv: Conv, turn: CloserTurn, linkSentAt: number | null, now: number) {
   // الزر: قرار الوكيل وحده، لكن لا يتكرر خلال 20 دقيقة.
   const linkRecent = linkSentAt !== null && now - linkSentAt < LINK_REPEAT_MS;
   if (turn.issueLink && !linkRecent) {
@@ -235,7 +266,6 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
       const issued = await linkFor(conv, channel, { storeName: turn.storeName, oneLine: turn.business, social: turn.social, whatsapp: turn.whatsapp });
       if (!issued) {
         await handoffToHuman(channel, senderId, conv, "طلب سابق مغلق لنفس المحادثة", turn.reply);
-        await metaApi.typing(channel, senderId, false);
         return;
       }
       const buttonTitle = issued.kind === "follow" ? "متابعة متجرك" : turn.buttonTitle || "ابدأ استمارة متجرك";
@@ -250,8 +280,6 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
   } else {
     await sendText(channel, senderId, conv, turn.reply, conv.stage === "greeting" ? "discovery" : undefined);
   }
-
-  await metaApi.typing(channel, senderId, false);
 }
 
 /**
@@ -306,9 +334,14 @@ async function lastLinkAt(conversationId: string): Promise<Date | null> {
 /** يرسل ردّ الوكيل الأخير (إن كتب)، ثم يوقفه لهذه المحادثة وينبّه المالك. تظهر بحالة «تدخل بشري» في /admin/conversations. */
 async function handoffToHuman(channel: Channel, senderId: string, conv: Conv, reason: string, reply?: string) {
   const text = reply?.trim() || "تمام، هحوّل المحادثة لحد من فريق Colapia وهيرد عليكم.";
-  await metaApi.text(channel, senderId, text).catch((e) => console.error("[closer] handoff reply failed", e));
+  await metaApi.text(channel, senderId, text).catch(async (e) => { console.error("[closer] handoff reply failed", e); await trace("send-fail", `handoff: ${String((e as Error)?.message ?? e)}`); });
   await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text });
-  await db.update(conversations).set({ botPaused: true, stage: "human", lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, conv.id));
+  const mem = (conv.memory as Record<string, unknown> | null) ?? {};
+  await db
+    .update(conversations)
+    .set({ botPaused: true, stage: "human", memory: { ...mem, handoffBy: "ai", handoffAt: new Date().toISOString() }, lastBotMessageAt: new Date(), updatedAt: new Date() })
+    .where(eq(conversations.id, conv.id));
+  await trace("handoff", reason.slice(0, 120));
   await notifyAdmin(`محادثة تحتاج موظفاً بشرياً (${channel}): ${reason.slice(0, 160)}`, { conversationId: conv.id });
 }
 

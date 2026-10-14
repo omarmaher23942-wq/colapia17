@@ -198,12 +198,44 @@ const STEP_LABEL: Record<string, string> = {
   "ai-fail": "فشل الذكاء الاصطناعي",
   "send-ok": "أُرسل الرد بنجاح",
   "send-fail": "فشل إرسال الرد",
+  "reply-sent": "رد الوكيل وصل للعميل",
+  skip: "لم يرد الوكيل",
+  handoff: "حوّل الوكيل المحادثة لموظف",
+  resume: "عاد الوكيل بعد مهلة التحويل",
+  "direct-failed": "فشلت المعالجة المباشرة (أُرسلت للطابور)",
 };
+
+/** حالة الوكيل نفسه: هل هو مطفأ، وكم محادثة موقوفة عنه، وهل رابط الموقع يشير إلى هذا الخادم. */
+const checkAgentState = () =>
+  run("agent-state", "حالة وكيل الرسائل", async () => {
+    const [{ isOn }, { conversations }] = await Promise.all([import("@/lib/flags"), import("@/db/schema")]);
+    const [on, ig, paused] = await Promise.all([
+      isOn("bot.enabled"),
+      isOn("bot.instagram"),
+      db.select({ n: sql<number>`count(*)::int` }).from(conversations).where(eq(conversations.botPaused, true)).then((r) => r[0]?.n ?? 0),
+    ]);
+    const appHost = (() => {
+      try {
+        return new URL(process.env.NEXT_PUBLIC_APP_URL ?? "").hostname;
+      } catch {
+        return "";
+      }
+    })();
+    const problems = [
+      !on && "الوكيل مطفأ (bot.enabled في /admin/flags)",
+      !ig && "الوكيل مطفأ على إنستجرام (bot.instagram في /admin/flags)",
+      paused > 0 && `${paused} محادثة موقوفة على «تدخل بشري» لن يرد فيها`,
+      appHost && appHost !== env.ROOT_DOMAIN && !appHost.endsWith(`.${env.ROOT_DOMAIN}`) && `رابط الموقع NEXT_PUBLIC_APP_URL يشير إلى ${appHost} لا إلى ${env.ROOT_DOMAIN}`,
+    ].filter(Boolean) as string[];
+    return problems.length
+      ? { status: !on || !ig ? "fail" : "warn", detail: problems.join(" · "), fix: "فعّل المفاتيح من /admin/flags، واضغط «استئناف الوكيل في كل المحادثات»، واجعل NEXT_PUBLIC_APP_URL = https://" + env.ROOT_DOMAIN + " ثم أعد النشر" }
+      : { status: "ok", detail: "يعمل على ماسنجر وإنستجرام، ولا محادثات موقوفة" };
+  });
 const checkTrace = () =>
   run("meta-trace", "آخر ما حدث لرسائل الوكيل (الأحدث أولاً)", async () => {
     const rows = await readTrace();
     if (!rows.length) return { status: "skip", detail: "لا أحداث بعد: أرسل رسالة للصفحة ثم أعد الفحص", fix: undefined };
-    const hasFail = rows.slice(0, 6).some((r) => /fail|error|401/.test(r.step));
+    const hasFail = rows.slice(0, 6).some((r) => /fail|error|401|skip/.test(r.step));
     const detail = rows
       .map((r) => `${ago(r.at) ?? ""} · ${STEP_LABEL[r.step] ?? r.step}${r.detail ? ` · ${r.detail}` : ""}`)
       .join("\n");
@@ -244,12 +276,12 @@ function configChecks(): Check[] {
 }
 
 export async function runLaunchChecks(): Promise<CheckGroup[]> {
-  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh] = await Promise.all([
-    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(),
+  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh, agent] = await Promise.all([
+    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(), checkAgentState(),
   ]);
   return [
     { title: "الأساس", checks: [db1, mig, red, cron, q] },
-    { title: "البريد والرسائل", checks: [mail, meta, metaTrace] },
+    { title: "البريد والرسائل", checks: [mail, meta, agent, metaTrace] },
     { title: "الذكاء الاصطناعي", checks: [groq, gem] },
     { title: "الصور والنطاقات والكود", checks: [media, dom, gh] },
     { title: "إعداداتك", checks: configChecks() },

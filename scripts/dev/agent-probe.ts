@@ -26,6 +26,14 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     return new Response(JSON.stringify({ name: "Probe", result: "ok" }), { status: 200 });
   }
+  // PROBE_FAKE_AI=1: نموذج Groq مُحاكى يرد بـ JSON صالح، لإثبات مسار الإرسال كاملاً (الذكاء الاصطناعي ← Meta) بلا مفاتيح.
+  if (process.env.PROBE_FAKE_AI === "1" && /api\.groq\.com/.test(url)) {
+    const reply = JSON.stringify({ thinking: "-", reply: `رد تجريبي رقم ${++seq}`, issueLink: false, memory: "تجربة" });
+    return new Response(
+      JSON.stringify({ id: "x", object: "chat.completion", created: 0, model: "fake", choices: [{ index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
   return realFetch(input, init);
 }) as typeof fetch;
 
