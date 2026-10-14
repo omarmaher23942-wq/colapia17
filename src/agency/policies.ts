@@ -60,17 +60,72 @@ export function parseEtaDays(text: string | undefined | null): { min: number; ma
 
 export type ZoneRow = { governorate: string; feePiasters: number; codExtraPiasters: number; etaMinDays: number; etaMaxDays: number; isActive: boolean };
 
-/** صفوف مناطق الشحن: المفعّل حسب النطاق، والسعر الموحد (إن قاله التاجر)، والمدة (إن فُهمت). */
+// «بقية المحافظات 80»، «الباقي 80»، «باقي الأقاليم 80»، «أي محافظة تانية 80».
+const REST_RE = /(?:^|\s)و?(?:ال)?(?:بقيه|باقي|باقيه|اقاليم|محافظات)(?=\s|$)|اي محافظه|غير (?:كده|ذلك)/;
+// رقم يليه «يوم/أيام/ساعة» (ولو بعد نطاق «3-5 أيام») مدة توصيل لا سعر.
+const DAYS_AFTER = /^\s*(?:(?:-|–|الي|ل|او)\s*\d{1,2}\s*)?(?:يوم|ايام|يومين|ساعه|ساعات)/;
+
+/**
+ * أسعار الشحن لكل محافظة من نص «يختلف حسب المحافظة» (بالقروش): «القاهرة والجيزة 60، أسوان والأقصر 120، بقية المحافظات 80»
+ * → byGov {cairo, giza: 6000؛ aswan, luxor: 12000} وrest 8000. كل جملة (بين الفواصل) لها سعر، وإن تعدد السعر في جملة
+ * فكل سعر لما قبله («القاهرة 60 والجيزة 70»). «مجاناً» بلا رقم = 0. ما لا يُفهم لا يُخمَّن (يبقى السعر الافتراضي ويُسأل التاجر).
+ */
+export function feesFromNote(note: string | undefined | null): { byGov: Map<string, number>; rest: number | null } {
+  const byGov = new Map<string, number>();
+  let rest: number | null = null;
+  const assign = (text: string, egp: number) => {
+    const codes = governoratesIn(text);
+    if (codes.length) codes.forEach((c) => byGov.set(c, egp * 100));
+    else if (REST_RE.test(text) && rest === null) rest = egp * 100;
+  };
+  // فاصل الآلاف («1,250») ليس فاصل جمل، والتقسيم قبل normalizeArabic (تدمج الأسطر في مسافة).
+  const text = normalizeDigits(note ?? "").replace(/(\d)[,٬](\d{3})(?!\d)/g, "$1$2");
+  for (const raw of text.split(/[،,؛;\n]+/)) {
+    const seg = normalizeArabic(raw);
+    // رقم من 4 خانات فأقل (رقم هاتف في النص ليس سعراً)، وما يليه «يوم/أيام» مدة لا سعر.
+    const prices = [...seg.matchAll(/\d+/g)].filter((m) => m[0].length <= 4 && Number(m[0]) <= 5000 && !DAYS_AFTER.test(seg.slice(m.index! + m[0].length)));
+    if (!prices.length) {
+      if (/مجان|ببلاش/.test(seg)) assign(seg, 0);
+    } else if (prices.length === 1) {
+      assign(seg, Number(prices[0]![0]));
+    } else {
+      let from = 0;
+      for (const m of prices) {
+        assign(seg.slice(from, m.index), Number(m[0]));
+        from = m.index! + m[0].length;
+      }
+    }
+  }
+  return { byGov, rest };
+}
+
+const noteFee = (fees: ReturnType<typeof feesFromNote>, code: string) => fees.byGov.get(code) ?? fees.rest ?? undefined;
+
+/** صفوف مناطق الشحن: المفعّل حسب النطاق، والسعر الموحد أو أسعار المحافظات (إن قالها التاجر)، والمدة (إن فُهمت). */
 export function zoneRows(delivery: IntakeData["delivery"]): ZoneRow[] {
   const mentioned = delivery.scope === "custom" ? governoratesIn(delivery.note) : [];
   const eta = parseEtaDays(delivery.eta);
-  return defaultShippingZones().map((z) => ({
-    ...z,
-    isActive:
-      delivery.scope === "cairo_giza" ? z.governorate === "cairo" || z.governorate === "giza" : delivery.scope === "custom" && mentioned.length ? mentioned.includes(z.governorate) : true,
-    ...(delivery.fee === "flat" && delivery.feeAmount ? { feePiasters: delivery.feeAmount * 100 } : {}),
-    ...(eta ? { etaMinDays: eta.min, etaMaxDays: Math.max(eta.min, eta.max) } : {}),
-  }));
+  const fees = delivery.fee === "varies" ? feesFromNote(delivery.feeNote) : null;
+  return defaultShippingZones().map((z) => {
+    const fromNote = fees ? noteFee(fees, z.governorate) : undefined;
+    return {
+      ...z,
+      isActive:
+        delivery.scope === "cairo_giza" ? z.governorate === "cairo" || z.governorate === "giza" : delivery.scope === "custom" && mentioned.length ? mentioned.includes(z.governorate) : true,
+      ...(delivery.fee === "flat" && delivery.feeAmount ? { feePiasters: delivery.feeAmount * 100 } : {}),
+      ...(fromNote !== undefined ? { feePiasters: fromNote } : {}),
+      ...(eta ? { etaMinDays: eta.min, etaMaxDays: Math.max(eta.min, eta.max) } : {}),
+    };
+  });
+}
+
+/** هل فهمنا من نص «يختلف حسب المحافظة» سعراً لكل محافظة مفعّلة؟ (وإلا يُسأل التاجر في DELIVERY.md). */
+export function feeNoteUnderstood(delivery: IntakeData["delivery"]): boolean {
+  if (delivery.fee !== "varies") return true;
+  const fees = feesFromNote(delivery.feeNote);
+  return zoneRows(delivery)
+    .filter((z) => z.isActive)
+    .every((z) => noteFee(fees, z.governorate) !== undefined);
 }
 
 /** هل فهمنا المحافظات من نص «محافظات معينة»؟ (وإلا تُفعَّل كلها ويُسأل التاجر في DELIVERY.md). */

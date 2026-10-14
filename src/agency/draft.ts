@@ -8,7 +8,7 @@ import { paletteById } from "@/intake/palettes";
 import { handleFromSocial } from "./slug";
 import type { IntakeData } from "@/intake/schema";
 import { normalizeArabic } from "@/lib/arabic";
-import { paymentsFromIntake, returnsFromIntake, shippingFromIntake, customScopeUnderstood } from "./policies";
+import { paymentsFromIntake, returnsFromIntake, shippingFromIntake, customScopeUnderstood, feeNoteUnderstood } from "./policies";
 
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 const toLatin = (s: string) => s.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/[٬,](?=\d{3}\b)/g, "");
@@ -168,7 +168,8 @@ export function buildDraft({ slug, data: d, imageUrl }: DraftInput): Draft {
   if (d.payment.methods.includes("wallet") && !d.payment.walletNumber) questions.push("رقم المحفظة (فودافون كاش) لم يُذكر.");
   if (d.payment.methods.includes("instapay") && !d.payment.instapayAddress) questions.push("بيانات إنستاباي لم تُذكر.");
   if (d.payment.methods.includes("cod") && !d.payment.inspection) questions.push("هل المعاينة وفتح الشحنة متاحان عند الاستلام؟");
-  if (d.delivery.fee === "varies") questions.push(`أسعار الشحن لكل محافظة (قال العميل إنها تختلف${d.delivery.feeNote ? `: «${d.delivery.feeNote.replace(/\s+/g, " ").slice(0, 200)}»` : ""}).`);
+  // أسعار المحافظات المفهومة من كلامه تُكتب في مناطق الشحن كما هي (zoneRows)، فلا يُسأل عنها.
+  if (!feeNoteUnderstood(d.delivery)) questions.push(`أسعار الشحن لكل محافظة (قال العميل إنها تختلف${d.delivery.feeNote ? `: «${d.delivery.feeNote.replace(/\s+/g, " ").slice(0, 200)}»` : ""}).`);
   if (!d.delivery.fee) questions.push("سعر الشحن لم يُحدَّد (المسودة بالقيم الافتراضية).");
   if (!customScopeUnderstood(d.delivery)) questions.push(`المحافظات التي يوصّل لها: «${(d.delivery.note ?? "").slice(0, 200)}» (فُعِّلت كلها في المسودة، حدّدها بدقة).`);
   if (!d.returns.mode) questions.push("سياسة الاستبدال والاسترجاع (المدة ومن يتحمل الشحن): لم تُحدَّد.");

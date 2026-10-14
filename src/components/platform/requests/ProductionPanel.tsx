@@ -35,6 +35,8 @@ type Props = {
   storeUrl: string;
   previewUrl: string | null;
   github: boolean;
+  /** مجلد stores/<slug>/ مبني ومنشور (blueprint.json أو seed.json): التجهيز يزرع منه بدل المسودة. */
+  folderBuilt: boolean;
 };
 
 const btn = "inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-[13px] font-black disabled:cursor-not-allowed disabled:opacity-50";
@@ -314,10 +316,16 @@ export function ProductionPanel(p: Props) {
             </>
           ) : manager || mine ? (
             <>
-              <p className="text-[12.5px] leading-6 text-[#c3cdf0]">
-                ينشئ المتجر على <code dir="ltr">{slug}.colapia.com</code> خلف البوابة بمسودة أولى من الاستمارة (الاسم، الألوان، القنوات، المنتجات المسعّرة)
-                {p.github ? "، ويكتب مجلد stores/ في فرع البناء" : "، ثم نزّل المجلد ZIP وافكّه في جذر المستودع"}. راجع النطاق أولاً: يثبت بعد التجهيز.
-              </p>
+              {p.folderBuilt && slug === p.slug ? (
+                <p className="text-[12.5px] leading-6 text-[#c3cdf0]">
+                  ينشئ المتجر على <code dir="ltr">{slug}.colapia.com</code> خلف البوابة من ملفات المتجر المبنية والمنشورة في <code dir="ltr">stores/{slug}/</code> (التصميم والنصوص والمنتجات كما راجعها الفريق)، ومناطق الشحن وأسعارها من الاستمارة.
+                </p>
+              ) : (
+                <p className="text-[12.5px] leading-6 text-[#c3cdf0]">
+                  ينشئ المتجر على <code dir="ltr">{slug}.colapia.com</code> خلف البوابة بمسودة أولى من الاستمارة (الاسم، الألوان، القنوات، المنتجات المسعّرة)
+                  {p.github ? "، ويكتب مجلد stores/ في فرع البناء" : "، ثم نزّل المجلد ZIP وافكّه في جذر المستودع"}. راجع النطاق أولاً: يثبت بعد التجهيز.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -327,7 +335,7 @@ export function ProductionPanel(p: Props) {
                     start(async () => {
                       const r = await provisionRequestAction({ id: p.id });
                       if (!r.ok) return void toast.error(r.error);
-                      toast.success(r.branchUrl ? "جُهِّز المتجر وكُتب الفرع" : "جُهِّز المتجر. نزّل المجلد ZIP");
+                      toast.success(r.fromFolder ? "جُهِّز المتجر من ملفاته المبنية" : r.branchUrl ? "جُهِّز المتجر وكُتب الفرع" : "جُهِّز المتجر. نزّل المجلد ZIP");
                       if (r.missingPrice) toast.message(`${r.missingPrice} منتج بلا سعر: مكتوبة كأسئلة في DELIVERY.md`);
                       router.refresh();
                     })

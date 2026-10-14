@@ -1,0 +1,84 @@
+{
+  "categories": [
+    {
+      "name": "فساتين"
+    },
+    {
+      "name": "رجالي"
+    }
+  ],
+  "products": [
+    {
+      "name": "فستان سواريه",
+      "price": 8999,
+      "category": "فساتين",
+      "featured": true,
+      "description": "فستان سهرة بقصة أوف شولدر تبرز الكتفين، وخط ضيق أنيق.\nللمقاس والطول المناسب أو أي سؤال عن القطعة، تواصلوا معنا على واتساب قبل الطلب.",
+      "images": [
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/ccf616c3-e80d-4cde-87af-2d3b7ec2d393.jpg"
+      ]
+    },
+    {
+      "name": "دريس برجاندي",
+      "price": 999,
+      "category": "فساتين",
+      "featured": false,
+      "description": "دريس بلون برجاندي عميق وقصة أوف شولدر، يناسب العزومات والمناسبات.\nللمقاس المتاح أو أي سؤال عن القطعة، تواصلوا معنا على واتساب قبل الطلب.",
+      "images": [
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/d4867f2b-dc70-48ab-81ec-eafb93a3f469.jpg"
+      ]
+    },
+    {
+      "name": "بنطلون جينز كحلي",
+      "price": 499,
+      "category": "رجالي",
+      "featured": false,
+      "description": "جينز كحلي داكن بخمس جيوب وقصة مستقيمة، يناسب القميص الكلاسيك والتيشيرت.\nالمقاسات من 30 إلى 45، ورقم المقاس هو محيط الوسط بالإنش (جدول المقاسات بجانب اختيار المقاس).",
+      "images": [
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/558b0bfc-51fc-4e9e-981c-7ed7b6acf87c.jpg",
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/b86b5b0d-b15c-415c-a2be-d8d4bd12497a.jpg",
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/5a866f32-f44b-472b-a1cf-cc7901630cc6.png"
+      ],
+      "options": {
+        "المقاس": [
+          "30",
+          "31",
+          "32",
+          "33",
+          "34",
+          "35",
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41",
+          "42",
+          "43",
+          "44",
+          "45"
+        ]
+      }
+    },
+    {
+      "name": "قميص كلاسيك أبيض",
+      "price": 399,
+      "category": "رجالي",
+      "featured": false,
+      "description": "قميص أبيض بياقة كلاسيك وأكمام طويلة بأزرار، للشغل والمناسبات.\nللمقاس المتاح، تواصلوا معنا على واتساب قبل الطلب.",
+      "images": [
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/d3ce71ee-6d5d-4ea0-93d0-473b020f920a.jpg"
+      ]
+    },
+    {
+      "name": "طقم رجالي",
+      "price": 1299,
+      "category": "رجالي",
+      "description": "طقم كاجوال من قطعتين: تيشيرت بولو كحلي وبنطلون جينز أسود.\nللمقاس المتاح، تواصلوا معنا على واتساب قبل الطلب.",
+      "images": [
+        "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/db4c6512-4fad-4e97-9bf6-ebed9662c00a.jpg"
+      ],
+      "featured": true
+    }
+  ]
+}

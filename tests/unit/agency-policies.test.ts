@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customScopeUnderstood, governoratesIn, parseEtaDays, paymentsFromIntake, returnsFromIntake, shippingFromIntake, zoneRows } from "@/agency/policies";
+import { customScopeUnderstood, feeNoteUnderstood, feesFromNote, governoratesIn, parseEtaDays, paymentsFromIntake, returnsFromIntake, shippingFromIntake, zoneRows } from "@/agency/policies";
 import { buildDraft, storeFolderFiles } from "@/agency/draft";
 import { blueprintSchema } from "@/blueprint/schema";
 import { defaultBlueprint } from "@/blueprint/defaults";
@@ -52,6 +52,28 @@ describe("مناطق الشحن", () => {
     expect(rows.every((z) => z.feePiasters === 6000 && z.etaMinDays === 2 && z.etaMaxDays === 4)).toBe(true);
     const varies = zoneRows({ scope: "all", fee: "varies" });
     expect(new Set(varies.map((z) => z.feePiasters)).size).toBeGreaterThan(1);
+  });
+  it("أسعار المحافظات من كلام التاجر حين يختلف الشحن", () => {
+    const fees = feesFromNote("القاهرة والجيزة 60، اسوان والاقصر 120، بقية المحافظات 80");
+    expect(Object.fromEntries(fees.byGov)).toEqual({ cairo: 6000, giza: 6000, luxor: 12000, aswan: 12000 });
+    expect(fees.rest).toBe(8000);
+    // أكثر من سعر في جملة واحدة، وأرقام هندية، ومدة توصيل ليست سعراً، و«مجاناً»
+    const more = feesFromNote("القاهرة ٥٠ والجيزة 70 جنيه خلال 2-3 أيام\nالإسكندرية مجاناً");
+    expect(Object.fromEntries(more.byGov)).toEqual({ cairo: 5000, giza: 7000, alexandria: 0 });
+    expect(more.rest).toBeNull();
+    expect(feesFromNote("حسب المكان")).toEqual({ byGov: new Map(), rest: null });
+    // رقم هاتف ليس سعراً، وفاصل الآلاف لا يقسم الجملة
+    expect(Object.fromEntries(feesFromNote("القاهرة 70 (للاستفسار 01094321957)، أسوان 1,250").byGov)).toEqual({ cairo: 7000, aswan: 125000 });
+
+    const d: IntakeData["delivery"] = { scope: "all", fee: "varies", feeNote: "القاهرة والجيزة 60، اسوان والاقصر 120، بقية المحافظات 80", eta: "2 الى 4 ايام" };
+    const fee = (code: string) => zoneRows(d).find((z) => z.governorate === code)!.feePiasters;
+    expect([fee("cairo"), fee("giza"), fee("aswan"), fee("luxor"), fee("alexandria"), fee("red_sea")]).toEqual([6000, 6000, 12000, 12000, 8000, 8000]);
+    expect(zoneRows(d).every((z) => z.etaMinDays === 2 && z.etaMaxDays === 4)).toBe(true);
+    expect(feeNoteUnderstood(d)).toBe(true);
+    // بلا «بقية المحافظات»: الباقي بالسعر الافتراضي ويُسأل التاجر
+    expect(feeNoteUnderstood({ ...d, feeNote: "القاهرة والجيزة 60" })).toBe(false);
+    expect(feeNoteUnderstood({ scope: "cairo_giza", fee: "varies", feeNote: "القاهرة 50 والجيزة 60" })).toBe(true);
+    expect(feeNoteUnderstood({ scope: "all", fee: "flat", feeAmount: 60 })).toBe(true);
   });
   it("الشحن في المتجر: موحد، مجاني من أول جنيه، أو يختلف (بلا سعر موحد)", () => {
     const base = bp().shipping;

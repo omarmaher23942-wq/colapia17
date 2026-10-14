@@ -1,0 +1,744 @@
+{
+  "schemaVersion": 1,
+  "variationSeed": "nor-llmlabs-atelier-1",
+  "brand": {
+    "name": "نور للملابس",
+    "tagline": "فساتين سهرة وملابس رجالي بأناقة هادئة",
+    "description": "نور للملابس: فساتين سواريه ودريسات، وجينز وقمصان وأطقم رجالي. الدفع عند الاستلام مع المعاينة، وشحن لكل محافظات مصر خلال 2 إلى 4 أيام.",
+    "voice": "premium_formal",
+    "industry": "fashion"
+  },
+  "design": {
+    "concept": "خزانة نور: أناقة هادئة بلون الزيتون الفاتح",
+    "mood": "عاجي دافئ وأخضر زيتوني ناعم مع حبر داكن؛ صور القطع هي البطل، خط عناوين أنيق، مسافات سخية، وحركة قليلة تؤكد الفعل.",
+    "layout": {
+      "container": "normal",
+      "density": "airy",
+      "headingAlign": "start"
+    },
+    "type": {
+      "headingWeight": 700,
+      "headingTracking": 0,
+      "headingScale": 1.08,
+      "bodyLeading": 1.8
+    },
+    "shape": {
+      "card": 18,
+      "button": 999,
+      "input": 14,
+      "image": 16,
+      "chip": 999
+    },
+    "surface": {
+      "background": "soft_gradient",
+      "rhythm": "alternate",
+      "divider": "none",
+      "grain": true
+    },
+    "elevation": {
+      "level": 1,
+      "tint": "#4a5326",
+      "border": 1
+    },
+    "card": {
+      "ratio": "portrait",
+      "fit": "cover",
+      "imagePad": 0,
+      "imageBg": "muted",
+      "align": "start",
+      "priceStyle": "bold",
+      "hover": "zoom",
+      "badge": "pill",
+      "showCategory": true,
+      "quickAdd": "icon"
+    },
+    "button": {
+      "fill": "solid",
+      "weight": 700,
+      "size": "md"
+    },
+    "icon": {
+      "stroke": 1.6,
+      "frame": "circle",
+      "tone": "primary"
+    },
+    "heading": {
+      "style": "eyebrow"
+    },
+    "header": {
+      "surface": "glass",
+      "logoSize": "md"
+    },
+    "motion": {
+      "level": "lively",
+      "depth": false
+    }
+  },
+  "copy": {
+    "addToCart": "إضافة للسلة",
+    "buyNow": "الشراء الآن",
+    "viewAll": "عرض الكل",
+    "cartTitle": "سلة المشتريات",
+    "emptyCart": "السلة فارغة. القطع المختارة تنتظركم في المتجر.",
+    "continueShopping": "متابعة التسوق",
+    "checkout": "إتمام الطلب",
+    "searchPlaceholder": "ابحثوا عن فستان، جينز، قميص…",
+    "newBadge": "جديد",
+    "soldOut": "نفدت الكمية",
+    "allProducts": "كل القطع",
+    "orderSuccessTitle": "تم استلام طلبكم",
+    "bestSellerBadge": "اختيار نور"
+  },
+  "theme": {
+    "mode": "light",
+    "palette": {
+      "primary": "#4a5326",
+      "primaryForeground": "#fbfaf4",
+      "secondary": "#ecebe1",
+      "secondaryForeground": "#23271a",
+      "accent": "#acb776",
+      "accentForeground": "#1b1f10",
+      "background": "#faf9f4",
+      "foreground": "#1d2015",
+      "muted": "#f0eee4",
+      "mutedForeground": "#585c4b",
+      "card": "#ffffff",
+      "cardForeground": "#1d2015",
+      "border": "#e0ddcf",
+      "success": "#3f7d3a",
+      "warning": "#b7791f",
+      "danger": "#b42318"
+    },
+    "fonts": {
+      "heading": "el_messiri",
+      "body": "readex_pro",
+      "baseSize": 16
+    },
+    "radius": "xl",
+    "buttonStyle": "solid",
+    "shadow": "soft",
+    "motion": "subtle",
+    "productCardStyle": "minimal",
+    "imageRatio": "portrait",
+    "backgroundPattern": "none",
+    "imageBackground": "none",
+    "ambientBackdrop": {
+      "blendMode": "normal",
+      "layers": [
+        {
+          "color": "rgba(172, 183, 118, 0.16)",
+          "opacity": 1,
+          "position": "100% 0%",
+          "size": "60% 45%"
+        },
+        {
+          "color": "rgba(74, 83, 38, 0.06)",
+          "opacity": 1,
+          "position": "0% 100%",
+          "size": "55% 40%"
+        }
+      ]
+    }
+  },
+  "locale": {
+    "language": "ar",
+    "currency": "EGP",
+    "timezone": "Africa/Cairo"
+  },
+  "header": {
+    "variant": "centered_logo",
+    "sticky": true,
+    "transparentOnHero": false,
+    "showSearch": true,
+    "showCategoriesMenu": true,
+    "nav": [
+      {
+        "label": "فساتين",
+        "target": {
+          "type": "category",
+          "slug": "فساتين"
+        }
+      },
+      {
+        "label": "رجالي",
+        "target": {
+          "type": "category",
+          "slug": "رجالي"
+        }
+      },
+      {
+        "label": "كل القطع",
+        "target": {
+          "type": "all_products"
+        }
+      },
+      {
+        "label": "تواصل معنا",
+        "target": {
+          "type": "contact"
+        }
+      }
+    ]
+  },
+  "footer": {
+    "variant": "rich",
+    "tagline": "فساتين سهرة وملابس رجالي، بالدفع عند الاستلام بعد المعاينة.",
+    "showPaymentIcons": true,
+    "showChannels": true,
+    "showPoweredBy": true
+  },
+  "channels": {
+    "whatsappNumber": "01094321957",
+    "email": "omarmaher23942@gmail.com"
+  },
+  "home": [
+    {
+      "id": "announce",
+      "type": "announcement",
+      "variant": "rotating",
+      "enabled": true,
+      "spacing": "compact",
+      "background": "default",
+      "reveal": "none",
+      "sticky": false,
+      "dismissible": false,
+      "messages": [
+        {
+          "text": "المعاينة وفتح الشحنة قبل الدفع",
+          "fact": "inspection"
+        },
+        {
+          "text": "شحن لكل المحافظات خلال 2 إلى 4 أيام",
+          "fact": "nationwide"
+        },
+        {
+          "text": "استبدال واسترجاع خلال 7 أيام",
+          "fact": "returns"
+        }
+      ]
+    },
+    {
+      "id": "hero",
+      "type": "hero",
+      "variant": "collage",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "eyebrow": "فساتين سهرة · ملابس رجالي",
+      "headline": "إطلالة تليق بكل مناسبة",
+      "subheadline": "قطع مختارة للسهرة والشغل والخروج، بالدفع عند الاستلام بعد المعاينة.",
+      "images": [
+        {
+          "url": "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/ccf616c3-e80d-4cde-87af-2d3b7ec2d393.jpg",
+          "alt": "فستان سواريه أوف شولدر",
+          "focalX": 0.42,
+          "focalY": 0.35
+        },
+        {
+          "url": "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/d3ce71ee-6d5d-4ea0-93d0-473b020f920a.jpg",
+          "alt": "قميص كلاسيك أبيض",
+          "focalX": 0.5,
+          "focalY": 0.5
+        },
+        {
+          "url": "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/db4c6512-4fad-4e97-9bf6-ebed9662c00a.jpg",
+          "alt": "طقم رجالي: بولو كحلي وجينز أسود",
+          "focalX": 0.5,
+          "focalY": 0.5
+        },
+        {
+          "url": "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/b86b5b0d-b15c-415c-a2be-d8d4bd12497a.jpg",
+          "alt": "بنطلون جينز كحلي",
+          "focalX": 0.5,
+          "focalY": 0.5
+        }
+      ],
+      "primaryCta": {
+        "label": "التسوق الآن",
+        "target": {
+          "type": "all_products"
+        },
+        "style": "primary"
+      },
+      "secondaryCta": {
+        "label": "الفساتين",
+        "target": {
+          "type": "category",
+          "slug": "فساتين"
+        },
+        "style": "secondary"
+      },
+      "highlights": [],
+      "overlayOpacity": 0.3,
+      "textAlign": "start",
+      "height": "tall",
+      "enableParallax": false,
+      "enableKineticTypography": false,
+      "enableAmbientGlow": true
+    },
+    {
+      "id": "trust",
+      "type": "trust_badges",
+      "variant": "compact_strip",
+      "enabled": true,
+      "spacing": "compact",
+      "background": "muted",
+      "reveal": "fade",
+      "items": [
+        {
+          "icon": "banknote",
+          "title": "الدفع عند الاستلام",
+          "fact": "cod"
+        },
+        {
+          "icon": "eye",
+          "title": "معاينة قبل الدفع",
+          "fact": "inspection"
+        },
+        {
+          "icon": "rotate-ccw",
+          "title": "استبدال واسترجاع 7 أيام",
+          "fact": "returns"
+        },
+        {
+          "icon": "map-pin",
+          "title": "شحن لكل المحافظات",
+          "fact": "nationwide"
+        }
+      ]
+    },
+    {
+      "id": "cats",
+      "type": "categories",
+      "variant": "grid",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "stagger",
+      "title": "تسوّقوا حسب القسم",
+      "categorySlugs": [
+        "فساتين",
+        "رجالي"
+      ],
+      "showProductCount": true
+    },
+    {
+      "id": "all",
+      "type": "product_grid",
+      "variant": "grid",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "stagger",
+      "title": "المجموعة الحالية",
+      "subtitle": "كل القطع متاحة للطلب الآن.",
+      "source": {
+        "type": "newest"
+      },
+      "limit": 8,
+      "columnsMobile": 2,
+      "columnsDesktop": 3,
+      "showViewAll": true,
+      "quickAdd": true
+    },
+    {
+      "id": "steps",
+      "type": "steps",
+      "variant": "numbered",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "stagger",
+      "eyebrow": "الطلب بسيط",
+      "title": "من الاختيار إلى بابكم",
+      "items": [
+        {
+          "icon": "shopping-bag",
+          "title": "اختيار القطعة",
+          "text": "اختاروا القطعة والمقاس وأضيفوها للسلة."
+        },
+        {
+          "icon": "message-circle",
+          "title": "تأكيد على واتساب",
+          "text": "نتواصل معكم لتأكيد الطلب والعنوان.",
+          "fact": "whatsapp"
+        },
+        {
+          "icon": "truck",
+          "title": "توصيل لباب البيت",
+          "text": "خلال 2 إلى 4 أيام، بسعر شحن محافظتكم."
+        },
+        {
+          "icon": "eye",
+          "title": "معاينة ثم دفع",
+          "text": "افتحوا الشحنة وعاينوا القطعة قبل الدفع.",
+          "fact": "inspection"
+        }
+      ]
+    },
+    {
+      "id": "faq",
+      "type": "faq",
+      "variant": "accordion",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "title": "قبل أن تطلبوا",
+      "items": [
+        {
+          "q": "كم سعر الشحن؟",
+          "a": "القاهرة والجيزة 60 جنيهاً، وأسوان والأقصر 120 جنيهاً، وباقي المحافظات 80 جنيهاً. ويظهر السعر النهائي في صفحة الطلب عند اختيار المحافظة."
+        },
+        {
+          "q": "متى يصل الطلب؟",
+          "a": "خلال 2 إلى 4 أيام من تأكيد الطلب."
+        },
+        {
+          "q": "هل يمكن فتح الشحنة قبل الدفع؟",
+          "a": "نعم. افتحوا الشحنة وعاينوا القطعة مع المندوب، ثم ادفعوا."
+        },
+        {
+          "q": "ما طرق الدفع؟",
+          "a": "الدفع نقداً عند الاستلام، أو تحويل مسبق بفودافون كاش مع رفع صورة التحويل في صفحة الطلب."
+        },
+        {
+          "q": "هل يمكن الاستبدال أو الاسترجاع؟",
+          "a": "نعم، خلال 7 أيام من الاستلام، والقطعة بحالتها الأصلية غير ملبوسة وبملصقاتها."
+        },
+        {
+          "q": "كيف أختار المقاس؟",
+          "a": "في صفحة الجينز جدول مقاسات بجانب اختيار المقاس. ولأي قطعة أخرى راسلونا على واتساب ونساعدكم في الاختيار."
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "type": "contact",
+      "variant": "compact",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "title": "نحن على واتساب",
+      "showChannels": true
+    }
+  ],
+  "productPage": {
+    "layout": "gallery_left",
+    "showSku": false,
+    "showAttributesTable": true,
+    "showReviews": true,
+    "showShareButtons": true,
+    "extraSections": []
+  },
+  "conversion": {
+    "stickyAddToCart": true,
+    "buyNowButton": true,
+    "whatsappButton": true,
+    "freeShippingBar": {
+      "enabled": false,
+      "thresholdPiasters": 50000
+    },
+    "lowStockAlert": {
+      "enabled": true,
+      "threshold": 5
+    },
+    "socialProofToasts": {
+      "enabled": false,
+      "minOrdersToShow": 5,
+      "lookbackHours": 72
+    },
+    "liveViewers": false,
+    "exitIntentOffer": {
+      "enabled": false,
+      "title": "خصم خاص لأول طلب",
+      "text": "الكود يعطيك خصماً على طلبك الأول",
+      "showOncePerDays": 3
+    },
+    "productTrustRow": [],
+    "deliveryEstimate": true,
+    "recommendations": {
+      "frequentlyBoughtTogether": true,
+      "completeTheLook": true,
+      "recentlyViewed": true,
+      "cartUpsell": true
+    },
+    "expressCheckout": true,
+    "rememberCustomer": true,
+    "messengerOrderButton": false,
+    "showSavings": true,
+    "cartDrawer": true,
+    "shareButtons": true,
+    "ambientSound": false,
+    "cursorFollower": false,
+    "liveActivityBar": false,
+    "kineticTypography": false,
+    "viewTransitions": true,
+    "smartImageSequence": true,
+    "quickViewModal": true,
+    "stockPulseIndicator": false,
+    "product360Viewer": false,
+    "productARPreview": false,
+    "imageZoomLens": true,
+    "videoThumbs": true,
+    "multiLayerParallax": false,
+    "ambientBackdrop": true,
+    "scrollLinkedStory": true,
+    "comparisonBar": false,
+    "wishlistEnabled": true,
+    "voiceNavigation": false,
+    "aiSearch": true
+  },
+  "payments": {
+    "cod": {
+      "enabled": true,
+      "note": "افتحوا الشحنة وعاينوا القطعة مع المندوب قبل الدفع"
+    },
+    "vodafoneCash": {
+      "enabled": true,
+      "number": "01094321957"
+    },
+    "instapay": {
+      "enabled": false
+    },
+    "requireTransferProof": true,
+    "transferInstructions": "حوّلوا المبلغ على رقم فودافون كاش 01094321957، ثم ارفعوا صورة التحويل واكتبوا الرقم المحوَّل منه، ونؤكد الطلب بعد مراجعته."
+  },
+  "shipping": {
+    "freeOverPiasters": null,
+    "flatRatePiasters": null,
+    "generalEta": "من 2 إلى 4 أيام",
+    "pickupEnabled": false,
+    "inspectionAllowed": true
+  },
+  "returns": {
+    "windowDays": 7,
+    "allowExchange": true,
+    "allowRefund": true,
+    "returnShippingPaidBy": "customer",
+    "refundDays": 7,
+    "conditions": [
+      "القطعة بحالتها الأصلية وبملصقاتها، غير ملبوسة وغير مغسولة"
+    ],
+    "defectPolicy": "none",
+    "defectReportHours": 48,
+    "defectShippingByStore": true
+  },
+  "checkout": {
+    "fields": {
+      "altPhone": "optional",
+      "city": "optional",
+      "landmark": "optional",
+      "notes": "optional",
+      "email": "hidden"
+    },
+    "customFields": [],
+    "minOrderPiasters": null,
+    "termsCheckbox": false,
+    "successMessage": "شكراً لطلبكم من نور للملابس. نتواصل معكم على واتساب لتأكيد الطلب، ثم يصلكم خلال 2 إلى 4 أيام."
+  },
+  "orderMessages": {
+    "confirmed": "أهلاً {name}، تم تأكيد طلبكم {code} من {store} بإجمالي {total}. يصلكم خلال {eta}، والمعاينة مع المندوب قبل الدفع متاحة.",
+    "shipped": "طلبكم {code} خرج مع شركة الشحن ويصلكم قريباً. رقم الشحنة: {tracking}",
+    "delivered": "نتمنى أن تكون القطع نالت إعجابكم. رأيكم يهمنا ويساعد غيركم في الاختيار: {review_link}",
+    "abandoned": "أهلاً {name}، القطع التي اخترتموها ما زالت في السلة: {items}. لو عندكم سؤال عن المقاس أو التوصيل نحن هنا."
+  },
+  "invoice": {
+    "showLogo": true,
+    "footerNote": "شكراً لاختياركم نور للملابس. الاستبدال والاسترجاع خلال 7 أيام من الاستلام.",
+    "showQr": true,
+    "paperSize": "A5",
+    "showPrices": true,
+    "accentColor": "#4a5326"
+  },
+  "customCss": "",
+  "pages": [],
+  "seo": {
+    "title": "نور للملابس | فساتين سواريه وجينز وقمصان رجالي",
+    "description": "تسوّقوا فساتين سواريه ودريسات وجينز وقمصان وأطقم رجالي من نور للملابس. الدفع عند الاستلام بعد المعاينة وشحن لكل المحافظات.",
+    "ogImage": "https://media.colapia.com/requests/d2b405e7-ce98-4ca2-83d6-e29b14880c2b/ccf616c3-e80d-4cde-87af-2d3b7ec2d393.jpg",
+    "noIndex": false
+  },
+  "inventory": {
+    "tracking": false
+  },
+  "campaigns": [],
+  "sizeGuide": {
+    "charts": [
+      {
+        "id": "sznorjeans",
+        "name": "مقاسات الجينز",
+        "appliesTo": "all",
+        "unit": "سم",
+        "columns": [
+          "محيط الوسط"
+        ],
+        "note": "رقم المقاس هو محيط الوسط بالإنش (الإنش = 2.54 سم). للتأكد قيسوا وسط بنطلون مناسب لكم وهو مقفول.",
+        "rows": [
+          {
+            "size": "30",
+            "cells": [
+              "76"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "31",
+            "cells": [
+              "79"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "32",
+            "cells": [
+              "81"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "33",
+            "cells": [
+              "84"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "34",
+            "cells": [
+              "86"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "35",
+            "cells": [
+              "89"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "36",
+            "cells": [
+              "91"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "37",
+            "cells": [
+              "94"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "38",
+            "cells": [
+              "97"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "39",
+            "cells": [
+              "99"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "40",
+            "cells": [
+              "102"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "41",
+            "cells": [
+              "104"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "42",
+            "cells": [
+              "107"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "43",
+            "cells": [
+              "109"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "44",
+            "cells": [
+              "112"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "45",
+            "cells": [
+              "114"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          }
+        ]
+      }
+    ]
+  }
+}

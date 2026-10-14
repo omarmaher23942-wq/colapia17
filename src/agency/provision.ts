@@ -1,6 +1,8 @@
 import "server-only";
 // provision.ts — «جهّز المتجر» (المرحلة 4): من طلب مُسند إلى متجر يعمل على <slug>.colapia.com خلف بوابة «قيد
 // التجهيز» خلال ثوانٍ، بمسودة أولى من الاستمارة (draft.ts) ومنتجاته المسعّرة، ثم مجلد stores/<slug>/ في فرع بناء.
+// وإن كان الفريق بنى مجلد stores/<slug>/ ونُشر قبل التجهيز، يُزرع blueprint.json وseed.json منه كما هما بدل المسودة
+// (التصميم والنصوص والمنتجات التي راجعها الفريق)، وتبقى مناطق الشحن من إجابات الاستمارة.
 //
 // الترتيب آمن لإعادة المحاولة: المتجر يُنشأ بالنطاق (فريد) ثم يُربط بالطلب بشرط storeId IS NULL؛ إن سبق تجهيز
 // متزامن يُحذف المتجر الزائد. الكتالوج يُزرع في db.batch واحد. فشل GitHub لا يُفشل التجهيز (ZIP بديل).
@@ -16,8 +18,9 @@ import { readData, requestAssets, type RequestRow } from "@/intake/repo";
 import type { IntakeData } from "@/intake/schema";
 import { renderBrief } from "@/intake/brief";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
-import { blueprintSchema } from "@/blueprint/schema";
-import type { StoreSeed } from "@/stores/seed";
+import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
+import { storeSeedSchema, type StoreSeed } from "@/stores/seed";
+import { storeFolderData } from "@/stores/resolve";
 import { buildDraft, storeFolderFiles, type Draft } from "./draft";
 import { branchFor } from "./prompt";
 import { zoneRows } from "./policies";
@@ -39,8 +42,25 @@ async function seedCatalog(storeId: string, seed: StoreSeed) {
     usedSlugs.add(s);
     return s;
   };
-  const catNames = [...new Set(seed.products.map((p) => p.category).filter((c): c is string => Boolean(c)))];
-  const cats = catNames.length ? await tdb.insert(categories).values(catNames.map((name, i) => ({ storeId, name, slug: slugify(name) || `cat-${i + 1}`, sortOrder: i }))).returning({ id: categories.id, name: categories.name }) : [];
+  // صور المتجر على الإنتاج روابط https فقط (مسارات brief/assets/ محلية لا تُعرض هنا).
+  const https = (u: string | undefined) => (u && /^https:\/\//i.test(u) ? u : null);
+  // الأقسام بترتيب seed.categories وصورها، ثم أي قسم تذكره المنتجات وحدها.
+  const catList = [...seed.categories];
+  for (const c of seed.products.map((p) => p.category)) if (c && !catList.some((x) => x.name === c)) catList.push({ name: c });
+  const usedCatSlugs = new Set<string>();
+  const catSlug = (name: string, i: number) => {
+    const base = slugify(name) || `cat-${i + 1}`;
+    let s = base;
+    for (let n = 2; usedCatSlugs.has(s); n++) s = `${base}-${n}`;
+    usedCatSlugs.add(s);
+    return s;
+  };
+  const cats = catList.length
+    ? await tdb
+        .insert(categories)
+        .values(catList.map((c, i) => ({ storeId, name: c.name, slug: catSlug(c.name, i), sortOrder: i, imageUrl: https(c.image) })))
+        .returning({ id: categories.id, name: categories.name })
+    : [];
   for (const [i, p] of seed.products.entries()) {
     const [row] = await tdb
       .insert(products)
@@ -57,7 +77,7 @@ async function seedCatalog(storeId: string, seed: StoreSeed) {
         isFeatured: p.featured,
         sortOrder: i,
         description: p.description ?? null,
-        images: p.images.map((url) => ({ url, alt: p.name })),
+        images: p.images.filter((url) => https(url)).map((url) => ({ url, alt: p.name })),
         searchText: buildSearchText([p.name, p.category ?? "", p.description ?? ""]),
         optionNames: p.options ? Object.keys(p.options) : [],
       })
@@ -68,7 +88,27 @@ async function seedCatalog(storeId: string, seed: StoreSeed) {
   }
 }
 
-export type ProvisionResult = { ok: true; storeId: string; draft: Draft; files: Record<string, string> } | { ok: false; error: string };
+export type ProvisionResult =
+  | {
+      ok: true;
+      storeId: string;
+      draft: Draft;
+      files: Record<string, string>;
+      /** folder = من مجلد stores/<slug>/ المنشور، draft = المسودة الآلية من الاستمارة. */
+      source: "folder" | "draft";
+      products: number;
+      /** منتجات الاستمارة بلا سعر (أسئلة DELIVERY.md)؛ صفر حين يُزرع seed.json الذي راجعه الفريق. */
+      missingPrice: number;
+    }
+  | { ok: false; error: string };
+
+/** ما بناه الفريق في stores/<slug>/ ونُشر مع الكود (السجل المولَّد)، بعد فحصه بمخططيه؛ ما لا يصلح = null فتُستخدم المسودة. */
+async function folderData(slug: string): Promise<{ blueprint: StoreBlueprint | null; seed: StoreSeed | null }> {
+  const raw = await storeFolderData(slug).catch(() => ({ blueprint: null, seed: null }));
+  const bp = raw.blueprint ? blueprintSchema.safeParse(raw.blueprint) : null;
+  const seed = raw.seed ? storeSeedSchema.safeParse(raw.seed) : null;
+  return { blueprint: bp?.success ? bp.data : null, seed: seed?.success ? seed.data : null };
+}
 
 export async function prepareFolder(row: RequestRow, slug: string): Promise<{ draft: Draft; files: Record<string, string> }> {
   const d = readData(row.data);
@@ -96,6 +136,7 @@ export async function provisionStore(row: RequestRow, slug: string): Promise<Pro
   if (row.storeId) return { ok: false, error: "جُهِّز هذا الطلب بالفعل." };
   const d = readData(row.data);
   const { draft, files } = await prepareFolder(row, slug);
+  const folder = await folderData(slug);
   const name = d.store.name?.trim() || slug;
 
   // التاجر = صاحب بريد الاستمارة (المرحلة 6: يدخل لوحته بهذا البريد). نفس البريد بطلب ثانٍ = نفس التاجر.
@@ -133,11 +174,20 @@ export async function provisionStore(row: RequestRow, slug: string): Promise<Pro
     return { ok: false, error: "جهّزه عضو آخر للتو. حدّث الصفحة." };
   }
 
-  const bp = blueprintSchema.parse(draft.blueprint);
-  await db.insert(storeBlueprints).values({ storeId, data: bp, updatedBy: "agency:provision" });
+  const bp = folder.blueprint ?? blueprintSchema.parse(draft.blueprint);
+  const seed = folder.seed ?? draft.seed;
+  await db.insert(storeBlueprints).values({ storeId, data: bp, updatedBy: folder.blueprint ? "agency:folder" : "agency:provision" });
   await (await getTenantDb(storeId)).insert(shippingZones).values(zonesFor(d.delivery, storeId));
-  await seedCatalog(storeId, draft.seed);
-  return { ok: true, storeId, draft, files };
+  await seedCatalog(storeId, seed);
+  return {
+    ok: true,
+    storeId,
+    draft,
+    files,
+    source: folder.blueprint || folder.seed ? "folder" : "draft",
+    products: seed.products.length,
+    missingPrice: folder.seed ? 0 : draft.missingPrice.length,
+  };
 }
 
 export const provisionBranch = (slug: string, round: number) => branchFor(slug, round);

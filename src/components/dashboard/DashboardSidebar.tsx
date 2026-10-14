@@ -39,8 +39,8 @@ const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
   products: (n) => `نفد مخزون ${arCount(n, NOUN.product)}`,
 };
 
-const mobileNav = (perms?: StorePerms | null): NavItem[] => {
-  const items = navItemsFor(perms);
+const mobileNav = (perms?: StorePerms | null, subdomain?: string | null): NavItem[] => {
+  const items = navItemsFor(perms, subdomain);
   return MOBILE_NAV_HREFS.map((href) => items.find((i) => i.href === href)).filter((i): i is NavItem => Boolean(i));
 };
 const MORE = { label: "المزيد", icon: Menu };
@@ -112,7 +112,7 @@ export function DashboardSidebar(props: Props) {
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
       >
         <ul className="flex items-stretch justify-around gap-1 px-1 py-1.5">
-          {mobileNav(props.perms).map((item) => {
+          {mobileNav(props.perms, props.store?.subdomain).map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href, item.exact);
             const badgeCount = badgeOf(item.badgeKey);
@@ -289,7 +289,7 @@ function SidebarContent({
         aria-label="القائمة الرئيسية"
         className="hide-scrollbar flex-1 space-y-5 overflow-y-auto p-3"
       >
-        {navSectionsFor(perms).map((section) => (
+        {navSectionsFor(perms, store?.subdomain).map((section) => (
           <div key={section.title}>
             <p className="mb-1.5 px-2.5 text-[10px] font-black uppercase tracking-wider text-ink-3/70">
               {section.title}

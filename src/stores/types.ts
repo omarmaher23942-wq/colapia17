@@ -17,4 +17,7 @@ export type StoreEntry = {
   blocks: Record<string, Loader<BlockProps<any>>>;
   slots: { Header?: Loader<SlotProps>; Footer?: Loader<SlotProps>; Home?: Loader<HomeProps> };
   pages: Record<string, Loader<PageProps, { meta?: PageMeta }>>;
+  /** stores/<slug>/blueprint.json وseed.json إن وُجدا: يزرعهما «جهّز المتجر» في القاعدة بدل المسودة الآلية (agency/provision.ts). */
+  blueprint?: () => Promise<{ default: unknown }>;
+  seed?: () => Promise<{ default: unknown }>;
 };

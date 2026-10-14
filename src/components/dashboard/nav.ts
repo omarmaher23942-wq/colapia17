@@ -3,6 +3,7 @@
 import { BarChart3, CreditCard, FolderTree, Ruler, LayoutDashboard, Package, Palette, Settings, ShieldCheck, ShoppingCart, Star, Store, TicketPercent, Truck, Users, Wand2, UserCog, Globe, FileArchive, MessageSquarePlus, Megaphone, type LucideIcon } from "lucide-react";
 import { EDITION, PLATFORM_ONLY_NAV } from "@/lib/edition";
 import { allows, areaForPath, type StorePerms } from "@/lib/store-perms";
+import { storeExtras } from "./store-extras";
 
 export type BadgeKey = "orders" | "reviews" | "products";
 
@@ -76,12 +77,18 @@ export const NAV_SECTIONS: NavSection[] = ALL.map((s) => ({
 export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 
 /** القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر. */
-export function navSectionsFor(perms?: StorePerms | null): NavSection[] {
-  if (!perms) return NAV_SECTIONS;
-  return NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => allows(perms, areaForPath(i.href) ?? "analytics", "view")) })).filter((s) => s.items.length > 0);
+export function navSectionsFor(perms?: StorePerms | null, subdomain?: string | null): NavSection[] {
+  const base = perms
+    ? NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => allows(perms, areaForPath(i.href) ?? "analytics", "view")) })).filter((s) => s.items.length > 0)
+    : NAV_SECTIONS;
+  // صفحات اللوحة الخاصة بهذا المتجر وحده (store-extras.ts)؛ أي متجر آخر لا تتغير قائمته.
+  const extras = storeExtras(subdomain).filter((e) => !perms || allows(perms, e.area, "view"));
+  if (!extras.length) return base;
+  const items: NavItem[] = extras.map(({ label, href, icon, hint, keywords }) => ({ label, href, icon, hint, keywords }));
+  return [base[0]!, { title: "خاص بمتجرك", items }, ...base.slice(1)];
 }
 
-export const navItemsFor = (perms?: StorePerms | null): NavItem[] => navSectionsFor(perms).flatMap((s) => s.items);
+export const navItemsFor = (perms?: StorePerms | null, subdomain?: string | null): NavItem[] => navSectionsFor(perms, subdomain).flatMap((s) => s.items);
 
 /** الشريط السفلي على الموبايل: أكثر 4 صفحات استخداماً، والباقي في «المزيد». */
 export const MOBILE_NAV_HREFS = ["/dashboard", "/dashboard/orders", "/dashboard/products", "/dashboard/analytics"] as const;
