@@ -3,7 +3,7 @@
 
 export function CosmicBackdrop() {
   return (
-    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#07091a]">
+    <div aria-hidden="true" className="land-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#07091a]">
       <div className="absolute -top-40 start-1/2 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-[#6f86ff]/20 blur-[140px]" />
       <div className="absolute bottom-0 end-0 h-[420px] w-[420px] rounded-full bg-[#8fa8ff]/10 blur-[160px]" />
       <div className="absolute top-1/3 start-0 h-[320px] w-[320px] rounded-full bg-[#c3cdf0]/10 blur-[120px]" />

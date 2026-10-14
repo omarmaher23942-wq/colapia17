@@ -29,10 +29,15 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
     );
 
   return (
-    <div dir="rtl" lang="ar" className="land relative min-h-dvh overflow-x-clip bg-[#07091a] text-[#eaf0ff]">
+    <div dir="rtl" lang="ar" suppressHydrationWarning className="land relative min-h-dvh overflow-x-clip bg-[#07091a] text-[#eaf0ff]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-[100] focus:rounded-xl focus:bg-[#8fa8ff] focus:px-4 focus:py-2 focus:text-[#07091a]">
         تخطَّ إلى المحتوى الرئيسي
       </a>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `try{var t=localStorage.getItem("clp-land-theme");if(t==="light"||(!t&&matchMedia("(prefers-color-scheme: light)").matches))document.currentScript.parentElement.classList.add("land-light")}catch(e){}`,
+        }}
+      />
       <CosmicBackdrop />
       <Header session={session} />
 
@@ -241,7 +246,7 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
                 <thead>
                   <tr className="text-[#8d97c4]">
                     <th className="pb-3 text-start font-bold" />
-                    <th className="pb-3 text-start font-black text-white">Colapia</th>
+                    <th className="pb-3 text-start font-black text-[#eaf0ff]">Colapia</th>
                     <th className="pb-3 text-start font-bold">منصات الاشتراك</th>
                   </tr>
                 </thead>

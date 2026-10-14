@@ -599,3 +599,45 @@ html:has(.dash:not(.dark)) { background-color: #f4f6fe; }
 @media (prefers-reduced-motion: reduce) {
   .land *, .mini-store * { animation: none !important; transition: none !important; }
 }
+
+/* وضع فاتح للهبوط (.land.land-light): يعيد تلوين الألوان الثابتة دون تغيير ملفات الأقسام. */
+.land.land-light .bg-\[\#07091a\]{background-color:#f5f7ff}
+.land.land-light .bg-\[\#07091a\]\/95{background-color:rgb(245 247 255 / .95)}
+.land.land-light .bg-\[\#07091a\]\/80{background-color:rgb(245 247 255 / .8)}
+.land.land-light .bg-\[\#0a0e24\]{background-color:#ffffff}
+.land.land-light .bg-\[\#0d1230\]\/90{background-color:rgb(255 255 255 / .92)}
+.land.land-light .bg-\[\#05060f\]{background-color:#eef1fb}
+.land.land-light .via-\[\#0b1030\]\/60{--tw-gradient-via:rgb(228 233 252 / .7)}
+.land.land-light .via-\[\#0d1230\]{--tw-gradient-via:#eef1fb}
+.land.land-light .via-\[\#0e1430\]{--tw-gradient-via:#eef1fb}
+.land.land-light .to-\[\#0b1026\]{--tw-gradient-to:#e9edfb}
+.land.land-light .text-\[\#eaf0ff\]{color:rgb(14 19 48)}
+.land.land-light .text-\[\#eaf0ff\]\/90{color:rgb(14 19 48 / .9)}
+.land.land-light .text-\[\#07091a\]{color:#07091a}
+.land.land-light .text-\[\#8d97c4\]{color:#5a6694}
+.land.land-light .text-\[\#8fa8ff\]{color:#3d58d6}
+.land.land-light .text-\[\#c9d4ff\]{color:#3d58d6}
+.land.land-light .text-\[\#c3cdf0\]{color:rgb(52 62 108)}
+.land.land-light .border-white\/10{border-color:rgb(14 19 48 / .12)}
+.land.land-light .border-white\/5{border-color:rgb(14 19 48 / .07)}
+.land.land-light .border-white\/15{border-color:rgb(14 19 48 / .16)}
+.land.land-light .bg-white\/5{background-color:rgb(14 19 48 / .045)}
+.land.land-light .bg-white\/10{background-color:rgb(14 19 48 / .08)}
+.land.land-light .text-white\/10{color:rgb(14 19 48 / .12)}
+.land.land-light .bg-white\/25{background-color:rgb(14 19 48 / .25)}
+.land.land-light .bg-\[\#c3cdf0\]\/10{background-color:rgb(14 19 48 / .06)}
+.land.land-light .text-\[\#c3cdf0\]\/50{color:rgb(52 62 108 / 0.62)}
+.land.land-light .text-\[\#c3cdf0\]\/55{color:rgb(52 62 108 / 0.67)}
+.land.land-light .text-\[\#c3cdf0\]\/60{color:rgb(52 62 108 / 0.72)}
+.land.land-light .text-\[\#c3cdf0\]\/70{color:rgb(52 62 108 / 0.82)}
+.land.land-light .text-\[\#c3cdf0\]\/75{color:rgb(52 62 108 / 0.87)}
+.land.land-light .text-\[\#c3cdf0\]\/80{color:rgb(52 62 108 / 0.92)}
+.land.land-light .text-\[\#c3cdf0\]\/85{color:rgb(52 62 108 / 0.97)}
+.land.land-light .land-backdrop{background:#f5f7ff}
+.land.land-light .land-backdrop > div:last-child{opacity:0}
+.land.land-light .land-backdrop > div:not(:last-child){opacity:.5}
+.land.land-light{color-scheme:light}.land:not(.land-light){color-scheme:dark}
+.land.land-light{background-color:#f5f7ff;color:rgb(14 19 48)}
+.land.land-light .land-gradient-text{background-image:linear-gradient(90deg,#3d58d6,#0f9d74,#6d4fd6,#3d58d6);background-size:200% 100%}
+.land.land-light .land-card{border-color:rgb(14 19 48 / .1);background:#fff;box-shadow:0 1px 2px rgb(14 19 48 / .04),0 8px 24px -12px rgb(14 19 48 / .12)}
+.land.land-light .text-mercury{color:rgb(14 19 48);background:none;-webkit-text-fill-color:currentColor}

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Menu, X, LayoutDashboard } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { CTA_PRIMARY } from "./shared";
+import { ThemeToggle } from "./ThemeToggle";
 import type { SessionState } from "./types";
 
 const NAV = [
@@ -73,6 +74,7 @@ export function Header({ session }: { session: SessionState }) {
 
         {/* أزرار سطح المكتب */}
         <div className="hidden items-center gap-3 lg:flex">
+          <ThemeToggle />
           {isMerchant ? (
             <Link href={DASHBOARD_URL} className={CTA_PRIMARY}>
               <LayoutDashboard className="size-4" aria-hidden="true" />
@@ -94,6 +96,7 @@ export function Header({ session }: { session: SessionState }) {
         </div>
 
         {/* زر الموبايل */}
+        <ThemeToggle className="ms-auto me-2 lg:hidden" />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

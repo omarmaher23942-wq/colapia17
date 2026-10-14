@@ -53,7 +53,7 @@ export function TestimonialsSection({ reviews }: { reviews: LandingReview[] }) {
                 </div>
               )}
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-white">{r.authorName}</p>
+                <p className="truncate text-sm font-black text-[#eaf0ff]">{r.authorName}</p>
                 <p className="truncate text-xs text-[#8d97c4]">
                   {r.authorRole || "صاحب المتجر"} · {r.storeName}
                 </p>
