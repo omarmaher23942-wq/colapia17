@@ -641,3 +641,6 @@ html:has(.dash:not(.dark)) { background-color: #f4f6fe; }
 .land.land-light .land-gradient-text{background-image:linear-gradient(90deg,#3d58d6,#0f9d74,#6d4fd6,#3d58d6);background-size:200% 100%}
 .land.land-light .land-card{border-color:rgb(14 19 48 / .1);background:#fff;box-shadow:0 1px 2px rgb(14 19 48 / .04),0 8px 24px -12px rgb(14 19 48 / .12)}
 .land.land-light .text-mercury{color:rgb(14 19 48);background:none;-webkit-text-fill-color:currentColor}
+.land.land-light .land-dark-only{display:none}
+.land:not(.land-light) .land-light-only{display:none}
+.land.land-light img[src*="logo.png"]{filter:brightness(.42) saturate(1.7)}

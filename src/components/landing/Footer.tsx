@@ -8,6 +8,8 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "المنتج",
     links: [
       { label: "كيف يعمل", href: "#how" },
+      { label: "أمثلة", href: "#designs" },
+      { label: "لوحة التحكم", href: "#dashboard" },
       { label: "المميزات", href: "#features" },
       { label: "الأسعار", href: "#pricing" },
       { label: "الأسئلة الشائعة", href: "#faq" },
@@ -16,7 +18,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "الشركة",
     links: [
-      { label: "الملكية", href: "#ownership" },
+      { label: "ابدأ متجرك", href: "/start" },
       { label: "تواصل معنا", href: "mailto:support@colapia.com" },
     ],
   },
@@ -38,7 +40,7 @@ export function Footer() {
           <div className="lg:col-span-2">
             <ColapiaLogo size={32} />
             <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#c3cdf0]/60">
-              فريق مصري يبني متجرك الإلكتروني ويستضيفه ويشغّله لك،
+              فريق مصري يبني متجرك ويستضيفه ويشغّله،
               بلا عمولة على مبيعاتك.
             </p>
             <div className="mt-5 flex flex-col gap-2 text-sm text-[#c3cdf0]/60">
@@ -73,24 +75,8 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-8 sm:flex-row">
-          <div />
-
-          <div className="flex items-center gap-4">
-            <select
-              aria-label="اختر اللغة"
-              defaultValue="ar"
-              className="rounded-lg border border-white/10 bg-transparent px-3 py-1.5 text-xs text-[#c3cdf0]/70"
-            >
-              <option value="ar">العربية</option>
-              <option value="en" disabled>
-                English — قريباً
-              </option>
-            </select>
-            <span className="text-xs text-[#c3cdf0]/50">
-              © {new Date().getFullYear()} Colapia. جميع الحقوق محفوظة.
-            </span>
-          </div>
+        <div className="mt-14 border-t border-white/10 pt-8 text-center sm:text-start">
+          <span className="text-xs text-[#c3cdf0]/50">© {new Date().getFullYear()} Colapia. جميع الحقوق محفوظة.</span>
         </div>
       </div>
     </footer>
