@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Client } from "@upstash/qstash";
-import { env, clientEnv } from "@/lib/env";
+import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
 import { sleep } from "@/lib/utils";
 import { trace } from "@/lib/meta-trace";
@@ -9,6 +9,11 @@ import { emitConversationMessage } from "@/server/realtime/emitters";
 
 // يعالج رسالة واردة: طابور لكل محادثة + قفل + تجميع الرسائل المتتالية ثم رد الوكيل. يُستدعى مباشرة من الـ webhook (في after())
 // فلا يعتمد الرد على وصول QStash إلى الموقع، ومن مسار QStash كاحتياط.
+// أصل المنصة من النطاق الرئيسي المضبوط (لا NEXT_PUBLIC_APP_URL الذي قد يشير لنشر قديم).
+const platformOrigin = () => {
+  const root = (env.ROOT_DOMAIN || "").trim();
+  return !root || root.startsWith("localhost") ? "http://localhost:3100" : `https://${root}`;
+};
 const INBOX_TTL_S = 300;
 const LOCK_TTL_S = 60;
 const MIN_ROUND_MS = 12_000;
@@ -31,7 +36,7 @@ async function releaseLock(lockKey: string, token: string) {
 async function scheduleDrain(channel: string, senderId: string) {
   try {
     await qstash().publishJSON({
-      url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/agents/inbound`,
+      url: `${platformOrigin()}/api/agents/inbound`,
       body: { channel, senderId, drain: true },
       headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
       delay: DRAIN_DELAY_S,

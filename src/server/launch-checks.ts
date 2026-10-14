@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { aiCalls } from "@/db/schema";
 import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
-import { readTrace } from "@/lib/meta-trace";
+import { readTrace, runtimeTag } from "@/lib/meta-trace";
 import { mediaBaseUrl } from "@/lib/media";
 import { MODELS } from "@/ai/providers";
 import { domainAutoConfigured, domainTarget } from "@/server/domains";
@@ -203,6 +203,7 @@ const STEP_LABEL: Record<string, string> = {
   handoff: "حوّل الوكيل المحادثة لموظف",
   resume: "عاد الوكيل بعد مهلة التحويل",
   "direct-failed": "فشلت المعالجة المباشرة (أُرسلت للطابور)",
+  "inbound-wrong-host": "رُفضت المعالجة على نشر خاطئ",
 };
 
 /** حالة الوكيل نفسه: هل هو مطفأ، وكم محادثة موقوفة عنه، وهل رابط الموقع يشير إلى هذا الخادم. */
@@ -229,7 +230,7 @@ const checkAgentState = () =>
     ].filter(Boolean) as string[];
     return problems.length
       ? { status: !on || !ig ? "fail" : "warn", detail: problems.join(" · "), fix: "فعّل المفاتيح من /admin/flags، واضغط «استئناف الوكيل في كل المحادثات»، واجعل NEXT_PUBLIC_APP_URL = https://" + env.ROOT_DOMAIN + " ثم أعد النشر" }
-      : { status: "ok", detail: "يعمل على ماسنجر وإنستجرام، ولا محادثات موقوفة" };
+      : { status: "ok", detail: `يعمل على ماسنجر وإنستجرام، ولا محادثات موقوفة · هذا الخادم: ${runtimeTag()}` };
   });
 const checkTrace = () =>
   run("meta-trace", "آخر ما حدث لرسائل الوكيل (الأحدث أولاً)", async () => {
