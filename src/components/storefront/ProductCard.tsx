@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useCart } from "@/store/cart";
 import { useCopy, useStore } from "./StoreProvider";
 import { Price } from "./Price";
+import { WishlistButton } from "./WishlistButton";
 import { savingsPercent } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/server/repos/catalog";
@@ -80,6 +81,7 @@ export function ProductCard({ product: p, size = "md", priority = false }: { pro
             {!out && p.isFeatured ? <span className="s-badge">{t("bestSellerBadge")}</span> : null}
           </span>
         </Link>
+        <WishlistButton slug={p.slug} className="absolute end-2.5 top-2.5 z-10" />
 
         <div className={cn("s-card-info flex flex-1 flex-col gap-1.5 p-3 sm:p-3.5", overlay && "s-card-info-overlay")}>
           {design.card.showCategory && p.categoryName ? <span className="text-[11px] font-bold opacity-60">{p.categoryName}</span> : null}

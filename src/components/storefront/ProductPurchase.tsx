@@ -7,7 +7,8 @@
 import { colorFromName } from "@/lib/color-names";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingBag, Share2, Check, ArrowLeft } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Share2, Check, ArrowLeft, Heart } from "lucide-react";
+import { useWishlist } from "@/store/wishlist";
 import { toast } from "sonner";
 import { Price } from "./Price";
 import { Icon } from "./Icon";
@@ -106,6 +107,10 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
   const chosen = p.optionNames.map((n, i) => (sel[i] ? `${n}: ${sel[i]}` : "")).filter(Boolean).join("، ");
   const askHref = waLink(channels.whatsappNumber, `أهلاً، عندي سؤال عن «${p.name}»${chosen ? ` (${chosen})` : ""}${pageUrl ? `\n${pageUrl}` : ""}`);
 
+  const wished = useWishlist((st) => st.slugs.includes(p.slug));
+  const toggleWish = useWishlist((st) => st.toggle);
+  const [wishReady, setWishReady] = useState(false);
+  useEffect(() => setWishReady(true), []);
   const share = async () => {
     const url = window.location.href;
     if (navigator.share) {
@@ -260,6 +265,10 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
             <span>سؤال عن المنتج على واتساب</span>
           </a>
         ) : null}
+        <button type="button" onClick={() => toggleWish(p.slug)} aria-pressed={wishReady && wished} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
+          <Heart className="size-3.5" fill={wishReady && wished ? "currentColor" : "none"} aria-hidden="true" />
+          <span>{wishReady && wished ? "في المفضلة" : "إضافة للمفضلة"}</span>
+        </button>
         <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
           <Share2 className="size-3.5" aria-hidden="true" />
           <span>مشاركة المنتج</span>

@@ -15,11 +15,13 @@ import {
   Menu,
   Search,
   ShoppingBag,
+  Heart,
   X,
   User,
   Package,
 } from "lucide-react";
 import { useCart } from "@/store/cart";
+import { useWishlist } from "@/store/wishlist";
 import { useHydrated } from "./CartView";
 import { arCount, NOUN } from "@/lib/format";
 import { hrefFor } from "@/lib/links";
@@ -48,6 +50,8 @@ export function Header({
   const cartCount = useCart((s) => s.count());
   const count = hydrated ? cartCount : 0;
   const openCart = useCart((s) => s.open);
+  const wishSaved = useWishlist((s) => s.slugs.length);
+  const wishCount = hydrated ? wishSaved : 0;
   const { customer, design } = useStore();
   const t = useCopy();
   const surface = design.header.surface;
@@ -260,6 +264,15 @@ export function Header({
               )}
             </Link>
 ) : null}
+
+            <Link href="/wishlist" className="relative grid size-10 place-items-center rounded-xl transition-transform active:scale-95" aria-label={wishCount > 0 ? `المفضلة — ${wishCount}` : "المفضلة"}>
+              <Heart className="size-5" strokeWidth={SW} aria-hidden="true" />
+              {wishCount > 0 ? (
+                <span className="absolute end-1 top-1 grid size-4.5 min-w-4.5 place-items-center rounded-full px-1 font-mono text-[10px] font-black tabular-nums shadow" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
+                  {wishCount}
+                </span>
+              ) : null}
+            </Link>
 
             <button
               type="button"

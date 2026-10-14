@@ -28,7 +28,7 @@ const NAME_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const SLOTS = ["Header", "Footer", "Home"] as const;
 /** أول جزء من مسار صفحة خاصة لا يصطدم بصفحات النواة ولا بملفات النطاق. */
 export const RESERVED_PAGE_ROOTS = new Set([
-  "account", "admin", "c", "cart", "checkout", "frozen", "order", "p", "pages", "review", "search", "track",
+  "account", "admin", "c", "cart", "checkout", "frozen", "order", "p", "pages", "review", "search", "track", "wishlist",
   "api", "s", "_next", "robots.txt", "sitemap.xml", "manifest.webmanifest", "favicon.ico", "dashboard", "login",
 ]);
 const SECTION_TYPES = new Set(
