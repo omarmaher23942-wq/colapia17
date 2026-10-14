@@ -47,7 +47,7 @@ describe("بيانات الاستمارة", () => {
 
   it("الحدود مفروضة: طول النص وعدد المنتجات وصيغة مفاتيح الملفات والألوان", () => {
     expect(intakeDataSchema.safeParse({ store: { name: "x".repeat(61) } }).success).toBe(false);
-    expect(intakeDataSchema.safeParse({ notes: "x".repeat(2001) }).success).toBe(false);
+    expect(intakeDataSchema.safeParse({ notes: "x".repeat(8001) }).success).toBe(false);
     // أكثر من الحد في طلب قديم يُقصّ بدل أن يفشل قراءته؛ والصور محدودة بعشر لكل منتج.
     const items = Array.from({ length: MAX_PRODUCTS + 3 }, (_, i) => ({ id: String(i), text: "a" }));
     expect(intakeDataSchema.parse({ products: { items } }).products.items).toHaveLength(MAX_PRODUCTS);
@@ -274,7 +274,7 @@ describe("الـ brief", () => {
       ],
       submittedAt: new Date("2026-10-11T10:00:00Z"),
     });
-    for (const h of ["## المتجر", "## التواصل", "## الهوية", "## السياسات", "## المنتجات (2)", "## ملاحظات العميل", "## ملاحظات المالك والفريق"]) expect(md).toContain(h);
+    for (const h of ["## المتجر", "## التواصل", "## الهوية", "## السياسات", "## المنتجات (2)", "## طلب العميل بحرية", "## ملاحظات المالك والفريق"]) expect(md).toContain(h);
     expect(md).toContain("# Brief — متجر نور");
     expect(md).toContain("https://www.instagram.com/noor.wear/");
     expect(md).toContain("وردي ناعم");

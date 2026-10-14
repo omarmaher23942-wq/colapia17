@@ -119,7 +119,7 @@ export function renderBrief({ code, data: d, assets, submittedAt }: BriefInput):
     `## المنتجات (${d.products.items.length})`,
     ...products,
     "",
-    "## ملاحظات العميل",
+    "## طلب العميل بحرية (اقرأه كله: هو الحد الأدنى لا السقف؛ راجع DESIGN-BRIEF.md)",
     d.notes?.trim() ? d.notes.trim().split(/\n+/).map((l) => `> ${line(l)}`).join("\n") : `- ${NONE}`,
     "",
     "## ملاحظات المالك والفريق",

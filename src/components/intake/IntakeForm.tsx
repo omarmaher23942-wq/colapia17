@@ -487,15 +487,15 @@ export function IntakeForm({
           )}
         </Card>
 
-        <Card n={10} icon={MessageSquare} title="في إضافة؟" sub="أي تفصيلة مهمة الفريق يعرفها.">
-          <Field label="ملاحظات" htmlFor="notes" optional>
+        <Card n={10} icon={MessageSquare} title="اطلبوا بحرية" sub="صِفوا المتجر أو لوحة التحكم كما تتخيلونها، بلا حدود. كل ما تذكرونه ننفذه، وما لا تذكرونه نضيف عليه ما يخدم مبيعاتكم.">
+          <Field label="طلبكم" htmlFor="notes" optional>
             <textarea
               id="notes"
               value={data.notes ?? ""}
-              maxLength={2000}
-              rows={4}
+              maxLength={8000}
+              rows={8}
               onChange={(e) => set((d) => ({ ...d, notes: e.target.value }))}
-              placeholder="أي حاجة مهم الفريق يعرفها: ستايل معين، ألوان غير مرغوبة، عروض…"
+              placeholder="الشكل، الإحساس، ميزات تريدونها في المتجر أو لوحة التحكم، أمثلة تعجبكم، عروض، أي فكرة…"
               className="w-full rounded-xl border border-edge/10 bg-edge/[0.04] p-3 text-[16px] leading-7 text-ink outline-none placeholder:text-ink-3/60 focus:border-nova focus:ring-2 focus:ring-nova/25 sm:text-[15px]"
             />
           </Field>
@@ -716,7 +716,7 @@ function GoldenCards({
           <textarea
             id="notes"
             value={data.notes ?? ""}
-            maxLength={2000}
+            maxLength={8000}
             rows={3}
             onChange={(e) => set((d) => ({ ...d, notes: e.target.value }))}
             placeholder="الشحن، الدفع عند الاستلام، ألوان البراند… أي تفصيلة مهمة."

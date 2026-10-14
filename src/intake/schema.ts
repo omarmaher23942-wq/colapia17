@@ -128,7 +128,8 @@ export const intakeDataSchema = z.object({
     .default({}),
   returns: z.object({ mode: z.enum(["full", "exchange", "none"]).optional(), days: z.number().int().min(1).max(60).optional() }).default({}),
   inspiration: z.object({ url: text(300), team: z.boolean().default(false) }).default({}),
-  notes: text(2000),
+  /** «طلبك بحرية»: وصف مفتوح بلا سقف عملي لكل ما يريده العميل (متجراً ولوحة تحكم)؛ نفس مفتاح notes للتوافق مع الطلبات القديمة. */
+  notes: text(8000),
   /** «الدائرة الذهبية» (PLAN 14): استمارة مصغّرة (البراند، التواصل، 3–6 منتجات، والموافقة على فيديو الإطلاق). */
   offer: z.enum(["golden"]).optional(),
   golden: z.object({ videoConsent: z.boolean().default(false) }).default({}),
