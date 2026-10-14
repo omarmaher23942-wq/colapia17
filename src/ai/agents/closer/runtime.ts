@@ -30,8 +30,8 @@ type Inbound = {
 };
 type Conv = typeof conversations.$inferSelect;
 
-const AI_ATTEMPT_MS = 12_000;
-const AI_BUDGET_MS = 75_000; // كل النماذج تُجرَّب ضمن هذا الحد الكلي
+const AI_ATTEMPT_MS = 9_000;
+const AI_BUDGET_MS = 24_000; // كل النماذج تُجرَّب ضمن هذا الحد الكلي (المعالجة داخل after() محدودة بنحو 30 ث)
 const HISTORY_LIMIT = 30;
 /** علامة في نص رسالة الوكيل المحفوظة تدل على أن زر الاستمارة أُرسل معها (يُستخدم لعدم تكراره). */
 const LINK_MARK = "[زر الاستمارة:";

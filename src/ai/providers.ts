@@ -89,14 +89,14 @@ const DEFAULT_CHAINS: Record<Tier, Link[]> = {
   chat: dedupe([
     L("google", MODELS.gemini),
     L("groq", MODELS.gptOss),
-    L("google", MODELS.geminiAlias),
-    L("groq", MODELS.groqOss20b),
     L("google", MODELS.geminiLite),
-    L("groq", MODELS.groqKimi),
-    L("google", MODELS.geminiLiteAlias),
-    L("groq", MODELS.groqQwen),
+    L("groq", MODELS.groqOss20b),
     L("google", MODELS.gemini25),
+    L("google", MODELS.geminiLiteAlias),
+    L("groq", MODELS.groqKimi),
+    L("groq", MODELS.groqQwen),
     L("groq", MODELS.groq8b),
+    L("google", MODELS.geminiAlias),
     L("google", MODELS.gemini25Lite),
     L("morpheus", MODELS.claude),
   ]),
@@ -201,6 +201,7 @@ function classify(e: unknown): { kind: Kind; cooldownS?: number; limit?: number 
 async function afterFailure(l: Link, e: unknown) {
   const c = classify(e);
   if (c.kind === "too_large" && c.limit) await learnCap(l.modelId, c.limit);
+  if (c.kind === "timeout") await trip(l, 90, `timeout: ${String(e).slice(0, 60)}`);
   if ((c.kind === "rate" || c.kind === "credits") && c.cooldownS) {
     await trip(l, c.cooldownS, `${c.kind}: ${String(e).slice(0, 60)}`);
   }

@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import { conversations, messages } from "@/db/schema";
 import { meta } from "@/channels/meta";
 import { wasSentByBot } from "@/lib/bot-outbound";
+import { processInboundEvent } from "@/ai/agents/closer/inbound";
 
 type Channel = "messenger" | "instagram";
 
@@ -119,26 +120,42 @@ async function handleEcho(channel: Channel, ev: any): Promise<void> {
   }
 }
 
-/** يسجّل الرسالة كمُستلمة ثم ينشرها. لو فشل النشر نحذف علامة التكرار حتى تنجح إعادة إرسال Meta */
+async function viaQStash(p: InboundPayload) {
+  await qstash().publishJSON({
+    url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/agents/inbound`,
+    body: p,
+    headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
+    deduplicationId: p.mid,
+    retries: 3,
+  });
+}
+
+/**
+ * يسجّل الرسالة كمُستلمة ثم يعالجها **مباشرة** داخل هذا العامل بعد الرد على Meta (after) بدل المرور بـ QStash: كان الرد
+ * يتوقف كلياً إن لم يصل QStash إلى الموقع (جدار، مفاتيح، رابط). لو فشلت المعالجة المباشرة نرسلها إلى QStash كاحتياط.
+ */
 async function dispatch(p: InboundPayload): Promise<boolean> {
   const dedupKey = `meta:mid:${p.mid}`;
   const fresh = await redis.set(dedupKey, 1, { nx: true, ex: DEDUP_TTL_S });
   if (!fresh) return true; // تكرار من Meta
 
-  try {
-    await qstash().publishJSON({
-      url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/agents/inbound`,
-      body: p,
-      headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
-      deduplicationId: p.mid,
-      retries: 3,
-    });
-    return true;
-  } catch (e) {
-    console.error("[webhooks/meta] publish failed", p.mid, e);
-    await redis.del(dedupKey).catch(() => {});
-    return false;
-  }
+  after(async () => {
+    try {
+      const r = await processInboundEvent(p, { batchWaitMs: 2_000, deadlineMs: 26_000 });
+      if (!r.ok) throw new Error("error" in r ? r.error : "inbound failed");
+    } catch (e) {
+      console.error("[webhooks/meta] direct processing failed, falling back to QStash", p.mid, e);
+      await trace("direct-failed", String((e as Error)?.message ?? e));
+      try {
+        await redis.del(`seen:mid:${p.mid}`).catch(() => {});
+        await viaQStash(p);
+      } catch (e2) {
+        console.error("[webhooks/meta] publish failed", p.mid, e2);
+        await trace("webhook-publish-failed", String((e2 as Error)?.message ?? e2));
+      }
+    }
+  });
+  return true;
 }
 
 /** GET: تحقق Meta عند تسجيل الـ Webhook */
