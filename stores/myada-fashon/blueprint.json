@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "variationSeed": "myada-fashon-seed-1",
+  "brand": {
+    "name": "ميادة فاشون",
+    "tagline": "قمصان وبناطيل وفساتين سهرة وزفاف",
+    "description": "ميادة فاشون: قمصان وبناطيل وملابس رجالي وحريمي، فساتين سهرة وزفاف. دفع عند الاستلام مع المعاينة وشحن لكل المحافظات.",
+    "voice": "premium_formal",
+    "industry": "fashion"
+  },
+  "theme": {
+    "mode": "light",
+    "palette": {
+      "primary": "#0c8088",
+      "primaryForeground": "#ffffff",
+      "secondary": "#e7f1f1",
+      "secondaryForeground": "#0b3f43",
+      "accent": "#b8895a",
+      "accentForeground": "#ffffff",
+      "background": "#fbfaf8",
+      "foreground": "#14232b",
+      "muted": "#f1efea",
+      "mutedForeground": "#5b6670",
+      "card": "#ffffff",
+      "cardForeground": "#14232b",
+      "border": "#e4e0d8",
+      "success": "#16a34a",
+      "warning": "#f59e0b",
+      "danger": "#dc2626"
+    },
+    "fonts": {
+      "heading": "el_messiri",
+      "body": "tajawal",
+      "baseSize": 16
+    },
+    "radius": "sm",
+    "buttonStyle": "solid",
+    "shadow": "soft",
+    "motion": "subtle",
+    "productCardStyle": "editorial",
+    "imageRatio": "portrait",
+    "backgroundPattern": "none",
+    "imageBackground": "none",
+    "ambientBackdrop": {
+      "layers": [
+        {
+          "color": "rgba(15, 58, 173, 0.1)",
+          "opacity": 1,
+          "position": "0% 50%",
+          "size": "40% 100%"
+        }
+      ],
+      "blendMode": "normal"
+    }
+  },
+  "design": {
+    "concept": "خزانة أنيقة بهدوء",
+    "mood": "أبيض دافئ وحبر داكن مع تيل عميق ولمسة رملية، مساحات واسعة وصور كبيرة، فخامة هادئة بلا ضجيج",
+    "layout": {
+      "container": "normal",
+      "density": "airy",
+      "headingAlign": "start"
+    },
+    "type": {
+      "headingWeight": 700,
+      "headingTracking": 0,
+      "headingScale": 1.05,
+      "bodyLeading": 1.8
+    },
+    "shape": {
+      "card": 4,
+      "button": 4,
+      "input": 6,
+      "image": 4,
+      "chip": 999
+    },
+    "surface": {
+      "background": "solid",
+      "rhythm": "alternate",
+      "divider": "line",
+      "grain": false
+    },
+    "elevation": {
+      "level": 1,
+      "border": 1
+    },
+    "card": {
+      "ratio": "portrait",
+      "fit": "cover",
+      "imagePad": 0,
+      "imageBg": "muted",
+      "align": "start",
+      "priceStyle": "plain",
+      "hover": "zoom",
+      "badge": "tag",
+      "showCategory": true,
+      "quickAdd": "icon"
+    },
+    "button": {
+      "fill": "solid",
+      "weight": 700,
+      "size": "md"
+    },
+    "icon": {
+      "stroke": 1.75,
+      "frame": "squircle",
+      "tone": "primary"
+    },
+    "heading": {
+      "style": "underline"
+    },
+    "header": {
+      "surface": "glass",
+      "logoSize": "md"
+    },
+    "motion": {
+      "level": "lively",
+      "depth": true
+    }
+  },
+  "copy": {
+    "addToCart": "إضافة للسلة",
+    "buyNow": "شراء الآن",
+    "soldOut": "غير متاح حالياً",
+    "viewAll": "عرض الكل",
+    "searchPlaceholder": "ابحثوا عن قميص أو بنطلون",
+    "allProducts": "كل المنتجات"
+  },
+  "locale": {
+    "language": "ar",
+    "currency": "EGP",
+    "timezone": "Africa/Cairo"
+  },
+  "header": {
+    "variant": "classic",
+    "sticky": true,
+    "transparentOnHero": false,
+    "showSearch": true,
+    "nav": [
+      {
+        "label": "الرئيسية",
+        "target": {
+          "type": "home"
+        }
+      },
+      {
+        "label": "كل المنتجات",
+        "target": {
+          "type": "all_products"
+        }
+      },
+      {
+        "label": "تواصل معنا",
+        "target": {
+          "type": "contact"
+        }
+      }
+    ],
+    "showCategoriesMenu": true
+  },
+  "footer": {
+    "variant": "rich",
+    "tagline": "ملابس رجالي وحريمي، فساتين سهرة وزفاف",
+    "showPaymentIcons": true,
+    "showChannels": true,
+    "showPoweredBy": true
+  },
+  "channels": {
+    "instagramUsername": "colapia",
+    "whatsappNumber": "01094321957"
+  },
+  "home": [
+    {
+      "id": "hero",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "hero",
+      "variant": "split",
+      "headline": "ميادة فاشون",
+      "subheadline": "قمصان كلاسيك وبناطيل جينز بقصّات أنيقة، تصلكم لباب البيت وتعاينونها قبل الدفع",
+      "images": [
+        {
+          "url": "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/1285efa3-e8d1-40ba-a91f-14ed9b889099.jpg",
+          "alt": "قميص كلاسيك أبيض مطوي",
+          "focalX": 0.5,
+          "focalY": 0.5
+        },
+        {
+          "url": "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/fa730f86-d96a-4207-8eb4-7bbbdd5ba77d.jpg",
+          "alt": "بنطلون جينز كحلي",
+          "focalX": 0.5,
+          "focalY": 0.3
+        }
+      ],
+      "primaryCta": {
+        "label": "تسوقوا الآن",
+        "target": {
+          "type": "all_products"
+        },
+        "style": "primary"
+      },
+      "highlights": [
+        {
+          "icon": "package-open",
+          "text": "معاينة قبل الدفع"
+        },
+        {
+          "icon": "truck",
+          "text": "شحن لكل المحافظات"
+        },
+        {
+          "icon": "banknote",
+          "text": "الدفع عند الاستلام"
+        }
+      ],
+      "overlayOpacity": 0.2,
+      "textAlign": "start",
+      "height": "tall",
+      "autoplayMs": 5000,
+      "enableParallax": false,
+      "enableKineticTypography": false,
+      "enableAmbientGlow": false
+    },
+    {
+      "id": "trust",
+      "enabled": true,
+      "spacing": "compact",
+      "background": "muted",
+      "reveal": "stagger",
+      "type": "trust_badges",
+      "variant": "row",
+      "items": [
+        {
+          "icon": "package-open",
+          "title": "معاينة قبل الدفع",
+          "text": "افتحوا الشحنة وافحصوها مع المندوب أولاً"
+        },
+        {
+          "icon": "truck",
+          "title": "شحن لكل المحافظات",
+          "text": "سعر موحد 80 جنيه"
+        },
+        {
+          "icon": "wallet",
+          "title": "طرق دفع متعددة",
+          "text": "عند الاستلام، فودافون كاش، إنستاباي"
+        },
+        {
+          "icon": "headphones",
+          "title": "تواصل مباشر",
+          "text": "نرد على واتساب لأي استفسار"
+        }
+      ]
+    },
+    {
+      "id": "cats",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "stagger",
+      "type": "categories",
+      "variant": "circles",
+      "title": "تسوقوا حسب القسم",
+      "categorySlugs": [],
+      "showProductCount": true
+    },
+    {
+      "id": "all",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "stagger",
+      "type": "product_grid",
+      "variant": "grid",
+      "title": "منتجاتنا",
+      "subtitle": "قطع جاهزة للطلب الآن",
+      "source": {
+        "type": "newest"
+      },
+      "limit": 8,
+      "columnsMobile": 2,
+      "columnsDesktop": 4,
+      "showViewAll": true,
+      "quickAdd": true
+    },
+    {
+      "id": "faq",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "faq",
+      "variant": "accordion",
+      "title": "أسئلة شائعة",
+      "items": [
+        {
+          "q": "كيف أطلب؟",
+          "a": "اختاروا المنتج والمقاس ثم «إضافة للسلة»، وأكملوا بياناتكم، وسنتواصل معكم لتأكيد الطلب."
+        },
+        {
+          "q": "هل يمكن معاينة الطلب قبل الدفع؟",
+          "a": "نعم، المعاينة وفتح الشحنة مع المندوب متاحان عند الاستلام."
+        },
+        {
+          "q": "ما طرق الدفع المتاحة؟",
+          "a": "الدفع عند الاستلام، أو التحويل على فودافون كاش أو إنستاباي مع رفع صورة التحويل."
+        },
+        {
+          "q": "كم تبلغ تكلفة الشحن؟",
+          "a": "80 جنيه لجميع المحافظات."
+        },
+        {
+          "q": "هل يوجد استبدال أو استرجاع؟",
+          "a": "لا يوجد استبدال ولا استرجاع، لذلك نرجو مراجعة المقاس والتفاصيل جيداً وعاينوا القطعة عند الاستلام."
+        }
+      ]
+    },
+    {
+      "id": "contact",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "type": "contact",
+      "variant": "cards",
+      "title": "تواصل معنا",
+      "showChannels": true
+    }
+  ],
+  "productPage": {
+    "layout": "gallery_left",
+    "showSku": false,
+    "showAttributesTable": true,
+    "showReviews": true,
+    "showShareButtons": true,
+    "extraSections": []
+  },
+  "conversion": {
+    "stickyAddToCart": true,
+    "buyNowButton": true,
+    "freeShippingBar": {
+      "enabled": false,
+      "thresholdPiasters": 50000
+    },
+    "lowStockAlert": {
+      "enabled": false,
+      "threshold": 5
+    },
+    "socialProofToasts": {
+      "enabled": false,
+      "minOrdersToShow": 5,
+      "lookbackHours": 72
+    },
+    "liveViewers": false,
+    "exitIntentOffer": {
+      "enabled": false,
+      "title": "خصم خاص لأول طلب",
+      "text": "الكود يعطيك خصماً على طلبك الأول",
+      "showOncePerDays": 3
+    },
+    "productTrustRow": [],
+    "deliveryEstimate": false,
+    "recommendations": {
+      "frequentlyBoughtTogether": true,
+      "completeTheLook": true,
+      "recentlyViewed": true,
+      "cartUpsell": true
+    },
+    "expressCheckout": true,
+    "rememberCustomer": true,
+    "messengerOrderButton": true,
+    "whatsappButton": true,
+    "showSavings": true,
+    "cartDrawer": true,
+    "shareButtons": true,
+    "ambientSound": false,
+    "cursorFollower": true,
+    "liveActivityBar": false,
+    "kineticTypography": true,
+    "viewTransitions": true,
+    "smartImageSequence": true,
+    "quickViewModal": true,
+    "stockPulseIndicator": false,
+    "product360Viewer": false,
+    "productARPreview": false,
+    "imageZoomLens": true,
+    "videoThumbs": true,
+    "multiLayerParallax": true,
+    "ambientBackdrop": true,
+    "scrollLinkedStory": true,
+    "comparisonBar": false,
+    "wishlistEnabled": true,
+    "voiceNavigation": false,
+    "aiSearch": true
+  },
+  "payments": {
+    "cod": {
+      "enabled": true,
+      "note": "معاينة الشحنة مع المندوب قبل الدفع متاحة"
+    },
+    "vodafoneCash": {
+      "enabled": true,
+      "number": "01094321957"
+    },
+    "instapay": {
+      "enabled": true,
+      "number": "01092993469"
+    },
+    "requireTransferProof": true,
+    "transferInstructions": "حوّل المبلغ على الرقم الظاهر، وارفع صورة التحويل واكتب الرقم اللي حوّلت منه، وهنأكد طلبك فوراً."
+  },
+  "shipping": {
+    "freeOverPiasters": null,
+    "flatRatePiasters": 8000,
+    "generalEta": "",
+    "pickupEnabled": false,
+    "inspectionAllowed": true
+  },
+  "returns": {
+    "windowDays": 0,
+    "allowExchange": false,
+    "allowRefund": false,
+    "returnShippingPaidBy": "customer",
+    "refundDays": 7,
+    "conditions": [],
+    "nonReturnable": "لا يوجد استبدال ولا استرجاع.",
+    "defectPolicy": "none",
+    "defectReportHours": 48,
+    "defectShippingByStore": false
+  },
+  "checkout": {
+    "fields": {
+      "altPhone": "optional",
+      "city": "optional",
+      "landmark": "optional",
+      "notes": "optional",
+      "email": "hidden"
+    },
+    "customFields": [],
+    "minOrderPiasters": null,
+    "termsCheckbox": false,
+    "successMessage": "شكراً لطلبكم من ميادة فاشون. سنتواصل معكم قريباً لتأكيد الطلب."
+  },
+  "orderMessages": {
+    "confirmed": "أهلاً {name}، تم تأكيد طلبكم {code} بإجمالي {total}. شكراً لاختياركم {store}.",
+    "shipped": "طلبكم {code} خرج مع شركة الشحن. رقم الشحنة: {tracking}",
+    "delivered": "نتمنى أن يكون طلبكم {code} عند حسن ظنكم. يمكنكم تقييم التجربة هنا: {review_link}",
+    "abandoned": "أهلاً {name}، تركتم {items} في السلة. هل تحتاجون مساعدة لإتمام الطلب؟"
+  },
+  "invoice": {
+    "showLogo": true,
+    "footerNote": "شكراً لتسوقكم من ميادة فاشون",
+    "showQr": true,
+    "paperSize": "A5",
+    "showPrices": true
+  },
+  "customCss": "",
+  "pages": [],
+  "seo": {
+    "title": "ميادة فاشون | قمصان وبناطيل رجالي وفساتين سهرة",
+    "description": "تسوقوا قمصان كلاسيك وبناطيل جينز ببيع أونلاين من ميادة فاشون. الدفع عند الاستلام مع المعاينة، والشحن لكل المحافظات بـ 80 جنيه.",
+    "noIndex": false
+  },
+  "campaigns": [],
+  "inventory": {
+    "tracking": true
+  },
+  "sizeGuide": {
+    "charts": []
+  }
+}

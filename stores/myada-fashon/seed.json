@@ -1,0 +1,47 @@
+{
+  "categories": [
+    {
+      "name": "قمصان رجالي",
+      "image": "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/1285efa3-e8d1-40ba-a91f-14ed9b889099.jpg"
+    },
+    {
+      "name": "بناطيل",
+      "image": "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/fa730f86-d96a-4207-8eb4-7bbbdd5ba77d.jpg"
+    }
+  ],
+  "products": [
+    {
+      "name": "قميص كلاسيك رجالي",
+      "price": 500,
+      "category": "قمصان رجالي",
+      "description": "قميص كلاسيك رجالي بقصّة أنيقة تناسب العمل والمناسبات، متوفر بأربعة مقاسات وباللونين الأبيض والأسود.",
+      "images": [
+        "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/1285efa3-e8d1-40ba-a91f-14ed9b889099.jpg"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أبيض",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "بنطلون جينز كحلي",
+      "price": 700,
+      "category": "بناطيل",
+      "description": "بنطلون جينز بلون كحلي عميق وخياطة بارزة. اسألونا على واتساب عن المقاسات المتاحة قبل الطلب.",
+      "images": [
+        "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/e8fe1a50-e15d-4564-a60e-ada9afea3b36.png",
+        "https://media.colapia.com/requests/67e90724-9ba1-4400-8939-3f6e168d8fae/fa730f86-d96a-4207-8eb4-7bbbdd5ba77d.jpg"
+      ],
+      "featured": true
+    }
+  ]
+}

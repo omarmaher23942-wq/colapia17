@@ -1,0 +1,5 @@
+/* جلد ميادة فاشون: لمسات رقيقة فوق نظام التصميم */
+.storefront .s-btn { letter-spacing: 0; }
+.storefront .s-card { border-color: var(--border); }
+.storefront .s-media img { object-position: center 35%; }
+.storefront .s-announce { letter-spacing: 0; }

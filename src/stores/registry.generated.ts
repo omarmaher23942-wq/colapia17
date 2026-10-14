@@ -19,6 +19,14 @@ export const STORE_REGISTRY: Record<string, StoreEntry> = {
       "craft": () => import("../../stores/atelier/pages/craft"),
     },
   },
+  "myada-fashon": {
+    meta: {"slug":"myada-fashon","name":"ميادة فاشون"},
+    theme: "/* جلد ميادة فاشون: لمسات رقيقة فوق نظام التصميم */\n.storefront .s-btn { letter-spacing: 0; }\n.storefront .s-card { border-color: var(--border); }\n.storefront .s-media img { object-position: center 35%; }\n.storefront .s-announce { letter-spacing: 0; }\n",
+    sections: {},
+    blocks: {},
+    slots: {},
+    pages: {},
+  },
   "nova": {
     meta: {"slug":"nova","name":"نوفا ستايل"},
     theme: "/* جلد نوفا ستايل: أزرار بحواف حادة وعناوين أعرض. */\n.storefront .s-btn { border-radius: 4px; letter-spacing: 0.01em; }\n.storefront .s-title { letter-spacing: -0.01em; }\n",
