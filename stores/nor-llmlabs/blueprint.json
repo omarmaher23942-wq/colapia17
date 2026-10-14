@@ -60,7 +60,7 @@
     "icon": {
       "stroke": 1.6,
       "frame": "circle",
-      "tone": "accent"
+      "tone": "primary"
     },
     "heading": {
       "style": "eyebrow"
@@ -92,12 +92,12 @@
   "theme": {
     "mode": "light",
     "palette": {
-      "primary": "#acb776",
-      "primaryForeground": "#1b1f10",
+      "primary": "#4a5326",
+      "primaryForeground": "#fbfaf4",
       "secondary": "#ecebe1",
       "secondaryForeground": "#23271a",
-      "accent": "#4a5326",
-      "accentForeground": "#fbfaf4",
+      "accent": "#acb776",
+      "accentForeground": "#1b1f10",
       "background": "#faf9f4",
       "foreground": "#1d2015",
       "muted": "#f0eee4",
