@@ -34,6 +34,13 @@ const current = (s: string | undefined, fallback: string) => {
 export const MODELS = {
   groq70b: "llama-3.3-70b-versatile",
   groq8b: "llama-3.1-8b-instant",
+  groqOss20b: "openai/gpt-oss-20b",
+  groqQwen: "qwen/qwen3-32b",
+  groqKimi: "moonshotai/kimi-k2-instruct",
+  geminiAlias: "gemini-flash-latest",
+  geminiLiteAlias: "gemini-flash-lite-latest",
+  gemini25: "gemini-2.5-flash",
+  gemini25Lite: "gemini-2.5-flash-lite",
   // يدعم المخرجات المنظمة الصارمة (JSON Schema) على Groq، فهو الأنسب لبناء المتجر.
   gptOss: "openai/gpt-oss-120b",
   gemini: current(env.GEMINI_MODEL, "gemini-3.8-flash"),
@@ -77,9 +84,20 @@ const dedupe = (links: Link[]) =>
 
 // Morpheus آخر كل سلسلة، ولا يدخلها إلا بـ AI_USE_MORPHEUS=1 (انظر dedupe).
 const DEFAULT_CHAINS: Record<Tier, Link[]> = {
+  // المحادثة تجرّب كل ما هو متاح بالتناوب بين المزوّدين: لا اعتماد على نموذج واحد أبداً. ما لا يوجد لدى الحساب يفشل فوراً
+  // (404) فيُكمل إلى التالي.
   chat: dedupe([
     L("google", MODELS.gemini),
     L("groq", MODELS.gptOss),
+    L("google", MODELS.geminiAlias),
+    L("groq", MODELS.groqOss20b),
+    L("google", MODELS.geminiLite),
+    L("groq", MODELS.groqKimi),
+    L("google", MODELS.geminiLiteAlias),
+    L("groq", MODELS.groqQwen),
+    L("google", MODELS.gemini25),
+    L("groq", MODELS.groq8b),
+    L("google", MODELS.gemini25Lite),
     L("morpheus", MODELS.claude),
   ]),
   fast: dedupe([
@@ -203,21 +221,20 @@ async function chain(tier: Tier, need: number): Promise<Link[]> {
     }
   } catch {}
 
-  let links = base;
+  let links: (Link & { open?: boolean })[] = base;
   try {
     const keys = [...base.map(cbKey), ...base.map((l) => capKey(l.modelId))];
     const vals = (await redis.mget<(string | number | null)[]>(...keys)) ?? [];
     const n = base.length;
-    links = base
-      .map((l, i) => ({ ...l, cap: Number(vals[n + i]) > 0 ? Number(vals[n + i]) : l.cap, open: !!vals[i] }))
-      .filter((l) => !l.open)
-      .map(({ open: _o, ...l }) => l);
+    links = base.map((l, i) => ({ ...l, cap: Number(vals[n + i]) > 0 ? Number(vals[n + i]) : l.cap, open: !!vals[i] }));
   } catch {}
 
-  if (!links.length) links = base;
-  const fit = links.filter((l) => fits(l, need));
-  const unfit = links.filter((l) => !fits(l, need)).sort((a, b) => b.cap - a.cap);
-  return [...fit, ...unfit];
+  // الترتيب: ما يتسع للطلب وقاطعه مغلق، ثم ما لا يتسع، ثم القواطع المفتوحة. لا يُسقط شيء: كل النماذج تُجرَّب في النهاية.
+  const rank = (l: Link & { open?: boolean }) => (l.open ? 2 : fits(l, need) ? 0 : 1);
+  return links
+    .map((l, i) => ({ l, i }))
+    .sort((a, b) => rank(a.l) - rank(b.l) || (rank(a.l) === 1 ? b.l.cap - a.l.cap : 0) || a.i - b.i)
+    .map(({ l: { open: _o, ...l } }) => l);
 }
 
 export type Meta = { purpose: string; storeId?: string; conversationId?: string };

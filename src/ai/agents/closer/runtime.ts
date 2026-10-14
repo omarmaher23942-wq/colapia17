@@ -30,7 +30,8 @@ type Inbound = {
 };
 type Conv = typeof conversations.$inferSelect;
 
-const AI_ATTEMPT_MS = 14_000;
+const AI_ATTEMPT_MS = 12_000;
+const AI_BUDGET_MS = 75_000; // كل النماذج تُجرَّب ضمن هذا الحد الكلي
 const HISTORY_LIMIT = 30;
 /** علامة في نص رسالة الوكيل المحفوظة تدل على أن زر الاستمارة أُرسل معها (يُستخدم لعدم تكراره). */
 const LINK_MARK = "[زر الاستمارة:";
@@ -113,7 +114,7 @@ async function converse(system: string, messages: ModelMessage[], conversationId
     const p = closerTurnSchema.safeParse(obj ?? { reply: raw.replace(/[{}"]/g, "") });
     return p.success && (p.data.reply || p.data.requestHuman) ? p.data : null;
   };
-  const r = await aiText("chat", { system: instruction, messages, temperature: 0.7, maxTokens: 1600, timeoutMs: AI_ATTEMPT_MS, accept: (t) => parse(t.trim()) !== null }, { purpose: "closer", conversationId });
+  const r = await aiText("chat", { system: instruction, messages, temperature: 0.7, maxTokens: 1600, timeoutMs: AI_ATTEMPT_MS, budgetMs: AI_BUDGET_MS, accept: (t) => parse(t.trim()) !== null }, { purpose: "closer", conversationId });
   const parsed = { success: true as const, data: parse(r.text.trim())! };
   return { turn: parsed.data, provider: r.provider };
 }
