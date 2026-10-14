@@ -14,6 +14,7 @@ import { hrefFor } from "@/lib/links";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { HeroSection } from "@/blueprint/schema";
+import { HeroVideo } from "./HeroVideo";
 
 export type HeroSpotlight = { slug: string; name: string; pricePiasters: number; compareAtPiasters: number | null; image?: string } | null;
 
@@ -30,6 +31,8 @@ function layoutOf(s: HeroSection, spotlight: HeroSpotlight): Layout {
         : v === "carousel"
           ? "split"
           : "centered";
+  // فيديو الواجهة يحتاج صورة غلاف (poster) تظهر فوراً: لا فيديو بلا صورة.
+  if (s.videoUrl && imgs) return "fullscreen";
   // واجهة بلا صور: صورة منتج حقيقية أفضل من خلفية نصية فارغة.
   if (spotlight?.image && (want === "centered" || (!imgs && want !== "product_spotlight"))) return "product_spotlight";
   // لا تخطيط يعتمد على صور غير موجودة.
@@ -101,6 +104,7 @@ export function Hero({ s, spotlight = null }: { s: HeroSection; spotlight?: Hero
     return (
       <section className="s-hero relative isolate flex min-h-[78svh] items-end overflow-hidden" data-layout="fullscreen">
         <Image src={imgs[0]!.url} alt={imgs[0]!.alt || s.headline} fill priority sizes="100vw" className="-z-10 object-cover" style={{ objectPosition: pos(0) }} />
+        {s.videoUrl ? <HeroVideo src={s.videoUrl} className="-z-10" /> : null}
         <div aria-hidden="true" className="absolute inset-0 -z-10" style={{ background: `linear-gradient(to top, rgb(0 0 0 / ${Math.max(0.35, s.overlayOpacity) + 0.25}), rgb(0 0 0 / ${s.overlayOpacity * 0.6}) 55%, transparent)` }} />
         <div className="container-x w-full pb-[clamp(2.5rem,8vw,6rem)] pt-32 s-rise">
           <div className="max-w-2xl">

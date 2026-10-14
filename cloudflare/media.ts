@@ -17,7 +17,7 @@ export type MediaEnv = {
   R2_ENDPOINT?: string;
 };
 type Ctx = { waitUntil(p: Promise<unknown>): void };
-export type ObjectFetcher = (key: string) => Promise<Response>;
+export type ObjectFetcher = (key: string, range?: string | null) => Promise<Response>;
 
 /** مضيف الملفات: من الرابط الصريح وإلا media.<النطاق الرئيسي>. */
 export function mediaHostname(env: MediaEnv): string | null {
@@ -54,7 +54,8 @@ function r2Fetcher(env: MediaEnv): ObjectFetcher | null {
   const aws = new AwsClient({ accessKeyId: env.R2_ACCESS_KEY_ID, secretAccessKey: env.R2_SECRET_ACCESS_KEY, service: "s3", region: "auto" });
   const endpoint = (env.R2_ENDPOINT || `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`).replace(/\/+$/, "");
   const bucket = env.R2_BUCKET;
-  return (key) => aws.fetch(`${endpoint}/${bucket}/${key.split("/").map(encodeURIComponent).join("/")}`, { method: "GET" });
+  return (key, range) =>
+    aws.fetch(`${endpoint}/${bucket}/${key.split("/").map(encodeURIComponent).join("/")}`, { method: "GET", headers: range ? { range } : undefined });
 }
 
 /** يجيب طلب ملف على مضيف الملفات، أو null إن لم يكن الطلب لمضيف الملفات (فيكمل إلى التطبيق). */
@@ -68,6 +69,28 @@ export async function serveMedia(request: Request, env: MediaEnv, ctx: Ctx, fetc
   if (!key) return text("Not found", 404, "public, max-age=60");
   const fetcher = fetchObject ?? r2Fetcher(env);
   if (!fetcher) return text("media storage is not configured", 503);
+
+  // فيديو الواجهة (mp4/webm): يمر بلا ذاكرة Cache API (ملفات كبيرة) مع دعم Range ليبدأ التشغيل قبل اكتمال التحميل.
+  const video = /\.(mp4|webm)$/i.exec(key);
+  if (video) {
+    const r = await fetcher(key, request.headers.get("range")).catch(() => null);
+    if (!r) return text("storage unavailable", 502);
+    if (r.status === 404 || r.status === 403) return text("Not found", 404, "public, max-age=30");
+    if (!r.ok && r.status !== 206) return text("storage error", 502);
+    const h = new Headers({
+      "content-type": video[1]!.toLowerCase() === "webm" ? "video/webm" : "video/mp4",
+      "cache-control": "public, max-age=31536000, immutable",
+      "accept-ranges": "bytes",
+      "access-control-allow-origin": "*",
+      "cross-origin-resource-policy": "cross-origin",
+      "x-content-type-options": "nosniff",
+    });
+    for (const n of ["content-length", "content-range", "etag"]) {
+      const v = r.headers.get(n);
+      if (v) h.set(n, v);
+    }
+    return new Response(request.method === "HEAD" ? null : r.body, { status: r.status, headers: h });
+  }
 
   const cache = typeof caches !== "undefined" ? (caches as unknown as { default?: Cache }).default : undefined;
   const cacheKey = new Request(`${url.origin}${url.pathname}`, { method: "GET" });

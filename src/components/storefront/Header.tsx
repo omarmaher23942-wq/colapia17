@@ -25,6 +25,7 @@ import { useWishlist } from "@/store/wishlist";
 import { useHydrated } from "./CartView";
 import { arCount, NOUN } from "@/lib/format";
 import { hrefFor } from "@/lib/links";
+import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { CUSTOMER_ACCOUNTS, VISUAL_SEARCH } from "@/lib/edition";
 import { VisualSearch } from "./VisualSearch";
@@ -50,6 +51,27 @@ export function Header({
   const cartCount = useCart((s) => s.count());
   const count = hydrated ? cartCount : 0;
   const openCart = useCart((s) => s.open);
+  // اقتراحات بحث فورية: طلب واحد بعد توقف الكتابة 220ms، ويُلغى القديم عند كل حرف جديد.
+  const [q, setQ] = useState("");
+  const [sugg, setSugg] = useState<{ slug: string; name: string; price: number; image: string | null }[]>([]);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setSugg([]);
+      return;
+    }
+    const ac = new AbortController();
+    const t = window.setTimeout(() => {
+      fetch(`/api/storefront/suggest?q=${encodeURIComponent(term)}`, { signal: ac.signal, cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: typeof sugg }) => setSugg(j.items ?? []))
+        .catch(() => undefined);
+    }, 220);
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [q]);
   const wishSaved = useWishlist((s) => s.slugs.length);
   const wishCount = hydrated ? wishSaved : 0;
   const { customer, design } = useStore();
@@ -306,7 +328,7 @@ export function Header({
             className="border-t p-3"
             style={{ background: "var(--card)", borderColor: "var(--border)" }}
           >
-            <form action="/search" className="container-x">
+            <form action="/search" className="container-x relative">
               <div
                 className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5"
                 style={{
@@ -326,6 +348,9 @@ export function Header({
                   style={{ color: "var(--foreground)" }}
                   autoFocus
                   aria-label="البحث"
+                  autoComplete="off"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
                 />
                 <button
                   type="button"
@@ -336,6 +361,26 @@ export function Header({
                   <X className="size-4" strokeWidth={SW} aria-hidden="true" />
                 </button>
               </div>
+              {sugg.length ? (
+                <ul className="absolute inset-x-4 top-full z-50 mt-2 overflow-hidden rounded-2xl border shadow-2xl sm:inset-x-auto sm:w-[28rem]" style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-label="اقتراحات البحث">
+                  {sugg.map((it) => (
+                    <li key={it.slug}>
+                      <Link href={`/p/${encodeURIComponent(it.slug)}`} onClick={() => setSearch(false)} className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--muted)]">
+                        <span className="relative size-11 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--muted)" }}>
+                          {it.image ? <Image src={it.image} alt="" fill sizes="44px" className="object-cover" /> : null}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{it.name}</span>
+                        <span className="shrink-0 text-[12px] font-black tabular-nums">{formatEgp(it.price)}</span>
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <button type="submit" className="w-full px-3 py-2.5 text-start text-[12.5px] font-black" style={{ color: "var(--primary)" }}>
+                      عرض كل النتائج
+                    </button>
+                  </li>
+                </ul>
+              ) : null}
             </form>
           </div>
         ) : null}
