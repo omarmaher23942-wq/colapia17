@@ -53,8 +53,8 @@ export function LoginForm({
           </h1>
           <p className="max-w-sm text-sm leading-relaxed text-[#c3cdf0]/70">
             {isSignup
-              ? "ادخل بحساب Google للوصول إلى لوحة متجرك."
-              : "ادخل بحساب Google المسجّل بالبريد الذي كتبته في استمارة طلب متجرك، أو برمز يصلك على البريد نفسه."}
+              ? "سجّلوا الدخول بحساب Google للوصول إلى لوحة المتجر."
+              : "سجّلوا الدخول بحساب Google المرتبط بالبريد الذي كتبتموه في استمارة الطلب، أو برمز يصل إلى البريد نفسه."}
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export function LoginForm({
             </>
           ) : (
             <>
-              ما عندكش متجر معانا؟{" "}
+              ليس لديكم متجر بعد؟{" "}
               <Link
                 href="/start"
                 className="font-semibold text-[#8fa8ff] transition-colors hover:text-[#eaf0ff]"
@@ -120,7 +120,7 @@ export function LoginForm({
       </div>
 
       <p className="mt-6 text-center text-xs leading-relaxed text-[#c3cdf0]/45">
-        بمتابعتك أنت توافق على{" "}
+        بالمتابعة تتم الموافقة على{" "}
         <Link href="/terms" className="underline-offset-4 hover:underline">
           شروط الاستخدام
         </Link>{" "}

@@ -42,7 +42,7 @@ export default async function PlatformLoginPage({
         <div>
           <h1 className="text-2xl font-black text-white">لوحة فريق Colapia</h1>
           <p className="mt-2 text-xs font-medium leading-relaxed text-slate-400">
-            ادخل بحساب Google المسجّل لك في الفريق. البريد الذي أضافه المالك هو مفتاح دخولك.
+            سجّلوا الدخول بحساب Google المسجّل لكم في الفريق. البريد الذي أضافه المالك هو مفتاح الدخول.
           </p>
         </div>
 

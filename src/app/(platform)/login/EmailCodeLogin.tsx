@@ -21,7 +21,7 @@ export function EmailCodeLogin({ redirectTo }: { redirectTo: string }) {
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 text-[14.5px] font-bold text-[#eaf0ff] hover:bg-white/[0.05]">
-        <Mail className="size-4" aria-hidden="true" /> ادخل برمز على بريدك
+        <Mail className="size-4" aria-hidden="true" /> الدخول برمز على البريد
       </button>
     );
   }
@@ -37,7 +37,7 @@ export function EmailCodeLogin({ redirectTo }: { redirectTo: string }) {
             const r = await requestLoginCodeAction(email);
             if (!r.ok) return setMsg(r.error);
             setSent(true);
-            setMsg("لو البريد مسجّل عندنا، وصلك رمز من 6 أرقام (افحص الرسائل غير المرغوبة).");
+            setMsg("إن كان البريد مسجلاً لدينا فقد وصلكم رمز من 6 أرقام (راجعوا الرسائل غير المرغوبة).");
             return;
           }
           const r = await verifyLoginCodeAction(email, code, redirectTo);
@@ -64,11 +64,11 @@ export function EmailCodeLogin({ redirectTo }: { redirectTo: string }) {
       ) : null}
       <button type="submit" disabled={pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#8fa8ff] text-[15px] font-black text-[#07091a] disabled:opacity-60">
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
-        {sent ? "ادخل" : "أرسل الرمز"}
+        {sent ? "دخول" : "إرسال الرمز"}
       </button>
       {sent ? (
         <button type="button" onClick={() => (setSent(false), setCode(""), setMsg(null))} className="w-full text-center text-[12.5px] text-[#c3cdf0]/60 underline underline-offset-4">
-          غيّر البريد أو اطلب رمزاً جديداً
+          تغيير البريد أو طلب رمز جديد
         </button>
       ) : null}
     </form>
