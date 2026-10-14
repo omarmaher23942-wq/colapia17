@@ -82,12 +82,13 @@ export default async function CategoryPage({
           )}
         </div>
 
-        <div className="flex gap-1 rounded-lg bg-muted p-1 text-sm">
+        <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 text-[13px] sm:mx-0 sm:text-sm [scrollbar-width:none]" role="group" aria-label="ترتيب المنتجات">
           {SORTS.map(([k, l]) => (
             <Link
               key={k}
               href={`?sort=${k}`}
-              className={`rounded-md px-3 py-1.5 ${
+              aria-current={sort === k ? "true" : undefined}
+              className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 ${
                 sort === k ? "bg-background font-bold shadow" : ""
               }`}
             >
