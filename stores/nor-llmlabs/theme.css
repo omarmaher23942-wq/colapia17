@@ -1,0 +1,55 @@
+/* جلد نور للملابس: عاجي دافئ وزيتوني ناعم، صور القطع هي البطل. كل القواعد داخل .storefront وبمتغيرات الثيم. */
+.storefront {
+  --noor-olive: #4a5326;
+  --noor-sage: #acb776;
+  --noor-ink: #1d2015;
+}
+
+/* العناوين الكبيرة أخف قليلاً وأكثر أناقة مع خط المسيري. */
+.storefront .s-display { letter-spacing: 0; line-height: 1.15; }
+.storefront .s-eyebrow { color: var(--noor-olive); letter-spacing: 0.02em; }
+
+/* الزر الأساسي: زيتوني فاتح بحبر داكن (تباين > 7:1)، وتأكيد خفيف عند المرور واللمس. */
+.storefront .s-btn {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.5) inset, 0 8px 22px -12px color-mix(in srgb, var(--noor-olive) 70%, transparent);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+.storefront .s-btn:hover { background: color-mix(in srgb, var(--noor-sage) 88%, var(--noor-olive)); }
+.storefront .s-btn:active { transform: translateY(1px) scale(0.99); }
+
+/* صور الواجهة: إطار ناعم وظل دافئ. */
+.storefront .s-hero-media {
+  box-shadow: 0 30px 60px -38px rgb(29 32 21 / 0.55);
+  outline: 1px solid rgb(255 255 255 / 0.6);
+  outline-offset: -1px;
+}
+
+/* بطاقة المنتج: السعر بلون الحبر، والاسم أوضح. */
+.storefront .s-card .s-price { color: var(--noor-ink); }
+
+/* لوحات الأقسام (sections/categories.tsx). */
+.storefront .noor-tile {
+  aspect-ratio: 3 / 4;
+  border-radius: 20px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--noor-sage) 35%, var(--background)), var(--muted));
+  isolation: isolate;
+}
+@media (min-width: 640px) { .storefront .noor-tile { aspect-ratio: 4 / 5; } }
+@media (min-width: 1024px) { .storefront .noor-tile { aspect-ratio: 5 / 4; } }
+.storefront .noor-tile-img { z-index: -2; transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.storefront .noor-tile-shade { z-index: -1; background: linear-gradient(to top, rgb(20 22 14 / 0.78), rgb(20 22 14 / 0.12) 55%, transparent); }
+.storefront .noor-tile:hover .noor-tile-img { transform: scale(1.04); }
+.storefront .noor-tile:focus-visible { outline: 3px solid var(--noor-sage); outline-offset: 3px; }
+.storefront .noor-tile-name { color: #fff; font-size: clamp(1.25rem, 4.5vw, 2.25rem); font-weight: 700; line-height: 1.2; }
+.storefront .noor-tile-meta { color: rgb(255 255 255 / 0.88); font-size: 13px; font-weight: 600; }
+.storefront .noor-tile-go {
+  width: 44px; height: 44px; border-radius: 999px;
+  background: var(--noor-sage); color: #1b1f10;
+  transition: transform 0.25s ease;
+}
+.storefront .noor-tile:hover .noor-tile-go { transform: translateX(-4px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .storefront .noor-tile-img, .storefront .noor-tile-go, .storefront .s-btn { transition: none; }
+  .storefront .noor-tile:hover .noor-tile-img, .storefront .noor-tile:hover .noor-tile-go { transform: none; }
+}

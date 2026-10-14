@@ -143,7 +143,7 @@ export default async function DashboardLayout({
         </div>
 
         {/* Command Palette — متاح عالمياً بـ ⌘K */}
-        <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} perms={memberPerms(session)} />
+        <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} perms={memberPerms(session)} subdomain={session.store?.subdomain ?? null} />
 
         {/* Onboarding Tour — للتاجر الجديد فقط */}
         <OnboardingTour autoOpen={showTour} />

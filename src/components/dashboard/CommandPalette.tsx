@@ -45,7 +45,7 @@ function matches(c: Cmd, q: string): boolean {
   return q.split(" ").every((w) => hay.includes(w));
 }
 
-export function CommandPalette({ storeHref, hasStore, perms }: { storeHref: string | null; hasStore: boolean; perms?: StorePerms | null }) {
+export function CommandPalette({ storeHref, hasStore, perms, subdomain }: { storeHref: string | null; hasStore: boolean; perms?: StorePerms | null; subdomain?: string | null }) {
   const router = useRouter();
   const { soundOn, toggleSound } = useDashboardPulse();
   const [open, setOpen] = useState(false);
@@ -123,8 +123,8 @@ export function CommandPalette({ storeHref, hasStore, perms }: { storeHref: stri
   );
 
   const pages: Cmd[] = useMemo(
-    () => navItemsFor(perms).map((n) => ({ id: `nav:${n.href}`, label: n.label, hint: n.hint, icon: n.icon, keywords: n.keywords, run: () => go(n.href) })),
-    [go]
+    () => navItemsFor(perms, subdomain).map((n) => ({ id: `nav:${n.href}`, label: n.label, hint: n.hint, icon: n.icon, keywords: n.keywords, run: () => go(n.href) })),
+    [go, perms, subdomain]
   );
 
   const actions: Cmd[] = useMemo(() => {
