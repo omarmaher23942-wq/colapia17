@@ -9,12 +9,12 @@ import { readJson } from "@/intake/http";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
-const OK = () => json({ ok: true, message: "لو في طلب مفتوح على بريدك، هيوصلك رابط المتابعة خلال دقيقة. شوف الرسائل غير المرغوبة كمان." });
+const OK = () => json({ ok: true, message: "إن وُجد طلب مفتوح على بريدكم يصلكم رابط المتابعة خلال دقيقة. راجعوا الرسائل غير المرغوبة أيضاً." });
 
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
   const ip = requestIp(req);
-  if (!(await hit(`resend:ip:${ip}`, 8, 3600))) return json({ error: "rate_limited", message: "محاولات كتير، جرّب بعد شوية." }, 429);
+  if (!(await hit(`resend:ip:${ip}`, 8, 3600))) return json({ error: "rate_limited", message: "محاولات كثيرة، أعيدوا المحاولة بعد قليل." }, 429);
   const parsed = await readJson(req);
   if (!parsed.ok) return json({ error: "bad_request" }, parsed.status);
   try {

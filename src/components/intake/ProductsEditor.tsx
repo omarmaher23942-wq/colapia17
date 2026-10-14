@@ -168,7 +168,7 @@ function ProductCard({
     if (!picked.length) return void setNotice("اختر صوراً (JPG أو PNG).");
     if (files.length > picked.length) setNotice(`أضفنا ${picked.length} صورة فقط (الحد ${MAX_PRODUCT_IMAGES} للمنتج).`);
     const token = await ensureToken();
-    if (!token) return void setNotice("ما قدرناش نجهز الرفع. تأكد من النت وجرّب تاني.");
+    if (!token) return void setNotice("تعذّر تجهيز الرفع. تأكدوا من الاتصال بالإنترنت وأعيدوا المحاولة.");
 
     const fresh = picked.map((file) => ({ id: newId(), file, preview: URL.createObjectURL(file) }));
     setPending((p) => [...p, ...fresh.map((x) => ({ id: x.id, preview: x.preview }))]);

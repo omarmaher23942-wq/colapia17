@@ -30,7 +30,7 @@ export function LogoPicker({
     if (!f) return;
     setError(null);
     const token = await ensureToken();
-    if (!token) return void setError("ما قدرناش نجهز الرفع. تأكد من النت وجرّب تاني.");
+    if (!token) return void setError("تعذّر تجهيز الرفع. تأكدوا من الاتصال بالإنترنت وأعيدوا المحاولة.");
     setBusy(true);
     onBusy(1);
     try {
@@ -70,7 +70,7 @@ export function LogoPicker({
                 <Trash2 className="size-3.5" aria-hidden="true" /> احذف الشعار
               </button>
             ) : (
-              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="مافيش شعار؟ شعار نصي من الفريق" ariaLabel="يختارها الفريق: الشعار" />
+              <TeamToggle on={data.logo.team} onChange={(v) => update((d) => ({ ...d, logo: { team: v } }))} label="لا يوجد شعار؟ يصمم الفريق شعاراً نصياً" ariaLabel="يختارها الفريق: الشعار" />
             )}
           </div>
         </div>
@@ -107,7 +107,7 @@ export function ColorChoice({ data, update, error }: Base & { error?: string }) 
       <div className="grid grid-cols-2 gap-2">
         <button type="button" aria-pressed={mode === "logo"} onClick={() => set({ mode: "logo" })} className={card(mode === "logo")}>
           <span className="block text-[13.5px] font-black text-ink">من ألوان شعاري</span>
-          <span className="mt-0.5 block text-[12px] leading-5 text-ink-3">الفريق ياخد الألوان من الشعار</span>
+          <span className="mt-0.5 block text-[12px] leading-5 text-ink-3">يستخرج الفريق الألوان من الشعار</span>
         </button>
         <label className={cn(card(mode === "custom"), "cursor-pointer")}>
           <span className="flex items-center gap-2 text-[13.5px] font-black text-ink">

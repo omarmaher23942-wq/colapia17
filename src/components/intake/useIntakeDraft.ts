@@ -144,9 +144,9 @@ export function useIntakeDraft(init: Init) {
             if (dataRef.current !== snapshot) dirtyRef.current = true;
           } else {
             const msg = typeof r.json.message === "string" ? r.json.message : "";
-            if (r.status === 503) fail({ kind: r.json.error === "closed" ? "closed" : "unavailable", message: msg || "الاستمارة مش متاحة دلوقتي." }, r.json.error === "closed");
-            else if (r.status === 429) fail({ kind: "limited", message: msg || "محاولات كتير، جرّب بعد شوية." }, false);
-            else if (r.status === 400 || r.status === 403 || r.status === 413) fail({ kind: "rejected", message: msg || "الحفظ التلقائي اترفض. حدّث الصفحة وجرّب تاني." }, true);
+            if (r.status === 503) fail({ kind: r.json.error === "closed" ? "closed" : "unavailable", message: msg || "الاستمارة غير متاحة حالياً." }, r.json.error === "closed");
+            else if (r.status === 429) fail({ kind: "limited", message: msg || "محاولات كثيرة، أعيدوا المحاولة بعد قليل." }, false);
+            else if (r.status === 400 || r.status === 403 || r.status === 413) fail({ kind: "rejected", message: msg || "تعذّر الحفظ التلقائي. حدّثوا الصفحة وأعيدوا المحاولة." }, true);
             else fail(null, false);
             return;
           }
@@ -182,8 +182,8 @@ export function useIntakeDraft(init: Init) {
             dirtyRef.current = true;
           } else {
             const msg = typeof r.json.message === "string" ? r.json.message : "";
-            if (r.status === 429) fail({ kind: "limited", message: msg || "حفظ كتير في وقت قصير، هنكمل بعد شوية." }, false);
-            else if (r.status === 400 || r.status === 403 || r.status === 413) fail({ kind: "rejected", message: msg || "الحفظ التلقائي اترفض. حدّث الصفحة وجرّب تاني." }, true);
+            if (r.status === 429) fail({ kind: "limited", message: msg || "حفظ متكرر في وقت قصير، سنكمل بعد قليل." }, false);
+            else if (r.status === 400 || r.status === 403 || r.status === 413) fail({ kind: "rejected", message: msg || "تعذّر الحفظ التلقائي. حدّثوا الصفحة وأعيدوا المحاولة." }, true);
             else fail(r.status === 503 ? { kind: "unavailable", message: msg || "الخدمة مشغولة، هنحاول تاني." } : null, false);
             return;
           }

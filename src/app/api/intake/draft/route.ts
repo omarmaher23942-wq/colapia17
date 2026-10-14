@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     if (token === undefined || token === null) {
       const settings = await intakeSettings();
       if (!settings.enabled) return json({ error: "closed", message: "استقبال الطلبات متوقف مؤقتاً. كلّمنا مباشرة." }, 503);
-      if (!(await hit(`create:ip:${ip}`, 60, 3600))) return json({ error: "rate_limited", message: "محاولات كتير من نفس الشبكة، جرّب بعد شوية." }, 429);
+      if (!(await hit(`create:ip:${ip}`, 60, 3600))) return json({ error: "rate_limited", message: "محاولات كثيرة من الشبكة نفسها، أعيدوا المحاولة بعد قليل." }, 429);
       const { row, token: newToken } = await createDraft({
         data: data.data,
         utm: cleanUtm(utm),

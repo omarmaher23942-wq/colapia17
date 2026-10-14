@@ -166,7 +166,7 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
                     <p className={cn("text-[15px] font-black", state === "next" ? "text-ink-3" : "text-ink")}>
                       {STAGE_INFO[s].label}
                       {state === "done" ? <span className="sr-only"> (تمت)</span> : null}
-                      {state === "now" ? <span className="ms-2 rounded-full bg-nova/15 px-2 py-0.5 text-[11.5px] text-nova-2">{final ? "تم" : "دلوقتي"}</span> : null}
+                      {state === "now" ? <span className="ms-2 rounded-full bg-nova/15 px-2 py-0.5 text-[11.5px] text-nova-2">{final ? "تم" : "الآن"}</span> : null}
                     </p>
                     {state !== "next" ? <p className="mt-1 text-[13.5px] leading-7 text-ink-2">{STAGE_INFO[s].client}</p> : null}
                     {notes.map((n) => (

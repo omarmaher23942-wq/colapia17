@@ -285,12 +285,12 @@ export function validateSubmission(d: IntakeData): IntakeErrors {
   const mail = clean(d.contact.email);
   if (wa && !normalizeEgyptianPhone(wa)) e["contact.whatsapp"] = "رقم واتساب مصري غير صحيح (مثال: 01012345678).";
   if (mail && !normalizeEmail(mail)) e["contact.email"] = "البريد غير صحيح.";
-  if (!wa && !mail) e["contact.whatsapp"] = "رقم واتساب أو بريد مطلوب عشان نقدر نتواصل.";
+  if (!wa && !mail) e["contact.whatsapp"] = "رقم واتساب أو بريد إلكتروني مطلوب لنتمكن من التواصل.";
 
   const social = clean(d.social.url);
   if (social && !socialUrl(social)) e["social.url"] = "اكتب رابط الصفحة كاملاً أو اسم الحساب مثل @mystore.";
 
-  if (d.colors.mode === "logo" && !d.logo.key && !d.logo.team) e["colors.mode"] = "ارفع الشعار عشان ناخد الألوان منه، أو اختر طريقة تانية.";
+  if (d.colors.mode === "logo" && !d.logo.key && !d.logo.team) e["colors.mode"] = "ارفعوا الشعار لنستخرج الألوان منه، أو اختاروا طريقة أخرى.";
 
   // المنتجات: كل منتج يضيفه العميل يلزمه نص (لون، مقاس، سعر، أي تفصيلة). الصور اختيارية. بطاقة فارغة تماماً تُتجاهل.
   for (const p of d.products.items) if (!clean(p.text) && p.images.length) e[`products.${p.id}`] = "اكتب أي كلام عن المنتج دا (اسمه، لونه، مقاسه، سعره…).";

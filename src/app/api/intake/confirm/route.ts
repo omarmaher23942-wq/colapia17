@@ -1,7 +1,7 @@
 // تأكيد بريد العميل (رابط في بريد استلام الطلب). البريد المؤكد هو حساب دخول لوحة المتجر لاحقاً.
 //
 // GET لا يغيّر شيئاً: فاحصو الروابط في صناديق البريد وكاشفات المعاينة يفتحون كل رابط تلقائياً، ولو أكّد GET لأصبحت
-// «مؤكد» في اللوحة بلا أن يفتحه صاحب البريد. لذلك GET يعرض صفحة بزر «أكّد بريدي» يرسل POST، والتأكيد هناك فقط.
+// «مؤكد» في اللوحة بلا أن يفتحه صاحب البريد. لذلك GET يعرض صفحة بزر «تأكيد البريد» يرسل POST، والتأكيد هناك فقط.
 import { NextResponse } from "next/server";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   if (!p) return invalid();
   return page(
     "تأكيد البريد",
-    `<h1>أكّد بريدك</h1><p>اضغط الزر عشان نتأكد إن البريد ده بتاعك.</p><form method="post" action="${esc(base())}/api/intake/confirm?r=${esc(p.id)}&amp;t=${esc(p.token)}"><button class="btn" type="submit">أكّد بريدي</button></form>`,
+    `<h1>تأكيد البريد</h1><p>اضغطوا الزر لنتأكد أن هذا البريد يخصكم.</p><form method="post" action="${esc(base())}/api/intake/confirm?r=${esc(p.id)}&amp;t=${esc(p.token)}"><button class="btn" type="submit">تأكيد البريد</button></form>`,
   );
 }
 
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
     if (done) await db.insert(storeRequestEvents).values({ requestId: p.id, type: "note", internalNote: "العميل أكّد بريده", actor: "client" });
   } catch (e) {
     console.error("[intake/confirm]", e);
-    return page("تعذر التأكيد", `<h1>حصل خطأ مؤقت</h1><p>جرّب تاني بعد شوية من نفس الرابط.</p>`, 500);
+    return page("تعذر التأكيد", `<h1>حدث خطأ مؤقت</h1><p>أعيدوا المحاولة بعد قليل من الرابط نفسه.</p>`, 500);
   }
   return NextResponse.redirect(`${base()}/follow/${derivedToken("track", p.id)}?confirmed=1`, 303);
 }

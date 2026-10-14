@@ -111,6 +111,6 @@ export async function POST(req: Request) {
   } catch (e) {
     if (isMissingTable(e)) return json({ error: "unavailable", message: "الاستمارة بتتجهز، جرّب بعد قليل." }, 503);
     console.error("[intake/submit]", e);
-    return json({ error: "server", message: "حصل خطأ أثناء الإرسال. لسه ما اتبعتش. سيب الصفحة مفتوحة وجرّب تاني." }, 500);
+    return json({ error: "server", message: "حدث خطأ أثناء الإرسال ولم يُرسل الطلب بعد. أبقوا الصفحة مفتوحة وأعيدوا المحاولة." }, 500);
   }
 }

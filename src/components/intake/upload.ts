@@ -17,7 +17,7 @@ export async function prepareImage(f: File): Promise<File> {
     return new File([c], `${f.name.replace(/\.[^.]+$/, "") || "image"}.${EXT[type] ?? "jpg"}`, { type });
   } catch {
     if (ACCEPTED.has(f.type)) return f;
-    throw new Error("الصيغة دي مش مدعومة. الصيغ المتاحة JPG أو PNG.");
+    throw new Error("هذه الصيغة غير مدعومة. الصيغ المتاحة JPG وPNG وWEBP.");
   }
 }
 
