@@ -27,6 +27,7 @@ import { productionSla } from "@/agency/settings";
 import { stores } from "@/db/schema";
 import { storeUrl } from "@/lib/utils";
 import { githubConfigured } from "@/agency/github";
+import { hasFolderData } from "@/stores/resolve";
 import { at, isGoogleMail, isLate, SOURCE_LABEL } from "@/components/platform/requests/format";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +182,7 @@ export default async function RequestDetail({ params }: { params: Promise<{ id: 
             storeUrl={storeUrl(slug)}
             previewUrl={process.env.STORE_PREVIEW_KEY ? storeUrl(slug, `/?preview=${encodeURIComponent(process.env.STORE_PREVIEW_KEY)}`) : null}
             github={githubConfigured()}
+            folderBuilt={hasFolderData(slug)}
           />
         </section>
       ) : null}

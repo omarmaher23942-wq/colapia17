@@ -28,6 +28,8 @@ export const STORE_REGISTRY: Record<string, StoreEntry> = {
     blocks: {},
     slots: {},
     pages: {},
+    blueprint: () => import("../../stores/nor-llmlabs/blueprint.json"),
+    seed: () => import("../../stores/nor-llmlabs/seed.json"),
   },
   "nova": {
     meta: {"slug":"nova","name":"نوفا ستايل"},

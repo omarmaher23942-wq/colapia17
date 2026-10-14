@@ -28,6 +28,19 @@ export async function loadSlot<K extends keyof StoreEntry["slots"]>(subdomain: s
   return load ? ((await load()).default as Awaited<ReturnType<NonNullable<StoreEntry["slots"][K]>>>["default"]) : null;
 }
 
+/** هل في مجلد المتجر المنشور blueprint.json أو seed.json (بناه الفريق قبل التجهيز)؟ */
+export function hasFolderData(subdomain: string): boolean {
+  const e = storeEntry(subdomain);
+  return Boolean(e?.blueprint || e?.seed);
+}
+
+/** blueprint.json وseed.json كما نُشرا في مجلد المتجر (null لما لا يوجد). يفحصهما المستدعي بمخططيهما. */
+export async function storeFolderData(subdomain: string): Promise<{ blueprint: unknown; seed: unknown }> {
+  const e = storeEntry(subdomain);
+  const [bp, seed] = await Promise.all([e?.blueprint?.(), e?.seed?.()]);
+  return { blueprint: bp?.default ?? null, seed: seed?.default ?? null };
+}
+
 /** صفحة خاصة بمسارها (a أو a/b)، بأحرف صغيرة كما في أسماء الملفات. */
 export async function loadPage(subdomain: string, path: string) {
   const pages = storeEntry(subdomain)?.pages;

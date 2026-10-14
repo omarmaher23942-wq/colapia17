@@ -345,9 +345,10 @@ const provisionSchema = z.object({ id: z.string().uuid() });
 
 /**
  * «جهّز المتجر»: المتجر على <slug>.colapia.com خلف بوابة «قيد التجهيز» بمسودة أولى من الاستمارة، ومجلد
- * stores/<slug>/ في فرع build/<slug>-<round> (إن ضُبط توكن GitHub؛ وإلا ZIP من صفحة الطلب).
+ * stores/<slug>/ في فرع build/<slug>-<round> (إن ضُبط توكن GitHub؛ وإلا ZIP من صفحة الطلب). وإن كان مجلد المتجر مبنياً
+ * ومنشوراً قبل التجهيز يُزرع منه (agency/provision.ts) ولا يُكتب الفرع: كان سيكتب المسودة الآلية فوق ما بناه الفريق.
  */
-export async function provisionRequestAction(raw: z.input<typeof provisionSchema>): Promise<Result<{ storeId: string; branchUrl: string | null; missingPrice: number }>> {
+export async function provisionRequestAction(raw: z.input<typeof provisionSchema>): Promise<Result<{ storeId: string; branchUrl: string | null; missingPrice: number; fromFolder: boolean }>> {
   const a = await actor();
   if (!a) return DENIED;
   const p = provisionSchema.safeParse(raw);
@@ -369,9 +370,10 @@ export async function provisionRequestAction(raw: z.input<typeof provisionSchema
   const res = await provisionStore(row, slug);
   if (!res.ok) return res;
 
+  const fromFolder = res.source === "folder";
   let branchUrl: string | null = null;
   let ghError: string | null = null;
-  if (githubConfigured()) {
+  if (!fromFolder && githubConfigured()) {
     branchUrl = await writeBranch(branchFor(slug, row.round), res.files, `تجهيز متجر ${slug} (${row.code}): مسودة أولى من الاستمارة`).catch((e) => {
       ghError = e instanceof Error ? e.message.slice(0, 160) : "github";
       console.error("[agency] github branch failed", e);
@@ -380,16 +382,18 @@ export async function provisionRequestAction(raw: z.input<typeof provisionSchema
   }
   await event(row.id, a, {
     type: "provision",
-    internalNote: [
-      `جُهِّز المتجر على ${slug}.colapia.com خلف بوابة «قيد التجهيز»: ${res.draft.seed.products.length} منتج مسعّر`,
-      res.draft.missingPrice.length ? `، و${res.draft.missingPrice.length} بلا سعر (أسئلة في DELIVERY.md)` : "",
-      branchUrl ? `. الفرع: ${branchUrl}` : ghError ? `. تعذر إنشاء الفرع (${ghError}): نزّل المجلد ZIP` : ". نزّل المجلد ZIP (لا توكن GitHub)",
-    ].join(""),
+    internalNote: fromFolder
+      ? `جُهِّز المتجر على ${slug}.colapia.com خلف بوابة «قيد التجهيز» من ملفات المتجر المبنية (stores/${slug}/): التصميم و${res.products} منتج، وأسعار الشحن من الاستمارة.`
+      : [
+          `جُهِّز المتجر على ${slug}.colapia.com خلف بوابة «قيد التجهيز»: ${res.products} منتج مسعّر`,
+          res.missingPrice ? `، و${res.missingPrice} بلا سعر (أسئلة في DELIVERY.md)` : "",
+          branchUrl ? `. الفرع: ${branchUrl}` : ghError ? `. تعذر إنشاء الفرع (${ghError}): نزّل المجلد ZIP` : ". نزّل المجلد ZIP (لا توكن GitHub)",
+        ].join(""),
   });
-  await logActivity(a.id, "request.provision", `request:${row.id}`, { storeId: res.storeId, slug, branch: Boolean(branchUrl) });
+  await logActivity(a.id, "request.provision", `request:${row.id}`, { storeId: res.storeId, slug, branch: Boolean(branchUrl), source: res.source });
   refresh(row.id);
   revalidatePath("/admin/stores");
-  return { ok: true, storeId: res.storeId, branchUrl, missingPrice: res.draft.missingPrice.length };
+  return { ok: true, storeId: res.storeId, branchUrl, missingPrice: res.missingPrice, fromFolder };
 }
 
 /** إعادة كتابة مجلد المتجر في الفرع من بيانات الطلب الحالية (بعد تعديل البيانات). لا يمس القاعدة. */

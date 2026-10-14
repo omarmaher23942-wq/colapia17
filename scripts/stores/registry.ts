@@ -12,6 +12,7 @@
 //   pages/<name>.tsx        صفحة جديدة على /<name> (ومجلدات فرعية: pages/a/b.tsx = /a/b)
 //   blueprint.json          الواجهة والأقسام والنصوص (تُفحص بمخطط النواة، وكل store_block فيها يجب أن يكون له ملف)
 //   seed.json               الأقسام والمنتجات الأولى (src/stores/seed.ts)
+//   (blueprint.json وseed.json يدخلان السجل كملفين يُحمّلان عند الطلب، فيزرعهما «جهّز المتجر» على الإنتاج بدل المسودة الآلية.)
 // أي ملف في هذه المجلدات لا يطابق القواعد يوقف التوليد برسالة واضحة، فلا يصل خطأ تسمية إلى الإنتاج صامتاً.
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -37,7 +38,17 @@ const SECTION_TYPES = new Set(
 
 const storeJson = z.object({ slug: z.string().regex(SLUG_RE), name: z.string().min(1).max(80) }).passthrough();
 
-type Found = { slug: string; name: string; theme: string; sections: [string, string][]; blocks: [string, string][]; slots: [string, string][]; pages: [string, string][] };
+type Found = {
+  slug: string;
+  name: string;
+  theme: string;
+  sections: [string, string][];
+  blocks: [string, string][];
+  slots: [string, string][];
+  pages: [string, string][];
+  /** blueprint.json وseed.json الصالحان فقط: [المفتاح، مسار الاستيراد]. */
+  data: [string, string][];
+};
 
 const errors: string[] = [];
 const fail = (msg: string) => errors.push(msg);
@@ -129,6 +140,7 @@ function scanStore(slug: string): Found | null {
       return undefined;
     }
   };
+  const data: [string, string][] = [];
   if (existsSync(join(dir, "blueprint.json"))) {
     const raw = readJson("blueprint.json");
     if (raw !== undefined) {
@@ -139,6 +151,7 @@ function scanStore(slug: string): Found | null {
         for (const s of [...bp.data.home]) {
           if (s.type === "store_block" && !known.has(s.name)) fail(`stores/${slug}/blueprint.json: القسم "${s.id}" يطلب المكوّن "${s.name}" ولا يوجد blocks/${s.name}.tsx`);
         }
+        data.push(["blueprint", `../../${rel(join(dir, "blueprint.json"))}`]);
       }
     }
   }
@@ -147,10 +160,11 @@ function scanStore(slug: string): Found | null {
     if (raw !== undefined) {
       const seed = storeSeedSchema.safeParse(raw);
       if (!seed.success) issues("seed.json", seed.error.issues);
+      else data.push(["seed", `../../${rel(join(dir, "seed.json"))}`]);
     }
   }
 
-  return { slug, name: meta.name, theme, sections, blocks, slots, pages };
+  return { slug, name: meta.name, theme, sections, blocks, slots, pages, data };
 }
 
 function render(stores: Found[]): string {
@@ -166,7 +180,7 @@ function render(stores: Found[]): string {
     sections: ${loaders(s.sections, "    ")},
     blocks: ${loaders(s.blocks, "    ")},
     slots: ${loaders(s.slots, "    ")},
-    pages: ${loaders(s.pages, "    ")},
+    pages: ${loaders(s.pages, "    ")},${s.data.map(([k, p]) => `\n    ${k}: () => import(${JSON.stringify(p)}),`).join("")}
   },`,
     )
     .join("\n");

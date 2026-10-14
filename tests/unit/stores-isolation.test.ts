@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { checkAllStores, checkStoreFile } from "../../scripts/stores/guard";
 import { generate } from "../../scripts/stores/registry";
-import { loadBlock, loadPage, loadSectionOverride, loadSlot, storeEntry, storeTheme } from "@/stores/resolve";
+import { hasFolderData, loadBlock, loadPage, loadSectionOverride, loadSlot, storeEntry, storeFolderData, storeTheme } from "@/stores/resolve";
+import { STORE_REGISTRY } from "@/stores/registry.generated";
+import { blueprintSchema } from "@/blueprint/schema";
+import { storeSeedSchema } from "@/stores/seed";
 import { importSpecs } from "@/server/ownership/template";
 
 const msgs = (file: string, code: string) => checkStoreFile(file, code).map((v) => v.message);
@@ -81,6 +84,17 @@ describe("سجل المتاجر المولَّد", () => {
     expect(storeEntry("__proto__")).toBeNull();
     expect(await loadBlock("atelier", "constructor")).toBeNull();
     expect(await loadPage("atelier", "toString")).toBeNull();
+  });
+
+  it("blueprint.json وseed.json في السجل صالحان لمخططيهما («جهّز المتجر» يزرعهما)، ومتجر بلا ملفات = null", async () => {
+    for (const slug of Object.keys(STORE_REGISTRY)) {
+      const { blueprint, seed } = await storeFolderData(slug);
+      if (blueprint) expect(blueprintSchema.safeParse(blueprint).success, slug).toBe(true);
+      if (seed) expect(storeSeedSchema.safeParse(seed).success, slug).toBe(true);
+      expect(hasFolderData(slug)).toBe(Boolean(blueprint || seed));
+    }
+    expect(await storeFolderData("no-such-store")).toEqual({ blueprint: null, seed: null });
+    expect(hasFolderData("__proto__")).toBe(false);
   });
 
   it("مشروع التاجر المستقل لا يحمل مجلدات المتاجر الأخرى", () => {
