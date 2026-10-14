@@ -62,7 +62,9 @@ const collect = (o: PrepData["pack"][number]) => (o.paymentMethod === "cod" && o
 export function PrepRoom({ data, tab, scope }: { data: PrepData; tab: PrepTab; scope: PrepScope }) {
   const pieces = data.pick.reduce((n, l) => n + l.qty, 0);
   const toCollect = data.pack.reduce((n, o) => n + collect(o), 0);
-  const topSize = data.demand.flatMap((d) => d.sizes.map((s) => ({ ...s, name: d.name }))).sort((a, b) => b.sold - a.sold)[0];
+  // «الأكثر طلباً» فقط لمقاس يتقدم فعلاً؛ مع التعادل لا نختار واحداً بلا سبب.
+  const ranked = data.demand.flatMap((d) => d.sizes.map((s) => ({ ...s, name: d.name }))).sort((a, b) => b.sold - a.sold);
+  const topSize = ranked[0] && ranked[0].sold > (ranked[1]?.sold ?? 0) ? ranked[0] : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -199,9 +201,11 @@ function SizeDemandView({ data, topSize }: { data: PrepData; topSize?: { label: 
   return (
     <div className="space-y-3">
       {topSize && topSize.sold > 0 ? (
-        <p className="dash-card flex items-center gap-2 p-3 text-[13px] leading-6 text-ink">
-          <Ruler className="size-4 shrink-0 text-nova-2" aria-hidden="true" />
-          الأكثر طلباً: <b>{topSize.name}</b> مقاس <b className="tabular-nums">{topSize.label}</b> ({arCount(topSize.sold, NOUN.piece)}).
+        <p className="dash-card flex items-start gap-2 p-3 text-[13px] leading-6 text-ink">
+          <Ruler className="mt-1 size-4 shrink-0 text-nova-2" aria-hidden="true" />
+          <span className="min-w-0">
+            الأكثر طلباً: <b>{topSize.name}</b> مقاس <b className="tabular-nums">{topSize.label}</b> ({arCount(topSize.sold, NOUN.piece)}).
+          </span>
         </p>
       ) : null}
       {data.demand.map((d) => {
@@ -213,8 +217,8 @@ function SizeDemandView({ data, topSize }: { data: PrepData; topSize?: { label: 
               <div className="min-w-0 flex-1">
                 <h2 className="truncate text-[14px] font-black text-ink">{d.name}</h2>
                 <p className="mt-0.5 text-[12px] text-ink-2">
-                  بيع {fmtNum(d.sold)} في آخر {data.days === 90 ? "90 يوماً" : "30 يوماً"}
-                  {d.waiting ? <> · <BellRing className="inline size-3.5 align-[-2px] text-warn" aria-hidden="true" /> {fmtNum(d.waiting)} ينتظرون التوفر</> : null}
+                  المبيع: {arCount(d.sold, NOUN.piece)} في آخر {data.days === 90 ? "90 يوماً" : "30 يوماً"}
+                  {d.waiting ? <> · <BellRing className="inline size-3.5 align-[-2px] text-warn" aria-hidden="true" /> بانتظار التوفر: {fmtNum(d.waiting)}</> : null}
                 </p>
               </div>
               {d.waiting ? (
@@ -233,7 +237,7 @@ function SizeDemandView({ data, topSize }: { data: PrepData; topSize?: { label: 
                     <span className="h-full bg-warn/70" style={{ width: `${(s.waiting / max) * 100}%` }} />
                   </span>
                   <span className="whitespace-nowrap tabular-nums text-ink-2">
-                    {fmtNum(s.sold)} بيع{s.waiting ? ` · ${fmtNum(s.waiting)} ينتظر` : ""}
+                    {arCount(s.sold, NOUN.piece)}{s.waiting ? ` · ينتظر ${fmtNum(s.waiting)}` : ""}
                   </span>
                 </li>
               ))}
