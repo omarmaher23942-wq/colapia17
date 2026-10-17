@@ -1,0 +1,72 @@
+{
+  "videos": [
+    {
+      "id": "fashion",
+      "pexelsId": 6459996,
+      "source": "https://www.pexels.com/video/close-up-view-of-clothes-in-hanger-hanging-on-a-clothes-rack-6459996/",
+      "sourceFile": "https://videos.pexels.com/video-files/6459996/6459996-hd_1920_1080_25fps.mp4",
+      "segment": {
+        "start": 1,
+        "duration": 11
+      },
+      "description": "Linen garments (charcoal, mustard, grey) on white hangers on a light-wood rack, black dress form with yellow tape measure, warm beige wall, soft fairy lights; slow gentle camera drift. No faces, no text, no logos.",
+      "files": {
+        "mp4_1080": {
+          "path": "/demo/media/hero-fashion.mp4",
+          "sizeKB": 1314.0
+        },
+        "mp4_720": {
+          "path": "/demo/media/hero-fashion-720.mp4",
+          "sizeKB": 376.6
+        },
+        "webm_720": {
+          "path": "/demo/media/hero-fashion.webm",
+          "sizeKB": 235.5
+        },
+        "poster_jpg": {
+          "path": "/demo/media/hero-fashion.jpg",
+          "sizeKB": 92.5
+        },
+        "poster_webp": {
+          "path": "/demo/media/hero-fashion.webp",
+          "sizeKB": 46.2
+        }
+      },
+      "license": "Pexels License (free, commercial use, no attribution required)"
+    },
+    {
+      "id": "electronics",
+      "pexelsId": 8004701,
+      "source": "https://www.pexels.com/video/video-of-wireless-headset-on-a-stand-8004701/",
+      "sourceFile": "https://videos.pexels.com/video-files/8004701/8004701-uhd_3840_2160_25fps.mp4 (actual stream 2560x1440)",
+      "segment": {
+        "start": 2,
+        "duration": 11
+      },
+      "description": "Silver over-ear wireless headphones on an aluminium stand, white tabletop, soft lilac/purple studio backdrop; slow push-in. Product sits right of frame leaving negative space. No visible brand logo or text.",
+      "files": {
+        "mp4_1080": {
+          "path": "/demo/media/hero-electronics.mp4",
+          "sizeKB": 526.2
+        },
+        "mp4_720": {
+          "path": "/demo/media/hero-electronics-720.mp4",
+          "sizeKB": 187.6
+        },
+        "webm_720": {
+          "path": "/demo/media/hero-electronics.webm",
+          "sizeKB": 103.9
+        },
+        "poster_jpg": {
+          "path": "/demo/media/hero-electronics.jpg",
+          "sizeKB": 35.5
+        },
+        "poster_webp": {
+          "path": "/demo/media/hero-electronics.webp",
+          "sizeKB": 16.9
+        }
+      },
+      "license": "Pexels License (free, commercial use, no attribution required)"
+    }
+  ]
+}
