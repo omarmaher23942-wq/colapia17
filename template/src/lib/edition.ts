@@ -6,8 +6,6 @@ export const INTEGRATIONS_NAV = { label: "الربط والمفاتيح", href: 
 
 export const NO_STORE_HREF = "/setup";
 
-export const CUSTOMER_ACCOUNTS = false as boolean;
-
 export const DASHBOARD_TITLE_TEMPLATE = "%s · لوحة التحكم";
 
 export const PLATFORM_ONLY_NAV = ["/dashboard/billing", "/dashboard/store", "/dashboard/design", "/dashboard/team", "/dashboard/requests", "/dashboard/domain", "/dashboard/own"] as const;

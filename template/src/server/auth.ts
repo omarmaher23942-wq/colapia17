@@ -8,7 +8,7 @@ import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, asc, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { merchants, stores, sessions, customers } from "@/db/schema";
+import { merchants, stores, sessions } from "@/db/schema";
 import { secureToken, sha256 } from "@/lib/ids";
 import { hashPassword, verifyPassword } from "@/server/passwords";
 
@@ -17,7 +17,6 @@ const SESSION_DAYS = 30;
 
 type Merchant = typeof merchants.$inferSelect;
 type Store = typeof stores.$inferSelect;
-type Customer = typeof customers.$inferSelect;
 
 async function writeCookie(token: string) {
   const jar = await cookies();
@@ -124,29 +123,4 @@ export async function logout(_kind: "merchant" | "platform" = "merchant") {
   const token = jar.get(MERCHANT_COOKIE)?.value;
   if (token) await db.delete(sessions).where(eq(sessions.tokenHash, await sha256(token)));
   jar.delete({ name: MERCHANT_COOKIE, path: "/" });
-}
-
-// ─── حسابات العملاء ──────────────────────────────────────────────────────────
-// حساب العميل (دخول Google أو رابط بالبريد) ميزة على المنصة. في متجرك يطلب العميل ويتتبع طلبه
-// بكود الطلب ورقم موبايله، بلا حساب.
-
-export type CustomerSession = { customerId: string; customer: Customer; storeId: string } | null;
-
-export async function getCustomerSession(_storeId: string): Promise<CustomerSession> {
-  return null;
-}
-
-export async function customerLogout(_storeId: string): Promise<void> {}
-
-export async function issueCustomerMagicLink(_params: {
-  store: { id: string; subdomain: string; name: string };
-  customerId: string;
-  email: string;
-  redirectAfter: string;
-}): Promise<boolean> {
-  return false;
-}
-
-export async function consumeCustomerMagicLink(_token: string, _storeId: string): Promise<boolean> {
-  return false;
 }

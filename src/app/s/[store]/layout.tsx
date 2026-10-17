@@ -22,7 +22,6 @@ import { FrozenGate } from "@/components/storefront/FrozenGate";
 import { hostingServes, hostingState } from "@/lib/hosting";
 import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstImpressionBanner";
 import { listVisibleCategories } from "@/server/repos/catalog";
-import { getCustomerSession } from "@/server/auth";
 import { notFound } from "next/navigation";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot, storeTheme } from "@/stores/resolve";
@@ -102,10 +101,9 @@ export default async function StoreLayout({ children, params }: Props) {
   }
 
   // من هنا، status إما review | trial | active
-  const [rawBp, categories, customerSession] = await Promise.all([
+  const [rawBp, categories] = await Promise.all([
     getBlueprintOrNull(store.id),
     listVisibleCategories(store.id),
-    getCustomerSession(store.id),
   ]);
 
   // دفاع أخير: لو الـ blueprint غير موجود لأي سبب (بيانات تالفة).
@@ -135,15 +133,6 @@ export default async function StoreLayout({ children, params }: Props) {
     />
   );
 
-  const customer = customerSession
-    ? {
-        id: customerSession.customer.id,
-        name: customerSession.customer.name,
-        email: customerSession.customer.email,
-        avatarUrl: customerSession.customer.avatarUrl,
-      }
-    : null;
-
   return (
     <StoreProvider
       value={{
@@ -156,7 +145,6 @@ export default async function StoreLayout({ children, params }: Props) {
         shipping: bp.shipping,
         acceptingOrders: store.acceptingOrders,
         vacationMessage: store.vacationMessage,
-        customer,
         copy: bp.copy,
         design: bp.design,
         cardStyle: bp.theme.productCardStyle,

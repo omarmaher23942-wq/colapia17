@@ -50,7 +50,6 @@ type PM = "cod" | "vodafone_cash" | "instapay";
 type Form = {
   name: string;
   phone: string;
-  email: string;
   altPhone: string;
   governorate: string;
   city: string;
@@ -126,7 +125,6 @@ export function CheckoutForm({
   const [f, setF] = useState<Form>(() => ({
     name: "",
     phone: "",
-    email: "",
     altPhone: "",
     governorate: "",
     city: "",
@@ -315,7 +313,6 @@ export function CheckoutForm({
       try {
         const r = await placeOrderAction(subdomain, {
           ...f,
-          email: f.email || undefined,
           altPhone: f.altPhone || undefined,
           city: f.city || undefined,
           landmark: f.landmark || undefined,
@@ -360,7 +357,7 @@ export function CheckoutForm({
     ) : null;
 
   const shownSub = quote?.subtotal ?? localSub;
-  const showExtras = extras || Boolean(f.email || f.notes) || err?.field === "email";
+  const showExtras = extras || Boolean(f.notes);
   const showCode = codeOpen || Boolean(f.discountCode) || Boolean(quote?.discountError);
   const shippingReady = !!quote && quote.shipping !== null;
 
@@ -459,29 +456,6 @@ export function CheckoutForm({
                 {fieldError("phone")}
               </div>
 
-              {showExtras ? (
-              <div className="sm:col-span-2">
-                <label htmlFor="co-email" className="mb-1 block text-xs font-bold">
-                  بريدك <span className="font-medium opacity-60">(اختياري: نبلغك عليه بكل خطوة في طلبك)</span>
-                </label>
-                <input
-                  id="co-email"
-                  type="email"
-                  className={cn(F, "font-mono")}
-                  style={inputStyle}
-                  placeholder="name@example.com"
-                  autoComplete="email"
-                  inputMode="email"
-                  dir="ltr"
-                  value={f.email}
-                  onChange={(e) => set("email", e.target.value.trim())}
-                  maxLength={120}
-                  aria-invalid={!!(err?.field === "email")}
-                />
-                {fieldError("email")}
-              </div>
-              ) : null}
-
               <div>
                 <label htmlFor="co-gov" className="mb-1 block text-xs font-bold">المحافظة *</label>
                 <div className="relative">
@@ -565,7 +539,7 @@ export function CheckoutForm({
             </div>
             ) : (
               <button type="button" onClick={() => setExtras(true)} className="text-xs font-bold underline underline-offset-4 opacity-70 hover:opacity-100">
-                + بريد لمتابعة الطلب أو ملاحظة (اختياري)
+                + إضافة ملاحظة للطلب (اختياري)
               </button>
             )}
           </section>

@@ -32,7 +32,6 @@ const REVIEWED_MIXED = new Set([
   "src/server/actions/motion.ts",
   "src/server/actions/platform-stores-governance.ts",
   "src/server/actions/shipping.ts",
-  "src/server/auth.ts",
 ]);
 
 function walk(dir: string): string[] {

@@ -335,7 +335,7 @@ export async function buildStoreProject(root: ProjectRoot, inj: StoreInjection):
     ? ((JSON.parse(await src.read("package-lock.json")) as { packages?: Record<string, { version?: string }> }).packages ?? {})
     : {};
   const installed = (name: string) => lock[`node_modules/${name}`]?.version ?? src.installedVersion(name);
-  // الاعتماديات الندية الإلزامية (مثل three لـ model-viewer) تُضاف بإصدار المنصة نفسه، فيكون التثبيت حتمياً.
+  // الاعتماديات الندية الإلزامية (مثل اعتمادية ندية تطلبها مكتبة أخرى) تُضاف بإصدار المنصة نفسه، فيكون التثبيت حتمياً.
   const pkgJson = JSON.parse(storePackageJson(inj.subdomain, packages, platformPkg, installed)) as { dependencies: Record<string, string> };
   const lockMeta = lock as Record<string, { version?: string; peerDependencies?: Record<string, string>; peerDependenciesMeta?: Record<string, { optional?: boolean }> }>;
   for (const name of Object.keys(pkgJson.dependencies)) {

@@ -426,66 +426,6 @@ export async function sendMerchantNewOrderEmail(args: {
   });
 }
 
-export async function sendCustomerOrderConfirmationEmail(args: {
-  customerEmail: string;
-  customerName: string;
-  storeName: string;
-  storeSubdomain: string;
-  storeId: string;
-  orderCode: string;
-  totalAmount: string;
-  trackingUrl: string;
-  items?: Array<{ name: string; variant?: string; qty: number; total: string }>;
-  logoUrl?: string;
-  primaryColor?: string;
-}) {
-  const { OrderConfirmationCustomerEmail } = await import(
-    "./email-templates/OrderConfirmationCustomerEmail"
-  );
-  return sendTemplatedEmail({
-    to: args.customerEmail,
-    subject: `تم استلام طلبك ${args.orderCode} من ${args.storeName}`,
-    element: OrderConfirmationCustomerEmail(args),
-    senderKind: "orders",
-    fromName: args.storeName,
-    storeSubdomain: args.storeSubdomain,
-    storeId: args.storeId,
-    entityId: args.orderCode,
-    tags: [{ name: "category", value: "order_customer" }],
-    tracking: true,
-  });
-}
-
-export async function sendCustomerOrderShippedEmail(args: {
-  customerEmail: string;
-  customerName: string;
-  storeName: string;
-  storeSubdomain: string;
-  storeId: string;
-  orderCode: string;
-  trackingNumber: string;
-  courierName: string;
-  trackingUrl: string;
-  logoUrl?: string;
-  primaryColor?: string;
-}) {
-  const { OrderShippedEmail } = await import(
-    "./email-templates/OrderShippedEmail"
-  );
-  return sendTemplatedEmail({
-    to: args.customerEmail,
-    subject: `طلبك ${args.orderCode} في الطريق إليك`,
-    element: OrderShippedEmail(args),
-    senderKind: "orders",
-    fromName: args.storeName,
-    storeSubdomain: args.storeSubdomain,
-    storeId: args.storeId,
-    entityId: args.orderCode,
-    tags: [{ name: "category", value: "order_shipped" }],
-    tracking: true,
-  });
-}
-
 export async function sendBulkTemplated(
   items: SendTemplatedOptions[],
   options: { concurrency?: number; delayMs?: number } = {}

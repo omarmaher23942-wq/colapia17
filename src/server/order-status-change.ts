@@ -1,11 +1,9 @@
 import "server-only";
-// order-status-change.ts — تغيير حالة طلب بكل آثاره (السجل، المخزون عند الإغلاق وإعادة الفتح، الحدث الحي، بريد العميل).
+// order-status-change.ts — تغيير حالة طلب بكل آثاره (السجل، المخزون عند الإغلاق وإعادة الفتح، الحدث الحي). لا بريد لزبائن التاجر.
 // يستخدمه التاجر من لوحته (actions/orders.ts) والعميل من رابط التأكيد (actions/order-confirm.ts) بنفس القواعد.
-import { after } from "next/server";
 import { and, eq, sql } from "drizzle-orm";
 import type { getTenantDb } from "@/db/tenant";
 import { orders, orderItems } from "@/db/schema";
-import { notifyCustomerOfStatus } from "@/server/order-notify";
 import { stockMovement } from "@/server/inventory";
 import { emitOrderStatusChanged } from "@/server/realtime/emitters";
 import { dbErrorInfo, PG_CHECK } from "@/lib/db-errors";
@@ -86,11 +84,6 @@ export async function applyOrderStatus(
     changedAt: now.toISOString(),
   });
 
-  after(() =>
-    notifyCustomerOfStatus({ id: s.storeId, subdomain: s.subdomain }, o, status).catch((e) =>
-      console.error("[orders] customer notify failed:", e)
-    )
-  );
   return { ok: true };
 }
 

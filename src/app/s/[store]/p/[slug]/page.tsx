@@ -12,9 +12,6 @@ import { Markdown } from "@/components/storefront/Markdown";
 import { RecentlyViewed } from "@/components/storefront/RecentlyViewed";
 import { ProductReviews } from "@/components/storefront/product/ProductReviews";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
-import { Product3DViewer } from "@/components/storefront/Product3DViewer";
-import { ARPreviewButton } from "@/components/storefront/ARPreviewButton";
-import { Product360SpinViewer } from "@/components/storefront/Product360SpinViewer";
 import { cn } from "@/lib/utils";
 import { productMetadata, productJsonLd, breadcrumbJsonLd } from "@/lib/storefront-seo";
 import { jsonLdString } from "@/lib/json-ld";
@@ -48,9 +45,6 @@ export default async function ProductPage({ params }: P) {
     bp.productPage.showReviews ? productReviews(store.id, p.id) : [],
   ]);
   const avg = p.ratingCount ? p.ratingSum / p.ratingCount : 0;
-  // استخراج صور الـ 360 إذا كانت موجودة (مثال: صور تنتهي بـ _360)
-  const spinImages = p.images.filter(img => img.url.includes("_360")).map(img => img.url);
-  const normalImages = p.images.filter(img => !img.url.includes("_360"));
 
   const jsonLd = [
     productJsonLd(store, bp.brand.name, p),
@@ -69,22 +63,8 @@ export default async function ProductPage({ params }: P) {
         <div className="space-y-4">
           {/* View Transition Name للصورة الرئيسية */}
           <div style={{ viewTransitionName: `product-image-${p.id}` }}>
-            {spinImages.length > 0 ? (
-              <Product360SpinViewer images={spinImages} />
-            ) : p.model3dUrl ? (
-              <div className="aspect-square rounded-3xl overflow-hidden border" style={{ borderColor: "var(--border)" }}>
-                <Product3DViewer src={p.model3dUrl} iosSrc={p.modelUsdzUrl || undefined} alt={p.name} />
-              </div>
-            ) : (
-              <ProductGallery images={normalImages} name={p.name} immersive={bp.productPage.layout === "immersive"} />
-            )}
+            <ProductGallery images={p.images} name={p.name} immersive={bp.productPage.layout === "immersive"} />
           </div>
-
-          {p.isArEnabled && p.model3dUrl && (
-            <div className="flex justify-center">
-              <ARPreviewButton src={p.model3dUrl} iosSrc={p.modelUsdzUrl || undefined} alt={p.name} />
-            </div>
-          )}
         </div>
 
         {/* Product Details Area */}

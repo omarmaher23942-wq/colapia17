@@ -11,9 +11,6 @@ export const INTEGRATIONS_NAV = { label: "امتلك متجرك", href: "/dashbo
 /** وجهة التاجر الذي لا متجر له بعد. */
 export const NO_STORE_HREF = "/start";
 
-/** حسابات العملاء (دخول Google/رابط بالبريد) ميزة على المنصة؛ في مشروع التاجر يُتتبع الطلب بالكود. */
-export const CUSTOMER_ACCOUNTS = true as boolean;
-
 /** لاحقة عناوين صفحات اللوحة في تبويب المتصفح. */
 export const DASHBOARD_TITLE_TEMPLATE = "%s · Colapia";
 

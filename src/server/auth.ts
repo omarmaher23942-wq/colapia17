@@ -1,43 +1,35 @@
-// auth.ts — جلسات التجار والعملاء ومستخدمي المنصة.
+// auth.ts — جلسات التجار ومستخدمي المنصة (لا حسابات للمشترين: ميزاتهم على أجهزتهم).
 //
 // قواعد العزل (لا تُكسر):
 //  1) هذا الملف server-only وليس "use server": لا تُصدَّر منه أي نقطة استدعاء للمتصفح.
 //     الواجهات التي يحتاجها العميل تمر عبر src/server/actions/* بعد التحقق.
 //  2) المتجر النشط للتاجر يُحسم من ملكية stores.merchantId فقط. sessions.storeId مجرد
 //     "اختيار" للمتجر النشط، ولا يُقبل إلا إن كان التاجر يملكه فعلاً.
-//  3) جلسة العميل محصورة بمتجر واحد، وكوكيها يحمل معرّف المتجر في اسمه.
-//  4) كوكي التاجر والمنصة على النطاق الجذري فقط (host-only) فلا تراها نطاقات المتاجر.
+//  3) كوكي التاجر والمنصة على النطاق الجذري فقط (host-only) فلا تراها نطاقات المتاجر.
 import "server-only";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { db } from "@/db/client";
-import { getTenantDb } from "@/db/tenant";
 import {
   merchants,
   stores,
   sessions,
   platformUsers,
-  customers,
-  magicLinks,
   storeMembers,
 } from "@/db/schema";
 import { NO_PERMS, OWNER_PERMS, permsFor, type StorePerms } from "@/lib/store-perms";
 import { secureToken, sha256 } from "@/lib/ids";
 import { clientEnv } from "@/lib/env";
-import { storeUrl } from "@/lib/utils";
 import { readRequestId } from "@/lib/correlation";
 import { clientIp } from "@/lib/client-ip";
 import { log } from "@/lib/logger";
-import { sendTemplatedEmail } from "@/lib/email";
 
 const MERCHANT_COOKIE = "clp_m";
 const PLATFORM_COOKIE = "clp_p";
-const CUSTOMER_COOKIE_PREFIX = "clp_c_";
 const SESSION_DAYS = 30;
-const MAGIC_LINK_TTL_MIN = 15;
 
-type SubjectType = "merchant" | "platform" | "customer";
+type SubjectType = "merchant" | "platform";
 type Merchant = typeof merchants.$inferSelect;
 type Store = typeof stores.$inferSelect;
 
@@ -47,16 +39,11 @@ function rootDomain(): string {
   return clientEnv.NEXT_PUBLIC_ROOT_DOMAIN.toLowerCase().split(":")[0] ?? "";
 }
 
-/** النطاق المشترك بين المنصة وكل المتاجر (يُستخدم لكوكي العميل فقط). */
+/** النطاق المشترك بين المنصة وكل المتاجر (لحذف كوكيز الإصدارات القديمة فقط). */
 function sharedCookieDomain(): string | undefined {
   const root = rootDomain();
   if (!root || root === "localhost" || root === "127.0.0.1") return undefined;
   return `.${root}`;
-}
-
-/** اسم كوكي العميل الخاص بمتجر معيّن: عملاء المتاجر المختلفة لا يتشاركون جلسة. */
-function customerCookieName(storeId: string): string {
-  return `${CUSTOMER_COOKIE_PREFIX}${storeId.replace(/-/g, "").slice(0, 16)}`;
 }
 
 async function writeCookie(name: string, token: string, domain?: string) {
@@ -396,203 +383,4 @@ export async function logout(kind: "merchant" | "platform") {
   await clearCookie(name);
   await clearLegacySharedCookie(name);
   log.info("auth", "logout_ok", { reqId: await readRequestId(), kind });
-}
-
-// ─── العميل (لكل متجر) ──────────────────────────────────────────────────────
-
-type Customer = typeof customers.$inferSelect;
-
-async function startCustomerSession(storeId: string, customerId: string) {
-  const token = await createSession("customer", customerId, storeId);
-  // نطاق مشترك لأن دخول Google يمر بالنطاق الجذري ثم يعود لنطاق المتجر،
-  // والعزل مضمون باسم الكوكي الخاص بالمتجر وبشرط storeId في الجلسة.
-  await writeCookie(customerCookieName(storeId), token, sharedCookieDomain());
-}
-
-export async function signInCustomerWithGoogle(
-  storeId: string,
-  identity: GoogleIdentity
-): Promise<Customer> {
-  const reqId = await readRequestId();
-  const email = identity.email.trim().toLowerCase();
-  const name = identity.name?.trim() || email.split("@")[0] || "عميل";
-
-  const tdb = await getTenantDb(storeId);
-  const [byGoogle] = await tdb
-    .select()
-    .from(customers)
-    .where(and(eq(customers.storeId, storeId), eq(customers.googleId, identity.googleId)))
-    .limit(1);
-  const [byEmail] = byGoogle
-    ? [undefined]
-    : await tdb
-        .select()
-        .from(customers)
-        .where(and(eq(customers.storeId, storeId), eq(customers.email, email)))
-        .limit(1);
-  const existing = byGoogle ?? byEmail;
-  const now = new Date();
-
-  let customer: Customer;
-  if (existing) {
-    const [updated] = await tdb
-      .update(customers)
-      .set({
-        googleId: identity.googleId,
-        avatarUrl: existing.avatarUrl ?? identity.picture ?? null,
-        email: existing.email ?? email,
-        name: existing.name || name,
-        updatedAt: now,
-      })
-      .where(and(eq(customers.id, existing.id), eq(customers.storeId, storeId)))
-      .returning();
-    if (!updated) throw new Error("customer_update_failed");
-    customer = updated;
-  } else {
-    const [created] = await tdb
-      .insert(customers)
-      .values({
-        storeId,
-        // رقم مؤقت فريد حتى يكمل العميل بياناته في أول طلب.
-        phone: `g_${identity.googleId.slice(0, 24)}`,
-        name,
-        email,
-        googleId: identity.googleId,
-        avatarUrl: identity.picture ?? null,
-      })
-      .returning();
-    if (!created) throw new Error("customer_create_failed");
-    customer = created;
-  }
-
-  if (customer.isBlocked) {
-    log.warn("auth", "customer_blocked", { reqId, storeId, userId: customer.id });
-    throw new Error("customer_blocked");
-  }
-
-  await startCustomerSession(storeId, customer.id);
-  return customer;
-}
-
-export type CustomerSession = {
-  customerId: string;
-  customer: Customer;
-  storeId: string;
-} | null;
-
-export async function getCustomerSession(storeId: string): Promise<CustomerSession> {
-  const jar = await cookies();
-  const s = await findSession(jar.get(customerCookieName(storeId))?.value, "customer");
-  if (!s || s.storeId !== storeId) return null;
-
-  const tdb = await getTenantDb(storeId);
-  const [customer] = await tdb
-    .select()
-    .from(customers)
-    .where(and(eq(customers.id, s.subjectId), eq(customers.storeId, storeId)))
-    .limit(1);
-  if (!customer || customer.isBlocked) return null;
-
-  return { customerId: customer.id, customer, storeId };
-}
-
-export async function customerLogout(storeId: string) {
-  const name = customerCookieName(storeId);
-  const jar = await cookies();
-  const token = jar.get(name)?.value;
-  if (token) {
-    await db
-      .delete(sessions)
-      .where(
-        and(
-          eq(sessions.tokenHash, await sha256(token)),
-          eq(sessions.subjectType, "customer"),
-          eq(sessions.storeId, storeId)
-        )
-      );
-  }
-  await clearCookie(name, sharedCookieDomain());
-}
-
-/**
- * يُصدر رابط دخول سريع للعميل على نطاق متجره (صالح 15 دقيقة، استخدام واحد).
- * الرابط يُستهلك عبر /account/verify على نطاق المتجر نفسه.
- */
-export async function issueCustomerMagicLink(params: {
-  store: { id: string; subdomain: string; name: string };
-  customerId: string;
-  email: string;
-  redirectAfter: string;
-}): Promise<boolean> {
-  const reqId = await readRequestId();
-  const token = secureToken();
-  try {
-    await db.insert(magicLinks).values({
-      tokenHash: await sha256(token),
-      purpose: "customer_login",
-      // العمود اسمه merchantId تاريخياً؛ هنا يحمل معرّف العميل (purpose يحدد المعنى).
-      merchantId: params.customerId,
-      storeId: params.store.id,
-      expiresAt: new Date(Date.now() + MAGIC_LINK_TTL_MIN * 60_000),
-    });
-
-    const url = storeUrl(
-      params.store.subdomain,
-      `/account/verify?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(
-        params.redirectAfter
-      )}`
-    );
-
-    const { GenericEmail } = await import("@/lib/email-templates/GenericEmail");
-    await sendTemplatedEmail({
-      to: params.email,
-      subject: `رابط الدخول إلى ${params.store.name}`,
-      element: GenericEmail({
-        storeName: params.store.name,
-        headline: "تسجيل الدخول السريع",
-        paragraphs: [
-          `اضغط الزر للدخول إلى حسابك في ${params.store.name}. الرابط صالح ${MAGIC_LINK_TTL_MIN} دقيقة ولمرة واحدة.`,
-          "لو لم تطلب هذا الرابط، تجاهل الرسالة بأمان.",
-        ],
-        buttons: [{ title: "تسجيل الدخول", url }],
-      }),
-      senderKind: "noreply",
-      tracking: false,
-    });
-    log.info("auth", "magic_link_issued", { reqId, storeId: params.store.id, userId: params.customerId });
-    return true;
-  } catch (err) {
-    log.error("auth", "magic_link_issue_failed", { reqId, storeId: params.store.id }, "", err);
-    return false;
-  }
-}
-
-/** يستهلك رابط دخول العميل ويبدأ جلسته. يُستدعى من Route Handler فقط. */
-export async function consumeCustomerMagicLink(token: string, storeId: string): Promise<boolean> {
-  const [link] = await db
-    .update(magicLinks)
-    .set({ usedAt: new Date() })
-    .where(
-      and(
-        eq(magicLinks.tokenHash, await sha256(token)),
-        eq(magicLinks.storeId, storeId),
-        eq(magicLinks.purpose, "customer_login"),
-        isNull(magicLinks.usedAt),
-        gt(magicLinks.expiresAt, new Date())
-      )
-    )
-    .returning();
-  if (!link) return false;
-
-  const tdb = await getTenantDb(storeId);
-  const [customer] = await tdb
-    .select({ id: customers.id, isBlocked: customers.isBlocked })
-    .from(customers)
-    .where(and(eq(customers.id, link.merchantId), eq(customers.storeId, storeId)))
-    .limit(1);
-  if (!customer || customer.isBlocked) return false;
-
-  await startCustomerSession(storeId, customer.id);
-  log.info("auth", "magic_link_consumed", { storeId, userId: customer.id });
-  return true;
 }

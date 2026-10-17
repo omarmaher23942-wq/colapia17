@@ -212,7 +212,6 @@ export const channels = {
 // ─── Helper: التحقق من صلاحية القناة للعميل ─────────────────────────────────
 export type ChannelAuthContext =
   | { kind: "merchant"; merchantId: string; storeIds: string[] }
-  | { kind: "customer"; customerId: string; storeId: string; orderCodes: string[] }
   | { kind: "platform"; userId: string };
 
 export function canSubscribeToChannel(
@@ -229,15 +228,6 @@ export function canSubscribeToChannel(
       if (channel === channels.store(storeId)) return true;
       if (channel === channels.presenceStore(storeId)) return true;
       if (channel.startsWith(`private-order-${storeId}-`)) return true;
-    }
-    return false;
-  }
-
-  // المشتري يشترك في طلباته + presence متجره.
-  if (ctx.kind === "customer") {
-    if (channel === channels.presenceStore(ctx.storeId)) return true;
-    for (const code of ctx.orderCodes) {
-      if (channel === channels.order(ctx.storeId, code)) return true;
     }
     return false;
   }

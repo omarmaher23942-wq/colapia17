@@ -39,7 +39,6 @@ export function StoreLab({ bp, facts, n, children }: { bp: StoreBlueprint; facts
         shipping: bp.shipping,
         acceptingOrders: true,
         vacationMessage: null,
-        customer: null,
         copy: bp.copy,
         design: bp.design,
         cardStyle: bp.theme.productCardStyle,

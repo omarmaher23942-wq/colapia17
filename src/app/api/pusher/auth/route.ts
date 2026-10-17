@@ -10,17 +10,13 @@
 //    الوحيد في الجلسة. هذا يضمن أن التاجر يشترك في قنوات كل متاجره.
 //
 // المبادئ الأمنية (بدون تغيير):
-//  - التحقق من الجلسة (merchant / customer / platform).
+//  - التحقق من الجلسة (merchant / platform). لا حسابات للمشترين.
 //  - التحقق من أن المستخدم مصرّح له بالقناة المطلوبة.
 //  - Rate limiting.
 //  - لا نكشف أي معلومات للمستخدم غير المصرّح.
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
-import { getTenantDb } from "@/db/tenant";
-import { orders } from "@/db/schema";
 import {
-  getCustomerSession,
   getMerchantSession,
   getPlatformSession,
 } from "@/server/auth";
@@ -107,7 +103,7 @@ export async function POST(req: Request) {
 
   const { socket_id, channel_name } = parsed.data;
 
-  // ─── محاولة كشف هوية المستخدم بالترتيب: platform → merchant → customer
+  // ─── محاولة كشف هوية المستخدم بالترتيب: platform → merchant
   let ctx: ChannelAuthContext | null = null;
 
   const platformUser = await getPlatformSession();
@@ -130,35 +126,6 @@ export async function POST(req: Request) {
   }
 
   if (!ctx) {
-    // المشتري: نستخرج storeId من اسم القناة presence-store-{id} أو private-store-{id}.
-    const storeIdFromChannel = extractStoreIdFromChannel(channel_name);
-    if (storeIdFromChannel) {
-      const customerSession = await getCustomerSession(storeIdFromChannel);
-      if (customerSession) {
-        // أكواد طلبات المشتري في هذا المتجر فقط (قنوات private-order-{store}-{code}).
-        const db = await getTenantDb(storeIdFromChannel);
-        const orderCodes = await db
-          .select({ code: orders.code })
-          .from(orders)
-          .where(
-            and(
-              eq(orders.storeId, storeIdFromChannel),
-              eq(orders.customerId, customerSession.customerId)
-            )
-          )
-          .limit(100);
-
-        ctx = {
-          kind: "customer",
-          customerId: customerSession.customerId,
-          storeId: storeIdFromChannel,
-          orderCodes: orderCodes.map((o) => o.code),
-        };
-      }
-    }
-  }
-
-  if (!ctx) {
     log.warn("auth", "pusher_auth_unauthenticated", { reqId }, channel_name);
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
@@ -170,12 +137,7 @@ export async function POST(req: Request) {
       "pusher_auth_forbidden",
       {
         reqId,
-        userId:
-          ctx.kind === "platform"
-            ? ctx.userId
-            : ctx.kind === "merchant"
-            ? ctx.merchantId
-            : ctx.customerId,
+        userId: ctx.kind === "platform" ? ctx.userId : ctx.merchantId,
       },
       `محاولة اشتراك غير مصرّح بها في ${channel_name}`
     );
@@ -192,8 +154,6 @@ export async function POST(req: Request) {
           name: undefined,
           avatarUrl: undefined,
         }
-      : ctx.kind === "customer"
-      ? { id: ctx.customerId }
       : { id: ctx.userId }
   );
 
@@ -203,10 +163,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json(authData);
-}
-
-function extractStoreIdFromChannel(channel: string): string | null {
-  // presence-store-{uuid} أو private-store-{uuid} أو private-order-{uuid}-{code}
-  const m = channel.match(/^(?:presence-store|private-store|private-order)-([0-9a-f-]{36})(?:-[A-Z0-9-]+)?$/i);
-  return m?.[1] ?? null;
 }

@@ -13,12 +13,11 @@ import { secureToken } from "@/lib/ids";
 const NONCE_COOKIE = "clp_oauth_nonce";
 const TTL_SECONDS = 600;
 
-export type OAuthProvider = "merchant" | "platform" | "customer";
+export type OAuthProvider = "merchant" | "platform";
 
 export type OAuthStatePayload = {
   provider: OAuthProvider;
   redirectAfter?: string;
-  storeSubdomain?: string;
 };
 
 type SignedState = OAuthStatePayload & { nonce: string };
@@ -27,8 +26,11 @@ function secretKey(): Uint8Array {
   return new TextEncoder().encode(env.AUTH_SECRET);
 }
 
-/** الكوكي مشترك بين النطاق الجذري ونطاقات المتاجر لأن دخول العميل يبدأ من متجره. */
-function nonceCookieDomain(): string | undefined {
+/**
+ * الكوكي على النطاق الجذري فقط (host-only): الدخول يبدأ وينتهي على المنصة نفسها.
+ * هذا النطاق المشترك يُستخدم فقط لحذف نسخة قديمة كانت مشتركة مع نطاقات المتاجر.
+ */
+function legacyNonceDomain(): string | undefined {
   const root = clientEnv.NEXT_PUBLIC_ROOT_DOMAIN.toLowerCase().split(":")[0] ?? "";
   if (!root || root === "localhost" || root === "127.0.0.1") return undefined;
   return `.${root}`;
@@ -42,7 +44,6 @@ export async function encodeOAuthState(payload: OAuthStatePayload): Promise<stri
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    domain: nonceCookieDomain(),
     maxAge: TTL_SECONDS,
   });
 
@@ -61,17 +62,18 @@ export async function consumeOAuthState(state: string): Promise<OAuthStatePayloa
   if (!state) return null;
   const jar = await cookies();
   const cookieNonce = jar.get(NONCE_COOKIE)?.value;
-  jar.delete({ name: NONCE_COOKIE, path: "/", domain: nonceCookieDomain() });
+  jar.delete({ name: NONCE_COOKIE, path: "/" });
+  const legacy = legacyNonceDomain();
+  if (legacy) jar.delete({ name: NONCE_COOKIE, path: "/", domain: legacy });
 
   try {
     const { payload } = await jwtVerify(state, secretKey());
     const provider = payload.provider;
-    if (provider !== "merchant" && provider !== "platform" && provider !== "customer") return null;
+    if (provider !== "merchant" && provider !== "platform") return null;
     if (!cookieNonce || payload.nonce !== cookieNonce) return null;
     return {
       provider,
       redirectAfter: typeof payload.redirectAfter === "string" ? payload.redirectAfter : undefined,
-      storeSubdomain: typeof payload.storeSubdomain === "string" ? payload.storeSubdomain : undefined,
     };
   } catch {
     return null;

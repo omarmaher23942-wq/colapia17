@@ -75,12 +75,6 @@ export const videoThumbSchema = z.object({
   duration: z.number().min(0).optional(),
 });
 
-export const model3dSchema = z.object({
-  glbUrl: z.string().url(),
-  usdzUrl: z.string().url().optional(),
-  alt: z.string().max(200).default(""),
-});
-
 export const linkTargetSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("home") }),
   z.object({ type: z.literal("all_products") }),
