@@ -1,4 +1,6 @@
 import type { Theme, Palette, AmbientBackdrop } from "./schema";
+import { ensureContrast } from "./palette";
+import { deriveCorePalette } from "./core-palette";
 
 const RADIUS: Record<Theme["radius"], string> = {
   none: "0px",
@@ -434,7 +436,7 @@ export function themeToCssVars(theme: Theme, mode: "light" | "dark" = "light") {
   const cardFgHex = ensureStrictContrast(cardHex, p.cardForeground);
   const primaryFgHex = ensureStrictContrast(primaryHex, p.primaryForeground);
   const accentFgHex = ensureStrictContrast(accentHex, p.accentForeground);
-  const mutedFgHex = isDark ? "#94a3b8" : "#64748b";
+  const mutedFgHex = ensureContrast(isDark ? "#94a3b8" : "#64748b", mutedHex, 4.5);
 
   const imageRatio =
     theme.imageRatio === "square" ? "1 / 1"
@@ -493,5 +495,12 @@ export function themeStyleSheet(theme: Theme, scope = ".storefront") {
   const typography =
     `:where(${scope}){font-family:var(--font-body);font-size:var(--font-size-base);color:var(--foreground);background:var(--background)}` +
     `:where(${scope}) :where(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);color:var(--foreground)}`;
-  return `${scope}{${css}${ambientCss};color-scheme:${theme.mode === "dark" ? "dark" : "light"}}${typography}`;
+  // الوضع التلقائي: فاتح افتراضياً ويتبع تفضيل جهاز الزائر للداكن بلوحة مشتقة بتباين AA (مع تجاوزات التاجر darkPalette).
+  const auto = theme.mode === "auto";
+  const darkCss = auto
+    ? `@media (prefers-color-scheme: dark){${scope}{${cssVarsToStyle(
+        themeToCssVars({ ...theme, mode: "dark", palette: { ...deriveCorePalette(theme.palette.primary, "dark"), ...(theme.darkPalette ?? {}) } }, "dark")
+      )};color-scheme:dark}}`
+    : "";
+  return `${scope}{${css}${ambientCss};color-scheme:${theme.mode === "dark" ? "dark" : auto ? "light dark" : "light"}}${darkCss}${typography}`;
 }

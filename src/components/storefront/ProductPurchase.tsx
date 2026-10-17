@@ -4,10 +4,11 @@
 // مسار شراء واحد فقط: «اشترِ الآن» يضع المنتج في السلة وينقل العميل لصفحة إتمام الطلب، حيث يختار
 // بوضوح متى وكيف يدفع (عند الاستلام أو مقدماً بالتحويل). لا نوافذ طلب سريع تخفي الاختيار أو تفرضه.
 // صف الثقة أسفل الأزرار يُشتق من حقائق المتجر الفعلية، فلا يَعِد بما لا يطبقه التاجر.
-import { colorFromName } from "@/lib/color-names";
+import { activeTier, deliveryRange, orderedOptionValues, sortedTiers, swatchColor, tierLabel, tierUnitPrice } from "@/lib/pdp";
+import { usePdp } from "@/store/pdp";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Minus, Plus, ShoppingBag, Share2, Check, ArrowLeft, Heart } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Check, ArrowLeft, Heart, Truck } from "lucide-react";
 import { useWishlist } from "@/store/wishlist";
 import { toast } from "sonner";
 import { Price } from "./Price";
@@ -29,7 +30,7 @@ type PurchaseProduct = Product & { variants: Variant[] };
 /** ترتيب الحقائق حسب أهميتها لقرار الشراء في صفحة المنتج. */
 const TRUST_ORDER = ["cod", "inspection", "returns", "free_shipping_over", "free_shipping", "fast_delivery", "nationwide", "defect", "wallets"];
 
-export function ProductPurchase({ product: p }: { product: PurchaseProduct; payments?: unknown }) {
+export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseProduct; zones?: { governorate: string; min: number; max: number }[] }) {
   const router = useRouter();
   const { conversion, facts, sizeGuide, storeId, subdomain, channels } = useStore();
   const t = useCopy();
@@ -44,15 +45,19 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
 
   const variant = useMemo(() => p.variants.find((v) => v.optionValues.every((val, i) => val === sel[i])), [p.variants, sel]);
   const needsVariant = p.optionNames.length > 0 && !variant;
-  const price = variant?.pricePiasters ?? p.pricePiasters;
-  const compareAt = variant?.compareAtPiasters ?? p.compareAtPiasters;
+  const basePrice = variant?.pricePiasters ?? p.pricePiasters;
+  const tiers = useMemo(() => sortedTiers(p.volumeTiers), [p.volumeTiers]);
+  const price = tierUnitPrice(basePrice, tiers, qty);
+  const compareAt = activeTier(tiers, qty) ? basePrice : (variant?.compareAtPiasters ?? p.compareAtPiasters);
   const stock = variant ? variant.stock : p.stock;
   const out = (p.trackStock && stock !== null && stock <= 0) || (variant && !variant.isAvailable);
 
   // تركيبة موجودة أصلاً (حتى لو نفدت): تبقى قابلة للاختيار مشطوبة، فيظهر «نبلغك أول ما يتوفر» لها بالذات.
   const exists = (i: number, val: string) => p.variants.some((v) => v.optionValues[i] === val && v.optionValues.every((ov, k) => k === i || !sel[k] || ov === sel[k]));
   const sizeChart = useMemo(() => chartFor(sizeGuide, p.categoryId, p.optionNames), [sizeGuide, p.categoryId, p.optionNames]);
-  const optionValues = (i: number) => Array.from(new Set(p.variants.map((v) => v.optionValues[i]!)));
+  const optionValues = (i: number) => orderedOptionValues(i, p.optionNames[i]!, p.variants, p.optionMeta);
+  const maxQty = p.trackStock && stock !== null ? Math.max(1, stock) : 99;
+  useEffect(() => setQty((q) => Math.min(q, maxQty)), [maxQty]);
   const available = (i: number, val: string) =>
     p.variants.some(
       (v) =>
@@ -68,7 +73,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
     slug: p.slug,
     name: p.name,
     imageUrl: variant?.imageUrl ?? p.images[0]?.url,
-    unitPiasters: price,
+    unitPiasters: basePrice, // خصم الكمية يطبّقه محرك التسعير في السلة
     variantLabel: variant?.optionValues.join(" / "),
     maxQty: p.trackStock ? stock : null,
   });
@@ -111,45 +116,64 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
   const toggleWish = useWishlist((st) => st.toggle);
   const [wishReady, setWishReady] = useState(false);
   useEffect(() => setWishReady(true), []);
-  const share = async () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: p.name, url });
-      } catch {
-        /* ألغى المشاركة */
-      }
-    } else {
-      await navigator.clipboard.writeText(url);
-      toast.success("تم نسخ رابط المنتج");
-    }
-  };
-
   useEffect(() => {
     if (!needsVariant) setMissing(false);
-    const root = document.querySelector<HTMLElement>("[data-purchase-block]");
-    if (!root) return;
-    root.dataset.variantId = variant?.id ?? "";
-    root.dataset.variantLabel = variant?.optionValues.join(" / ") ?? "";
-    root.dataset.pricePiasters = String(price);
-    root.dataset.stock = stock === null ? "inf" : String(stock);
-    root.dataset.out = out ? "1" : "0";
-    root.dataset.productId = p.id;
-    root.dataset.productName = p.name;
-    root.dataset.productImage = variant?.imageUrl ?? p.images[0]?.url ?? "";
-    root.dataset.productSlug = p.slug;
-  }, [variant, price, stock, out, p.id, p.name, p.images, p.slug, needsVariant]);
+  }, [needsVariant]);
+
+  const setPdp = usePdp((st) => st.set);
+  const clearPdp = usePdp((st) => st.clear);
+  useEffect(() => {
+    setPdp({
+      productId: p.id,
+      slug: p.slug,
+      name: p.name,
+      image: variant?.imageUrl ?? p.images[0]?.url ?? "",
+      variantId: variant?.id ?? "",
+      variantLabel: variant?.optionValues.join(" / ") ?? "",
+      price,
+      qty,
+      stock: p.trackStock ? stock : null,
+      out: !!out,
+      needsVariant,
+      optionNames: p.optionNames,
+      buttonsVisible: true,
+    });
+  }, [setPdp, p.id, p.slug, p.name, p.images, p.trackStock, p.optionNames, variant, price, qty, stock, out, needsVariant]);
+  useEffect(() => clearPdp, [clearPdp]);
 
   // صورة الاختيار: التركيبة المختارة، أو أول تركيبة توافق ما اختاره العميل حتى الآن (اختيار اللون وحده يكفي)،
   // فينتقل معرض الصور إليها (ProductGallery يستمع لـ clp:show-image).
-  const selectionImage = useMemo(() => {
-    if (variant?.imageUrl) return variant.imageUrl;
-    if (!sel.some(Boolean)) return null;
-    return p.variants.find((v) => v.imageUrl && v.optionValues.every((val, i) => !sel[i] || val === sel[i]))?.imageUrl ?? null;
-  }, [variant, sel, p.variants]);
+  const selectionUrls = useMemo(() => {
+    if (!sel.some(Boolean)) return [] as string[];
+    const urls: string[] = [];
+    for (const v of p.variants) {
+      if (!v.optionValues.every((val, i) => !sel[i] || val === sel[i])) continue;
+      for (const u of [v.imageUrl, ...(v.imageUrls ?? [])]) if (u && !urls.includes(u)) urls.push(u);
+    }
+    return urls;
+  }, [sel, p.variants]);
   useEffect(() => {
-    if (selectionImage) window.dispatchEvent(new CustomEvent("clp:show-image", { detail: { url: selectionImage } }));
-  }, [selectionImage]);
+    // لون له صور: يعرض المعرض صوره وحدها؛ صورة واحدة فقط: ينتقل إليها دون إخفاء البقية؛ بلا اختيار: كل الصور.
+    if (selectionUrls.length >= 2) window.dispatchEvent(new CustomEvent("clp:show-image", { detail: { urls: selectionUrls } }));
+    else {
+      window.dispatchEvent(new CustomEvent("clp:show-image", { detail: { urls: null } }));
+      if (selectionUrls[0]) window.dispatchEvent(new CustomEvent("clp:show-image", { detail: { url: selectionUrls[0] } }));
+    }
+  }, [selectionUrls]);
+
+  // موعد التوصيل: محافظة يتذكرها الجهاز، والحساب على الجهاز بعد التحميل (لا اختلاف hydration).
+  const govKey = `clp:gov:${subdomain}`;
+  const [gov, setGov] = useState("");
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    try {
+      setGov(localStorage.getItem(govKey) ?? "");
+    } catch {}
+  }, [govKey]);
+  const zone = zones.find((z) => z.governorate === gov) ?? null;
+  const etaDays = zone ? { min: zone.min, max: zone.max } : zones.length ? { min: Math.min(...zones.map((z) => z.min)), max: Math.max(...zones.map((z) => z.max)) } : null;
+  const eta = now && etaDays ? deliveryRange(now, etaDays.min, etaDays.max).text : null;
 
   // صف الثقة: صياغة التاجر إن كتبها (مفلترة بالحقائق)، وإلا أهم حقائق المتجر الفعلية.
   const trust = useMemo(() => {
@@ -170,7 +194,6 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
         <div data-variant-picker className={cn("space-y-4 rounded-2xl transition", missing && "p-3 ring-2 ring-[var(--danger)]/60")}>
           {p.optionNames.map((name, i) => {
             const values = optionValues(i);
-            const isColor = /لون|color/i.test(name);
             return (
               <div key={name}>
                 <div className="mb-2 flex items-center justify-between gap-3">
@@ -207,7 +230,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
                           can && !ok && "line-through opacity-50"
                         )}
                       >
-                        {isColor ? <span className="size-4 rounded-full border" style={{ background: colorFromLabel(val), borderColor: "var(--border)" }} aria-hidden="true" /> : null}
+                        {swatchColor(name, val, p.optionMeta) ? <span className="size-4 rounded-full border" style={{ background: swatchColor(name, val, p.optionMeta)!, borderColor: "var(--border)" }} aria-hidden="true" /> : null}
                         <span>{val}</span>
                       </button>
                     );
@@ -219,6 +242,26 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
         </div>
       ) : null}
 
+      {tiers.length ? (
+        <ul className="flex flex-wrap gap-2" aria-label="خصم الكمية">
+          {tiers.map((t) => {
+            const on = activeTier(tiers, qty)?.minQty === t.minQty;
+            return (
+              <li key={t.minQty}>
+                <button
+                  type="button"
+                  onClick={() => setQty(Math.min(t.minQty, maxQty))}
+                  disabled={t.minQty > maxQty}
+                  className={cn("rounded-full border px-3 py-1.5 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 disabled:opacity-40", on ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-[var(--primary)]" : "border-[var(--border)]")}
+                >
+                  {tierLabel(t)}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
       <div className="flex items-center gap-4">
         <span className="text-xs font-bold">الكمية</span>
         <div className="s-input flex items-center overflow-hidden border" style={{ borderColor: "var(--border)" }}>
@@ -228,13 +271,19 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
           <span className="w-12 text-center text-sm font-black tabular-nums" aria-live="polite">
             {qty}
           </span>
-          <button type="button" className="grid size-11 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(Math.min(qty + 1, stock ?? 99))} aria-label="زيادة الكمية" disabled={stock !== null && qty >= (stock ?? 0)}>
+          <button type="button" className="grid size-11 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(Math.min(qty + 1, maxQty))} aria-label="زيادة الكمية" disabled={qty >= maxQty}>
             <Plus className="size-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-2.5 pt-1 sm:flex-row">
+      {p.trackStock && stock !== null && stock > 0 && stock <= 5 && !needsVariant ? (
+        <p className="text-xs font-bold" style={{ color: "var(--danger, #b91c1c)" }} role="status">
+          متبقي {stock} {stock === 1 ? "قطعة فقط" : "قطع فقط"}
+        </p>
+      ) : null}
+
+      <div className="flex flex-col gap-2.5 pt-1 sm:flex-row" data-purchase-block>
         <button type="button" onClick={onBuyNow} disabled={!!out} className="s-btn h-12 flex-[2] text-[15px]">
           {out ? t("soldOut") : t("buyNow")}
           {!out ? <ArrowLeft className="size-4" aria-hidden="true" /> : null}
@@ -258,6 +307,36 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
         </ul>
       ) : null}
 
+      {zones.length ? (
+        <div className="rounded-2xl border p-3.5 text-sm" style={{ borderColor: "var(--border)" }}>
+          <p className="flex items-center gap-2 font-bold">
+            <Truck className="size-4 shrink-0 text-[var(--primary)]" aria-hidden="true" />
+            {eta ? <span>{gov && zone ? "يصل" : "يصل غالباً"} {eta}</span> : <span>موعد التوصيل</span>}
+          </p>
+          <label className="mt-2 flex items-center gap-2 text-xs">
+            <span className="opacity-70">المحافظة</span>
+            <select
+              value={gov}
+              onChange={(e) => {
+                setGov(e.target.value);
+                try {
+                  localStorage.setItem(govKey, e.target.value);
+                } catch {}
+              }}
+              className="s-input h-10 min-w-0 flex-1 rounded-xl border bg-transparent px-2 text-base"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <option value="">اختيار المحافظة</option>
+              {zones.map((z) => (
+                <option key={z.governorate} value={z.governorate}>
+                  {z.governorate}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
         {askHref ? (
           <a href={askHref} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs font-bold opacity-80 transition-opacity hover:opacity-100">
@@ -269,15 +348,7 @@ export function ProductPurchase({ product: p }: { product: PurchaseProduct; paym
           <Heart className="size-3.5" fill={wishReady && wished ? "currentColor" : "none"} aria-hidden="true" />
           <span>{wishReady && wished ? "في المفضلة" : "إضافة للمفضلة"}</span>
         </button>
-        <button type="button" onClick={share} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-60 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
-          <Share2 className="size-3.5" aria-hidden="true" />
-          <span>مشاركة المنتج</span>
-        </button>
       </div>
     </div>
   );
-}
-
-function colorFromLabel(label: string): string {
-  return colorFromName(label) ?? "var(--muted)";
 }

@@ -23,10 +23,12 @@ export async function GET(req: Request) {
       stock: productVariants.stock,
       isAvailable: productVariants.isAvailable,
       imageUrl: productVariants.imageUrl,
+      sortOrder: productVariants.sortOrder,
     })
     .from(productVariants)
     .innerJoin(products, eq(products.id, productVariants.productId))
     .where(and(eq(productVariants.productId, productId), eq(products.storeId, store.id), isNull(products.deletedAt)))
+    .orderBy(productVariants.sortOrder)
     .limit(200);
   return NextResponse.json({ variants: rows }, { headers: { "Cache-Control": "public, max-age=30" } });
 }

@@ -1,67 +1,60 @@
-import Link from "next/link";
 import { breadcrumbJsonLd } from "@/lib/storefront-seo";
 import { jsonLdString } from "@/lib/json-ld";
 import { publicStoreUrl } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { requireStore, getStoreBySubdomain } from "@/lib/tenant";
-import {
-  getCategoryBySlug,
-  listProductsByCategory,
-} from "@/server/repos/catalog";
-import { ProductCard } from "@/components/storefront/ProductCard";
+import { getCategoryBySlug } from "@/server/repos/catalog";
+import { collectionFacets, queryCollection, subcategories } from "@/server/repos/collection";
+import { CollectionBrowser } from "@/components/storefront/CollectionBrowser";
+import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
+import { filtersToQuery, parseFilters } from "@/lib/collection-filters";
+import type { ProductCardProduct } from "@/components/storefront/ProductCard";
 
-const SORTS = [
-  ["popular", "الأكثر طلبًا"],
-  ["newest", "الأحدث"],
-  ["price_asc", "السعر: من الأقل"],
-  ["price_desc", "السعر: من الأعلى"],
-] as const;
+type P = { params: Promise<{ store: string; slug: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ store: string; slug: string }>;
-}): Promise<Metadata> {
+const safe = (s: string) => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
+
+export async function generateMetadata({ params, searchParams }: P): Promise<Metadata> {
   const { store: sub, slug } = await params;
+  const sp = await searchParams;
   const store = await getStoreBySubdomain(sub);
-  const cat = store ? await getCategoryBySlug(store.id, decodeURIComponent(slug)) : null;
+  const cat = store ? await getCategoryBySlug(store.id, safe(slug)) : null;
   if (!cat || !cat.isVisible) return { robots: { index: false } };
   const path = `/c/${encodeURIComponent(cat.slug)}`;
+  // صفحات الفلاتر والترتيب نسخ من القسم نفسه: canonical للقسم، ولا تُفهرس.
+  const filtered = Object.keys(sp).length > 0;
   return {
     title: cat.name,
     description: cat.description ?? undefined,
     alternates: { canonical: path },
+    robots: filtered ? { index: false, follow: true } : undefined,
     openGraph: { title: cat.name, url: path, images: cat.imageUrl ? [cat.imageUrl] : undefined },
   };
 }
 
-export default async function CategoryPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ store: string; slug: string }>;
-  searchParams: Promise<{ sort?: string; page?: string }>;
-}) {
+export default async function CategoryPage({ params, searchParams }: P) {
   const { store: sub, slug } = await params;
-  const { sort = "popular", page = "1" } = await searchParams;
-
   const store = await requireStore(sub);
-  const cat = await getCategoryBySlug(store.id, decodeURIComponent(slug));
+  const cat = await getCategoryBySlug(store.id, safe(slug));
   // القسم الذي أخفاه التاجر لا تُفتح صفحته (منتجاته تبقى ظاهرة في المتجر).
   if (!cat || !cat.isVisible) notFound();
 
-  const rows = await listProductsByCategory(
-    store.id,
-    cat.id,
-    sort,
-    Number(page)
-  );
+  const filters = parseFilters(await searchParams);
+  const scope = { type: "category" as const, id: cat.id };
+  const [{ rows, total }, facets, subs] = await Promise.all([queryCollection(store.id, scope, filters), collectionFacets(store.id, scope), subcategories(store.id, cat.id)]);
+  const path = `/c/${encodeURIComponent(cat.slug)}`;
 
   const ld = [
     breadcrumbJsonLd(store, [
       { name: store.name, path: "/" },
-      { name: cat.name, path: `/c/${encodeURIComponent(cat.slug)}` },
+      { name: cat.name, path },
     ]),
     {
       "@context": "https://schema.org",
@@ -72,54 +65,23 @@ export default async function CategoryPage({
   ];
 
   return (
-    <div className="container-x py-8">
+    <div className="container-x py-6 md:py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} />
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl">{cat.name}</h1>
-          {cat.description && (
-            <p className="mt-1 text-muted-foreground">{cat.description}</p>
-          )}
-        </div>
-
-        <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto rounded-lg bg-muted p-1 text-[13px] sm:mx-0 sm:text-sm [scrollbar-width:none]" role="group" aria-label="ترتيب المنتجات">
-          {SORTS.map(([k, l]) => (
-            <Link
-              key={k}
-              href={`?sort=${k}`}
-              aria-current={sort === k ? "true" : undefined}
-              className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 ${
-                sort === k ? "bg-background font-bold shadow" : ""
-              }`}
-            >
-              {l}
-            </Link>
-          ))}
-        </div>
+      <Breadcrumbs items={[{ name: store.name, href: "/" }, { name: cat.name }]} />
+      <h1 className="font-heading text-2xl font-black md:text-3xl">{cat.name}</h1>
+      {cat.description ? <p className="mt-1 max-w-2xl opacity-75">{cat.description}</p> : null}
+      <div className="mt-5">
+        <CollectionBrowser
+          key={filtersToQuery(filters)}
+          basePath={path}
+          categorySlug={cat.slug}
+          initial={rows as unknown as ProductCardProduct[]}
+          total={total}
+          facets={facets}
+          filters={filters}
+          subs={subs.filter((s) => s.productCount > 0)}
+        />
       </div>
-
-      {rows.length ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {rows.map((p) => (
-            <ProductCard key={p.id} product={p as never} />
-          ))}
-        </div>
-      ) : (
-        <p className="py-20 text-center text-muted-foreground">
-          لا توجد منتجات في هذا القسم حاليًا
-        </p>
-      )}
-
-      {rows.length === 24 && (
-        <div className="mt-8 text-center">
-          <Link
-            href={`?sort=${sort}&page=${Number(page) + 1}`}
-            className="btn-brand"
-          >
-            عرض المزيد
-          </Link>
-        </div>
-      )}
     </div>
   );
 }

@@ -16,12 +16,13 @@ export default function CardsLab() {
       <CardsDemo bp={bp} />
       <div className="mx-auto max-w-5xl">
         <ProductReviews
-          avg={4.6}
-          count={5}
-          reviews={[
-            { id: "1", customerName: "منى أحمد", rating: 5, body: "الخامة ممتازة والمقاس مظبوط جداً، والتوصيل كان سريع. هطلب تاني أكيد.", imageUrls: [], isVerified: true, createdAt: new Date("2026-09-20") },
-            { id: "2", customerName: "كريم", rating: 4, body: "حلو جداً بس اللون أغمق شوية من الصورة.", imageUrls: [], isVerified: true, createdAt: new Date("2026-09-12") },
-            { id: "3", customerName: "سارة", rating: 5, body: null, imageUrls: [], isVerified: false, createdAt: new Date("2026-08-30") },
+          subdomain="lab"
+          productId="00000000-0000-0000-0000-000000000000"
+          stats={{ avg: 4.7, count: 3, dist: { 5: 2, 4: 1, 3: 0, 2: 0, 1: 0 } }}
+          initial={[
+            { id: "1", customerName: "منى أحمد", rating: 5, body: "الخامة ممتازة والمقاس مظبوط جداً، والتوصيل كان سريع. هطلب تاني أكيد.", imageUrls: [], isVerified: true, createdAt: "2026-09-20" },
+            { id: "2", customerName: "كريم", rating: 4, body: "حلو جداً بس اللون أغمق شوية من الصورة.", imageUrls: [], isVerified: true, createdAt: "2026-09-12" },
+            { id: "3", customerName: "سارة", rating: 5, body: null, imageUrls: [], isVerified: false, createdAt: "2026-08-30" },
           ]}
         />
       </div>

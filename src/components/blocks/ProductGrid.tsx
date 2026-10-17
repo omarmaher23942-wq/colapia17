@@ -11,7 +11,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { hrefFor } from "@/lib/links";
 import { cn } from "@/lib/utils";
 import { ProductCard, type ProductCardProduct } from "@/components/storefront/ProductCard";
 import { SectionShell, SectionHeading } from "@/components/storefront/SectionShell";
@@ -33,7 +32,7 @@ export function balancedColumns(n: number, desired: number): number {
 
 const COLS: Record<number, string> = { 2: "md:grid-cols-2", 3: "md:grid-cols-3", 4: "md:grid-cols-3 lg:grid-cols-4", 5: "md:grid-cols-3 lg:grid-cols-5" };
 
-export function ProductGrid({ s, products }: { s: ProductGridSection; products: GridProduct[] }) {
+export function ProductGrid({ s, products, hasMore = false, viewAll: viewAllPath = "/all" }: { s: ProductGridSection; products: GridProduct[]; hasMore?: boolean; viewAll?: string }) {
   const t = useCopy();
   const items = products.slice(0, s.limit ?? 8);
   const n = items.length;
@@ -41,8 +40,8 @@ export function ProductGrid({ s, products }: { s: ProductGridSection; products: 
 
   const variant = s.variant === "masonry" || s.variant === "bento" ? "featured_first" : s.variant === "two_rows_scroll" || s.variant === "carousel_3d" ? "carousel" : s.variant;
   const viewAll =
-    s.showViewAll && products.length > n ? (
-      <Link href={hrefFor({ type: "all_products" })} className="s-btn-ghost !min-h-10 shrink-0 text-[13px]">
+    s.showViewAll && hasMore ? (
+      <Link href={viewAllPath} className="s-btn-ghost !min-h-10 shrink-0 text-[13px]">
         {t("viewAll")} <ArrowLeft className="size-4" />
       </Link>
     ) : null;

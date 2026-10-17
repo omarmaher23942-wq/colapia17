@@ -103,8 +103,19 @@ export function productMetadata(product: ProductLike): Metadata {
 }
 
 /** JSON-LD من نوع Product لنتائج بحث غنية (السعر، التوفر، التقييم). */
-export function productJsonLd(store: TenantStore, storeName: string, product: ProductLike) {
+export function productJsonLd(
+  store: TenantStore,
+  storeName: string,
+  product: ProductLike,
+  variants: { pricePiasters: number | null; isAvailable: boolean; stock: number | null }[] = []
+) {
   const inStock = !product.trackStock || product.stock === null || product.stock > 0;
+  // أسعار التركيبات المختلفة: AggregateOffer بأقل وأعلى سعر بدل سعر واحد مضلل.
+  const prices = variants.map((v) => v.pricePiasters ?? product.pricePiasters);
+  const lo = prices.length ? Math.min(...prices) : product.pricePiasters;
+  const hi = prices.length ? Math.max(...prices) : product.pricePiasters;
+  const anyInStock = variants.length ? variants.some((v) => v.isAvailable && (!product.trackStock || v.stock === null || v.stock > 0)) : inStock;
+  const availability = anyInStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock";
   const url = publicStoreUrl(store, `/p/${encodeURIComponent(product.slug)}`);
   return {
     "@context": "https://schema.org",
@@ -115,15 +126,28 @@ export function productJsonLd(store: TenantStore, storeName: string, product: Pr
     image: product.images.map((i) => i.url),
     brand: { "@type": "Brand", name: storeName },
     url,
-    offers: {
-      "@type": "Offer",
-      url,
-      priceCurrency: "EGP",
-      price: (product.pricePiasters / 100).toFixed(2),
-      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-      itemCondition: "https://schema.org/NewCondition",
-      seller: { "@type": "Organization", name: storeName },
-    },
+    offers:
+      lo !== hi
+        ? {
+            "@type": "AggregateOffer",
+            url,
+            priceCurrency: "EGP",
+            lowPrice: (lo / 100).toFixed(2),
+            highPrice: (hi / 100).toFixed(2),
+            offerCount: variants.length,
+            availability,
+            itemCondition: "https://schema.org/NewCondition",
+            seller: { "@type": "Organization", name: storeName },
+          }
+        : {
+            "@type": "Offer",
+            url,
+            priceCurrency: "EGP",
+            price: (product.pricePiasters / 100).toFixed(2),
+            availability,
+            itemCondition: "https://schema.org/NewCondition",
+            seller: { "@type": "Organization", name: storeName },
+          },
     aggregateRating:
       product.ratingCount > 0
         ? {
@@ -173,4 +197,18 @@ export function storeJsonLd(store: TenantStore, bp: StoreBlueprint) {
       potentialAction: { "@type": "SearchAction", target: `${publicStoreUrl(store, "/search")}?q={search_term_string}`, "query-input": "required name=search_term_string" },
     },
   ];
+}
+
+/** FAQPage من الأسئلة المجاب عنها في صفحة المنتج. */
+export function questionsJsonLd(items: { question: string; answer: string }[]) {
+  if (!items.length) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.slice(0, 10).map((q) => ({
+      "@type": "Question",
+      name: q.question,
+      acceptedAnswer: { "@type": "Answer", text: q.answer },
+    })),
+  };
 }

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Star } from "lucide-react";
 import { requireStore, getBlueprint, getStoreBySubdomain } from "@/lib/tenant";
-import { getProductBySlug, frequentlyBoughtTogether, productReviews } from "@/server/repos/catalog";
+import { getProductBySlug, frequentlyBoughtTogether, productReviews, reviewStats, answeredQuestions, deliveryZones, listVisibleCategories } from "@/server/repos/catalog";
 import { ProductPurchase } from "@/components/storefront/ProductPurchase";
 import { ProductGallery } from "@/components/storefront/ProductGallery";
 import { ProductStickyBar } from "@/components/storefront/ProductStickyBar";
@@ -11,9 +12,12 @@ import { ProductCard } from "@/components/storefront/ProductCard";
 import { Markdown } from "@/components/storefront/Markdown";
 import { RecentlyViewed } from "@/components/storefront/RecentlyViewed";
 import { ProductReviews } from "@/components/storefront/product/ProductReviews";
+import { ProductQuestions } from "@/components/storefront/product/ProductQuestions";
+import { ProductViewTracker } from "@/components/storefront/product/ProductViewTracker";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
 import { cn } from "@/lib/utils";
-import { productMetadata, productJsonLd, breadcrumbJsonLd } from "@/lib/storefront-seo";
+import { productMetadata, productJsonLd, breadcrumbJsonLd, questionsJsonLd } from "@/lib/storefront-seo";
+import { arCount, NOUN } from "@/lib/format";
 import { jsonLdString } from "@/lib/json-ld";
 
 type P = { params: Promise<{ store: string; slug: string }> };
@@ -40,35 +44,55 @@ export default async function ProductPage({ params }: P) {
   const [bp, p] = await Promise.all([getBlueprint(store.id), loadProduct(store.id, slug)]);
   if (!p) notFound();
 
-  const [fbt, rv] = await Promise.all([
-    bp.conversion.recommendations.frequentlyBoughtTogether ? frequentlyBoughtTogether(store.id, p as any, 4) : { rows: [], together: false },
-    bp.productPage.showReviews ? productReviews(store.id, p.id) : [],
+  const [fbt, stats, rv, qa, zones, cats] = await Promise.all([
+    bp.conversion.recommendations.frequentlyBoughtTogether ? frequentlyBoughtTogether(store.id, p, 4) : { rows: [], together: false },
+    bp.productPage.showReviews ? reviewStats(store.id, p.id) : { count: 0, avg: 0, dist: {} as Record<number, number> },
+    bp.productPage.showReviews ? productReviews(store.id, p.id, { limit: 8 }) : [],
+    answeredQuestions(store.id, p.id),
+    deliveryZones(store.id),
+    p.categoryId ? listVisibleCategories(store.id) : [],
   ]);
-  const avg = p.ratingCount ? p.ratingSum / p.ratingCount : 0;
+  // العدد والمتوسط من التقييمات المعتمدة الفعلية لا من عدّاد مخزّن قد يتأخر.
+  const avg = stats.count ? stats.avg : p.ratingCount ? p.ratingSum / p.ratingCount : 0;
+  const ratingCount = stats.count || p.ratingCount;
+  const category = p.categoryId ? cats.find((c) => c.id === p.categoryId) : undefined;
 
-  const jsonLd = [
-    productJsonLd(store, bp.brand.name, p),
-    breadcrumbJsonLd(store, [
-      { name: bp.brand.name, path: "/" },
-      { name: p.name, path: `/p/${encodeURIComponent(p.slug)}` },
-    ]),
+  const crumbs = [
+    { name: bp.brand.name, path: "/" },
+    ...(category ? [{ name: category.name, path: `/c/${encodeURIComponent(category.slug)}` }] : []),
+    { name: p.name, path: `/p/${encodeURIComponent(p.slug)}` },
   ];
+  const answered = qa.filter((q): q is typeof q & { answer: string } => !!q.answer);
+  const jsonLd = [productJsonLd(store, bp.brand.name, p, p.variants), breadcrumbJsonLd(store, crumbs), questionsJsonLd(answered)].filter(Boolean);
 
   return (
     <div className="container-x py-6 md:py-10" dir="rtl">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(jsonLd) }} />
+      <nav aria-label="مسار التصفح" className="mb-5 flex flex-wrap items-center gap-1.5 text-[13px] opacity-75">
+        {crumbs.map((c, i) => (
+          <span key={c.path} className="flex items-center gap-1.5">
+            {i > 0 ? <span aria-hidden="true">/</span> : null}
+            {i < crumbs.length - 1 ? (
+              <Link href={c.path} className="hover:underline focus-visible:outline-none focus-visible:ring-2">
+                {c.name}
+              </Link>
+            ) : (
+              <span aria-current="page" className="font-bold">
+                {c.name}
+              </span>
+            )}
+          </span>
+        ))}
+      </nav>
       <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "lg:grid-cols-2")}>
         
         {/* Gallery Area */}
         <div className="space-y-4">
-          {/* View Transition Name للصورة الرئيسية */}
-          <div style={{ viewTransitionName: `product-image-${p.id}` }}>
-            <ProductGallery images={p.images} name={p.name} immersive={bp.productPage.layout === "immersive"} />
-          </div>
+          <ProductGallery images={p.images} videos={p.videos} name={p.name} immersive={bp.productPage.layout === "immersive"} />
         </div>
 
         {/* Product Details Area */}
-        <div className="lg:sticky lg:top-24 lg:self-start" data-purchase-block>
+        <div className="lg:sticky lg:top-24 lg:self-start">
           {p.badges.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
               {p.badges.map((b) => (
@@ -80,20 +104,20 @@ export default async function ProductPage({ params }: P) {
           )}
 
           <div className="flex items-start justify-between gap-4">
-            <h1 className="font-heading text-2xl font-black leading-tight tracking-tight sm:text-3xl" style={{ viewTransitionName: `product-title-${p.id}` }}>
+            <h1 className="font-heading text-2xl font-black leading-tight tracking-tight sm:text-3xl">
               {p.name}
             </h1>
             {bp.productPage.showShareButtons ? <ShareButton title={p.name} /> : null}
           </div>
 
-          {p.ratingCount > 0 && (
+          {ratingCount > 0 && (
             <div className="mt-2 flex items-center gap-2 text-xs">
               <div className="flex text-[var(--primary)]">
                 {Array.from({ length: 5 }).map((_, k) => (
                   <Star key={k} strokeWidth={SW} className={cn("size-4", k < Math.round(avg) ? "fill-current" : "opacity-25")} />
                 ))}
               </div>
-              <span className="font-bold opacity-80">{avg.toFixed(1)} ({p.ratingCount} تقييم)</span>
+              <a href="#reviews-title" className="font-bold opacity-80 hover:underline">{avg.toFixed(1)} ({arCount(ratingCount, NOUN.review)})</a>
             </div>
           )}
 
@@ -101,7 +125,7 @@ export default async function ProductPage({ params }: P) {
             <p className="mt-3 text-sm leading-relaxed opacity-80">{p.shortDescription}</p>
           )}
 
-          <ProductPurchase product={p as any} />
+          <ProductPurchase product={p} zones={zones} />
 
           {p.description && (
             <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
@@ -130,19 +154,27 @@ export default async function ProductPage({ params }: P) {
           </h2>
           <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
             {fbt.rows.map((x) => (
-              <ProductCard key={x.id} product={x as any} />
+              <ProductCard key={x.id} product={x} />
             ))}
           </div>
         </section>
       ) : null}
 
-      {bp.productPage.showReviews ? <ProductReviews reviews={rv} avg={avg} count={p.ratingCount} /> : null}
+      {bp.productPage.showReviews ? (
+        <ProductReviews
+          subdomain={store.subdomain}
+          productId={p.id}
+          stats={stats}
+          initial={rv.map((r) => ({ id: r.id, customerName: r.customerName, rating: r.rating, body: r.body, imageUrls: r.imageUrls, isVerified: r.isVerified, createdAt: r.createdAt.toISOString() }))}
+        />
+      ) : null}
 
-      <RecentlyViewed
-        current={{ id: p.id, slug: p.slug, name: p.name, imageUrl: p.images[0]?.url, price: p.pricePiasters }}
-      />
+      <ProductQuestions subdomain={store.subdomain} productId={p.id} items={answered.map((q) => ({ id: q.id, question: q.question, answer: q.answer, askerName: q.askerName }))} />
 
-      <ProductStickyBar product={p as any} />
+      <RecentlyViewed currentSlug={p.slug} />
+      <ProductViewTracker productId={p.id} name={p.name} price={p.pricePiasters} />
+
+      <ProductStickyBar />
     </div>
   );
 }

@@ -1,11 +1,12 @@
 import "server-only";
 import { and, desc, eq, inArray, isNull, sql, gt, ne } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
-import { categories, products, productVariants, reviews, orderItems, orders } from "@/db/schema";
+import { categories, products, productVariants, reviews, orderItems, orders, productQuestions, shippingZones } from "@/db/schema";
 import { normalizeQuery } from "@/lib/arabic";
 import { bayesianScore } from "@/lib/utils";
 import type { z } from "zod";
 import type { productSourceSchema } from "@/blueprint/schema";
+import { withCardData } from "@/blueprint/section-data";
 
 export type Product = typeof products.$inferSelect;
 export type Variant = typeof productVariants.$inferSelect;
@@ -90,6 +91,7 @@ export async function getProductBySlug(storeId: string, slug: string) {
         .select()
         .from(productVariants)
         .where(eq(productVariants.productId, p.id))
+        .orderBy(productVariants.sortOrder, productVariants.createdAt)
     : [];
   return { ...p, variants };
 }
@@ -116,16 +118,69 @@ export async function listProductsByCategory(storeId: string, categoryId: string
 export async function searchProducts(storeId: string, q: string, limit = 24) {
   const db = await getTenantDb(storeId);
   const nq = normalizeQuery(q);
-  if (!nq) return db.select().from(products).where(live(storeId)).orderBy(desc(products.orderCount)).limit(limit);
-  return db
-    .select()
-    .from(products)
-    .where(and(live(storeId), sql`(${products.searchText} % ${nq} OR ${products.searchText} ILIKE ${"%" + nq + "%"})`))
-    .orderBy(sql`similarity(${products.searchText}, ${nq}) desc`, desc(products.orderCount))
-    .limit(limit);
+  const rows = !nq
+    ? await db.select().from(products).where(live(storeId)).orderBy(desc(products.orderCount)).limit(limit)
+    : await db
+        .select()
+        .from(products)
+        .where(and(live(storeId), sql`(${products.searchText} % ${nq} OR ${products.searchText} ILIKE ${"%" + nq + "%"})`))
+        .orderBy(sql`similarity(${products.searchText}, ${nq}) desc`, desc(products.orderCount))
+        .limit(limit);
+  return withCardData(storeId, rows);
 }
 
-export async function productReviews(storeId: string, productId: string) {
+/** عدّ التقييمات المعتمدة وتوزيع النجوم بـ GROUP BY (لا من الصفحة المحمّلة فقط). */
+export async function reviewStats(storeId: string, productId: string): Promise<{ count: number; avg: number; dist: Record<number, number> }> {
+  const db = await getTenantDb(storeId);
+  const dist: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  try {
+    const rows = await db
+      .select({ rating: reviews.rating, c: sql<number>`count(*)::int` })
+      .from(reviews)
+      .where(and(eq(reviews.storeId, storeId), eq(reviews.productId, productId), eq(reviews.isApproved, true)))
+      .groupBy(reviews.rating);
+    let count = 0;
+    let sum = 0;
+    for (const r of rows) {
+      dist[r.rating] = r.c;
+      count += r.c;
+      sum += r.rating * r.c;
+    }
+    return { count, avg: count ? sum / count : 0, dist };
+  } catch {
+    return { count: 0, avg: 0, dist };
+  }
+}
+
+/** أسئلة المنتج التي أجاب عنها التاجر (تظهر للزوار فقط بعد الإجابة). */
+export async function answeredQuestions(storeId: string, productId: string, limit = 20) {
+  const db = await getTenantDb(storeId);
+  try {
+    return await db
+      .select({ id: productQuestions.id, question: productQuestions.question, answer: productQuestions.answer, askerName: productQuestions.askerName, answeredAt: productQuestions.answeredAt })
+      .from(productQuestions)
+      .where(and(eq(productQuestions.storeId, storeId), eq(productQuestions.productId, productId), eq(productQuestions.status, "answered")))
+      .orderBy(desc(productQuestions.answeredAt))
+      .limit(limit);
+  } catch {
+    return [];
+  }
+}
+
+/** مدد التوصيل لكل محافظة مفعّلة، لحساب موعد وصول حقيقي في صفحة المنتج. */
+export async function deliveryZones(storeId: string) {
+  const db = await getTenantDb(storeId);
+  try {
+    return await db
+      .select({ governorate: shippingZones.governorate, min: shippingZones.etaMinDays, max: shippingZones.etaMaxDays })
+      .from(shippingZones)
+      .where(and(eq(shippingZones.storeId, storeId), eq(shippingZones.isActive, true)));
+  } catch {
+    return [];
+  }
+}
+
+export async function productReviews(storeId: string, productId: string, opts: { limit?: number; offset?: number } = {}) {
   const db = await getTenantDb(storeId);
   try {
     return await db
@@ -143,7 +198,8 @@ export async function productReviews(storeId: string, productId: string) {
       .from(reviews)
       .where(and(eq(reviews.storeId, storeId), eq(reviews.productId, productId), eq(reviews.isApproved, true)))
       .orderBy(desc(reviews.createdAt))
-      .limit(30);
+      .limit(opts.limit ?? 8)
+      .offset(opts.offset ?? 0);
   } catch {
     return [];
   }

@@ -12,8 +12,7 @@ const SHELL = ["background", "backgroundImage", "spacing", "reveal"];
 
 /** الأقسام التي يعرضها المتجر (registry.tsx)، بالحقول التي تقرؤها. */
 export const SECTION_FIELDS: Partial<Record<Section["type"], string[]>> = {
-  hero: ["variant", "eyebrow", "headline", "subheadline", "images", "primaryCta", "secondaryCta", "spotlightProductSlug", "overlayOpacity"],
-  announcement: ["messages"],
+  hero: ["variant", "eyebrow", "headline", "subheadline", "images", "videoUrl", "primaryCta", "secondaryCta", "spotlightProductSlug", "overlayOpacity"],
   categories: ["variant", "title", "subtitle", "categorySlugs", "showProductCount"],
   product_grid: ["variant", "title", "subtitle", "source", "limit", "columnsDesktop", "showViewAll", "quickAdd", ...SHELL],
   promo_banner: ["items", ...SHELL],
@@ -39,7 +38,9 @@ export const ADDABLE_SECTIONS = (Object.keys(SECTION_FIELDS) as Section["type"][
 /** حقول بقية الأجزاء والعناصر المتداخلة (المسار كما يبنيه SchemaForm). */
 export const PATH_FIELDS: Record<string, string[]> = {
   brand: ["name", "tagline", "description", "logo", "favicon", "voice"],
-  header: ["variant", "nav", "showCategoriesMenu"],
+  header: ["variant", "nav", "showCategoriesMenu", "announcement", "bottomBar"],
+  "header.announcement": ["enabled", "items", "dismissible", "rotate"],
+  "header.announcement.items[]": ["text", "target"],
   "header.nav[]": ["label", "target"],
   footer: ["tagline", "showChannels", "showPaymentIcons"],
   conversion: ["lowStockAlert", "socialProofToasts", "exitIntentOffer", "whatsappButton", "productTrustRow", "showSavings", "recommendations", "rememberCustomer"],
@@ -47,7 +48,6 @@ export const PATH_FIELDS: Record<string, string[]> = {
   "conversion.productTrustRow[]": ["icon", "text"],
   productPage: ["layout", "showAttributesTable", "showReviews", "showShareButtons"],
   seo: ["title", "description", "ogImage", "noIndex"],
-  "section:announcement.messages[]": ["text"],
   "section:promo_banner.items[]": ["title", "text", "couponCode"],
   "section:trust_badges.items[]": ["icon", "title", "text"],
   "section:steps.items[]": ["icon", "title", "text"],
@@ -57,12 +57,12 @@ export const PATH_FIELDS: Record<string, string[]> = {
 };
 
 /** خيارات «مفعّل» داخل كائنات محرك المبيعات تبقى ظاهرة (وتختفي من غيرها: إظهار القسم من قائمة الأقسام). */
-const ENABLED_PARENTS = new Set(["conversion.lowStockAlert", "conversion.socialProofToasts", "conversion.exitIntentOffer"]);
+const ENABLED_PARENTS = new Set(["conversion.lowStockAlert", "conversion.socialProofToasts", "conversion.exitIntentOffer", "header.announcement"]);
 
 /** خيارات القوائم التي يفرّق بينها المتجر فعلاً (غيرها يُعرض كأحدها، فلا داعي لعرضه). */
 export const ENUM_OPTIONS: Record<string, string[]> = {
-  "section:hero.variant": ["split", "editorial", "collage", "product_spotlight", "centered", "fullscreen", "orbit"],
-  "section:categories.variant": ["circles", "cards", "stories"],
+  "section:hero.variant": ["video", "split", "product_spotlight"],
+  "section:categories.variant": ["circles", "grid"],
   "section:product_grid.variant": ["grid", "carousel", "featured_first", "spotlight"],
   "section:faq.variant": ["accordion", "two_columns", "chat_bubbles"],
   "section:trust_badges.variant": ["row", "cards"],
@@ -80,8 +80,8 @@ export function visibleKeys(path: string, keys: string[]): string[] {
 
 /** تصميمات قديمة يعرضها المتجر كأحد الخيارات المسموح بها (يظهر في القائمة ما يراه العميل فعلاً). */
 export const ENUM_ALIASES: Record<string, Record<string, string>> = {
-  "section:hero.variant": { cinematic: "fullscreen", video: "fullscreen", carousel: "split", kinetic: "centered", ambient: "centered", storyteller: "centered" },
-  "section:categories.variant": { bento: "cards", grid: "stories", cards_overlay: "stories", scroll: "stories", featured_hero: "stories", marquee: "stories" },
+  "section:hero.variant": { fullscreen: "video", cinematic: "video", editorial: "split", collage: "split", carousel: "split", orbit: "split", centered: "product_spotlight", kinetic: "product_spotlight", ambient: "product_spotlight", storyteller: "product_spotlight" },
+  "section:categories.variant": { cards: "grid", bento: "grid", cards_overlay: "grid", featured_hero: "grid", stories: "circles", scroll: "circles", marquee: "circles" },
   "section:product_grid.variant": { masonry: "featured_first", bento: "featured_first", two_rows_scroll: "carousel", carousel_3d: "carousel", editorial: "grid" },
   "section:faq.variant": { split: "accordion" },
   "section:trust_badges.variant": { compact_strip: "row", horizontal_marquee: "cards" },

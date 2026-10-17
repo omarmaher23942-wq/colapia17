@@ -136,7 +136,8 @@ export const heroSection = z.object({
   headline: z.string().min(1).max(90),
   subheadline: z.string().max(220).optional(),
   images: z.array(imageSchema).max(8).default([]),
-  videoUrl: z.string().url().optional(),
+  // رابط كامل أو أحد الفيديوهات الجاهزة المضمنة في المنصة.
+  videoUrl: z.union([z.string().url(), z.string().regex(/^\/demo\/media\/[\w.-]+\.(mp4|webm)$/)]).optional(),
   primaryCta: ctaSchema.optional(),
   secondaryCta: ctaSchema.optional(),
   highlights: z.array(z.object({ icon: z.string(), text: z.string().max(40) })).max(4).default([]),
@@ -520,6 +521,17 @@ export const headerSchema = z.object({
   showSearch: z.boolean().default(true),
   nav: z.array(z.object({ label: z.string().max(30), target: linkTargetSchema })).max(8).default([]),
   showCategoriesMenu: z.boolean().default(true),
+  /** شريط الإعلانات العام فوق الرأس (يحل محل قسم announcement في الرئيسية). */
+  announcement: z
+    .object({
+      enabled: z.boolean().default(true),
+      items: z.array(z.object({ text: z.string().max(120), target: linkTargetSchema.optional() })).max(5).default([]),
+      dismissible: z.boolean().default(true),
+      rotate: z.boolean().default(true),
+    })
+    .optional(),
+  /** شريط تبويب سفلي على الموبايل: الرئيسية، الأقسام، البحث، المفضلة، السلة. */
+  bottomBar: z.boolean().default(false),
 });
 
 export const footerSchema = z.object({

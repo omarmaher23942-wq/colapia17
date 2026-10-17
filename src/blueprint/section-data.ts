@@ -3,8 +3,8 @@
 // مكوّن متجر خاص على منتجات بطريقة تختلف عما تعرضه أقسام النواة.
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
-import { products, categories as categoriesTable } from "@/db/schema/catalog";
-import { reviews } from "@/db/schema";
+import { products, productVariants, categories as categoriesTable } from "@/db/schema/catalog";
+import { reviews, discounts } from "@/db/schema";
 
 // ─── Product fetching by source ────────────────────────────────────────────
 export type ProductSource =
@@ -57,13 +57,14 @@ export async function fetchProductsForSource(
         )
         .limit(1);
       if (!cat) return [];
-      q = q.where(and(base, eq(products.categoryId, cat.id)));
+      q = q.where(and(base, eq(products.categoryId, cat.id))).orderBy(asc(products.sortOrder), desc(products.createdAt));
       break;
     }
     case "manual": {
       const slugs = Array.isArray(source.slugs) ? source.slugs : [];
       if (slugs.length === 0) return [];
-      q = q.where(and(base, inArray(products.slug, slugs)));
+      // ترتيب التاجر اليدوي محفوظ (array_position) لا ترتيب القاعدة العشوائي.
+      q = q.where(and(base, inArray(products.slug, slugs))).orderBy(sql`array_position(ARRAY[${sql.join(slugs.map((x) => sql`${x}`), sql`, `)}]::text[], ${products.slug})`);
       break;
     }
     case "tag": {
@@ -74,8 +75,38 @@ export async function fetchProductsForSource(
       q = q.where(base).orderBy(asc(products.sortOrder));
   }
 
-  return q.limit(Math.max(1, Math.min(limit, 24)));
+  const rows = await q.limit(Math.max(1, Math.min(limit, 25)));
+  return withCardData(storeId, rows);
 }
+
+/** يضيف لبطاقات المنتجات تركيباتها (لألوانها ومخزونها الحقيقي) وعلامة «الأكثر مبيعاً» (أعلى 3 طلباً بثلاثة طلبات فأكثر). */
+export async function withCardData<T extends { id: string; optionNames: string[] }>(storeId: string, rows: T[]) {
+  if (!rows.length) return rows.map((r) => ({ ...r, variants: [] as CardVariant[], isBestSeller: false }));
+  const db = await getTenantDb(storeId);
+  const withOptions = rows.filter((r) => r.optionNames.length).map((r) => r.id);
+  const [variants, best] = await Promise.all([
+    withOptions.length
+      ? db
+          .select({ productId: productVariants.productId, id: productVariants.id, optionValues: productVariants.optionValues, isAvailable: productVariants.isAvailable, stock: productVariants.stock, sortOrder: productVariants.sortOrder })
+          .from(productVariants)
+          .where(and(eq(productVariants.storeId, storeId), inArray(productVariants.productId, withOptions)))
+      : Promise.resolve([]),
+    db
+      .select({ id: products.id })
+      .from(products)
+      .where(and(eq(products.storeId, storeId), eq(products.status, "active"), isNull(products.deletedAt), sql`${products.orderCount} >= 3`))
+      .orderBy(desc(products.orderCount))
+      .limit(3),
+  ]);
+  const bestIds = new Set(best.map((b) => b.id));
+  return rows.map((r) => ({
+    ...r,
+    variants: variants.filter((v) => v.productId === r.id) as CardVariant[],
+    isBestSeller: bestIds.has(r.id),
+  }));
+}
+
+export type CardVariant = { productId: string; id: string; optionValues: string[]; isAvailable: boolean; stock: number | null; sortOrder: number };
 
 // ─── Categories fetching ───────────────────────────────────────────────────
 export async function fetchCategoriesForSection(
@@ -139,4 +170,27 @@ export async function fetchApprovedReviews(storeId: string, limit: number) {
   return rows
     .filter((r) => r.text?.trim())
     .map((r) => ({ name: r.name, text: r.text!.trim(), rating: r.rating, verified: r.isVerified && Boolean(r.orderId) }));
+}
+
+
+/** أكواد الخصم الفعالة الآن (فعّال، داخل مدته، ولم يبلغ حد استخدامه) — تُعرض في اللافتات وحدها. */
+export async function fetchActiveCouponCodes(storeId: string): Promise<Set<string>> {
+  const db = await getTenantDb(storeId);
+  try {
+    const rows = await db
+      .select({ code: discounts.code })
+      .from(discounts)
+      .where(
+        and(
+          eq(discounts.storeId, storeId),
+          eq(discounts.isActive, true),
+          sql`(${discounts.startsAt} is null or ${discounts.startsAt} <= now())`,
+          sql`(${discounts.endsAt} is null or ${discounts.endsAt} > now())`,
+          sql`(${discounts.maxUses} is null or ${discounts.usedCount} < ${discounts.maxUses})`
+        )
+      );
+    return new Set(rows.map((r) => r.code.toUpperCase()));
+  } catch {
+    return new Set();
+  }
 }

@@ -307,7 +307,9 @@ export function ConversionWidgets() {
           target="_blank"
           rel="noopener noreferrer"
           aria-label="تواصل عبر واتساب"
-          className="fixed bottom-5 end-4 z-40 grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          data-wa-fab
+          style={{ bottom: "calc(1.25rem + var(--clp-bottom-offset, 0px))" }}
+          className="fixed end-4 z-40 grid size-14 place-items-center rounded-full bg-[#25D366] text-white shadow-2xl transition-transform hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
         >
           <BrandIcon brand="whatsapp" className="size-7" />
           <span className="sr-only">واتساب</span>

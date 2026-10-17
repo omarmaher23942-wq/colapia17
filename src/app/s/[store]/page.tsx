@@ -6,6 +6,7 @@ import { hostingState } from "@/lib/hosting";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
 import { getStoreFacts } from "@/server/repos/facts";
 import { truthfulBlueprint } from "@/blueprint/facts";
+import { migrateToCore } from "@/blueprint/core-migrate";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot } from "@/stores/resolve";
 import { isTeamPreview } from "@/server/store-preview";
@@ -25,7 +26,7 @@ export default async function Home({
     return <FrozenGate status={visibility.gate ?? "paused"} name={gateShowsName(visibility.gate) ? store.name : undefined} />;
   }
 
-  const bp = await getBlueprint(store.id);
+  const bp = migrateToCore(await getBlueprint(store.id));
   const facts = await getStoreFacts(store.id, bp);
   const kit = createStoreKit({ store, bp: truthfulBlueprint(bp, facts), facts });
   const ctx = { storeId: store.id, channels: bp.channels, facts, copy: bp.copy, kit };

@@ -14,7 +14,7 @@ export function hrefFor(t: LinkTarget | undefined): string {
     case "home":
       return "/";
     case "all_products":
-      return "/search";
+      return "/all";
     case "category":
       return `/c/${encodeURIComponent(t.slug)}`;
     case "product":
@@ -28,5 +28,21 @@ export function hrefFor(t: LinkTarget | undefined): string {
       return "/pages/contact";
     case "external":
       return t.url;
+  }
+}
+
+/** رابط «عرض الكل» لقسم منتجات: الصفحة التي تمثل مصدره نفسه (قسم، الأحدث، الأكثر مبيعاً، التخفيضات) لا «كل المنتجات» دائماً. */
+export function viewAllHref(source: { type: string; slug?: string } | undefined): string {
+  switch (source?.type) {
+    case "category":
+      return source.slug ? `/c/${encodeURIComponent(source.slug)}` : "/all";
+    case "newest":
+      return "/all?sort=newest";
+    case "best_sellers":
+      return "/all";
+    case "on_sale":
+      return "/all?sale=1";
+    default:
+      return "/all";
   }
 }

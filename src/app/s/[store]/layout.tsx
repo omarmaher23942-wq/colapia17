@@ -7,7 +7,9 @@ import { themeStyleSheet } from "@/blueprint/theme";
 import { designStyleSheet } from "@/blueprint/design";
 import { getStoreFacts } from "@/server/repos/facts";
 import { truthfulBlueprint } from "@/blueprint/facts";
-import { DepthController } from "@/components/storefront/DepthController";
+import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
+import { BottomBar } from "@/components/storefront/BottomBar";
+import { migrateToCore } from "@/blueprint/core-migrate";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { EditorProvider } from "@/editor/EditorProvider";
 import { Header } from "@/components/storefront/Header";
@@ -105,14 +107,16 @@ export default async function StoreLayout({ children, params }: Props) {
 
   // النصوص الحرة (الوصف وشعار الفوتر) تُعرض بعد حذف أي ادعاء لم يعد صحيحاً في سياسة المتجر الآن.
   const facts = await getStoreFacts(store.id, rawBp);
-  const bp = truthfulBlueprint(rawBp, facts);
+  const bp = migrateToCore(truthfulBlueprint(rawBp, facts));
+  // الأقسام الفارغة لا تظهر في أي مكان (القائمة والتذييل).
+  const navCategories = categories.filter((c) => c.productCount > 0);
 
   // تخصيصات هذا المتجر من مستودع المتاجر (stores/<slug>/): الجلد، والهيدر والفوتر إن كتبهما فريق البناء.
   const kit = createStoreKit({ store, bp, facts });
   const [HeaderSlot, FooterSlot] = await Promise.all([loadSlot(store.subdomain, "Header"), loadSlot(store.subdomain, "Footer")]);
   const theme = storeTheme(store.subdomain);
 
-  const coreHeader = <Header header={bp.header} brand={bp.brand} categories={categories} channels={bp.channels} />;
+  const coreHeader = <Header header={bp.header} brand={bp.brand} categories={navCategories} channels={bp.channels} />;
   const coreFooter = (
     <Footer
       footer={bp.footer}
@@ -120,7 +124,7 @@ export default async function StoreLayout({ children, params }: Props) {
       channels={bp.channels}
       pages={allPolicyPages(bp)}
       payments={bp.payments}
-      categories={categories}
+      categories={navCategories}
       facts={facts}
     />
   );
@@ -163,28 +167,28 @@ export default async function StoreLayout({ children, params }: Props) {
           data-button-style={bp.theme.buttonStyle}
           data-card-style={bp.theme.productCardStyle}
           data-theme-mode={bp.theme.mode}
-          data-motion={bp.design.motion.level}
-          data-depth={bp.design.motion.depth ? "on" : "off"}
+          data-motion="calm"
+          data-depth="off"
         >
-          <div className="s-progress" aria-hidden="true" />
           {teamPreview ? (
             <p role="status" className="fixed bottom-3 start-3 z-[60] rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-bold text-amber-950 shadow-lg" data-team-preview>
               معاينة الفريق{gated ? " — لا يراه العملاء بعد" : ""}
             </p>
           ) : null}
-          {bp.design.motion.depth ? <DepthController /> : null}
           {!store.acceptingOrders ? (
             // وضع الإجازة: يعرفه الزائر من أول صفحة، لا عند الدفع بعد أن يملأ سلته.
             <p role="status" className="s-announce px-4 py-2 text-center text-[13px] font-bold">
               {store.vacationMessage || "المتجر لا يستقبل طلبات الآن، وسنعود قريباً"}
             </p>
           ) : null}
+          {bp.header.announcement ? <AnnouncementBar ann={bp.header.announcement} /> : null}
           {HeaderSlot ? <HeaderSlot kit={kit} core={coreHeader} /> : coreHeader}
 
           <main className="flex-1">{children}</main>
 
           {FooterSlot ? <FooterSlot kit={kit} core={coreFooter} /> : coreFooter}
 
+          {bp.header.bottomBar ? <BottomBar hasCategories={navCategories.length > 0} /> : null}
           <CartDrawer />
           <PromoFromLink subdomain={store.subdomain} />
           <ConversionWidgets />

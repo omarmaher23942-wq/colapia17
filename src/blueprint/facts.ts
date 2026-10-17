@@ -77,10 +77,10 @@ export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact
   const fastest = ctx.fastestDays ?? maxDays(s.generalEta);
   if (fastest && fastest <= 3) out.push({ key: "fast_delivery", icon: "zap", title: `توصيل خلال ${fastest} أيام`, detail: `يصل طلبك عادة خلال ${s.generalEta}` });
 
-  if (s.pickupEnabled && s.pickupAddress) out.push({ key: "pickup", icon: "store", title: "استلام من المتجر", detail: `استلم طلبك بنفسك من ${s.pickupAddress}` });
+  if (s.pickupEnabled && s.pickupAddress) out.push({ key: "pickup", icon: "store", title: "استلام من المتجر", detail: `الاستلام من المتجر مباشرة: ${s.pickupAddress}` });
   if (p.vodafoneCash.enabled || p.instapay.enabled) {
     const names = [p.vodafoneCash.enabled ? "فودافون كاش" : null, p.instapay.enabled ? "إنستاباي" : null].filter(Boolean).join(" و");
-    out.push({ key: "wallets", icon: "smartphone", title: `الدفع بـ${names}`, detail: `ادفع مقدماً بتحويل ${names}` });
+    out.push({ key: "wallets", icon: "smartphone", title: `الدفع بـ${names}`, detail: `الدفع مقدماً بتحويل ${names}` });
   }
   if (bp.channels.whatsappNumber) out.push({ key: "whatsapp", icon: "message-circle", title: "رد سريع على واتساب", detail: "نرد على واتساب في أي سؤال قبل الطلب أو بعده" });
 

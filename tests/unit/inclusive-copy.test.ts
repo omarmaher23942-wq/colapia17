@@ -43,6 +43,14 @@ const ROOTS = [
   "src/server/actions/setup.ts",
   "src/server/actions/setup-import.ts",
   "src/server/actions/design.ts",
+  "src/lib/pdp.ts",
+  "src/lib/collection-filters.ts",
+  "src/lib/card-ui.ts",
+  "src/server/actions/product-page.ts",
+  "src/server/actions/collection.ts",
+  "src/blueprint/core-migrate.ts",
+  "src/blueprint/core-palette.ts",
+  "src/blueprint/registry.tsx",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.

@@ -251,7 +251,7 @@ export function flyToCart(fromEl: HTMLElement | null, imgUrl?: string) {
   const b = target.getBoundingClientRect();
 
   // حجم الانطلاق ≈ الحجم المرئي للصورة المصدرية.
-  const startSize = Math.max(48, Math.min(a.width, a.height));
+  const startSize = Math.max(48, Math.min(120, a.width, a.height));
   const endSize = 32;
 
   const img = document.createElement("img");

@@ -1,24 +1,16 @@
 "use client";
 
-// Header.tsx — رأس المتجر.
-//
-// السبب الجذري للإصلاح (تكرار "كل المنتجات"):
-// header.nav.label و categories.name قد يتطابقان نصياً، فيظهر الرابط مرتين
-// في الـ nav (مرة من nav، ومرة من categories). الحل: فلترة categories
-// لإزالة أي قسم يتطابق اسمه مع أي nav.label.
+// Header.tsx — رأس المتجر (Core).
+// - ذكي: يختفي عند النزول ويظهر عند الصعود (ويبقى ظاهراً أثناء البحث والقائمة).
+// - بحث فوري مضمّن على الحاسوب (اقتراحات من /api/storefront/suggest)، وعلى الموبايل صف بحث يُفتح بالأيقونة.
+// - أقسام: حتى 5 روابط مباشرة، وأكثر من ذلك قائمة منسدلة بالأقسام الفرعية متداخلة.
+// - الموبايل: قائمة، الشعار، بحث، سلة (المفضلة والطلبات في الشريط السفلي أو القائمة). الدرج على <dialog> أصلي.
 import { BrandIcon } from "./brand-icons";
 import { waLink } from "@/lib/whatsapp";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import {
-  Menu,
-  Search,
-  ShoppingBag,
-  Heart,
-  X,
-  Package,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Menu, Search, ShoppingBag, Heart, X, Package } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { useWishlist } from "@/store/wishlist";
 import { useHydrated } from "./CartView";
@@ -27,11 +19,67 @@ import { hrefFor } from "@/lib/links";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { VisualSearch } from "./VisualSearch";
+import { SheetDialog } from "./SheetDialog";
 import { useCopy, useStore } from "./StoreProvider";
 import type { StoreBlueprint } from "@/blueprint/schema";
 
 const SW = 1.75;
-type Cat = { id: string; name: string; slug: string };
+export type HeaderCat = { id: string; name: string; slug: string; parentId?: string | null };
+type Sugg = { slug: string; name: string; price: number; image: string | null };
+
+/** أقسام المستوى الأعلى مع أبنائها (قسم لقسم غير ظاهر يُعامل كأعلى مستوى). */
+export function groupCategories(cats: HeaderCat[]) {
+  const ids = new Set(cats.map((c) => c.id));
+  const top = cats.filter((c) => !c.parentId || !ids.has(c.parentId));
+  return top.map((t) => ({ ...t, children: cats.filter((c) => c.parentId === t.id) }));
+}
+
+function useSuggestions(q: string) {
+  const [items, setItems] = useState<Sugg[]>([]);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setItems([]);
+      return;
+    }
+    const ac = new AbortController();
+    const t = window.setTimeout(() => {
+      fetch(`/api/storefront/suggest?q=${encodeURIComponent(term)}`, { signal: ac.signal, cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { items: [] }))
+        .then((j: { items?: Sugg[] }) => setItems(j.items ?? []))
+        .catch(() => undefined);
+    }, 220);
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
+  }, [q]);
+  return items;
+}
+
+function SuggestList({ items, onPick, className }: { items: Sugg[]; onPick: () => void; className?: string }) {
+  if (!items.length) return null;
+  return (
+    <ul className={cn("overflow-hidden rounded-2xl border shadow-2xl", className)} style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-label="اقتراحات البحث">
+      {items.map((it) => (
+        <li key={it.slug}>
+          <Link href={`/p/${encodeURIComponent(it.slug)}`} onClick={onPick} className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--muted)] focus-visible:bg-[var(--muted)] focus-visible:outline-none">
+            <span className="relative size-11 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--muted)" }}>
+              {it.image ? <Image src={it.image} alt="" fill sizes="44px" className="object-cover" /> : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{it.name}</span>
+            <span className="shrink-0 text-[12px] font-black tabular-nums">{formatEgp(it.price)}</span>
+          </Link>
+        </li>
+      ))}
+      <li>
+        <button type="submit" className="w-full px-3 py-3 text-start text-[13px] font-black" style={{ color: "var(--primary)" }}>
+          عرض كل النتائج
+        </button>
+      </li>
+    </ul>
+  );
+}
 
 export function Header({
   header,
@@ -41,35 +89,13 @@ export function Header({
 }: {
   header: StoreBlueprint["header"];
   brand: StoreBlueprint["brand"];
-  categories: Cat[];
+  categories: HeaderCat[];
   channels?: StoreBlueprint["channels"];
 }) {
-  // السلة محفوظة في المتصفح والخادم يرسم صفراً: العدد يظهر بعد التركيب فقط (وإلا hydration mismatch في كل صفحة).
   const hydrated = useHydrated();
   const cartCount = useCart((s) => s.count());
   const count = hydrated ? cartCount : 0;
   const openCart = useCart((s) => s.open);
-  // اقتراحات بحث فورية: طلب واحد بعد توقف الكتابة 220ms، ويُلغى القديم عند كل حرف جديد.
-  const [q, setQ] = useState("");
-  const [sugg, setSugg] = useState<{ slug: string; name: string; price: number; image: string | null }[]>([]);
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2) {
-      setSugg([]);
-      return;
-    }
-    const ac = new AbortController();
-    const t = window.setTimeout(() => {
-      fetch(`/api/storefront/suggest?q=${encodeURIComponent(term)}`, { signal: ac.signal, cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : { items: [] }))
-        .then((j: { items?: typeof sugg }) => setSugg(j.items ?? []))
-        .catch(() => undefined);
-    }, 220);
-    return () => {
-      window.clearTimeout(t);
-      ac.abort();
-    };
-  }, [q]);
   const wishSaved = useWishlist((s) => s.slugs.length);
   const wishCount = hydrated ? wishSaved : 0;
   const { design } = useStore();
@@ -77,13 +103,19 @@ export function Header({
   const surface = design.header.surface;
   const layout = header.variant;
   const logoH = { sm: "h-7", md: "h-8 sm:h-9", lg: "h-9 sm:h-11" }[design.header.logoSize];
-  // بلا روابط مخصصة: «كل المنتجات» ثم أهم الأقسام، فلا يكون الشريط فارغاً أبداً.
-  const navLinks = header.nav.length ? header.nav : [{ label: t("allProducts"), target: { type: "all_products" as const } }];
+  const hasBottomBar = header.bottomBar;
+
+  const [q, setQ] = useState("");
+  const sugg = useSuggestions(q);
+  const [deskFocus, setDeskFocus] = useState(false);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  // «طلباتي»: طلبات هذا الجهاز محفوظة بلا حساب؛ تظهر الأيقونة متى وُجد طلب، وبشارة للطلبات الجارية.
+  const [hidden, setHidden] = useState(false);
+  const [drop, setDrop] = useState(false);
+  const dropRef = useRef<HTMLDivElement>(null);
   const [myOrders, setMyOrders] = useState<{ total: number; active: number }>({ total: 0, active: 0 });
+
   useEffect(() => {
     let alive = true;
     fetch("/api/storefront/my-orders", { cache: "no-store" })
@@ -95,79 +127,68 @@ export function Header({
     };
   }, []);
 
+  // رأس ذكي: يختفي عند النزول بعد 120px ويظهر فور أي صعود.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    let last = window.scrollY;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        setScrolled(y > 12);
+        if (y < 120) setHidden(false);
+        else if (Math.abs(y - last) > 6) setHidden(y > last);
+        last = y;
+      });
+    };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    if (!menu) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenu(false);
+    if (!drop) return;
+    const onDoc = (e: MouseEvent) => dropRef.current && !dropRef.current.contains(e.target as Node) && setDrop(false);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setDrop(false);
+    document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
     };
-  }, [menu]);
+  }, [drop]);
 
-  // إزالة الأقسام التي تطابق أي nav.label — تمنع ظهور "كل المنتجات" مرتين.
-  const uniqueCategories = useMemo(() => {
-    const taken = new Set(
-      header.nav
-        .map((n) => n.label.trim().toLowerCase())
-        .filter(Boolean)
-    );
-    return categories.filter(
-      (c) => !taken.has(c.name.trim().toLowerCase())
-    );
-  }, [header.nav, categories]);
+  const tree = useMemo(() => groupCategories(categories), [categories]);
+  const navLinks = header.nav.length ? header.nav : [{ label: t("allProducts"), target: { type: "all_products" as const } }];
+  // أكثر من 5 أقسام أو أقسام فرعية: قائمة «الأقسام» المنسدلة بدل شريط طويل.
+  const useDropdown = header.showCategoriesMenu && (tree.length > 5 || tree.some((c) => c.children.length > 0));
+  const inlineCats = header.showCategoriesMenu && !useDropdown ? tree.slice(0, 5) : [];
 
-  const hasCustomLogo =
-    brand.logo?.url &&
-    !brand.logo.url.includes("logo.png") &&
-    !brand.logo.url.includes("colapia");
-
-  const Logo = ({ compact = false }: { compact?: boolean }) => (
-    <Link
-      href="/"
-      className="flex shrink-0 items-center gap-2 font-heading leading-none"
-      aria-label={brand.name}
-    >
+  const hasCustomLogo = brand.logo?.url && !brand.logo.url.includes("logo.png") && !brand.logo.url.includes("colapia");
+  const logo = (compact = false) => (
+    <Link href="/" className="flex shrink-0 items-center gap-2 font-heading leading-none" aria-label={brand.name}>
       {hasCustomLogo ? (
-        <Image
-          src={brand.logo!.url}
-          alt={brand.name}
-          width={140}
-          height={40}
-          priority
-          className={cn(
-            "w-auto object-contain",
-            compact ? "h-7" : logoH
-          )}
-        />
+        <Image src={brand.logo!.url} alt={brand.name} width={140} height={40} priority className={cn("w-auto object-contain", compact ? "h-7" : logoH)} />
       ) : (
-        <span
-          className={cn("font-black tracking-tight", design.header.logoSize === "lg" ? "text-2xl sm:text-3xl" : design.header.logoSize === "sm" ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}
-          style={{ color: "var(--foreground)" }}
-        >
+        <span className={cn("font-black tracking-tight", design.header.logoSize === "lg" ? "text-2xl sm:text-3xl" : design.header.logoSize === "sm" ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")} style={{ color: "var(--foreground)" }}>
           {brand.name}
         </span>
       )}
     </Link>
   );
 
+  const keepOpen = search || menu || drop || deskFocus;
+  const showHeader = !hidden || keepOpen;
+
   return (
     <>
       <header
         className={cn(
-          "s-header sticky top-0 z-40 border-b transition-all duration-300",
+          "s-header sticky top-0 z-40 border-b transition-[transform,box-shadow,background] duration-300",
+          !showHeader && "-translate-y-full",
           surface === "glass" && (scrolled ? "shadow-sm backdrop-blur-xl" : "backdrop-blur-md"),
-          surface === "solid" && scrolled && "shadow-sm",
-          !scrolled && surface !== "bordered" && "border-transparent"
+          surface === "solid" && scrolled && "shadow-sm"
         )}
         style={{
           background:
@@ -175,122 +196,109 @@ export function Header({
               ? "var(--background)"
               : surface === "transparent" && !scrolled
                 ? "transparent"
-                : `color-mix(in srgb, var(--background) ${scrolled ? 88 : 60}%, transparent)`,
+                : `color-mix(in srgb, var(--background) ${scrolled ? 92 : 70}%, transparent)`,
           borderColor: scrolled || surface === "bordered" ? "var(--border)" : "transparent",
           color: "var(--foreground)",
         }}
         dir="rtl"
       >
-        <div className={cn("container-x flex h-16 items-center justify-between gap-3", layout === "centered_logo" && "md:grid md:h-20 md:grid-cols-[1fr_auto_1fr]")}>
-          <div className={cn("flex items-center gap-3", layout === "centered_logo" && "md:order-2 md:justify-center")}>
-            <button
-              type="button"
-              onClick={() => setMenu(true)}
-              className={cn("-ms-2 grid size-10 place-items-center rounded-xl opacity-80 transition-opacity hover:opacity-100", layout !== "minimal" && "md:hidden")}
-              aria-label={t("menu")}
-              aria-expanded={menu}
-            >
+        <div className="container-x flex h-16 items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setMenu(true)} className="-ms-2 grid size-11 place-items-center rounded-xl opacity-85 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 lg:hidden" aria-label={t("menu")} aria-haspopup="dialog">
               <Menu className="size-5" strokeWidth={SW} aria-hidden="true" />
             </button>
-            <Logo />
+            {logo()}
           </div>
 
-          <nav
-            className={cn("hidden items-center gap-6 text-[13px] font-bold opacity-90", layout !== "minimal" && "md:flex", layout === "centered_logo" && "md:order-1")}
-            aria-label="التنقل الرئيسي"
-          >
+          <nav className="hidden items-center gap-5 text-[14px] font-bold lg:flex" aria-label="التنقل الرئيسي">
             {navLinks.map((n) => (
-              <Link
-                key={n.label}
-                href={hrefFor(n.target)}
-                className="py-1 transition-colors hover:opacity-80"
-              >
+              <Link key={n.label} href={hrefFor(n.target)} className="py-2 transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:underline">
                 {n.label}
               </Link>
             ))}
-            {header.showCategoriesMenu
-              ? uniqueCategories
-                  .slice(0, 4)
-                  .map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`/c/${c.slug}`}
-                      className="transition-colors hover:opacity-80"
-                    >
-                      {c.name}
-                    </Link>
-                  ))
-              : null}
+            {inlineCats.map((c) => (
+              <Link key={c.id} href={`/c/${encodeURIComponent(c.slug)}`} className="py-2 transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:underline">
+                {c.name}
+              </Link>
+            ))}
+            {useDropdown ? (
+              <div ref={dropRef} className="relative">
+                <button type="button" onClick={() => setDrop((v) => !v)} aria-expanded={drop} aria-haspopup="true" className="inline-flex items-center gap-1 py-2 focus-visible:outline-none focus-visible:underline">
+                  الأقسام <ChevronDown className={cn("size-4 transition-transform", drop && "rotate-180")} aria-hidden="true" />
+                </button>
+                {drop ? (
+                  <div className="absolute start-0 top-full z-50 mt-2 max-h-[70vh] w-[min(46rem,90vw)] overflow-y-auto rounded-2xl border p-5 shadow-2xl" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                    <ul className="grid grid-cols-2 gap-x-6 gap-y-4 xl:grid-cols-3">
+                      {tree.map((c) => (
+                        <li key={c.id}>
+                          <Link href={`/c/${encodeURIComponent(c.slug)}`} onClick={() => setDrop(false)} className="block py-1 text-[14px] font-black hover:underline">
+                            {c.name}
+                          </Link>
+                          {c.children.length ? (
+                            <ul className="mt-1 space-y-0.5">
+                              {c.children.map((k) => (
+                                <li key={k.id}>
+                                  <Link href={`/c/${encodeURIComponent(k.slug)}`} onClick={() => setDrop(false)} className="block py-1 text-[13px] font-medium opacity-80 hover:opacity-100 hover:underline">
+                                    {k.name}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </nav>
 
-          <div className={cn("flex items-center gap-1.5", layout === "centered_logo" && "md:order-3 md:justify-end")}>
+          {header.showSearch ? (
+            <form action="/search" role="search" className="relative mx-2 hidden max-w-sm flex-1 lg:block" onFocus={() => setDeskFocus(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setDeskFocus(false)}>
+              <div className="flex items-center gap-2 rounded-full border px-3.5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+                <Search className="size-4 shrink-0 opacity-60" strokeWidth={SW} aria-hidden="true" />
+                <input name="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchPlaceholder")} aria-label="البحث" autoComplete="off" enterKeyHint="search" className="h-10 w-full bg-transparent text-base outline-none" />
+              </div>
+              {deskFocus ? <SuggestList items={sugg} onPick={() => setQ("")} className="absolute inset-x-0 top-full z-50 mt-2" /> : null}
+            </form>
+          ) : null}
+
+          <div className="flex items-center gap-1">
             {channels.whatsappNumber ? (
-              <a
-                href={waLink(channels.whatsappNumber) ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden size-10 items-center justify-center rounded-xl text-emerald-500 transition-colors hover:bg-emerald-500/10 sm:inline-flex"
-                aria-label="واتساب"
-              >
+              <a href={waLink(channels.whatsappNumber) ?? "#"} target="_blank" rel="noopener noreferrer" className="hidden size-11 items-center justify-center rounded-xl text-emerald-600 transition-colors hover:bg-emerald-500/10 sm:inline-flex" aria-label="واتساب">
                 <BrandIcon brand="whatsapp" className="size-[18px]" />
               </a>
             ) : null}
 
-            <button
-              type="button"
-              onClick={() => setSearch((v) => !v)}
-              className="grid size-10 place-items-center rounded-xl opacity-80 transition-opacity hover:opacity-100"
-              aria-label="بحث"
-              aria-expanded={search}
-            >
-              <Search className="size-4.5" strokeWidth={SW} aria-hidden="true" />
-            </button>
+            {header.showSearch ? (
+              <button type="button" onClick={() => setSearch((v) => !v)} className="grid size-11 place-items-center rounded-xl opacity-85 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 lg:hidden" aria-label="بحث" aria-expanded={search}>
+                <Search className="size-5" strokeWidth={SW} aria-hidden="true" />
+              </button>
+            ) : null}
 
             <VisualSearch whatsapp={channels.whatsappNumber} storeName={brand.name} />
 
             {myOrders.total > 0 ? (
-              <Link
-                href="/track"
-                className="relative grid size-10 place-items-center rounded-xl opacity-80 transition-opacity hover:opacity-100"
-                aria-label={myOrders.active ? `طلباتي (${myOrders.active} جارية)` : "طلباتي"}
-                title="طلباتي"
-              >
-                <Package className="size-4.5" strokeWidth={SW} aria-hidden="true" />
-                {myOrders.active ? (
-                  <span className="absolute end-1.5 top-1.5 size-2.5 rounded-full ring-2 ring-[var(--background)]" style={{ background: "var(--primary)" }} aria-hidden="true" />
-                ) : null}
+              <Link href="/track" className="relative hidden size-11 place-items-center rounded-xl opacity-85 transition-opacity hover:opacity-100 sm:grid" aria-label={myOrders.active ? `طلباتي (${myOrders.active} جارية)` : "طلباتي"} title="طلباتي">
+                <Package className="size-5" strokeWidth={SW} aria-hidden="true" />
+                {myOrders.active ? <span className="absolute end-2 top-2 size-2.5 rounded-full ring-2 ring-[var(--background)]" style={{ background: "var(--primary)" }} aria-hidden="true" /> : null}
               </Link>
             ) : null}
 
-            <Link href="/wishlist" className="relative grid size-10 place-items-center rounded-xl transition-transform active:scale-95" aria-label={wishCount > 0 ? `المفضلة — ${wishCount}` : "المفضلة"}>
+            <Link href="/wishlist" className={cn("relative size-11 place-items-center rounded-xl transition-transform active:scale-95", hasBottomBar ? "hidden md:grid" : "grid")} aria-label={wishCount > 0 ? `المفضلة، ${wishCount}` : "المفضلة"}>
               <Heart className="size-5" strokeWidth={SW} aria-hidden="true" />
               {wishCount > 0 ? (
-                <span className="absolute end-1 top-1 grid size-4.5 min-w-4.5 place-items-center rounded-full px-1 font-mono text-[10px] font-black tabular-nums shadow" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
+                <span className="absolute end-1 top-1 grid min-w-4 place-items-center rounded-full px-1 text-[11px] font-black leading-4 tabular-nums" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                   {wishCount}
                 </span>
               ) : null}
             </Link>
 
-            <button
-              type="button"
-              onClick={openCart}
-              data-cart-icon
-              className="relative grid size-10 place-items-center rounded-xl transition-transform active:scale-95"
-              aria-label={`السلة${count > 0 ? ` — ${arCount(count, NOUN.piece)}` : ""}`}
-            >
-              <ShoppingBag
-                className="size-5"
-                strokeWidth={SW}
-                aria-hidden="true"
-              />
+            <button type="button" onClick={openCart} data-cart-icon className={cn("relative size-11 place-items-center rounded-xl transition-transform active:scale-95", hasBottomBar ? "hidden md:grid" : "grid")} aria-label={`السلة${count > 0 ? `، ${arCount(count, NOUN.piece)}` : ""}`}>
+              <ShoppingBag className="size-5" strokeWidth={SW} aria-hidden="true" />
               {count > 0 ? (
-                <span
-                  className="absolute end-1 top-1 grid size-4.5 min-w-4.5 place-items-center rounded-full px-1 font-mono text-[10px] font-black tabular-nums shadow"
-                  style={{
-                    background: "var(--primary)",
-                    color: "var(--primary-foreground)",
-                  }}
-                >
+                <span className="absolute end-1 top-1 grid min-w-4 place-items-center rounded-full px-1 text-[11px] font-black leading-4 tabular-nums" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                   {count}
                 </span>
               ) : null}
@@ -299,170 +307,62 @@ export function Header({
         </div>
 
         {search ? (
-          <div
-            className="border-t p-3"
-            style={{ background: "var(--card)", borderColor: "var(--border)" }}
-          >
-            <form action="/search" className="container-x relative">
-              <div
-                className="flex items-center gap-2 rounded-xl border px-3.5 py-2.5"
-                style={{
-                  background: "var(--background)",
-                  borderColor: "var(--border)",
-                }}
-              >
-                <Search
-                  className="size-4 opacity-50"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
-                <input
-                  name="q"
-                  placeholder={t("searchPlaceholder")}
-                  className="w-full bg-transparent text-xs font-bold outline-none"
-                  style={{ color: "var(--foreground)" }}
-                  autoFocus
-                  aria-label="البحث"
-                  autoComplete="off"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setSearch(false)}
-                  className="grid size-7 place-items-center rounded-md opacity-50 hover:opacity-100"
-                  aria-label="إغلاق البحث"
-                >
+          <div className="border-t p-3 lg:hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+            <form action="/search" role="search" className="container-x relative">
+              <div className="flex items-center gap-2 rounded-xl border px-3.5" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
+                <Search className="size-4 opacity-60" strokeWidth={SW} aria-hidden="true" />
+                <input name="q" placeholder={t("searchPlaceholder")} className="h-11 w-full bg-transparent text-base outline-none" autoFocus aria-label="البحث" autoComplete="off" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} />
+                <button type="button" onClick={() => setSearch(false)} className="grid size-9 place-items-center rounded-md opacity-60 hover:opacity-100" aria-label="إغلاق البحث">
                   <X className="size-4" strokeWidth={SW} aria-hidden="true" />
                 </button>
               </div>
-              {sugg.length ? (
-                <ul className="absolute inset-x-4 top-full z-50 mt-2 overflow-hidden rounded-2xl border shadow-2xl sm:inset-x-auto sm:w-[28rem]" style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-label="اقتراحات البحث">
-                  {sugg.map((it) => (
-                    <li key={it.slug}>
-                      <Link href={`/p/${encodeURIComponent(it.slug)}`} onClick={() => setSearch(false)} className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--muted)]">
-                        <span className="relative size-11 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--muted)" }}>
-                          {it.image ? <Image src={it.image} alt="" fill sizes="44px" className="object-cover" /> : null}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{it.name}</span>
-                        <span className="shrink-0 text-[12px] font-black tabular-nums">{formatEgp(it.price)}</span>
-                      </Link>
-                    </li>
-                  ))}
-                  <li>
-                    <button type="submit" className="w-full px-3 py-2.5 text-start text-[12.5px] font-black" style={{ color: "var(--primary)" }}>
-                      عرض كل النتائج
-                    </button>
-                  </li>
-                </ul>
-              ) : null}
+              <SuggestList items={sugg} onPick={() => setSearch(false)} className="absolute inset-x-4 top-full z-50 mt-2" />
             </form>
           </div>
         ) : null}
       </header>
 
-      {menu ? (
-        <div
-          className={cn("fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm", layout !== "minimal" && "md:hidden")}
-          onClick={() => setMenu(false)}
-          role="presentation"
-        >
-          <aside
-            className="flex h-full w-4/5 max-w-xs flex-col justify-between border-s p-5 shadow-2xl"
-            style={{
-              background: "var(--card)",
-              borderColor: "var(--border)",
-              color: "var(--card-foreground)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-            dir="rtl"
-            role="dialog"
-            aria-modal="true"
-            aria-label="قائمة التنقل"
-          >
-            <div className="space-y-4 overflow-y-auto">
-              <div
-                className="flex items-center justify-between border-b pb-3"
-                style={{ borderColor: "var(--border)" }}
-              >
-                <Logo compact />
-                <button
-                  type="button"
-                  onClick={() => setMenu(false)}
-                  className="grid size-9 place-items-center rounded-lg opacity-70 hover:opacity-100"
-                  aria-label="إغلاق"
-                >
-                  <X className="size-5" strokeWidth={SW} aria-hidden="true" />
-                </button>
-              </div>
-
-              <Link
-                href="/track"
-                onClick={() => setMenu(false)}
-                className="mb-2 flex items-center gap-2 rounded-xl px-3 py-3 text-xs font-black transition-colors hover:bg-[var(--muted)]"
-              >
-                <Package className="size-4" strokeWidth={SW} aria-hidden="true" />
-                {myOrders.total > 0 ? "طلباتي" : "تتبع طلبك"}
-                {myOrders.active ? (
-                  <span className="ms-auto rounded-full px-2 py-0.5 text-[10px]" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
-                    {myOrders.active} جارية
-                  </span>
-                ) : null}
-              </Link>
-
-              <nav className="space-y-1" aria-label="روابط المتجر">
-                {navLinks.map((n) => (
-                  <Link
-                    key={n.label}
-                    href={hrefFor(n.target)}
-                    onClick={() => setMenu(false)}
-                    className="block rounded-xl px-3 py-3 text-xs font-bold transition-colors hover:bg-[var(--muted)]"
-                  >
-                    {n.label}
-                  </Link>
-                ))}
-
-                {uniqueCategories.length > 0 ? (
-                  <div
-                    className="border-t pt-3"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    <span className="mb-1 block px-3 text-[10px] font-bold opacity-60">
-                      أقسام المتجر
-                    </span>
-                    {uniqueCategories.map((c) => (
-                      <Link
-                        key={c.id}
-                        href={`/c/${c.slug}`}
-                        onClick={() => setMenu(false)}
-                        className="block px-3 py-2.5 text-xs font-medium opacity-80 hover:opacity-100"
-                      >
-                        {c.name}
-                      </Link>
-                    ))}
-                  </div>
-                ) : null}
-              </nav>
-            </div>
-
-            {channels.whatsappNumber ? (
-              <a
-                href={waLink(channels.whatsappNumber) ?? "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-xs font-black"
-                style={{
-                  background: "var(--primary)",
-                  color: "var(--primary-foreground)",
-                }}
-              >
-                <BrandIcon brand="whatsapp" className="size-4" />
-                واتساب المتجر
-              </a>
+      <SheetDialog open={menu} onClose={() => setMenu(false)} title={brand.name} side="end">
+        <nav className="space-y-1" aria-label="روابط المتجر">
+          <Link href="/track" onClick={() => setMenu(false)} className="flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-black transition-colors hover:bg-[var(--muted)]">
+            <Package className="size-4" strokeWidth={SW} aria-hidden="true" />
+            {myOrders.total > 0 ? "طلباتي" : "تتبع طلبك"}
+            {myOrders.active ? (
+              <span className="ms-auto rounded-full px-2 py-0.5 text-[12px]" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
+                {myOrders.active} جارية
+              </span>
             ) : null}
-          </aside>
-        </div>
-      ) : null}
+          </Link>
+          {navLinks.map((n) => (
+            <Link key={n.label} href={hrefFor(n.target)} onClick={() => setMenu(false)} className="block rounded-xl px-3 py-3 text-sm font-bold transition-colors hover:bg-[var(--muted)]">
+              {n.label}
+            </Link>
+          ))}
+          {tree.length ? (
+            <div className="border-t pt-3" style={{ borderColor: "var(--border)" }}>
+              <span className="mb-1 block px-3 text-[12px] font-bold opacity-70">الأقسام</span>
+              {tree.map((c) => (
+                <div key={c.id}>
+                  <Link href={`/c/${encodeURIComponent(c.slug)}`} onClick={() => setMenu(false)} className="block rounded-xl px-3 py-2.5 text-sm font-bold hover:bg-[var(--muted)]">
+                    {c.name}
+                  </Link>
+                  {c.children.map((k) => (
+                    <Link key={k.id} href={`/c/${encodeURIComponent(k.slug)}`} onClick={() => setMenu(false)} className="block rounded-xl py-2 ps-8 pe-3 text-[13px] font-medium opacity-80 hover:bg-[var(--muted)] hover:opacity-100">
+                      {k.name}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </nav>
+        {channels.whatsappNumber ? (
+          <a href={waLink(channels.whatsappNumber) ?? "#"} target="_blank" rel="noopener noreferrer" className="s-btn mt-5 w-full">
+            <BrandIcon brand="whatsapp" className="size-4" />
+            واتساب المتجر
+          </a>
+        ) : null}
+      </SheetDialog>
     </>
   );
 }

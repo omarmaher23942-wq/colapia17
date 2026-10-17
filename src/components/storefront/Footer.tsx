@@ -1,36 +1,26 @@
-// Footer.tsx — تذييل المتجر.
-//
-// السبب الجذري للإصلاح (التكرار المقرف):
-// POLICY_LINKS و pages.showInFooter كلاهما يشملان (shipping, returns, privacy,
-// terms)، فيظهر كل رابط مرتين. الحل: فلترة الصفحات لاستثناء ما هو مُغطى في
-// POLICY_LINKS. كذلك إزالة تكرار الهاتف/واتساب عند تطابق الأرقام.
+// Footer.tsx — تذييل المتجر (Core): هوية المتجر، أقسامه، خدمة العملاء (طلباتي والسياسات)، والتواصل.
+// على الموبايل أعمدة الروابط أكورديون، وعلى الحاسوب مفتوحة. كل قناة تظهر مرة واحدة، والنصوص ≥13px بلا حروف كبيرة.
 import Link from "next/link";
-import { Phone, Banknote, Smartphone, Wallet, Truck, RotateCcw, FileText, Package, Mail } from "lucide-react";
+import { Phone, Banknote, Smartphone, Wallet, Mail } from "lucide-react";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import type { StoreFact } from "@/blueprint/facts";
 import { Icon } from "./Icon";
 import { BRAND_COLORS, BrandIcon, type BrandKey } from "./brand-icons";
 import { socialLinks } from "@/lib/store-channels";
+import { FooterSection } from "./FooterSection";
+import { waLink } from "@/lib/whatsapp";
 
-// تيك توك أسود رسمياً: يتبع لون نص المتجر حتى يظهر على الخلفيات الداكنة.
 const brandColor = (k: BrandKey) => (k === "tiktok" ? "var(--card-foreground)" : BRAND_COLORS[k]);
-
 const SW = 1.75;
 
-// روابط السياسات الثابتة — مصدرها الوحيد POLICY_LINKS.
 const POLICY_LINKS = [
-  { href: "/pages/shipping", slug: "shipping", label: "سياسة الشحن", icon: Truck },
-  { href: "/pages/returns", slug: "returns", label: "الاستبدال والاسترجاع", icon: RotateCcw },
-  { href: "/pages/privacy", slug: "privacy", label: "سياسة الخصوصية", icon: FileText },
-  { href: "/pages/terms", slug: "terms", label: "الشروط والأحكام", icon: FileText },
+  { href: "/pages/shipping", slug: "shipping", label: "سياسة الشحن" },
+  { href: "/pages/returns", slug: "returns", label: "الاستبدال والاسترجاع" },
+  { href: "/pages/privacy", slug: "privacy", label: "سياسة الخصوصية" },
+  { href: "/pages/terms", slug: "terms", label: "الشروط والأحكام" },
 ] as const;
-
 const POLICY_SLUGS = new Set<string>(POLICY_LINKS.map((p) => p.slug));
-
-// إزالة الأرقام المكررة (هاتف/واتساب) عبر تطبيع مبسط.
-function normalizePhone(v: string): string {
-  return v.replace(/\D/g, "");
-}
+const digits = (v: string) => v.replace(/\D/g, "");
 
 export function Footer({
   footer,
@@ -50,65 +40,33 @@ export function Footer({
   categories: { id: string; name: string; slug: string }[];
 }) {
   const year = new Date().getFullYear();
+  const extraPages = pages.filter((p) => p.enabled && p.showInFooter && !POLICY_SLUGS.has(p.slug));
+  const social = footer.showChannels ? socialLinks(channels) : [];
+  const cats = categories.slice(0, 7);
+  const wa = channels.whatsappNumber ? waLink(channels.whatsappNumber) : null;
+  const samePhone = channels.phone && channels.whatsappNumber && digits(channels.phone) === digits(channels.whatsappNumber);
+  const hasContact = Boolean(channels.phone || (wa && !samePhone) || channels.email);
 
-  // 1) الصفحات المفعّلة في الفوتر، مع استثناء ما هو موجود في POLICY_LINKS
-  //    لتفادي التكرار المقرف.
-  const uniqueEnabledPages = pages.filter(
-    (p) => p.enabled && p.showInFooter && !POLICY_SLUGS.has(p.slug)
-  );
-
-  // 2) منع تكرار الهاتف/الواتساب عند تطابق الرقم.
-  const phoneNorm = channels.phone ? normalizePhone(channels.phone) : "";
-  const whatsappNorm = channels.whatsappNumber
-    ? normalizePhone(channels.whatsappNumber)
-    : "";
-  const showPhone = Boolean(channels.phone);
-  const showWhatsapp =
-    Boolean(channels.whatsappNumber) && whatsappNorm !== phoneNorm;
-
-  // 3) كل قناة حفظها التاجر بشعارها الرسمي (واتساب، إنستجرام، فيسبوك، تيك توك، ماسنجر).
-  const social = socialLinks(channels);
-
-  // 4) الأقسام التي لا تتكرر.
-  const uniqueCategories = categories.slice(0, 7);
+  const linkCls = "inline-block py-1.5 text-[14px] font-medium transition-opacity hover:opacity-70 focus-visible:outline-none focus-visible:underline";
 
   return (
-    <footer
-      className="mt-20 border-t"
-      style={{
-        background: "var(--card)",
-        borderColor: "var(--border)",
-        color: "var(--card-foreground)",
-      }}
-      dir="rtl"
-    >
-      <div className="container-x grid gap-10 py-14 md:grid-cols-12">
-        {/* العمود 1: الهوية + المزايا */}
-        <div className="space-y-4 md:col-span-5">
-          <p
-            className="font-heading text-2xl font-black"
-            style={{ color: "var(--card-foreground)" }}
-          >
-            {brand.name}
-          </p>
-          <p className="max-w-md text-xs leading-relaxed opacity-75">
-            {footer.tagline || brand.tagline || brand.description}
-          </p>
-
-          {/* وعود المتجر الحقيقية فقط (من سياسته الحالية)، لا عبارات ثابتة. */}
+    <footer className="mt-20 border-t" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--card-foreground)" }} dir="rtl">
+      <div className="container-x grid gap-x-10 gap-y-2 py-12 md:grid-cols-12 md:gap-y-10 md:py-14">
+        <div className="space-y-4 pb-6 md:col-span-4 md:pb-0">
+          <p className="font-heading text-2xl font-black">{brand.name}</p>
+          {footer.tagline || brand.tagline || brand.description ? <p className="max-w-md text-[14px] leading-relaxed opacity-80">{footer.tagline || brand.tagline || brand.description}</p> : null}
           {facts.length ? (
-            <ul className="flex flex-wrap gap-3 pt-1 text-[11px] font-bold opacity-85">
+            <ul className="space-y-1.5 pt-1 text-[13px] font-bold opacity-90">
               {facts.slice(0, 3).map((f) => (
-                <li key={f.key} className="flex items-center gap-1.5">
-                  <Icon name={f.icon} className="size-3.5 text-[var(--primary)]" />
+                <li key={f.key} className="flex items-center gap-2">
+                  <Icon name={f.icon} className="size-4 shrink-0 text-[var(--primary)]" />
                   {f.title}
                 </li>
               ))}
             </ul>
           ) : null}
-
-          {footer.showChannels && social.length ? (
-            <ul className="flex flex-wrap gap-2 pt-2" aria-label="تابعنا">
+          {social.length ? (
+            <ul className="flex flex-wrap gap-2 pt-2" aria-label="حساباتنا">
               {social.map((l) => (
                 <li key={l.key}>
                   <a
@@ -117,14 +75,10 @@ export function Footer({
                     rel="noopener noreferrer"
                     aria-label={`${l.label}: ${l.handle}`}
                     title={l.label}
-                    className="grid size-10 place-items-center rounded-xl border transition-transform hover:-translate-y-0.5"
-                    style={{
-                      background: `color-mix(in srgb, ${brandColor(l.key)} 12%, transparent)`,
-                      borderColor: `color-mix(in srgb, ${brandColor(l.key)} 28%, transparent)`,
-                      color: brandColor(l.key),
-                    }}
+                    className="grid size-11 place-items-center rounded-xl border transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2"
+                    style={{ background: `color-mix(in srgb, ${brandColor(l.key)} 12%, transparent)`, borderColor: `color-mix(in srgb, ${brandColor(l.key)} 28%, transparent)`, color: brandColor(l.key) }}
                   >
-                    <BrandIcon brand={l.key} className="size-[18px]" />
+                    <BrandIcon brand={l.key} className="size-5" />
                   </a>
                 </li>
               ))}
@@ -132,180 +86,106 @@ export function Footer({
           ) : null}
         </div>
 
-        {/* العمود 2: الأقسام */}
-        {uniqueCategories.length > 0 ? (
-          <nav className="md:col-span-3" aria-label="أقسام المتجر">
-            <h3 className="mb-4 text-[11px] font-black uppercase tracking-wider opacity-70">
-              أقسام المتجر
-            </h3>
-            <ul className="space-y-2.5 text-xs font-bold">
-              {uniqueCategories.map((c) => (
+        {cats.length ? (
+          <FooterSection title="أقسام المتجر" className="md:col-span-3">
+            <ul>
+              {cats.map((c) => (
                 <li key={c.id}>
-                  <Link
-                    href={`/c/${c.slug}`}
-                    className="transition-opacity hover:opacity-70"
-                  >
+                  <Link href={`/c/${encodeURIComponent(c.slug)}`} className={linkCls}>
                     {c.name}
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link href="/all" className={cn2(linkCls, "font-bold")}>
+                  كل المنتجات
+                </Link>
+              </li>
             </ul>
-          </nav>
+          </FooterSection>
         ) : null}
 
-        {/* العمود 3: خدمة العملاء (بدون تكرار) */}
-        <nav className="md:col-span-2" aria-label="خدمة العملاء">
-          <h3 className="mb-4 text-[11px] font-black uppercase tracking-wider opacity-70">
-            خدمة العملاء
-          </h3>
-          <ul className="space-y-2.5 text-xs font-bold">
+        <FooterSection title="خدمة العملاء" className={cats.length ? "md:col-span-3" : "md:col-span-4"}>
+          <ul>
             <li>
-              <Link
-                href="/track"
-                className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
-              >
-                <Package
-                  className="size-3.5"
-                  strokeWidth={SW}
-                  aria-hidden="true"
-                />
-                تتبّع طلبك
+              <Link href="/track" className={linkCls}>
+                طلباتي وتتبع الطلب
               </Link>
             </li>
-            {POLICY_LINKS.filter((l) => pages.some((p) => p.slug === l.slug)).map((p) => {
-              const Icon = p.icon;
-              return (
-                <li key={p.href}>
-                  <Link
-                    href={p.href}
-                    className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-70"
-                  >
-                    <Icon
-                      className="size-3.5"
-                      strokeWidth={SW}
-                      aria-hidden="true"
-                    />
-                    {p.label}
-                  </Link>
-                </li>
-              );
-            })}
-            {uniqueEnabledPages.map((p) => (
+            {POLICY_LINKS.filter((l) => pages.some((p) => p.slug === l.slug && p.enabled)).map((p) => (
+              <li key={p.href}>
+                <Link href={p.href} className={linkCls}>
+                  {p.label}
+                </Link>
+              </li>
+            ))}
+            {extraPages.map((p) => (
               <li key={p.slug}>
-                <Link
-                  href={`/pages/${p.slug}`}
-                  className="transition-opacity hover:opacity-70"
-                >
+                <Link href={`/pages/${p.slug}`} className={linkCls}>
                   {p.title}
                 </Link>
               </li>
             ))}
           </ul>
-        </nav>
+        </FooterSection>
 
-        {/* العمود 4: التواصل (بدون تكرار) */}
-        <div className="md:col-span-2">
-          <h3 className="mb-4 text-[11px] font-black uppercase tracking-wider opacity-70">
-            تواصل معنا
-          </h3>
-          <ul className="space-y-2.5 text-xs font-bold">
-            {showPhone ? (
-              <li className="flex items-center gap-2">
-                <Phone className="size-3.5 shrink-0" strokeWidth={SW} aria-hidden="true" />
-                <a href={`tel:${channels.phone}`} dir="ltr" className="tabular-nums transition-opacity hover:opacity-70">
-                  {channels.phone}
-                </a>
-              </li>
-            ) : null}
-            {social
-              .filter((l) => l.key !== "whatsapp" || showWhatsapp)
-              .map((l) => (
-                <li key={l.key} className="flex min-w-0 items-center gap-2">
-                  <BrandIcon brand={l.key} className="size-3.5 shrink-0" style={{ color: brandColor(l.key) }} />
-                  <a href={l.href} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate transition-opacity hover:opacity-70">
-                    <span className="sr-only">{l.label}: </span>
-                    <bdi dir="ltr" className={l.key === "whatsapp" ? "tabular-nums" : undefined}>
-                      {l.handle}
-                    </bdi>
+        {hasContact ? (
+          <FooterSection title="تواصل معنا" className="md:col-span-2">
+            <ul className="text-[14px] font-medium">
+              {channels.phone ? (
+                <li className="flex items-center gap-2 py-1.5">
+                  <Phone className="size-4 shrink-0" strokeWidth={SW} aria-hidden="true" />
+                  <a href={`tel:${channels.phone}`} dir="ltr" className="tabular-nums hover:opacity-70">
+                    {channels.phone}
                   </a>
                 </li>
-              ))}
-            {channels.email ? (
-              <li className="flex min-w-0 items-center gap-2">
-                <Mail className="size-3.5 shrink-0" strokeWidth={SW} aria-hidden="true" />
-                <a href={`mailto:${channels.email}`} dir="ltr" className="min-w-0 truncate transition-opacity hover:opacity-70">
-                  {channels.email}
-                </a>
-              </li>
-            ) : null}
-          </ul>
-        </div>
+              ) : null}
+              {wa && !samePhone ? (
+                <li className="flex items-center gap-2 py-1.5">
+                  <BrandIcon brand="whatsapp" className="size-4 shrink-0" style={{ color: brandColor("whatsapp") }} />
+                  <a href={wa} target="_blank" rel="noopener noreferrer" dir="ltr" className="tabular-nums hover:opacity-70">
+                    {channels.whatsappNumber}
+                  </a>
+                </li>
+              ) : null}
+              {channels.email ? (
+                <li className="flex min-w-0 items-center gap-2 py-1.5">
+                  <Mail className="size-4 shrink-0" strokeWidth={SW} aria-hidden="true" />
+                  <a href={`mailto:${channels.email}`} dir="ltr" className="min-w-0 truncate hover:opacity-70">
+                    {channels.email}
+                  </a>
+                </li>
+              ) : null}
+            </ul>
+          </FooterSection>
+        ) : null}
       </div>
 
-      {/* الشريط السفلي: الحقوق + وسائل الدفع */}
       <div className="border-t" style={{ borderColor: "var(--border)" }}>
         <div className="container-x flex flex-wrap items-center justify-between gap-3 py-5">
-          <p className="text-[11px] font-bold opacity-60">
+          <p className="text-[13px] font-medium opacity-70">
             © {year} {brand.name}. جميع الحقوق محفوظة.
           </p>
-
-          {footer.showPaymentIcons ? (
-            <ul className="flex flex-wrap gap-2 text-[11px] font-black">
-              {payments.cod.enabled ? (
-                <li
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1"
-                  style={{
-                    background: "color-mix(in srgb, #16a34a 12%, transparent)",
-                    borderColor: "color-mix(in srgb, #16a34a 30%, transparent)",
-                    color: "color-mix(in srgb, #16a34a 55%, var(--foreground))",
-                  }}
-                >
-                  <Banknote
-                    className="size-3.5"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                  دفع عند الاستلام
-                </li>
-              ) : null}
-              {payments.vodafoneCash.enabled ? (
-                <li
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1"
-                  style={{
-                    background: "color-mix(in srgb, #dc2626 12%, transparent)",
-                    borderColor: "color-mix(in srgb, #dc2626 30%, transparent)",
-                    color: "color-mix(in srgb, #dc2626 55%, var(--foreground))",
-                  }}
-                >
-                  <Smartphone
-                    className="size-3.5"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                  فودافون كاش
-                </li>
-              ) : null}
-              {payments.instapay.enabled ? (
-                <li
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1"
-                  style={{
-                    background: "color-mix(in srgb, #7c3aed 12%, transparent)",
-                    borderColor: "color-mix(in srgb, #7c3aed 30%, transparent)",
-                    color: "color-mix(in srgb, #7c3aed 55%, var(--foreground))",
-                  }}
-                >
-                  <Wallet
-                    className="size-3.5"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                  InstaPay
-                </li>
-              ) : null}
+          {footer.showPaymentIcons && (payments.cod.enabled || payments.vodafoneCash.enabled || payments.instapay.enabled) ? (
+            <ul className="flex flex-wrap gap-2 text-[13px] font-bold" aria-label="وسائل الدفع">
+              {payments.cod.enabled ? <Pay icon={<Banknote className="size-4" strokeWidth={SW} aria-hidden="true" />} label="الدفع عند الاستلام" /> : null}
+              {payments.vodafoneCash.enabled ? <Pay icon={<Smartphone className="size-4" strokeWidth={SW} aria-hidden="true" />} label="فودافون كاش" /> : null}
+              {payments.instapay.enabled ? <Pay icon={<Wallet className="size-4" strokeWidth={SW} aria-hidden="true" />} label="إنستاباي" /> : null}
             </ul>
           ) : null}
         </div>
       </div>
     </footer>
+  );
+}
+
+const cn2 = (...a: string[]) => a.join(" ");
+
+function Pay({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <li className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5" style={{ borderColor: "var(--border)", background: "var(--muted)" }}>
+      {icon}
+      {label}
+    </li>
   );
 }

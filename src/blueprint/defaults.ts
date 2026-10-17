@@ -10,13 +10,8 @@ import { designSchema } from "./schema";
 //  6) ambientBackdrop يُبنى من palette + seed.
 import type { StoreBlueprint } from "./schema";
 import { normalizeChannels, normalizePayments } from "./normalize";
-import {
-  extractPalette,
-  pickAdaptiveFonts,
-  resolveHeroVariant,
-  buildVariationSeed,
-  buildAmbientBackdrop,
-} from "./palette";
+import { extractPalette, pickAdaptiveFonts, buildVariationSeed } from "./palette";
+import { deriveCorePalette } from "./core-palette";
 
 const cap = (s: string, max: number) => (s.length > max ? s.slice(0, max) : s);
 
@@ -31,126 +26,27 @@ export const INSPECTION_TRUST = {
 } as const;
 export const INSPECTION_COD_NOTE = "معاينة الشحنة مع المندوب قبل الدفع متاحة";
 
-// trust items تتكيّف مع الفئة + وجود القنوات.
-function buildAdaptiveTrustItems(ctx: {
-  industry: string;
-  hasWhatsapp: boolean;
-  inspectionAllowed: boolean;
-}): Array<{ icon: string; title: string; text: string }> {
-  const common: Array<{ icon: string; title: string; text: string }> = [
-    { icon: "truck", title: "توصيل سريع", text: "لباب البيت في كل المحافظات" },
-  ];
+// «لماذا نحن»: شارات مرتبطة بحقائق المتجر فقط (blueprint/facts). النص يُستبدل عند العرض بصياغة الحقيقة نفسها،
+// والشارة التي لا تسندها سياسة المتجر الآن تختفي. لا ادعاء ثابت هنا (لا «أصلي» ولا «ضمان الوكيل»).
+const TRUST_FACTS: Array<{ fact: string; icon: string; title: string; text: string }> = [
+  { fact: "cod", icon: "banknote", title: "الدفع عند الاستلام", text: "الدفع نقداً عند وصول الطلب" },
+  { fact: "inspection", icon: "eye", title: "معاينة قبل الدفع", text: "فتح الشحنة وفحص المنتج قبل الدفع" },
+  { fact: "returns", icon: "rotate-ccw", title: "استبدال واسترجاع", text: "وفق سياسة المتجر" },
+  { fact: "free_shipping_over", icon: "gift", title: "شحن مجاني", text: "على الطلبات التي تبلغ حداً معيناً" },
+  { fact: "nationwide", icon: "map-pin", title: "شحن لكل المحافظات", text: "التوصيل إلى باب المنزل" },
+  { fact: "whatsapp", icon: "message-circle", title: "رد سريع على واتساب", text: "للاستفسار قبل الطلب وبعده" },
+];
 
-  const payment: { icon: string; title: string; text: string } = ctx.inspectionAllowed
-    ? {
-        icon: INSPECTION_BADGE.icon,
-        title: INSPECTION_BADGE.title,
-        text: INSPECTION_BADGE.text,
-      }
-    : {
-        icon: "banknote",
-        title: "الدفع عند الاستلام",
-        text: "افحص طلبك قبل ما تدفع",
-      };
-
-  const returns: { icon: string; title: string; text: string } = {
-    icon: "rotate-ccw",
-    title: "استبدال سهل",
-    text: "خلال 14 يوم من الاستلام",
-  };
-
-  const support: { icon: string; title: string; text: string } =
-    ctx.hasWhatsapp
-      ? {
-          icon: "headphones",
-          title: "دعم سريع",
-          text: "بنرد عليك على واتساب وماسنجر فوراً",
-        }
-      : {
-          icon: "headphones",
-          title: "دعم سريع",
-          text: "بنرد عليك على ماسنجر فوراً",
-        };
-
-  // إضافة مميزة لكل مجال.
-  const industry: { icon: string; title: string; text: string }[] = [];
-  switch (ctx.industry) {
-    case "fashion":
-    case "beauty":
-      industry.push({
-        icon: "sparkles",
-        title: "أصلي ومضمون",
-        text: "قطع أصلية مختارة بعناية",
-      });
-      break;
-    case "electronics":
-      industry.push({
-        icon: "shield-check",
-        title: "ضمان أصلي",
-        text: "ضمان الوكيل المعتمد",
-      });
-      break;
-    case "home":
-      industry.push({
-        icon: "home",
-        title: "جودة البيت",
-        text: "منتجات مختبرة قبل الشحن",
-      });
-      break;
-    case "food":
-      industry.push({
-        icon: "leaf",
-        title: "طازج يومياً",
-        text: "توصيل سريع يحفظ الجودة",
-      });
-      break;
-    default:
-      industry.push({
-        icon: "shield-check",
-        title: "منتجات أصلية",
-        text: "مختارة بعناية لك",
-      });
-  }
-
-  return [common[0]!, payment, returns, ...industry, support];
-}
-
-// FAQ تتكيف مع وجود المعاينة + رقم واتساب.
-function buildDynamicFaqItems(ctx: {
-  inspectionAllowed: boolean;
-  hasWhatsapp: boolean;
-  shippingEta: string;
-}): Array<{ q: string; a: string }> {
+// أسئلة شائعة بصياغة محايدة؛ كل سؤال يخص سياسة يُحذف تلقائياً إن لم تعد صحيحة (groundedItems بوضع drop).
+function buildDynamicFaqItems(ctx: { inspectionAllowed: boolean; hasWhatsapp: boolean; shippingEta: string }): Array<{ q: string; a: string }> {
   const base = [
-    {
-      q: "إزاي أطلب؟",
-      a: "باختيار المنتج ثم «إضافة للسلة» ثم إكمال البيانات، ونتواصل معك لتأكيد الطلب.",
-    },
-    {
-      q: "التوصيل بياخد قد إيه؟",
-      a: ctx.shippingEta || "من 2 إلى 5 أيام عمل حسب المحافظة.",
-    },
-    {
-      q: "أقدر أدفع عند الاستلام؟",
-      a: "أكيد، الدفع عند الاستلام متاح لكل المحافظات.",
-    },
+    { q: "كيف أطلب؟", a: "باختيار المنتج ثم «إضافة للسلة» ثم إكمال بيانات الشحن، وسنتواصل لتأكيد الطلب." },
+    { q: "ما مدة التوصيل؟", a: ctx.shippingEta || "من 2 إلى 5 أيام عمل حسب المحافظة." },
+    { q: "هل الدفع عند الاستلام متاح؟", a: "نعم، الدفع عند الاستلام متاح." },
   ];
-  if (ctx.inspectionAllowed) {
-    base.push({
-      q: "أقدر أفتح الشحنة قبل ما أدفع؟",
-      a: "أكيد، المعاينة مع المندوب قبل الدفع متاحة: الفحص أولاً ثم الدفع.",
-    });
-  }
-  if (ctx.hasWhatsapp) {
-    base.push({
-      q: "أقدر أتواصل معاكم بسرعة؟",
-      a: "أكيد، نحن على واتساب في أي وقت ونرد بسرعة.",
-    });
-  }
-  base.push({
-    q: "لو المنتج مش مناسب؟",
-    a: "تقدر تستبدله خلال 14 يوم من الاستلام بشرط يكون بحالته الأصلية.",
-  });
+  if (ctx.inspectionAllowed) base.push({ q: "هل يمكن فتح الشحنة قبل الدفع؟", a: "نعم، المعاينة مع المندوب قبل الدفع متاحة: الفحص أولاً ثم الدفع." });
+  if (ctx.hasWhatsapp) base.push({ q: "كيف أتواصل مع المتجر؟", a: "عبر واتساب في أي وقت، ونرد في أقرب فرصة." });
+  base.push({ q: "ماذا لو لم يناسبني المنتج؟", a: "يمكن الاستبدال خلال 14 يوماً من الاستلام بشرط أن يكون المنتج بحالته الأصلية." });
   return base;
 }
 
@@ -177,7 +73,7 @@ export function defaultBlueprint(input: {
 }): StoreBlueprint {
   const name = cap(input.name.trim() || "متجري", 60);
   const tagline = cap(
-    (input.tagline ?? "").trim() || "جودة تستاهلها، وسعر يريحك",
+    (input.tagline ?? "").trim() || "تسوقوا منتجاتنا بسهولة",
     120
   );
   const industry = cap((input.industry ?? "").trim() || "general", 60);
@@ -208,7 +104,7 @@ export function defaultBlueprint(input: {
     instapay: input.instapay,
     requireTransferProof: true,
     transferInstructions:
-      "حوّل المبلغ على الرقم الظاهر، وارفع صورة التحويل واكتب الرقم اللي حوّلت منه، وهنأكد طلبك فوراً.",
+      "حوّلوا المبلغ إلى الرقم الظاهر، ثم ارفعوا صورة التحويل واكتبوا الرقم المحوَّل منه، وسنؤكد الطلب فوراً.",
   });
 
   // variationSeed: من المُدخل أو من hash(storeId + timestamp).
@@ -218,15 +114,9 @@ export function defaultBlueprint(input: {
 
   // استخراج palette + fonts.
   const extracted = extractPalette(input.colorPreference, industry, seed);
-  const palette = extracted.palette;
+  // لوحة Core: لون العلامة وحده يشتق بقية الألوان بتباين AA، والوضع تلقائي (الداكن يتبع جهاز الزائر).
+  const palette = deriveCorePalette(extracted.palette.primary, "light");
   const fonts = pickAdaptiveFonts(industry, tone, seed);
-
-  // بناء عناصر ديناميكية.
-  const trustItems = buildAdaptiveTrustItems({
-    industry,
-    hasWhatsapp: Boolean(channels.whatsappNumber),
-    inspectionAllowed: inspection,
-  });
 
   // صف الثقة في صفحة المنتج يُبنى عند العرض من حقائق المتجر الفعلية (blueprint/facts.ts)، لا من هنا.
   const productTrustRow: { icon: string; text: string }[] = [];
@@ -237,44 +127,8 @@ export function defaultBlueprint(input: {
     shippingEta: "من 2 إلى 5 أيام عمل حسب المحافظة.",
   });
 
-  // hero variant ديناميكي.
-  // resolveHeroVariant() قد يُرجع قيمًا خارج الـ union المسموح في home.hero
-  // لذلك نفلّتها إلى مجموعة مقبولة فقط لتفادي خطأ التحقق من الأنواع.
-  const rawHeroVariant = resolveHeroVariant({
-    hasHeroImages: input.hasHeroImages ?? false,
-    hasLogo: input.hasLogo ?? false,
-    productCount: input.productCount ?? 0,
-    industry,
-    toneOfVoice: tone,
-    seed,
-  });
-
-  const allowedHeroVariants = [
-    "cinematic",
-    "editorial",
-    "centered",
-    "ambient",
-    "kinetic",
-    "split",
-    "fullscreen",
-    "carousel",
-    "product_spotlight",
-    "collage",
-    "video",
-    "storyteller",
-  ] as const;
-
-  const heroVariant = (
-    allowedHeroVariants.includes(rawHeroVariant as (typeof allowedHeroVariants)[number])
-      ? rawHeroVariant
-      : "cinematic"
-  ) as Extract<
-    StoreBlueprint["home"][number],
-    { type: "hero" }
-  >["variant"];
-
-  // ambient backdrop للحالة عند غياب صور.
-  const backdrop = buildAmbientBackdrop(palette, seed);
+  // الواجهة: صور مرفوعة → صورة جانبية (split)، وإلا منتج بطل تلقائي (يُختار من منتجات المتجر عند العرض).
+  const heroVariant = input.hasHeroImages ? ("split" as const) : ("product_spotlight" as const);
 
   return {
     schemaVersion: 1,
@@ -283,7 +137,7 @@ export function defaultBlueprint(input: {
       name,
       tagline,
       description: cap(
-        `${name}: تسوّق أونلاين بسهولة، الدفع عند الاستلام والشحن لكل مصر.`,
+        `${name}: تسوقوا أونلاين بسهولة وتابعوا طلبكم خطوة بخطوة.`,
         300
       ),
       voice: tone,
@@ -292,18 +146,17 @@ export function defaultBlueprint(input: {
     design: designSchema.parse({}),
     copy: {},
     theme: {
-      mode: palette.background === "#ffffff" ? "light" : "dark",
+      mode: "auto",
       palette,
       fonts,
       radius: "lg",
       buttonStyle: "solid",
       shadow: "soft",
-      motion: tone === "minimal" ? "subtle" : "balanced",
+      motion: "subtle",
       productCardStyle: "elevated",
       imageRatio: "square",
       backgroundPattern: "none",
       imageBackground: "none",
-      ambientBackdrop: backdrop,
     },
     locale: { language: "ar", currency: "EGP", timezone: "Africa/Cairo" },
     header: {
@@ -312,6 +165,7 @@ export function defaultBlueprint(input: {
       transparentOnHero: false,
       showSearch: true,
       showCategoriesMenu: true,
+      bottomBar: true,
       nav: [
         { label: "الرئيسية", target: { type: "home" } },
         { label: "كل المنتجات", target: { type: "all_products" } },
@@ -326,8 +180,7 @@ export function defaultBlueprint(input: {
       showPoweredBy: true,
     },
     channels,
-    // ملاحظة: announcement محذوف من الـ home الافتراضي — يأتي من AI فقط لمنع
-    // التكرار (bug سابق: يظهر مرتين لأن defaults + AI يضيفانه).
+    // الرئيسية: كل قسم يحتاج بيانات يختفي تلقائياً حتى توجد (الأقسام، الأكثر مبيعاً، الآراء). شريط الإعلانات صار في الرأس.
     home: [
       {
         id: "hero",
@@ -343,32 +196,12 @@ export function defaultBlueprint(input: {
         headline: cap(name, 90),
         subheadline: tagline || undefined,
         images: [],
-        highlights: [
-          { icon: "banknote", text: "الدفع عند الاستلام" },
-          inspection
-            ? { icon: INSPECTION_TRUST.icon, text: INSPECTION_TRUST.text }
-            : { icon: "truck", text: "شحن لكل مصر" },
-          { icon: "shield-check", text: "منتجات أصلية" },
-        ],
-        primaryCta: {
-          label: "التسوق الآن",
-          target: { type: "all_products" },
-          style: "primary",
-        },
+        highlights: [],
+        primaryCta: { label: "تسوقوا الآن", target: { type: "all_products" }, style: "primary" },
         overlayOpacity: 0.35,
         textAlign: "start",
         height: "tall",
         autoplayMs: 5000,
-      },
-      {
-        id: "trust",
-        type: "trust_badges",
-        enabled: true,
-        spacing: "compact",
-        background: "muted",
-        reveal: "stagger",
-        variant: "row",
-        items: trustItems,
       },
       {
         id: "cats",
@@ -376,23 +209,22 @@ export function defaultBlueprint(input: {
         enabled: true,
         spacing: "normal",
         background: "default",
-        reveal: "stagger",
+        reveal: "fade",
         variant: "circles",
-        title: "التسوق حسب القسم",
+        title: "تسوقوا حسب القسم",
         categorySlugs: [],
         showProductCount: true,
       },
       {
-        id: "best",
+        id: "new",
         type: "product_grid",
         enabled: true,
         spacing: "normal",
         background: "default",
-        reveal: "stagger",
+        reveal: "fade",
         variant: "grid",
-        title: "الأكثر طلباً",
-        subtitle: "اللي الناس بتحبه أكتر",
-        source: { type: "best_sellers" },
+        title: "وصل حديثاً",
+        source: { type: "newest" },
         limit: 8,
         columnsMobile: 2,
         columnsDesktop: 4,
@@ -400,42 +232,30 @@ export function defaultBlueprint(input: {
         quickAdd: true,
       },
       {
-        id: "promo",
-        type: "promo_banner",
-        enabled: true,
-        spacing: "normal",
-        background: "default",
-        reveal: "zoom",
-        variant: "wide",
-        items: [
-          {
-            eyebrow: "عرض محدود",
-            title: "خصم على أول طلب",
-            text: "الكود يعطيك خصمك فوراً",
-            couponCode: "WELCOME10",
-            cta: {
-              label: "الطلب الآن",
-              target: { type: "all_products" },
-              style: "primary",
-            },
-          },
-        ],
-      },
-      {
-        id: "new",
+        id: "best",
         type: "product_grid",
         enabled: true,
         spacing: "normal",
         background: "muted",
-        reveal: "stagger",
+        reveal: "fade",
         variant: "carousel",
-        title: "وصل حديثاً",
-        source: { type: "newest" },
+        title: "الأكثر مبيعاً",
+        source: { type: "best_sellers" },
         limit: 10,
         columnsMobile: 2,
         columnsDesktop: 4,
         showViewAll: true,
         quickAdd: true,
+      },
+      {
+        id: "trust",
+        type: "trust_badges",
+        enabled: true,
+        spacing: "compact",
+        background: "default",
+        reveal: "fade",
+        variant: "row",
+        items: TRUST_FACTS.map((t) => ({ ...t })),
       },
       {
         id: "reviews",
@@ -445,7 +265,7 @@ export function defaultBlueprint(input: {
         background: "default",
         reveal: "fade",
         variant: "carousel",
-        title: "آراء عملائنا",
+        title: "آراء العملاء",
         items: [],
         includeVerifiedReviews: true,
       },
@@ -468,7 +288,7 @@ export function defaultBlueprint(input: {
         background: "muted",
         reveal: "fade",
         variant: "cards",
-        title: "تواصل معنا",
+        title: "تواصلوا معنا",
         showChannels: true,
       },
     ],
@@ -491,11 +311,11 @@ export function defaultBlueprint(input: {
         minOrdersToShow: 5,
         lookbackHours: 72,
       },
-      liveViewers: true,
+      liveViewers: false,
       exitIntentOffer: {
         enabled: false,
-        title: "خصم خاص لأول طلب",
-        text: "الكود يعطيك خصماً على طلبك الأول",
+        title: "خصم خاص على الطلب الأول",
+        text: "استخدموا الكود للحصول على خصم",
         showOncePerDays: 3,
       },
       productTrustRow,
@@ -514,20 +334,20 @@ export function defaultBlueprint(input: {
       shareButtons: true,
       // Conversion flags جديدة — تُفعّل حسب المزاج + الـ seed.
       ambientSound: false,
-      cursorFollower: tone === "premium_formal" || tone === "playful",
-      liveActivityBar: true,
-      kineticTypography: tone !== "minimal",
-      viewTransitions: true,
-      smartImageSequence: true,
+      cursorFollower: false,
+      liveActivityBar: false,
+      kineticTypography: false,
+      viewTransitions: false,
+      smartImageSequence: false,
       quickViewModal: true,
-      stockPulseIndicator: true,
+      stockPulseIndicator: false,
       product360Viewer: false,
       productARPreview: false,
       imageZoomLens: true,
       videoThumbs: true,
-      multiLayerParallax: true,
-      ambientBackdrop: true,
-      scrollLinkedStory: true,
+      multiLayerParallax: false,
+      ambientBackdrop: false,
+      scrollLinkedStory: false,
       comparisonBar: false,
       wishlistEnabled: true,
       voiceNavigation: false,
@@ -563,21 +383,17 @@ export function defaultBlueprint(input: {
       customFields: [],
       minOrderPiasters: null,
       termsCheckbox: false,
-      successMessage: "شكراً لطلبك! نتواصل معك خلال ساعات للتأكيد.",
+      successMessage: "شكراً لطلبكم! سنتواصل خلال ساعات للتأكيد.",
     },
     orderMessages: {
-      confirmed:
-        "أهلاً {name}، تم تأكيد طلبك {code} بإجمالي {total}. هيوصلك خلال {eta}. شكراً لثقتك في {store}.",
-      shipped:
-        "طلبك {code} خرج مع شركة الشحن وهيوصلك قريباً. رقم الشحنة: {tracking}",
-      delivered:
-        "نتمنى يكون طلبك {code} عجبك. لو حابب تقيّم تجربتك: {review_link}",
-      abandoned:
-        "أهلاً {name}، لاحظنا إنك سبت {items} في السلة. محتاج مساعدة في إتمام الطلب؟",
+      confirmed: "أهلاً {name}، تم تأكيد طلبكم {code} بإجمالي {total}. موعد الوصول المتوقع: {eta}. شكراً لثقتكم في {store}.",
+      shipped: "خرج طلبكم {code} مع شركة الشحن وسيصل قريباً. رقم الشحنة: {tracking}",
+      delivered: "نتمنى أن يكون طلبكم {code} قد نال إعجابكم. يسعدنا تقييم التجربة: {review_link}",
+      abandoned: "أهلاً {name}، لاحظنا أن {items} لا يزال في السلة. هل تحتاجون مساعدة لإتمام الطلب؟",
     },
     invoice: {
       showLogo: true,
-      footerNote: "شكراً لتسوقك معنا",
+      footerNote: "شكراً لتسوقكم معنا",
       showQr: true,
       paperSize: "A5",
       showPrices: true,

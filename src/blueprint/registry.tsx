@@ -1,8 +1,10 @@
 import * as B from "@/components/blocks";
 import type { Section, StoreBlueprint } from "./schema";
 import { groundedItems, type StoreFact } from "./facts";
-import { fetchCategoriesForSection, fetchProductsForSource, type ProductSource } from "./section-data";
+import { fetchActiveCouponCodes, fetchCategoriesForSection, fetchProductsForSource, type ProductSource } from "./section-data";
 import { loadBlock, loadSectionOverride } from "@/stores/resolve";
+import { viewAllHref } from "@/lib/links";
+import { coreHeroVariant } from "./core-migrate";
 import type { StoreKit } from "@/stores-kit/types";
 
 export * from "./registry-meta";
@@ -53,20 +55,13 @@ export async function renderCoreSection(
     case "hero": {
       let spotlight = null;
       // واجهة بلا صور تستعير صورة أفضل منتج (النجم المختار وإلا الأحدث ظهوراً) بدل واجهة نصية فارغة.
-      const wantsSpotlight = s.variant === "product_spotlight" || s.variant === "centered" || s.images.length === 0;
+      const wantsSpotlight = coreHeroVariant(s) === "product_spotlight";
       if (wantsSpotlight) {
         const source = s.spotlightProductSlug ? { type: "manual" as const, slugs: [s.spotlightProductSlug] } : { type: "featured" as const };
         const [p] = (await fetchProductsForSource(ctx.storeId, source, 1)).concat(s.spotlightProductSlug ? [] : await fetchProductsForSource(ctx.storeId, { type: "newest" }, 1));
         if (p) spotlight = { slug: p.slug, name: p.name, pricePiasters: p.pricePiasters, compareAtPiasters: p.compareAtPiasters, image: (p.images as { url: string }[])?.[0]?.url };
       }
       return <Block.Hero key={s.id} s={s} spotlight={spotlight} />;
-    }
-
-    case "announcement": {
-      // رسائل تدّعي سياسة لم تعد صحيحة تُحذف عند العرض.
-      const messages = groundedItems(s.messages.map((m) => ({ ...m, title: m.text, text: undefined })), ctx.facts).map((m) => ({ ...m, text: m.title }));
-      if (!messages.length) return null;
-      return <Block.Announcement key={s.id} s={{ ...s, messages }} />;
     }
 
     case "categories": {
@@ -79,15 +74,28 @@ export async function renderCoreSection(
     case "product_grid": {
       const source = (s as { source?: ProductSource }).source;
       const limit = (s as { limit?: number }).limit ?? 8;
-      let prods = await fetchProductsForSource(ctx.storeId, source, limit);
+      // نجلب limit+1 لنعرف بصدق أن هناك المزيد قبل عرض «عرض الكل».
+      let prods = await fetchProductsForSource(ctx.storeId, source, limit + 1);
       // مصدر فارغ (لا منتجات مميزة مثلاً): نعرض الأحدث بدل قسم فارغ.
-      if (!prods.length && source?.type !== "manual") prods = await fetchProductsForSource(ctx.storeId, { type: "newest" }, limit);
+      let effective = source;
+      if (!prods.length && source?.type !== "manual") {
+        effective = { type: "newest" };
+        prods = await fetchProductsForSource(ctx.storeId, effective, limit + 1);
+      }
+      // «الأكثر مبيعاً» بلا مبيعات فعلية يُخفى بدل ترتيب عشوائي بعنوان كاذب.
+      if (effective?.type === "best_sellers") prods = prods.filter((p) => (p.orderCount ?? 0) > 0);
       if (!prods.length) return null;
-      return <Block.ProductGrid key={s.id} s={s} products={prods} />;
+      const hasMore = prods.length > limit;
+      return <Block.ProductGrid key={s.id} s={s} products={prods.slice(0, limit)} hasMore={hasMore} viewAll={viewAllHref(effective)} />;
     }
 
-    case "promo_banner":
-      return <Block.PromoBanner key={s.id} s={s} />;
+    case "promo_banner": {
+      // لافتة بكود خصم تظهر فقط ما دام الكود موجوداً وفعالاً الآن؛ بلا كود تُعرض كما هي.
+      const live = await fetchActiveCouponCodes(ctx.storeId);
+      const items = s.items.filter((i) => !i.couponCode || live.has(i.couponCode.toUpperCase()));
+      if (!items.length) return null;
+      return <Block.PromoBanner key={s.id} s={{ ...s, items }} />;
+    }
 
     case "countdown_offer":
       // عرض انتهى موعده (أو بلا موعد صالح) لا يُعرض: عدّاد أصفار إلحاح كاذب.
@@ -95,7 +103,14 @@ export async function renderCoreSection(
       return <Block.CountdownOffer key={s.id} s={s} />;
 
     case "trust_badges": {
-      const items = groundedItems(s.items, ctx.facts).slice(0, 4);
+      // الشارة المرتبطة بحقيقة تُعرض بصياغة الحقيقة نفسها (مصدر واحد)، وما لا تسنده سياسة المتجر يختفي.
+      const byKey = new Map(ctx.facts.map((f) => [f.key as string, f]));
+      const items = groundedItems(s.items, ctx.facts)
+        .map((it) => {
+          const f = it.fact ? byKey.get(it.fact) ?? (it.fact === "free_shipping_over" ? byKey.get("free_shipping") : undefined) : undefined;
+          return f ? { ...it, icon: f.icon, title: f.title, text: f.detail } : it;
+        })
+        .slice(0, 4);
       if (items.length < 2) return null;
       return <Block.TrustBadges key={s.id} s={{ ...s, items }} />;
     }
