@@ -1,1 +1,0 @@
-ALTER TABLE "stores" ADD COLUMN "price_locked_egp" integer;

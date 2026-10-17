@@ -4,7 +4,6 @@ import { requireStore } from "@/lib/tenant";
 import { searchProducts } from "@/server/repos/catalog";
 import { ProductCard } from "@/components/storefront/ProductCard";
 import { OpenVisualSearchButton } from "@/components/storefront/OpenVisualSearchButton";
-import { VISUAL_SEARCH } from "@/lib/edition";
 
 // نتائج البحث صفحات رقيقة المحتوى: تُتاح للمستخدم ولا تُفهرس.
 export const metadata: Metadata = { title: "كل المنتجات", robots: { index: false, follow: true } };
@@ -34,11 +33,9 @@ export default async function SearchPage({
           className="flex-1 bg-transparent px-3 outline-none"
         />
       </form>
-      {VISUAL_SEARCH ? (
-        <div className="-mt-5 mb-8 text-center">
-          <OpenVisualSearchButton />
-        </div>
-      ) : null}
+      <div className="-mt-5 mb-8 text-center">
+        <OpenVisualSearchButton />
+      </div>
 
       <h1 className="mb-6 text-xl">
         {q ? `نتائج البحث عن "${q}" (${rows.length})` : "كل المنتجات"}

@@ -15,7 +15,7 @@ import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
 import { DASH_THEME_COOKIE } from "@/lib/dash-theme";
 import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
-import { DASHBOARD_TITLE_TEMPLATE, EDITION } from "@/lib/edition";
+import { DASHBOARD_TITLE_TEMPLATE } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
 import { HostingBanner } from "@/components/dashboard/HostingBanner";
@@ -46,21 +46,6 @@ export default async function DashboardLayout({
     // يعود بعد الدخول للصفحة التي فتحها (رابط «تفعيل المتجر» في بريد أو صفحة المتابعة مثلاً).
     const back = (await headers()).get("x-pathname") ?? "/dashboard";
     redirect(`/login?redirect=${encodeURIComponent(back.startsWith("/dashboard") ? back : "/dashboard")}&reason=no_session`);
-  }
-
-  // بيانات المتجر حُذفت من المنصة بطلب صاحبه (بعد نقله لموقعه): تبقى صفحة واحدة بلا قائمة: روابط موقعه الجديد.
-  if (EDITION === "platform" && session.store?.purgedAt) {
-    const path0 = (await headers()).get("x-pathname") ?? "";
-    if (!path0.startsWith("/dashboard/own")) redirect("/dashboard/own");
-    const jar0 = await cookies();
-    const theme0 = jar0.get(DASH_THEME_COOKIE)?.value === "light" ? "light" : "dark";
-    return (
-      <div dir="rtl" className={`dash dash-cosmos min-h-dvh text-ink ${theme0 === "dark" ? "dark" : ""}`}>
-        <main id="dashboard-main" className="min-w-0 p-4 py-10 md:p-10">
-          {children}
-        </main>
-      </div>
-    );
   }
 
   // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح والإيقاف. لا تُقفل اللوحة أبداً: البيانات بيانات التاجر.

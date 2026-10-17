@@ -13,7 +13,7 @@ export type NotesInput = {
   viewedNotBought: { id: string; name: string; viewers: number } | null;
   silentRepeat: number;
   hasOrdersEver: boolean;
-  /** رابط مشاركة المتجر (صفحة «متجري» على المنصة، أو جذر الموقع في مشروع التاجر). */
+  /** رابط مشاركة المتجر (صفحة «متجري»). */
   shareHref: string;
 };
 

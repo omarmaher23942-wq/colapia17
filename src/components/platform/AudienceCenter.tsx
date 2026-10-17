@@ -13,7 +13,6 @@ import type { AudienceRow, Segment } from "@/server/outreach";
 type Campaign = { id: string; subject: string; segment: string; recipients: number; sent: number; failed: number; createdAt: string };
 
 const SEG_TONE: Record<string, string> = {
-  owned: "bg-emerald-400/15 text-emerald-300",
   paid: "bg-sky-400/15 text-sky-300",
   trial: "bg-amber-400/15 text-amber-300",
   lapsed: "bg-rose-400/15 text-rose-300",

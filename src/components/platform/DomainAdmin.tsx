@@ -1,22 +1,21 @@
 "use client";
 
-// DomainAdmin.tsx — في صفحة المتجر بلوحة الوكالة: حالة النطاق الخاص وتأكيد إضافته يدوياً عند مزود الاستضافة (بلا توكن)، وتنزيل مشروع
-// المتجر لتسليم الكود.
+// DomainAdmin.tsx — في صفحة المتجر بلوحة الوكالة: حالة النطاق الخاص وتأكيد إضافته يدوياً عند مزود الاستضافة (بلا توكن).
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { toast } from "sonner";
 import { confirmDomainAddedAction } from "@/server/actions/platform-stores-governance";
 
 const LABEL: Record<string, string> = { pending: "DNS لا يشير إلينا بعد", awaiting_team: "يشير إلينا: أضفه عند مزود الاستضافة ثم أكّد", active: "يعمل" };
 
-export function DomainAdmin({ storeId, domain, status, auto, codeRequestedAt }: { storeId: string; domain: string | null; status: string | null; auto: boolean; codeRequestedAt: string | null }) {
+export function DomainAdmin({ storeId, domain, status, auto }: { storeId: string; domain: string | null; status: string | null; auto: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
     <section className="space-y-3 rounded-3xl border border-white/10 bg-[#0b0f2a] p-5 text-[#eaf0ff]">
       <h2 className="flex items-center gap-2 text-sm font-black">
-        <Globe className="size-4 text-[#8fa8ff]" aria-hidden="true" /> النطاق الخاص وتسليم الكود
+        <Globe className="size-4 text-[#8fa8ff]" aria-hidden="true" /> النطاق الخاص
       </h2>
       {domain ? (
         <div className="space-y-2 text-[13px]">
@@ -43,13 +42,6 @@ export function DomainAdmin({ storeId, domain, status, auto, codeRequestedAt }: 
       ) : (
         <p className="text-[13px] text-[#8d97c4]">لا نطاق خاص.</p>
       )}
-      <div className="border-t border-white/10 pt-3 text-[13px]">
-        {codeRequestedAt ? <p className="mb-2 font-bold text-amber-200">طلب العميل نسخة الكود في {new Date(codeRequestedAt).toLocaleString("ar-EG-u-nu-latn", { timeZone: "Africa/Cairo" })}.</p> : null}
-        <a href={`/admin/stores/${storeId}/project`} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[12.5px] font-black">
-          <Download className="size-4" aria-hidden="true" /> نزّل مشروع المتجر (ZIP)
-        </a>
-        <p className="mt-2 text-[12px] text-[#8d97c4]">مشروع مستقل لهذا المتجر وحده (المتجر ولوحته وبياناته المحقونة) بدليل تشغيله، لتسليمه للعميل عند طلبه.</p>
-      </div>
     </section>
   );
 }

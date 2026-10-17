@@ -1,9 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { eq, and, isNull, getTableColumns } from "drizzle-orm";
-import { notFound, permanentRedirect, redirect } from "next/navigation";
-import { headers } from "next/headers";
-import { EDITION } from "@/lib/edition";
+import { notFound } from "next/navigation";
 import { db } from "@/db/client";
 import { stores, storeBlueprints } from "@/db/schema";
 import { redis, rkeys } from "@/lib/redis";
@@ -65,14 +63,7 @@ export const getStoreBySubdomain = cache(
       console.error("[tenant] redis read failed:", e);
     }
 
-    let row: TenantStore | null;
-    try {
-      row = await readStore(sub);
-    } catch (e) {
-      // نسخة التاجر قبل ربط قاعدتها: لا متجر بعد، وrequireStore يحوّل لصفحة الإعداد.
-      if (EDITION === "store") return null;
-      throw e;
-    }
+    const row = await readStore(sub);
     try {
       await redis.set(key, row ?? NONE, {
         ex: row ? STORE_TTL_S : STORE_MISS_TTL_S,
@@ -88,24 +79,8 @@ export async function requireStore(
   subdomain: string,
   opts: { allowHidden?: boolean } = {}
 ): Promise<TenantStore> {
-  let store: TenantStore | null;
-  try {
-    store = await getStoreBySubdomain(subdomain);
-  } catch (e) {
-    // نسخة التاجر قبل ربط قاعدتها أو تجهيزها: صفحة الإعداد تشرح الخطوة التالية.
-    if (EDITION === "store") redirect("/setup");
-    throw e;
-  }
-  if (!store) {
-    if (EDITION === "store") redirect("/setup");
-    notFound();
-  }
-  // نقل التاجر متجره لموقعه الخاص ثم أوقف نسخته هنا بنفسه (أو حذف بياناتها): الزائر يُحوَّل لنفس الصفحة في موقعه.
-  // مجرد النقل لا يحوّل شيئاً: النسخة على المنصة تبقى تعمل طوال اشتراكه ما لم يوقفها.
-  if (EDITION === "platform" && store.ownedUrl && (store.platformOfflineAt || store.purgedAt)) {
-    const path = (await headers()).get("x-pathname") ?? "/";
-    permanentRedirect(new URL(path, store.ownedUrl).toString());
-  }
+  const store = await getStoreBySubdomain(subdomain);
+  if (!store) notFound();
   if (!opts.allowHidden && HIDDEN_STATUSES.has(store.status)) notFound();
   return store;
 }

@@ -10,10 +10,7 @@ const store = (p: Partial<BillingStore> = {}): BillingStore => ({
   frozenAt: null,
   purgeAt: null,
   activatedAt: null,
-  ownedAt: null,
-  purgedAt: null,
   hostingExpiresAt: null,
-  platformOfflineAt: null,
   ...p,
 });
 const pay = (status: BillingPayment["status"], hoursAgo = 1, note: string | null = null): BillingPayment => ({
@@ -68,11 +65,10 @@ describe("مرحلة الدفع", () => {
     expect(s.kind === "pay" && s.deleteAt).toEqual(doomAt);
   });
 
-  it("المفعّل: ينتقل للاستلام، والمستلَم انتهى من الدفع", () => {
+  it("المفعّل: يحمل دفعته المؤكدة وحالة استضافته", () => {
     const a = billingStage(store({ status: "active", activatedAt: now }), [pay("confirmed")], 7, now);
     expect(a.kind).toBe("active");
     expect(a.kind === "active" && a.payment?.status).toBe("confirmed");
-    expect(billingStage(store({ status: "active", purgedAt: now }), [], 7, now).kind).toBe("owned");
   });
 
   it("متجر قيد البناء أو موقوف لا يُعرض عليه دفع", () => {

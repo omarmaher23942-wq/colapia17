@@ -1,7 +1,6 @@
 "use client";
 // media-upload.ts — رفع الملفات من المتصفح بواجهة واحدة لكل الصفحات: كل ملف في طلب multipart إلى /api/upload
-// على موقعنا نفسه (الخادم يتحقق ويكتب في مساحة الملفات). لا اتصال بمضيف آخر من المتصفح. مشروع التاجر الخاص له نسخته
-// من هذا الملف (template/src/lib/media-upload.ts) على حساب UploadThing الخاص به.
+// على موقعنا نفسه (الخادم يتحقق ويكتب في مساحة الملفات). لا اتصال بمضيف آخر من المتصفح.
 import { useCallback, useState } from "react";
 import type { MediaRoute } from "@/lib/media";
 

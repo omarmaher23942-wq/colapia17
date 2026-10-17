@@ -2,8 +2,7 @@ import "server-only";
 // outreach.ts — جمهور بريد المالك: كل من سجّل في المنصة، مصنّفاً حسب أين وصل.
 //
 // الشرائح (لكل تاجر أفضل حالة وصل إليها أي متجر له):
-//   owned     استلم متجره على حساباته
-//   paid      دفع ولم يستلم بعد
+//   paid      دفع
 //   trial     متجره في التجربة أو قيد البناء
 //   lapsed    انتهت تجربته دون دفع (مجمّد أو محذوف)
 //   signed_up سجّل ولم يُكمل متجراً
@@ -15,8 +14,7 @@ import { clientEnv, env } from "@/lib/env";
 
 export const SEGMENTS = {
   all: "الكل",
-  owned: "استلموا متاجرهم",
-  paid: "دفعوا ولم يستلموا",
+  paid: "دفعوا",
   trial: "في التجربة الآن",
   lapsed: "انتهت تجربتهم دون دفع",
   signed_up: "سجّلوا ولم يكملوا متجراً",
@@ -36,10 +34,9 @@ export type AudienceRow = {
   optedOut: boolean;
 };
 
-const RANK: Record<MerchantSegment, number> = { owned: 5, paid: 4, trial: 3, lapsed: 2, signed_up: 1 };
+const RANK: Record<MerchantSegment, number> = { paid: 4, trial: 3, lapsed: 2, signed_up: 1 };
 
-function segmentOf(s: { status: string; ownedAt: Date | null }): MerchantSegment {
-  if (s.ownedAt) return "owned";
+function segmentOf(s: { status: string }): MerchantSegment {
   if (s.status === "active") return "paid";
   if (s.status === "frozen" || s.status === "deleted") return "lapsed";
   if (["trial", "review", "building", "pending_review", "intake"].includes(s.status)) return "trial";
@@ -56,7 +53,7 @@ export async function loadAudience(): Promise<AudienceRow[]> {
   if (!ms.length) return [];
   const [ss, outs] = await Promise.all([
     db
-      .select({ merchantId: stores.merchantId, name: stores.name, subdomain: stores.subdomain, status: stores.status, ownedAt: stores.ownedAt })
+      .select({ merchantId: stores.merchantId, name: stores.name, subdomain: stores.subdomain, status: stores.status })
       .from(stores)
       .where(inArray(stores.merchantId, ms.map((m) => m.id))),
     db.select({ email: emailOptouts.email }).from(emailOptouts),

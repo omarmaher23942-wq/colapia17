@@ -96,7 +96,7 @@ export default async function StoreLayout({ children, params }: Props) {
   if (gated && !teamPreview) {
     return (
       <div className="min-h-dvh bg-[#f8fafc] text-slate-900">
-        <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : hosting.phase === "offline" ? "offline" : "paused"} name={store.name} />
+        <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : "paused"} name={store.name} />
       </div>
     );
   }

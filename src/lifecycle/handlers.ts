@@ -11,7 +11,7 @@ import { schedule, type JobKind } from "@/lifecycle/scheduler";
 import { deliverToMerchant } from "@/lifecycle/messenger";
 import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
-import { purgeStore } from "@/server/ownership/transfer";
+import { purgeStore } from "@/server/store-purge";
 import { trialFacts } from "@/server/repos/trial-facts";
 import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
 import { POSTPONE_MS } from "@/lifecycle/config";

@@ -4,11 +4,9 @@
 // يمر على المنتجات واحداً واحداً بتقدم حقيقي ويمكن إيقافه في أي لحظة. يستخدمه الاستيراد بعد الحفظ، وتنبيه صفحة
 // المنتجات لما لم يُنقل بعد (إغلاق النافذة أثناء النقل، أو تعذر وصول مؤقت).
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, ImageUp, Loader2, RotateCcw } from "lucide-react";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
-import { INTEGRATIONS_NAV } from "@/lib/edition";
 import { productsWithExternalImagesAction, rehostProductImagesAction } from "@/server/actions/product-import";
 import { DashDialog } from "../ui/DashDialog";
 
@@ -107,11 +105,6 @@ export function ImagesProgress({ p }: { p: ImagesPhase }) {
       {p.stopped ? (
         <p className="rounded-xl bg-warn/10 p-3 text-[12.5px] leading-6 text-warn">
           توقف النقل: {p.stopped}
-          {p.needsKey ? (
-            <Link href={INTEGRATIONS_NAV.href} className="ms-1 font-black underline">
-              إضافة المفتاح
-            </Link>
-          ) : null}
         </p>
       ) : null}
       {p.removed.length ? (

@@ -19,7 +19,7 @@ export async function setCustomDomainAction(raw: string): Promise<Result> {
   const s = await ownerStore();
   if (!s) return { ok: false, error: "ربط النطاق لصاحب المتجر." };
   if (!["trial", "active"].includes(s.store.status)) return { ok: false, error: "يُربط النطاق بعد تسليم المتجر." };
-  if (!(await allow("ownership", `domain:${s.storeId}`))) return { ok: false, error: "محاولات كثيرة، انتظر دقائق." };
+  if (!(await allow("domain", `domain:${s.storeId}`))) return { ok: false, error: "محاولات كثيرة، انتظر دقائق." };
   const domain = normalizeDomain(raw, process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "colapia.com");
   if (!domain) return { ok: false, error: "اكتب النطاق فقط مثل mystore.com أو shop.mystore.com." };
   const [taken] = await db.select({ id: stores.id }).from(stores).where(and(eq(stores.customDomain, domain), ne(stores.id, s.storeId))).limit(1);

@@ -1,6 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { EDITION } from "./edition";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -10,18 +9,9 @@ export function cn(...inputs: ClassValue[]) {
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-/** عنوان موقع التاجر في نسخته الخاصة (يكشفه Vercel تلقائياً)، أو فارغ فتصبح الروابط نسبية. */
-export function siteOrigin(): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
-  const vercel = process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
-  return vercel ? `https://${vercel}` : "";
-}
-
-/** رابط المتجر العام: https://{sub}.{ROOT}{path} على المنصة، ونطاق التاجر نفسه في نسخته الخاصة. */
+/** رابط المتجر العام: https://{sub}.{ROOT}{path}. */
 export function storeUrl(subdomain: string, path = "") {
   const suffix = !path ? "" : path.startsWith("/") ? path : `/${path}`;
-  if (EDITION === "store") return `${siteOrigin()}${suffix || "/"}`;
   const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000";
   const proto = root.includes("localhost") ? "http" : "https";
   return `${proto}://${subdomain}.${root}${suffix}`;
@@ -32,7 +22,7 @@ export function storeUrl(subdomain: string, path = "") {
  * وإلا نطاقه الفرعي. النطاق الفرعي لمتجر بنطاق خاص يحوّل إليه (308)، فلا يُفهرس نفس المحتوى برابطين.
  */
 export function publicStoreUrl(store: { subdomain: string; customDomain?: string | null; customDomainStatus?: string | null }, path = "") {
-  if (EDITION !== "store" && store.customDomain && store.customDomainStatus === "active") {
+  if (store.customDomain && store.customDomainStatus === "active") {
     const suffix = !path ? "" : path.startsWith("/") ? path : `/${path}`;
     return `https://${store.customDomain}${suffix}`;
   }

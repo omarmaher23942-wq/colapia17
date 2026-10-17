@@ -77,7 +77,7 @@ function resolveFrom(
   if (senderKind === "custom") {
     return env.EMAIL_FROM || `${displayName} <hello@${rootDomain}>`;
   }
-  // نسخة التاجر: عنوان الإرسال من EMAIL_FROM (نطاقه الموثّق في Resend) باسم متجره.
+  // EMAIL_FROM على نطاق آخر غير الرئيسي: عنوان الإرسال منه باسم المتجر.
   if (env.EMAIL_FROM && !env.EMAIL_FROM.includes(rootDomain)) {
     const addr = /<([^>]+)>/.exec(env.EMAIL_FROM)?.[1] ?? env.EMAIL_FROM;
     return `${displayName} <${addr}>`;
@@ -218,7 +218,7 @@ export async function sendTemplatedEmail(
   if (recipients.length === 0) {
     return { ok: false, error: "no_valid_recipients" };
   }
-  // نسخة التاجر الخاصة تعمل بلا مزوّد بريد حتى يضيف مفتاح Resend؛ الإشعارات داخل اللوحة تكفي.
+  // بلا مفتاح Resend (بيئة محلية مثلاً) لا بريد؛ الإشعارات داخل اللوحة تكفي.
   if (!env.RESEND_API_KEY) return { ok: false, error: "email_disabled" };
 
   const senderKind = opts.senderKind ?? "hello";

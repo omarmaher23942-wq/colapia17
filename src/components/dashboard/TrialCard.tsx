@@ -1,5 +1,4 @@
 // TrialCard — عدّاد التجربة في النظرة العامة بسعر المتجر الحقيقي (المثبَّت عند التسليم، وإلا سعر السلّم الحالي).
-// للمنصة فقط: مشروع التاجر الخاص يستبدله بنسخة فارغة (template/src/components/dashboard/TrialCard.tsx).
 import "server-only";
 import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
 import { amountForStore } from "@/server/pricing";

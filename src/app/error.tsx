@@ -4,7 +4,6 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { AlertTriangle, RotateCcw, Home, LifeBuoy } from "lucide-react";
-import { EDITION } from "@/lib/edition";
 
 export default function GlobalError({
   error,
@@ -81,7 +80,6 @@ export default function GlobalError({
           </Link>
         </div>
 
-        {EDITION === "platform" ? (
         <Link
           href="mailto:support@colapia.com"
           className="mt-6 inline-flex items-center gap-1.5 text-xs font-bold text-[#8d97c4] transition-colors hover:text-[#8fa8ff]"
@@ -89,7 +87,6 @@ export default function GlobalError({
           <LifeBuoy className="size-3.5" strokeWidth={2.25} aria-hidden="true" />
           تواصل مع الدعم
         </Link>
-        ) : null}
       </div>
     </div>
   );

@@ -7,54 +7,46 @@ const store = (p: Partial<HostingStore> = {}): HostingStore => ({
   status: "active",
   activatedAt: new Date(now.getTime() - 100 * D),
   hostingExpiresAt: new Date(now.getTime() + 265 * D),
-  platformOfflineAt: null,
-  purgedAt: null,
   ...p,
 });
 
 describe("حالة الاستضافة", () => {
   it("سارية بعيدة: تعمل ولا يُفتح التجديد بعد", () => {
-    const s = hostingState(store(), now, "platform");
+    const s = hostingState(store(), now);
     expect(s.phase).toBe("active");
     expect(hostingServes(s)).toBe(true);
     expect(canRenewNow(s)).toBe(false);
   });
 
   it("قبل الانتهاء بـ 20 يوماً: تذكير والتجديد مفتوح", () => {
-    const s = hostingState(store({ hostingExpiresAt: new Date(now.getTime() + 20 * D) }), now, "platform");
+    const s = hostingState(store({ hostingExpiresAt: new Date(now.getTime() + 20 * D) }), now);
     expect(s.phase).toBe("renew_soon");
     expect(canRenewNow(s)).toBe(true);
   });
 
   it("قبل الانتهاء بـ 50 يوماً: التجديد مفتوح دون تذكير", () => {
-    const s = hostingState(store({ hostingExpiresAt: new Date(now.getTime() + 50 * D) }), now, "platform");
+    const s = hostingState(store({ hostingExpiresAt: new Date(now.getTime() + 50 * D) }), now);
     expect(s.phase).toBe("active");
     expect(canRenewNow(s)).toBe(true);
   });
 
   it("بعد الانتهاء: سماح والمتجر يعمل، ثم إيقاف بلا حذف", () => {
-    const grace = hostingState(store({ hostingExpiresAt: new Date(now.getTime() - 3 * D) }), now, "platform");
+    const grace = hostingState(store({ hostingExpiresAt: new Date(now.getTime() - 3 * D) }), now);
     expect(grace.phase).toBe("grace");
     expect(hostingServes(grace)).toBe(true);
-    const paused = hostingState(store({ hostingExpiresAt: new Date(now.getTime() - (HOSTING_GRACE_DAYS + 1) * D) }), now, "platform");
+    const paused = hostingState(store({ hostingExpiresAt: new Date(now.getTime() - (HOSTING_GRACE_DAYS + 1) * D) }), now);
     expect(paused.phase).toBe("paused");
     expect(hostingServes(paused)).toBe(false);
     expect(canRenewNow(paused)).toBe(true);
   });
 
   it("متجر قديم بلا عمود: سنة من التفعيل", () => {
-    const s = hostingState(store({ hostingExpiresAt: null, activatedAt: new Date(now.getTime() - 370 * D) }), now, "platform");
+    const s = hostingState(store({ hostingExpiresAt: null, activatedAt: new Date(now.getTime() - 370 * D) }), now);
     expect(s.phase).toBe("grace");
   });
 
-  it("إيقاف التاجر نسخته أو حذف بياناتها: offline", () => {
-    expect(hostingState(store({ platformOfflineAt: now }), now, "platform").phase).toBe("offline");
-    expect(hostingState(store({ purgedAt: now }), now, "platform").phase).toBe("offline");
-  });
-
-  it("غير مفعّل أو مشروع التاجر: لا اشتراك", () => {
-    expect(hostingState(store({ status: "trial" }), now, "platform").phase).toBe("none");
-    expect(hostingState(store(), now, "store").phase).toBe("none");
+  it("غير مفعّل: لا اشتراك", () => {
+    expect(hostingState(store({ status: "trial" }), now).phase).toBe("none");
   });
 });
 
