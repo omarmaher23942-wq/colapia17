@@ -56,7 +56,7 @@ export function reportParagraphs(i: ReportInput): string[] {
   if (i.topProducts.length) out.push(`الأكثر طلباً: ${i.topProducts.map((p) => `${p.name} (${fmt(p.qty)})`).join("، ")}.`);
   if (i.bestCampaign && i.bestCampaign.orders > 0) out.push(`أفضل حملة: «${i.bestCampaign.name}» بـ ${arCount(i.bestCampaign.orders, NOUN.order)}.`);
   if (i.recoveredCarts > 0) out.push(`استرجعت ${arCount(i.recoveredCarts, NOUN.cart)} متروكة تحولت لطلبات.`);
-  if (i.requestsLeft !== null) out.push(`رصيدك هذا الشهر من طلبات التعديل: ${fmt(i.requestsLeft)} (من «اطلب تعديل» في لوحتك).`);
+  if (i.requestsLeft !== null) out.push(`المتبقي لكم من طلبات التعديل في سنة الاشتراك: ${fmt(i.requestsLeft)} (من «اطلب تعديل» في لوحتكم).`);
   if (i.renewBy) out.push(`اشتراك الاستضافة يُجدَّد قبل ${i.renewBy}.`);
   return out;
 }

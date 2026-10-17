@@ -4,6 +4,19 @@ import { orderStatusEnum, paymentMethodEnum, paymentStatusEnum, discountTypeEnum
 import { stores } from "./stores";
 import { products, productVariants } from "./catalog";
 
+export type DiscountScope = { productIds?: string[]; categoryIds?: string[] };
+export type DiscountRule =
+  | { type: "spend_percent"; minSubtotalPiasters: number; percent: number }
+  | { type: "spend_amount"; minSubtotalPiasters: number; amountPiasters: number }
+  | { type: "free_gift"; minSubtotalPiasters: number; productId: string; variantId?: string }
+  | { type: "buy_x_get_y"; buyQty: number; getQty: number; percentOff: number };
+export type OrderGift = { wrap: boolean; message?: string; hidePrices?: boolean };
+export const RETURN_KINDS = ["exchange", "refund"] as const;
+export const RETURN_STATUSES = ["new", "approved", "rejected", "received", "completed"] as const;
+export type ReturnKind = (typeof RETURN_KINDS)[number];
+export type ReturnStatus = (typeof RETURN_STATUSES)[number];
+export type ReturnItem = { orderItemId: string; qty: number; reason?: string };
+
 export const customers = pgTable(
   "customers",
   {
@@ -23,6 +36,10 @@ export const customers = pgTable(
     totalSpentPiasters: integer("total_spent_piasters").notNull().default(0),
     lastOrderAt: timestamp("last_order_at", { withTimezone: true }),
     isBlocked: boolean("is_blocked").notNull().default(false),
+    /** وسوم التاجر للعميل (VIP، جملة…). */
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    /** وافق العميل على رسائل واتساب التسويقية من المتجر. */
+    whatsappOptIn: boolean("whatsapp_opt_in").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -63,6 +80,10 @@ export const discounts = pgTable(
     endsAt: timestamp("ends_at", { withTimezone: true }),
     isActive: boolean("is_active").notNull().default(true),
     isAutoApply: boolean("is_auto_apply").notNull().default(false),
+    /** نطاق الخصم: null = كل المنتجات. */
+    scope: jsonb("scope").$type<DiscountScope | null>(),
+    /** قاعدة خصم تلقائي أو «اشترِ X واحصل على Y»: null = كود عادي. */
+    rule: jsonb("rule").$type<DiscountRule | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -119,6 +140,13 @@ export const orders = pgTable(
     visitorId: text("visitor_id"),
     idempotencyKey: text("idempotency_key"),
     whatsappContactedAt: timestamp("whatsapp_contacted_at", { withTimezone: true }),
+    /** تغليف هدية ورسالتها، وإخفاء الأسعار من الفاتورة. */
+    gift: jsonb("gift").$type<OrderGift | null>(),
+    /** ما دُفع فعلاً من الطلب (عربون أو تحويل كامل). */
+    paidPiasters: integer("paid_piasters").notNull().default(0),
+    /** طلب العميل إلغاء الطلب من صفحة طلبه (القرار للتاجر). */
+    cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -146,6 +174,8 @@ export const orderItems = pgTable(
     unitPiasters: integer("unit_piasters").notNull(),
     quantity: integer("quantity").notNull(),
     totalPiasters: integer("total_piasters").notNull(),
+    /** نصيب البند من الخصم (خصم الكمية أو كود على منتجات بعينها). */
+    discountPiasters: integer("discount_piasters").notNull().default(0),
   },
   (t) => [index("order_items_order_idx").on(t.orderId), index("order_items_product_idx").on(t.storeId, t.productId)]
 );
@@ -179,8 +209,12 @@ export const platformPayments = pgTable(
     storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
     method: paymentMethodEnum("method").notNull(),
     amountPiasters: integer("amount_piasters").notNull(),
-    // setup = الباقة الأولى (البناء + سنة استضافة)، renewal = تجديد سنة.
+    // setup = الباقة الأولى (البناء + مدة الباقة)، renewal = تجديد بمدة يختارها التاجر.
     kind: text("kind").$type<"setup" | "renewal">().notNull().default("setup"),
+    /** standard = باقة عادية، golden = الدائرة الذهبية (يُعدّ بها عدد المقاعد). */
+    plan: text("plan").$type<"standard" | "golden">().notNull().default("standard"),
+    /** مدة الاستضافة التي تغطيها الدفعة بالأشهر (null في الدفعات القديمة = 12). */
+    months: integer("months"),
     // نهاية الاستضافة التي غطتها هذه الدفعة بعد قبولها (سجل للتاجر وللمالك).
     coversUntil: timestamp("covers_until", { withTimezone: true }),
     // كود عرض طُبّق على الدفعة (مثل GOLDEN599 للدائرة الذهبية): يحدد المبلغ ويُعدّ به عدد المقاعد المستخدمة.
@@ -258,4 +292,25 @@ export const stockAlerts = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("stock_alerts_uq").on(t.storeId, t.productId, t.variantKey, t.phone), index("stock_alerts_product_idx").on(t.storeId, t.productId)]
+);
+
+
+/** طلبات الاستبدال والاسترجاع من صفحة الطلب (بلا حسابات: الوصول بجهاز العميل أو رابط الطلب). */
+export const returnRequests = pgTable(
+  "return_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<ReturnKind>().notNull(),
+    items: jsonb("items").$type<ReturnItem[]>().notNull().default([]),
+    reason: text("reason"),
+    photos: jsonb("photos").$type<string[]>().notNull().default([]),
+    status: text("status").$type<ReturnStatus>().notNull().default("new"),
+    merchantNote: text("merchant_note"),
+    visitorId: text("visitor_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("return_requests_store_status_idx").on(t.storeId, t.status)]
 );

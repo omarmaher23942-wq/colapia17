@@ -1,6 +1,6 @@
 "use client";
 
-// PayForm — دفع Colapia بتحويل يدوي في ثلاث خطوات: حوّل المبلغ (الرقم والمبلغ بزر نسخ)، ثم الرقم الذي حوّلت منه،
+// PayForm — دفع Colapia بتحويل يدوي: اختيار الباقة (3 أو 6 أو 12 شهراً، أو كود الدائرة الذهبية للباقة الأولى)، ثم حوّل المبلغ (الرقم والمبلغ بزر نسخ)، ثم الرقم الذي حوّلت منه،
 // ثم صورة الإيصال (تُضغط في المتصفح وتُرفع لمسار platformReceipt الخاص بصاحب المتجر). بعد الإرسال تتحول الصفحة
 // نفسها لحالة «قيد المراجعة» من الخادم (router.refresh)، فلا حالة نجاح محلية قد تخالف الواقع.
 import { useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { normalizeEgyptianPhone, prettyPhone } from "@/lib/phone";
+import { monthsLabel, perMonth, type PlanMonths, type PlanOption } from "@/lib/platform-pricing";
 import { useMediaUpload } from "@/lib/media-upload";
 import { checkCouponAction, submitPlatformPaymentAction } from "@/server/actions/platform";
 import { requestPulse } from "../DashboardPulse";
@@ -19,36 +20,54 @@ import { inputCls } from "../product/parts";
 type Method = "vodafone_cash" | "instapay";
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-/** `coupons`: يظهر حقل «كود عرض» (للباقة الأولى فقط، لا للتجديد). */
+export type PayGolden = { code: string; price: number; months: number; seatsLeft: number };
+
+/**
+ * kind="setup": الباقة الأولى (سعر أول مرة، وكود الدائرة الذهبية إن كانت متاحة).
+ * kind="renewal": تجديد بأي مدة بسعر تجديدها.
+ */
 export function PayForm({
-  price: basePrice,
+  plans,
+  featured,
+  kind,
   vodafone,
   instapay,
-  coupons = false,
+  golden,
   suggestCoupon,
+  currentMonths,
 }: {
-  price: number;
+  plans: PlanOption[];
+  featured: PlanMonths;
+  kind: "setup" | "renewal";
   vodafone: string;
   instapay: string;
-  coupons?: boolean;
-  /** كود الدائرة الذهبية لتاجر جاء من استمارتها: الخانة مفتوحة ومملوءة. */
+  /** عرض الدائرة الذهبية متى كان مفعّلاً وفيه مقاعد (للباقة الأولى فقط). */
+  golden?: PayGolden | null;
+  /** كود الدائرة الذهبية لتاجر جاء من دعوتها: الخانة مفتوحة ومملوءة. */
   suggestCoupon?: string;
+  /** مدة الباقة الحالية، لتُحدَّد مسبقاً عند التجديد. */
+  currentMonths?: number | null;
 }) {
   const router = useRouter();
+  const [months, setMonths] = useState<PlanMonths>(() => {
+    const cur = plans.find((p) => p.months === currentMonths);
+    return (kind === "renewal" && cur ? cur.months : featured) as PlanMonths;
+  });
   const [couponOpen, setCouponOpen] = useState(Boolean(suggestCoupon));
   const [couponInput, setCouponInput] = useState(suggestCoupon ?? "");
   const [couponError, setCouponError] = useState("");
   const [checking, setChecking] = useState(false);
-  const [applied, setApplied] = useState<{ code: string; price: number } | null>(null);
-  const price = applied?.price ?? basePrice;
+  const [applied, setApplied] = useState<{ code: string; price: number; months: number } | null>(null);
+  const chosen = plans.find((p) => p.months === months) ?? plans[0]!;
+  const price = applied ? applied.price : kind === "renewal" ? chosen.renewal : chosen.price;
 
   async function applyCoupon() {
     setChecking(true);
     setCouponError("");
-    const r = await checkCouponAction(couponInput).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    const r = await checkCouponAction(couponInput).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاولوا مرة أخرى" }));
     setChecking(false);
     if (!r.ok) return setCouponError(r.error);
-    setApplied({ code: r.code, price: r.price });
+    setApplied({ code: r.code, price: r.price, months: r.months });
     toast.success("تم تطبيق الكود");
   }
   const [method, setMethod] = useState<Method>("vodafone_cash");
@@ -108,7 +127,7 @@ export function PayForm({
     if (!n) return void document.getElementById("pay-phone")?.focus();
     if (!receipt) return void fileRef.current?.closest("section")?.scrollIntoView({ block: "center", behavior: "smooth" });
     setSending(true);
-    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url, coupon: applied?.code }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url, months: applied ? undefined : months, coupon: applied?.code }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
     setSending(false);
     if (!r.ok) {
       toast.error(r.error);
@@ -123,8 +142,87 @@ export function PayForm({
 
   return (
     <div className="space-y-4">
-      {/* 1) التحويل */}
-      <Step n={1} title="تحويل المبلغ">
+      {/* 1) الباقة */}
+      <Step n={1} title={kind === "renewal" ? "مدة التجديد" : "اختيار الباقة"}>
+        {applied ? (
+          <div className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-3.5 text-[12.5px] leading-6 text-ink-2">
+            <p className="text-[13.5px] font-black text-ink">
+              الدائرة الذهبية: {fmtNum(applied.price)} ج.م لـ{monthsLabel(applied.months)}
+            </p>
+            <p className="mt-1">
+              هذا المبلغ هو تكلفة الاستضافة والتشغيل فقط، أما بناء المتجر فبلا مقابل. وهو ليس قيمة المتجر الفعلية. في المقابل يُنشر بوست Collab على إنستجرام عن تجربتكم
+              مع متجركم (ونتولى المونتاج مجاناً)، أو رأي مكتوب نشاركه إن فضّلتم ذلك. بعد المدة تجدّدون بأي باقة عادية.
+            </p>
+            <button type="button" onClick={() => setApplied(null)} className="mt-2 text-[12px] font-bold text-ink-3 hover:text-ink">
+              إلغاء الكود واختيار باقة عادية
+            </button>
+          </div>
+        ) : (
+          <div role="radiogroup" aria-label="مدة الباقة" className="grid gap-2.5 sm:grid-cols-3">
+            {plans.map((p) => {
+              const on = months === p.months;
+              const amount = kind === "renewal" ? p.renewal : p.price;
+              return (
+                <button
+                  key={p.months}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setMonths(p.months)}
+                  className={cn(
+                    "relative flex min-h-28 flex-col items-start gap-1 rounded-xl border p-3.5 text-start transition-colors",
+                    on ? "border-nova/60 bg-nova/10" : "border-edge/10 hover:border-edge/20 hover:bg-edge/[0.03]"
+                  )}
+                >
+                  {p.months === featured ? (
+                    <span className="absolute -top-2.5 end-3 rounded-full bg-nova px-2 py-0.5 text-[10.5px] font-black text-white">الأكثر اختياراً</span>
+                  ) : null}
+                  <span className="text-[13px] font-black text-ink">{monthsLabel(p.months)}</span>
+                  <span className="text-[22px] font-black leading-none tabular-nums text-ink">
+                    {fmtNum(amount)} <span className="text-[12px] font-bold text-ink-2">ج.م</span>
+                  </span>
+                  <span className="text-[11.5px] text-ink-3">يعادل نحو {fmtNum(perMonth(amount, p.months))} ج.م شهرياً</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <p className="mt-2 text-[11.5px] leading-5 text-ink-3">
+          {kind === "renewal"
+            ? "تُضاف المدة الجديدة لنهاية اشتراككم الحالي فلا يضيع أي يوم، وتختارون أي مدة تناسبكم في كل تجديد."
+            : "السعر يشمل بناء المتجر والاستضافة والتشغيل والدعم طوال المدة، وبلا أي عمولة على مبيعاتكم."}
+        </p>
+        {kind === "setup" && golden && !applied ? (
+          couponOpen ? (
+            <div className="mt-3">
+              <div className="flex gap-2">
+                <label htmlFor="pay-coupon" className="sr-only">كود العرض</label>
+                <input
+                  id="pay-coupon"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && couponInput.trim() && applyCoupon()}
+                  dir="ltr"
+                  autoCapitalize="characters"
+                  placeholder="الكود"
+                  className={cn(inputCls, "font-mono uppercase")}
+                />
+                <button type="button" disabled={checking || !couponInput.trim()} onClick={applyCoupon} className="shrink-0 rounded-xl bg-nova px-4 text-[13px] font-black text-white disabled:opacity-50">
+                  {checking ? <Loader2 className="size-4 animate-spin" /> : "طبّقوا"}
+                </button>
+              </div>
+              {couponError ? <p role="alert" className="mt-1.5 text-[12px] font-bold text-bad">{couponError}</p> : null}
+            </div>
+          ) : (
+            <button type="button" onClick={() => setCouponOpen(true)} className="mt-3 text-[12px] font-bold text-nova-2 underline-offset-4 hover:underline">
+              لديكم كود عرض؟
+            </button>
+          )
+        ) : null}
+      </Step>
+
+      {/* 2) التحويل */}
+      <Step n={2} title="تحويل المبلغ">
         <div role="radiogroup" aria-label="وسيلة التحويل" className="grid grid-cols-2 gap-2">
           {(
             [
@@ -162,46 +260,10 @@ export function PayForm({
           <CopyRow label="المبلغ بالضبط" display={`${fmtNum(price)} ج.م`} value={String(price)} />
         </div>
         <p className="mt-2 text-[11.5px] leading-5 text-ink-3">المبلغ كاملاً في تحويل واحد، ثم لقطة شاشة لنجاح التحويل.</p>
-        {coupons ? (
-          applied ? (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ok/30 bg-ok/[0.06] px-3 py-2.5 text-[12.5px]">
-              <span className="font-bold text-ink">
-                الكود <span dir="ltr" className="font-mono">{applied.code}</span>: {fmtNum(applied.price)} ج.م مرة واحدة، والاستضافة والدعم طوال تشغيل Colapia للخدمة بلا تجديد سنوي.
-              </span>
-              <button type="button" onClick={() => setApplied(null)} className="text-[12px] font-bold text-ink-3 hover:text-ink">
-                إلغاء الكود
-              </button>
-            </div>
-          ) : couponOpen ? (
-            <div className="mt-3">
-              <div className="flex gap-2">
-                <label htmlFor="pay-coupon" className="sr-only">كود العرض</label>
-                <input
-                  id="pay-coupon"
-                  value={couponInput}
-                  onChange={(e) => setCouponInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && couponInput.trim() && applyCoupon()}
-                  dir="ltr"
-                  autoCapitalize="characters"
-                  placeholder="الكود"
-                  className={cn(inputCls, "font-mono uppercase")}
-                />
-                <button type="button" disabled={checking || !couponInput.trim()} onClick={applyCoupon} className="shrink-0 rounded-xl bg-nova px-4 text-[13px] font-black text-white disabled:opacity-50">
-                  {checking ? <Loader2 className="size-4 animate-spin" /> : "طبّق"}
-                </button>
-              </div>
-              {couponError ? <p role="alert" className="mt-1.5 text-[12px] font-bold text-bad">{couponError}</p> : null}
-            </div>
-          ) : (
-            <button type="button" onClick={() => setCouponOpen(true)} className="mt-3 text-[12px] font-bold text-nova-2 underline-offset-4 hover:underline">
-              عندك كود عرض؟
-            </button>
-          )
-        ) : null}
       </Step>
 
-      {/* 2) الرقم المحوَّل منه */}
-      <Step n={2} title="الرقم الذي تم التحويل منه">
+      {/* 3) الرقم المحوَّل منه */}
+      <Step n={3} title="الرقم الذي تم التحويل منه">
         <label htmlFor="pay-phone" className="sr-only">
           الرقم الذي تم التحويل منه
         </label>
@@ -227,8 +289,8 @@ export function PayForm({
         </p>
       </Step>
 
-      {/* 3) الإيصال */}
-      <Step n={3} title="صورة الإيصال">
+      {/* 4) الإيصال */}
+      <Step n={4} title="صورة الإيصال">
         <input ref={fileRef} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={(e) => void pick(e.target.files).finally(() => (e.target.value = ""))} />
         {receipt ? (
           <div className="flex items-center gap-3 rounded-xl border border-edge/10 bg-edge/[0.02] p-2.5">

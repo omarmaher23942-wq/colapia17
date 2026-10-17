@@ -20,6 +20,8 @@ export const TENANT_TABLES = [
   "reviews",
   "abandoned_carts",
   "stock_alerts",
+  "product_questions",
+  "return_requests",
   "analytics_events",
   "analytics_daily",
   "support_threads",

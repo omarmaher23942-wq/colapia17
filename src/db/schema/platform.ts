@@ -27,6 +27,8 @@ export const merchants = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     displayName: text("display_name").notNull(),
     email: text("email"),
+    /** البريد بصيغة موحّدة للمطابقة (حروف صغيرة، وبلا نقاط و+ في Gmail). */
+    emailCanonical: text("email_canonical"),
     googleId: text("google_id"),
     avatarUrl: text("avatar_url"),
     phone: text("phone"),
@@ -44,6 +46,7 @@ export const merchants = pgTable(
     uniqueIndex("merchants_email_uq").on(t.email),
     uniqueIndex("merchants_google_id_uq").on(t.googleId),
     index("merchants_phone_idx").on(t.phone),
+    index("merchants_email_canonical_idx").on(t.emailCanonical),
   ]
 );
 

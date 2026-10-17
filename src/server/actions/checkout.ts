@@ -49,6 +49,7 @@ import { getMerchantSession } from "@/server/auth";
 import { hostingServes, hostingState } from "@/lib/hosting";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
 import { CheckoutError, GOV_CODES, isGovernorate, cartItemsSchema, computeShipping, priceLines, validateDiscount } from "@/server/order-lines";
+import { hostingGraceDays } from "@/server/hosting-grace";
 
 
 export type ActionResult<T> =
@@ -139,7 +140,7 @@ export async function placeOrderAction(
   const input = parsed.data;
 
   const store = await getStoreBySubdomain(subdomain);
-  if (!store || !isStorePubliclyVisible(store) || !hostingServes(hostingState(store)))
+  if (!store || !isStorePubliclyVisible(store) || !hostingServes(hostingState(store, new Date(), undefined, await hostingGraceDays().catch(() => undefined))))
     return { ok: false, error: "المتجر لا يستقبل طلبات حالياً" };
   const db = await getTenantDb(store.id);
   if (!store.acceptingOrders)

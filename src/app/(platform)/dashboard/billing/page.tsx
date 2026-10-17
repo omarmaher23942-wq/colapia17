@@ -3,7 +3,7 @@
 //  - قيد المراجعة: الإيصال المرسَل وخطوات ما بعده (المالك يراجع بنفسه؛ لا موعد نَعِد به). تتحدث تلقائياً عند القبول.
 //  - مفعّل: حالة الاستضافة (سارية، تقترب، سماح، متوقف) وتاريخ انتهائها، والتجديد حين يُفتح (lib/hosting.ts).
 //  - بيانات محذوفة بطلب التاجر بعد نقله: لا شيء مطلوب.
-// السعر من platformPricing (نفس الهبوط والتحقق من الإيصال)، وأرقام التحويل من متغيرات المنصة.
+// الأسعار من currentPricing (نفس الهبوط والتحقق من الإيصال)، وأرقام التحويل من متغيرات المنصة.
 import Link from "next/link";
 import { requireStoreArea } from "@/server/merchant-guard";
 import { redirect } from "next/navigation";
@@ -18,9 +18,11 @@ import { fmtNum } from "@/lib/format";
 import { formatEgp } from "@/lib/money";
 import { prettyPhone } from "@/lib/phone";
 import { trialFacts, type TrialFacts } from "@/server/repos/trial-facts";
-import { currentPricing } from "@/server/pricing";
+import { currentPricing, goldenStatus } from "@/server/pricing";
+import { monthsLabel, type PlanOption, type PricingModel } from "@/lib/platform-pricing";
+import { hostingGraceDays } from "@/server/hosting-grace";
 import { billingStage, type BillingPayment, type BillingStage } from "@/lib/billing-stage";
-import { canRenewNow, HOSTING_GRACE_DAYS, RENEW_OPEN_DAYS, type HostingState } from "@/lib/hosting";
+import { canRenewNow, RENEW_OPEN_DAYS, type HostingState } from "@/lib/hosting";
 import { PayForm } from "@/components/dashboard/billing/PayForm";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 
@@ -71,8 +73,9 @@ export default async function BillingPage() {
     .limit(20)) as BillingPayment[];
 
   const now = Date.now();
-  const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now));
-  const current = await currentPricing();
+  const grace = await hostingGraceDays().catch(() => 3);
+  const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now), grace);
+  const [current, goldenNow] = await Promise.all([currentPricing(), goldenStatus(store.id)]);
   // تاجر جاء من «الدائرة الذهبية» (استمارتها المصغّرة): خانة الكود تظهر مملوءة بكود العرض.
   const [req] = await db
     .select({ data: storeRequests.data })
@@ -80,9 +83,8 @@ export default async function BillingPage() {
     .where(eq(storeRequests.storeId, store.id))
     .limit(1)
     .catch(() => []);
-  const suggestCoupon = (req?.data as { offer?: string } | null)?.offer === "golden" ? current.ladder.golden.code : undefined;
-  // سعر هذا المتجر مثبَّت عند تسليمه؛ «قبل الخصم» والتجديد من السلّم.
-  const pricing = { price: store.priceLockedEgp ?? current.price, basePrice: current.basePrice, renewal: current.renewal };
+  const suggestCoupon = (req?.data as { offer?: string } | null)?.offer === "golden" && goldenNow.available ? goldenNow.code : undefined;
+  const golden = goldenNow.available ? { code: goldenNow.code, price: goldenNow.price, months: goldenNow.months, seatsLeft: goldenNow.seatsLeft } : null;
 
   const renewing = stage.kind === "active" && Boolean(stage.renewalPending);
   const facts = stage.kind === "pay" ? await trialFacts(store).catch(() => null) : null;
@@ -92,7 +94,7 @@ export default async function BillingPage() {
       <header>
         <h1 className="text-xl font-black text-ink">الباقة والاستضافة</h1>
         <p className="mt-1 text-[12.5px] text-ink-3">
-          متجر {store.name}: الباقة {fmtNum(pricing.price)} ج.م تشمل سنة استضافة كاملة، ثم {fmtNum(pricing.renewal)} ج.م لكل سنة بعدها. بلا عمولة على مبيعاتك.
+          متجر {store.name}: اختاروا مدة الاشتراك (3 أو 6 أو 12 شهراً)، والسعر يشمل البناء والاستضافة والتشغيل طوال المدة. بلا عمولة على مبيعاتكم.
         </p>
       </header>
 
@@ -101,14 +103,14 @@ export default async function BillingPage() {
           <div className="space-y-4">
             <PhaseBanner stage={stage} now={now} />
             {facts ? <SoFar facts={facts} /> : null}
-            <PayForm price={pricing.price} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} coupons suggestCoupon={suggestCoupon} />
+            <PayForm plans={current.plans} featured={current.featured} kind="setup" vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} golden={golden} suggestCoupon={suggestCoupon} />
           </div>
-          <Offer price={pricing.price} basePrice={pricing.basePrice} renewal={pricing.renewal} />
+          <Offer pricing={current} />
         </div>
       ) : null}
 
       {stage.kind === "review" ? <InReview payment={stage.payment} /> : null}
-      {stage.kind === "active" ? <Hosting stage={stage} renewal={pricing.renewal} now={now} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} /> : null}
+      {stage.kind === "active" ? <Hosting stage={stage} pricing={current} planMonths={store.planMonths ?? null} grace={grace} now={now} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} /> : null}
       {stage.kind === "owned" ? (
         <StateCard tone="ok" icon={CheckCircle2} title="بيانات متجرك حُذفت من Colapia بطلبك" text="متجرك يعمل على حساباتك أنت، ولا شيء مطلوب منك هنا.">
           <CtaLink href="/dashboard/own">روابط موقعك الجديد</CtaLink>
@@ -202,29 +204,19 @@ function PhaseBanner({ stage, now }: { stage: Extract<BillingStage, { kind: "pay
   );
 }
 
-function Offer({ price, basePrice, renewal }: { price: number; basePrice: number; renewal: number }) {
-  const off = basePrice > price ? Math.round((1 - price / basePrice) * 100) : 0;
+function Offer({ pricing }: { pricing: PricingModel }) {
+  const renewals = pricing.plans.map((p) => `${monthsLabel(p.months)}: ${fmtNum(p.renewal)} ج.م`).join("، ");
   return (
-    <aside aria-label="ما تدفع مقابله" className="dash-card p-5 lg:sticky lg:top-20">
-      <p className="text-[12px] font-bold text-ink-3">الباقة: متجرك + سنة استضافة</p>
-      <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
-        <span className="text-4xl font-black tabular-nums text-ink">{fmtNum(price)}</span>
-        <span className="text-[14px] font-bold text-ink-2">ج.م</span>
-        {off ? (
-          <>
-            <s className="text-[13px] tabular-nums text-ink-3">{fmtNum(basePrice)} ج.م</s>
-            <span className="rounded-md bg-ok/10 px-1.5 py-0.5 text-[11px] font-black text-ok">خصم {fmtNum(off)}%</span>
-          </>
-        ) : null}
-      </div>
-      <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
+    <aside aria-label="ما يشمله الاشتراك" className="dash-card p-5 lg:sticky lg:top-20">
+      <p className="text-[12px] font-bold text-ink-3">ما يشمله الاشتراك</p>
+      <ul className="mt-3 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
         {[
-          "متجرك بتصميمه الحالي ولوحة تحكمه، مفتوح لعملائك على رابطه نفسه.",
-          "سنة استضافة وتشغيل كاملة علينا، مع التحديثات.",
+          "متجركم بتصميمه الحالي ولوحة تحكمه، مفتوح لعملائكم على رابطه نفسه.",
+          "استضافة وتشغيل كاملان طوال المدة المختارة، مع التحديثات والدعم.",
           "بلا عمولة لنا على أي طلب.",
-          `بعد السنة الأولى: ${fmtNum(renewal)} ج.م للسنة، تجدد متى شئت قبل الانتهاء.`,
-          "متجرك لا يُحذف بسبب التأخر في التجديد: يتوقف عن الظهور فقط ويعود فور التجديد.",
-          "بياناتك ملكك، وتطلب نسخة منها متى أردت.",
+          `عند التجديد تختارون أي مدة بسعرها: ${renewals}.`,
+          "متجركم لا يُحذف بسبب التأخر في التجديد: يتوقف عن الظهور فقط ويعود فور التجديد.",
+          "طلبا تعديل ينفذهما فريقنا خلال سنة الاشتراك، وكل ما عدا ذلك تعدّلونه من لوحتكم بلا حد.",
         ].map((t) => (
           <li key={t} className="flex gap-2">
             <Check className="mt-1 size-4 shrink-0 text-ok" aria-hidden="true" />
@@ -241,13 +233,13 @@ function InReview({ payment, renewal }: { payment: BillingPayment; renewal?: boo
     ? [
         { done: true, title: "وصل إيصال التجديد", text: `${formatEgp(payment.amountPiasters)} عبر ${METHOD[payment.method] ?? payment.method}، ${shortFmt.format(payment.createdAt)}` },
         { done: false, current: true, title: "نراجع الإيصال بأنفسنا", text: "متجرك لا يتوقف أثناء المراجعة إن كان يعمل الآن." },
-        { done: false, title: "تُمد الاستضافة سنة ويصلك بريد", text: "وتتحدث هذه الصفحة وحدها." },
+        { done: false, title: "تُمد الاستضافة بالمدة التي اخترتموها ويصلكم بريد", text: "وتتحدث هذه الصفحة وحدها." },
       ]
     : [
     { done: true, title: "وصل إيصالك", text: `${formatEgp(payment.amountPiasters)} عبر ${METHOD[payment.method] ?? payment.method}، ${shortFmt.format(payment.createdAt)}` },
     { done: false, current: true, title: "نراجع الإيصال بأنفسنا", text: "نطابق المبلغ والرقم المحوَّل منه مع ما وصلنا. لا يُجمَّد متجرك ولا يُحذف أثناء ذلك." },
     { done: false, title: "يُفعَّل متجرك ويصلك بريد", text: "وتتحدث هذه الصفحة وحدها." },
-    { done: false, title: "متجرك مفتوح لعملائك", text: "بسنة استضافة كاملة تبدأ من يوم القبول." },
+    { done: false, title: "متجرك مفتوح لعملائك", text: "بمدة الاستضافة التي اخترتموها، وتبدأ من يوم القبول." },
       ];
   return (
     <section aria-labelledby="review-title" className="dash-card grid gap-5 p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_auto]">
@@ -294,13 +286,17 @@ function InReview({ payment, renewal }: { payment: BillingPayment; renewal?: boo
 
 function Hosting({
   stage,
-  renewal,
+  pricing,
+  planMonths,
+  grace,
   now,
   vodafone,
   instapay,
 }: {
   stage: Extract<BillingStage, { kind: "active" }>;
-  renewal: number;
+  pricing: PricingModel;
+  planMonths: number | null;
+  grace: number;
   now: number;
   vodafone: string;
   instapay: string;
@@ -308,7 +304,6 @@ function Hosting({
   const h = stage.hosting;
   const card = hostingCard(h, now);
   const open = canRenewNow(h) && !stage.renewalPending;
-  if (h.phase === "lifetime") return <StateCard tone={card.tone} icon={card.icon} title={card.title} text={card.text} />;
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="space-y-4">
@@ -325,20 +320,26 @@ function Hosting({
             </div>
           </div>
         ) : null}
-        {open ? <PayForm price={renewal} vodafone={vodafone} instapay={instapay} /> : null}
+        {open ? <PayForm plans={pricing.plans} featured={pricing.featured} kind="renewal" currentMonths={planMonths} vodafone={vodafone} instapay={instapay} /> : null}
       </div>
       <aside aria-label="اشتراكك" className="dash-card p-5 lg:sticky lg:top-20">
-        <p className="text-[12px] font-bold text-ink-3">التجديد السنوي</p>
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="text-3xl font-black tabular-nums text-ink">{fmtNum(renewal)}</span>
-          <span className="text-[13px] font-bold text-ink-2">ج.م / سنة</span>
-        </div>
+        <p className="text-[12px] font-bold text-ink-3">أسعار التجديد</p>
+        <ul className="mt-2 space-y-1.5">
+          {pricing.plans.map((p: PlanOption) => (
+            <li key={p.months} className="flex items-baseline justify-between gap-2">
+              <span className="text-[13px] font-bold text-ink-2">{monthsLabel(p.months)}</span>
+              <span className="text-[20px] font-black tabular-nums text-ink">
+                {fmtNum(p.renewal)} <span className="text-[12px] font-bold text-ink-2">ج.م</span>
+              </span>
+            </li>
+          ))}
+        </ul>
         <ul className="mt-4 space-y-2.5 text-[12.5px] leading-6 text-ink-2">
           {[
-            `يُفتح قبل انتهاء اشتراكك بـ ${fmtNum(RENEW_OPEN_DAYS)} يوماً، والسنة الجديدة تُضاف لنهاية الحالية فلا تخسر يوماً.`,
-            `بعد الانتهاء يبقى متجرك يعمل ${fmtNum(HOSTING_GRACE_DAYS)} يوماً، ثم يتوقف عن الظهور للزوار حتى التجديد.`,
-            "لا يُحذف شيء من بياناتك بسبب التأخر في التجديد.",
-            "نذكّرك قبل الانتهاء بشهر وأسبوع ويوم.",
+            `يُفتح التجديد قبل انتهاء اشتراككم بـ ${fmtNum(RENEW_OPEN_DAYS)} يوماً، والمدة الجديدة تُضاف لنهاية الحالية فلا يضيع يوم.`,
+            `بعد الانتهاء يبقى متجركم يعمل ${fmtNum(grace)} ${grace === 1 ? "يوماً" : grace === 2 ? "يومين" : grace <= 10 ? "أيام" : "يوماً"}، ثم يتوقف عن الظهور للزوار حتى التجديد.`,
+            "لا يُحذف شيء من بياناتكم بسبب التأخر في التجديد.",
+            "نذكّركم قبل الانتهاء بشهر وأسبوع ويوم.",
           ].map((t) => (
             <li key={t} className="flex gap-2">
               <Check className="mt-1 size-4 shrink-0 text-ok" aria-hidden="true" />
@@ -357,13 +358,11 @@ function hostingCard(h: HostingState, now: number): { tone: keyof typeof TONE; i
     case "active":
       return { tone: "ok", icon: CalendarCheck, title: "متجرك مفعّل والاستضافة سارية", text: `حتى ${dayFmt.format(h.expiresAt)} (${inTime(h.expiresAt, now)}). لا شيء مطلوب منك الآن.` };
     case "renew_soon":
-      return { tone: "warn", icon: RefreshCw, title: `اشتراكك ينتهي ${inTime(h.expiresAt, now)}`, text: `في ${dayFmt.format(h.expiresAt)}. جدّد الآن وتُضاف السنة الجديدة بعد هذا التاريخ.` };
+      return { tone: "warn", icon: RefreshCw, title: `اشتراكك ينتهي ${inTime(h.expiresAt, now)}`, text: `في ${dayFmt.format(h.expiresAt)}. جدّدوا الآن وتُضاف المدة الجديدة بعد هذا التاريخ.` };
     case "grace":
-      return { tone: "bad", icon: AlertTriangle, title: "انتهت سنة الاستضافة", text: `متجرك ما زال يعمل حتى ${dayFmt.format(h.pauseAt)} (${inTime(h.pauseAt, now)})، ثم يتوقف عن الظهور للزوار حتى تجدد. بياناتك محفوظة كاملة.` };
+      return { tone: "bad", icon: AlertTriangle, title: "انتهت مدة الاستضافة", text: `متجرك ما زال يعمل حتى ${dayFmt.format(h.pauseAt)} (${inTime(h.pauseAt, now)})، ثم يتوقف عن الظهور للزوار حتى تجدد. بياناتك محفوظة كاملة.` };
     case "paused":
       return { tone: "bad", icon: PauseCircle, title: "متجرك متوقف مؤقتاً", text: "لا يراه الزوار الآن لانتهاء الاستضافة. لم يُحذف أي شيء: جدّد ويعود فوراً بنفس الرابط ونفس البيانات." };
-    case "lifetime":
-      return { tone: "ok", icon: CalendarCheck, title: "متجرك مفعّل باستضافة مدى الحياة", text: "عضو «الدائرة الذهبية»: الاستضافة والدعم مستمران بلا تجديد سنوي، طوال تشغيل Colapia للخدمة. لا شيء مطلوب منك." };
     case "offline":
       return { tone: "muted", icon: PauseCircle, title: "أوقفت نسخة متجرك على المنصة", text: "زوار رابطك يُحوَّلون لموقعك الخاص. يمكنك إعادة تشغيلها هنا متى شئت ما دام اشتراكك سارياً." };
     default:

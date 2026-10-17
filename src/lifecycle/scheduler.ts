@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm"
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
 import { env, clientEnv } from "@/lib/env";
-import { HOSTING_GRACE_DAYS } from "@/lib/hosting";
+import { hostingGraceDays } from "./timings";
 import { timingsFrom, trialSchedule, type LifecycleTimings } from "./timings-rules";
 
 export const JOB_KINDS = [
@@ -182,12 +182,13 @@ export const schedulePaymentInvite = (storeId: string, deliveredAt: Date) =>
 export async function scheduleHosting(storeId: string, expiresAt: Date) {
   const now = Date.now();
   const D = 24 * H;
+  const graceDays = await hostingGraceDays().catch(() => 3);
   const jobs: [JobKind, Date][] = [
     ["hosting.reminder_30d", new Date(expiresAt.getTime() - 30 * D)],
     ["hosting.reminder_7d", new Date(expiresAt.getTime() - 7 * D)],
     ["hosting.reminder_1d", new Date(expiresAt.getTime() - D)],
     ["hosting.expired", expiresAt],
-    ["hosting.paused", new Date(expiresAt.getTime() + HOSTING_GRACE_DAYS * D)],
+    ["hosting.paused", new Date(expiresAt.getTime() + graceDays * D)],
   ];
   for (const [kind, at] of jobs) if (at.getTime() > now) await schedule(storeId, kind, at);
 }

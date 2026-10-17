@@ -13,7 +13,7 @@ type Row = { id: string; area: ChangeArea; body: string; status: ChangeStatus; t
 const TONE: Record<ChangeStatus, string> = { open: "text-nova-2", in_progress: "text-warn", done: "text-ok", declined: "text-ink-3" };
 const when = (iso: string) => new Date(iso).toLocaleString("ar-EG-u-nu-latn", { timeZone: "Africa/Cairo", dateStyle: "medium", timeStyle: "short" });
 
-export function ChangeRequests({ allowed, quota, rows, initialArea }: { allowed: boolean; quota: { perMonth: number; used: number; remaining: number }; rows: Row[]; initialArea: ChangeArea }) {
+export function ChangeRequests({ allowed, quota, rows, initialArea }: { allowed: boolean; quota: { perYear: number; used: number; remaining: number; renewsAt: string | null }; rows: Row[]; initialArea: ChangeArea }) {
   const router = useRouter();
   const [area, setArea] = useState<ChangeArea>(initialArea);
   const [body, setBody] = useState("");
@@ -25,14 +25,14 @@ export function ChangeRequests({ allowed, quota, rows, initialArea }: { allowed:
           <MessageSquarePlus className="size-5 text-nova-2" aria-hidden="true" /> طلب تعديل
         </h1>
         <p className="mt-1 text-[13.5px] leading-7 text-ink-2">
-          ما تقدر تعمله من لوحتك (منتج، سعر، صورة، نص) اعمله فوراً بنفسك. وما يحتاج فريقنا (تصميم، صفحة جديدة، تنظيم كبير) اطلبه هنا: {quota.perMonth} طلبات كل شهر ضمن اشتراكك.
+          كل ما تستطيعون عمله من لوحتكم (منتج، سعر، صورة، نص) تعدّلونه فوراً بأنفسكم. وما يحتاج فريقنا (تصميم، صفحة جديدة، تنظيم كبير) اطلبوه هنا: {quota.perYear === 2 ? "طلبان" : `${quota.perYear} طلبات`} خلال سنة الاشتراك.
         </p>
       </header>
 
       {allowed ? (
         <section className="dash-card space-y-3 p-4 sm:p-5">
           <p className="text-[13px] font-bold text-ink-2">
-            باقٍ لك هذا الشهر: <b className={quota.remaining ? "text-ok" : "text-bad"}>{quota.remaining}</b> من {quota.perMonth}
+            المتبقي لكم في سنة الاشتراك: <b className={quota.remaining ? "text-ok" : "text-bad"}>{quota.remaining}</b> من {quota.perYear}{quota.renewsAt ? ` · تتجدد الحصة في ${new Date(quota.renewsAt).toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric" })}` : ""}
           </p>
           <div className="flex flex-wrap gap-2">
             {CHANGE_AREAS.map((a) => (

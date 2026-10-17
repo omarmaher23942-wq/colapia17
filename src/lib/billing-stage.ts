@@ -61,7 +61,7 @@ export type BillingStage =
 const DAY = 864e5;
 
 /** payments بالأحدث أولاً. */
-export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date()): BillingStage {
+export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date(), hostingGrace?: number): BillingStage {
   if (store.status === "active") {
     // حذف التاجر بيانات متجره من المنصة بعد نقله: لا شيء يُدفع هنا.
     if (store.purgedAt) return { kind: "owned" };
@@ -70,7 +70,7 @@ export function billingStage(store: BillingStore, payments: BillingPayment[], gr
       kind: "active",
       activatedAt: store.activatedAt,
       payment: payments.find((p) => p.status === "confirmed") ?? null,
-      hosting: hostingState(store, now, "platform"),
+      hosting: hostingState(store, now, "platform", hostingGrace),
       renewalPending: payments.find((p) => p.status === "under_review") ?? null,
       renewalRejected: latestRenewal?.status === "rejected" ? latestRenewal : null,
     };

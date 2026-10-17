@@ -19,6 +19,7 @@ import { DASHBOARD_TITLE_TEMPLATE, EDITION } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
 import { HostingBanner } from "@/components/dashboard/HostingBanner";
+import { hostingGraceDays } from "@/server/hosting-grace";
 
 export const metadata: Metadata = {
   title: { default: "لوحة التحكم", template: DASHBOARD_TITLE_TEMPLATE },
@@ -64,7 +65,7 @@ export default async function DashboardLayout({
   }
 
   // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح والإيقاف. لا تُقفل اللوحة أبداً: البيانات بيانات التاجر.
-  const hosting = session.store ? hostingState(session.store) : ({ phase: "none" } as const);
+  const hosting = session.store ? hostingState(session.store, new Date(), undefined, await hostingGraceDays().catch(() => undefined)) : ({ phase: "none" } as const);
   const path = (await headers()).get("x-pathname") ?? "";
   const onBilling = path.startsWith("/dashboard/billing");
 

@@ -106,6 +106,8 @@ export const conversations = pgTable(
     memory: jsonb("memory").$type<Record<string, unknown>>().notNull().default({}),
     profileName: text("profile_name"),
     botPaused: boolean("bot_paused").notNull().default(false),
+    /** إيقاف مؤقت للوكيل في هذه المحادثة حتى هذا الوقت (null مع botPaused = إيقاف دائم). */
+    botPausedUntil: timestamp("bot_paused_until", { withTimezone: true }),
     lastUserMessageAt: timestamp("last_user_message_at", { withTimezone: true }),
     lastBotMessageAt: timestamp("last_bot_message_at", { withTimezone: true }),
     unreadForAdmin: integer("unread_for_admin").notNull().default(0),

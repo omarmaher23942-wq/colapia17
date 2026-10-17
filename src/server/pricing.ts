@@ -1,74 +1,79 @@
 import "server-only";
-// pricing.ts — السعر الحالي من سلّم الأسعار (إعداد «pricing» في لوحة المالك) وعدد الباقات المدفوعة فعلاً (دفعات
-// setup مؤكدة)، وسعر متجر بعينه (المثبَّت عند تسليمه). مصدر واحد للهبوط والوكيل والدفع والتحقق من الإيصال.
+// pricing.ts — أسعار Colapia v3 من إعداد «pricing» (لوحة المالك /admin/pricing)، ومقاعد «الدائرة الذهبية».
+// مصدر واحد للهبوط والوكيل وصفحة الدفع والتحقق من الإيصال. المنطق الخالص في lib/platform-pricing.ts.
 import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { platformPayments } from "@/db/schema";
 import { getFlag } from "@/lib/flags";
-import { ladderFrom, normalizeCoupon, priceAt, type LadderPosition, type PaymentKind, type PriceLadder } from "@/lib/platform-pricing";
+import { goldenAvailability, normalizeCoupon, planAmount, pricingFrom, type PaymentKind, type PricingModel } from "@/lib/platform-pricing";
 
 export const PRICING_FLAG = "pricing";
 
-export type CurrentPricing = LadderPosition & { basePrice: number; renewal: number; paid: number; ladder: PriceLadder };
+export type CurrentPricing = PricingModel;
 
-export async function priceLadder(): Promise<PriceLadder> {
-  const f = await getFlag<Record<string, unknown>>(PRICING_FLAG).catch(() => ({ enabled: true, config: null }));
-  return ladderFrom(f.config);
-}
-
-export async function paidStoresCount(): Promise<number> {
-  const [r] = await db
-    .select({ n: count() })
-    .from(platformPayments)
-    .where(and(eq(platformPayments.status, "confirmed"), eq(platformPayments.kind, "setup")))
-    .catch(() => [{ n: 0 }]);
-  return Number(r?.n ?? 0);
-}
-
-/** سعر الباقة لمتجر جديد الآن، وكم بقي بهذا السعر (عدّاد حقيقي من المدفوعات المؤكدة). */
+/** نموذج الأسعار الحالي (الباقات والتجديد والمميَّزة والدائرة الذهبية). */
 export async function currentPricing(): Promise<CurrentPricing> {
-  const [ladder, paid] = await Promise.all([priceLadder(), paidStoresCount()]);
-  return { ...priceAt(paid, ladder), basePrice: ladder.basePrice, renewal: ladder.renewal, paid, ladder };
+  const f = await getFlag<Record<string, unknown>>(PRICING_FLAG).catch(() => ({ enabled: true, config: null }));
+  return pricingFrom(f.config);
 }
 
-/** المبلغ المطلوب من متجر بعينه: الباقة بسعره المثبَّت عند التسليم (وإلا الحالي)، والتجديد بسعر التجديد. */
-export async function amountForStore(store: { priceLockedEgp: number | null }, kind: PaymentKind): Promise<number> {
-  const p = await currentPricing();
-  if (kind === "renewal") return p.renewal;
-  return store.priceLockedEgp ?? p.price;
+/** المبلغ المطلوب لباقة بمدتها (3/6/12) ونوع الدفعة؛ null = مدة غير متاحة. */
+export async function amountFor(months: unknown, kind: PaymentKind): Promise<number | null> {
+  return planAmount(await currentPricing(), months, kind);
 }
 
-/**
- * كود «الدائرة الذهبية» لمتجر بعينه: صحيح، للباقة الأولى فقط، والمقاعد لم تكتمل. المقعد يُحسب بالدفعات المؤكدة
- * بالكود وبالإيصالات قيد المراجعة من متاجر أخرى (فلا يتجاوز العدد أثناء المراجعة).
- */
-export async function resolveCoupon(raw: unknown, storeId: string): Promise<{ ok: true; code: string; price: number; seatsLeft: number } | { ok: false; error: string }> {
-  const code = normalizeCoupon(raw);
-  if (!code) return { ok: false, error: "اكتب الكود." };
-  const { golden } = await priceLadder();
-  if (code !== golden.code) return { ok: false, error: "الكود غير صحيح." };
-  const [r] = await db
-    .select({ n: count() })
+async function goldenCounts(excludeStoreId?: string): Promise<{ confirmed: number; underReview: number }> {
+  const rows = await db
+    .select({ status: platformPayments.status, n: count() })
     .from(platformPayments)
     .where(
       and(
-        eq(platformPayments.coupon, code),
+        eq(platformPayments.plan, "golden"),
         inArray(platformPayments.status, ["confirmed", "under_review"]),
-        ne(platformPayments.storeId, storeId)
+        excludeStoreId ? ne(platformPayments.storeId, excludeStoreId) : undefined
       )
-    );
-  const taken = Number(r?.n ?? 0);
-  if (taken >= golden.seats) return { ok: false, error: "اكتملت مقاعد هذا العرض." };
-  return { ok: true, code, price: golden.price, seatsLeft: golden.seats - taken };
+    )
+    .groupBy(platformPayments.status)
+    .catch(() => [] as { status: string; n: number }[]);
+  const by = (s: string) => Number(rows.find((r) => r.status === s)?.n ?? 0);
+  return { confirmed: by("confirmed"), underReview: by("under_review") };
 }
 
-/** مقاعد «الدائرة الذهبية» المستخدمة فعلاً (دفعات مؤكدة بالكود الحالي). */
-export async function goldenSeatsUsed(): Promise<number> {
-  const { golden } = await priceLadder();
-  const [r] = await db
-    .select({ n: count() })
-    .from(platformPayments)
-    .where(and(eq(platformPayments.coupon, golden.code), eq(platformPayments.status, "confirmed")))
-    .catch(() => [{ n: 0 }]);
-  return Number(r?.n ?? 0);
+export type GoldenStatus = ReturnType<typeof goldenAvailability> & {
+  confirmed: number;
+  underReview: number;
+  seats: number;
+  code: string;
+  price: number;
+  months: number;
+};
+
+/**
+ * حالة «الدائرة الذهبية»: المقعد يُحسب بكل دفعة مسجّلة كدائرة ذهبية مؤكدة أو قيد المراجعة (فلا يتجاوز العدد أثناء
+ * المراجعة)، أياً كان الكود الذي استُخدم يومها.
+ */
+export async function goldenStatus(excludeStoreId?: string): Promise<GoldenStatus> {
+  const [{ golden }, c] = await Promise.all([currentPricing(), goldenCounts(excludeStoreId)]);
+  return {
+    ...goldenAvailability(golden, c.confirmed + c.underReview),
+    ...c,
+    seats: golden.seats,
+    code: golden.code,
+    price: golden.price,
+    months: golden.months,
+  };
+}
+
+/** كود «الدائرة الذهبية» لمتجر بعينه (للباقة الأولى فقط؛ يتحقق المستدعي من نوع الدفعة). */
+export async function resolveCoupon(
+  raw: unknown,
+  storeId: string
+): Promise<{ ok: true; code: string; price: number; months: number; seatsLeft: number } | { ok: false; error: string }> {
+  const code = normalizeCoupon(raw);
+  if (!code) return { ok: false, error: "اكتبوا الكود." };
+  const g = await goldenStatus(storeId);
+  if (code !== g.code) return { ok: false, error: "هذا الكود غير صحيح." };
+  if (!g.enabled) return { ok: false, error: "هذا الكود غير متاح حالياً." };
+  if (!g.available) return { ok: false, error: "اكتملت مقاعد هذا العرض، ويمكنكم اختيار أي باقة أخرى." };
+  return { ok: true, code, price: g.price, months: g.months, seatsLeft: g.seatsLeft };
 }

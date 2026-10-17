@@ -28,7 +28,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
     <div className="mx-auto max-w-3xl">
       <ChangeRequests
         allowed={["trial", "active"].includes(session.store.status)}
-        quota={quota}
+        quota={{ ...quota, renewsAt: quota.renewsAt?.toISOString() ?? null }}
         initialArea={area}
         rows={rows.map((r) => ({ id: r.id, area: r.area as ChangeArea, body: r.body, status: r.status as "open", teamNote: r.teamNote, at: r.createdAt.toISOString(), doneAt: r.doneAt?.toISOString() ?? null }))}
       />

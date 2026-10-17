@@ -59,6 +59,20 @@ export const stores = pgTable(
     vacationMessage: text("vacation_message"),
     showcaseOptIn: boolean("showcase_opt_in").notNull().default(true),
 
+    // V2: الإعداد (Onboarding) بعد أن ينشئ الوكيل المتجر من المحادثة.
+    setupStartedAt: timestamp("setup_started_at", { withTimezone: true }),
+    setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
+    /** تقدم الإعداد المحفوظ بعد كل خطوة (شكله يملكه مسار الإعداد). */
+    onboarding: jsonb("onboarding").$type<Record<string, unknown>>().notNull().default({}),
+    /** المحادثة التي أنشأ منها الوكيل المتجر (متجر واحد لكل محادثة). */
+    sourceConversationId: uuid("source_conversation_id"),
+    /** مدة الباقة المدفوعة الحالية بالأشهر (3 أو 6 أو 12، والدائرة الذهبية 3). */
+    planMonths: integer("plan_months"),
+    /** عدّاد أرقام الطلبات الخاص بالمتجر. */
+    orderSeq: integer("order_seq").notNull().default(1000),
+    /** تفضيلات تشغيلية صغيرة للمتجر (اللوحة والتنبيهات). */
+    prefs: jsonb("prefs").$type<Record<string, unknown>>().notNull().default({}),
+
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -74,6 +88,7 @@ export const stores = pgTable(
     index("stores_doom_at_idx").on(t.doomAt),
     index("stores_purge_after_idx").on(t.purgeAfter),
     index("stores_hosting_expires_idx").on(t.hostingExpiresAt),
+    uniqueIndex("stores_source_conversation_uq").on(t.sourceConversationId),
   ]
 );
 

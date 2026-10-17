@@ -20,6 +20,8 @@ export async function notifyOwnerOfPayment(p: {
   senderPhone: string;
   amountEgp: number;
   kind?: "setup" | "renewal";
+  plan?: "standard" | "golden";
+  months?: number;
   screenshotUrl: string;
   assessment: ReceiptAssessment;
 }): Promise<void> {
@@ -32,11 +34,12 @@ export async function notifyOwnerOfPayment(p: {
     headline: p.kind === "renewal" ? "إيصال تجديد استضافة ينتظر قرارك" : "إيصال دفع جديد ينتظر قرارك",
     paragraphs: [
       `المتجر: ${p.storeName} (${p.subdomain})`,
+      `الباقة: ${p.plan === "golden" ? "الدائرة الذهبية" : "عادية"}${p.months ? `، ${p.months} أشهر` : ""}.`,
       `المبلغ: ${p.amountEgp} ج عبر ${METHOD[p.method] ?? p.method}، من الرقم ${p.senderPhone}.`,
       `${LEVEL[p.assessment.level]}: ${p.assessment.summary}`,
       p.kind === "renewal"
-        ? "بمجرد القبول تُمد استضافة المتجر سنة كاملة (ويعود فوراً إن كان متوقفاً)، ويصل التاجر بريد التأكيد."
-        : "المتجر لن يُفعَّل حتى تقبل الإيصال. بمجرد القبول يُفعَّل بسنة استضافة ويصل التاجر بريد التفعيل.",
+        ? "بمجرد القبول تُمد استضافة المتجر بمدة الباقة (ويعود فوراً إن كان متوقفاً)، ويصل التاجر بريد التأكيد."
+        : "المتجر لن يُفعَّل حتى تقبل الإيصال. بمجرد القبول يُفعَّل بمدة الباقة ويصل التاجر بريد التفعيل.",
     ],
     buttons: [
       { title: "راجع واقبل الآن", url: review },

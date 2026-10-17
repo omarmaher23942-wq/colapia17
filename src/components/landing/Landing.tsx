@@ -35,9 +35,9 @@ import { MINI_STORES, StoreMini } from "./StoreMini";
 import { CTA_GHOST, CTA_PRIMARY, Eyebrow, fmtEGP } from "./shared";
 import type { LandingPricing, LandingReview, SessionState } from "./types";
 
-type Props = { session: SessionState; reviews: LandingReview[]; pricing: LandingPricing; trialHours: number; changesPerMonth: number };
+type Props = { session: SessionState; reviews: LandingReview[]; pricing: LandingPricing; trialHours: number; changesPerYear: number };
 
-export function Landing({ session, reviews, pricing, trialHours, changesPerMonth }: Props) {
+export function Landing({ session, reviews, pricing, trialHours, changesPerYear }: Props) {
   const merchant = session === "merchant";
 
   // كل الطرق تبدأ من استمارة الطلب (لا تسجيل ولا حساب قبلها). من لديه متجر يفتح لوحته من الهيدر.
@@ -214,7 +214,7 @@ export function Landing({ session, reviews, pricing, trialHours, changesPerMonth
                   "متجر مصمَّم لنشاطك وفق طلبك",
                   "لوحة تحكم كاملة",
                   "البحث بالصورة ودرع الدفع عند الاستلام",
-                  changesPerMonth ? `${changesLabel(changesPerMonth)} شهرياً ينفذها فريقنا` : "متابعة معك بعد التسليم",
+                  changesPerYear ? `${changesLabel(changesPerYear)} خلال سنة الاشتراك ينفذها فريقنا` : "متابعة معك بعد التسليم",
                   "بلا عمولة على مبيعاتك",
                 ].map((b) => (
                   <li key={b} className="flex items-start gap-2.5">

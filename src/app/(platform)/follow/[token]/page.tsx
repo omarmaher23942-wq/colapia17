@@ -17,6 +17,7 @@ import { db } from "@/db/client";
 import { stores } from "@/db/schema";
 import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
 import { currentPricing } from "@/server/pricing";
+import { startingPrice } from "@/lib/platform-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
   const Name = isNew ? "h2" : "h1";
   // بعد التسليم: رابط المتجر وعداد التجربة هنا أيضاً (العميل قد لا يفتح بريده).
   const [store] = delivered && row.storeId ? await db.select().from(stores).where(eq(stores.id, row.storeId)).limit(1) : [];
-  const price = store ? (store.priceLockedEgp ?? (await currentPricing()).price) : 0;
+  const price = store ? startingPrice(await currentPricing()) : 0;
 
   return (
     <div dir="rtl" className="dash dark dash-cosmos relative min-h-dvh text-ink">
@@ -130,12 +131,12 @@ export default async function FollowPage({ params, searchParams }: { params: Pro
             ) : null}
             {store.status === "frozen" ? (
               <a href="/dashboard/billing" className="inline-flex min-h-11 items-center rounded-xl bg-gradient-to-b from-nova to-nova-deep px-4 text-[14px] font-black text-white">
-                تفعيل المتجر ({fmtNum(price)} ج)
+                تفعيل المتجر (ابتداءً من {fmtNum(price)} ج)
               </a>
             ) : null}
             {store.status === "frozen" && store.purgeAt ? (
               <p className="rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-[14px] font-bold leading-7 text-amber-200">
-                انتهت التجربة. المتجر محفوظ لحد {day(store.purgeAt)} وبعدها يُحذف نهائياً. بالتفعيل ({fmtNum(price)} ج تشمل سنة استضافة) يرجع فوراً بنفس الرابط.
+                انتهت التجربة. المتجر محفوظ لحد {day(store.purgeAt)} وبعدها يُحذف نهائياً. بالتفعيل (ابتداءً من {fmtNum(price)} ج تشمل البناء والاستضافة) يرجع فوراً بنفس الرابط.
               </p>
             ) : null}
           </section>

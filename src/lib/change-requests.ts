@@ -1,4 +1,4 @@
-// change-requests.ts — قواعد «اطلب تعديل» (منطق خالص مختبَر): المجالات والحالات ونصوصها، وحصة الشهر.
+// change-requests.ts — قواعد «اطلب تعديل» (منطق خالص مختبَر): المجالات والحالات ونصوصها، وحصة سنة الاشتراك (قرار المالك 2026-10-17: طلبان لكل سنة اشتراك).
 export const CHANGE_AREAS = ["design", "products", "content", "other"] as const;
 export type ChangeArea = (typeof CHANGE_AREAS)[number];
 export const CHANGE_STATUSES = ["open", "in_progress", "done", "declined"] as const;
@@ -20,11 +20,41 @@ export const STATUS_INFO: Record<ChangeStatus, { label: string }> = {
 
 import { cairoOffsetMinutes } from "@/lib/cairo-time";
 
-export const DEFAULT_PER_MONTH = 2;
+/** عدد طلبات التعديل لكل سنة اشتراك (يُضبط من إعداد «change_requests» ← perYear). */
+export const DEFAULT_PER_YEAR = 2;
 
-export function perMonthFrom(config: unknown): number {
-  const n = Number((config as Record<string, unknown> | null)?.perMonth);
-  return Number.isInteger(n) && n >= 0 && n <= 50 ? n : DEFAULT_PER_MONTH;
+export function perYearFrom(config: unknown): number {
+  const n = Number((config as Record<string, unknown> | null)?.perYear);
+  return Number.isInteger(n) && n >= 0 && n <= 50 ? n : DEFAULT_PER_YEAR;
+}
+
+/**
+ * بداية «سنة الاشتراك» الحالية: يوم التفعيل ثم كل سنة بعده (التاريخ نفسه). تُحسب الطلبات منذ هذه البداية، فالتجديد
+ * أو الباقة الأقصر من سنة لا يمنحان حصة جديدة قبل مرور سنة كاملة على التفعيل. بلا تاريخ تفعيل (تجربة) تُعدّ كل الطلبات.
+ */
+export function quotaPeriodStart(activatedAt: Date | null | undefined, now = new Date()): Date {
+  if (!activatedAt) return new Date(0);
+  if (activatedAt.getTime() > now.getTime()) return activatedAt;
+  let years = now.getUTCFullYear() - activatedAt.getUTCFullYear();
+  const at = (y: number) => {
+    const d = new Date(activatedAt.getTime());
+    d.setUTCFullYear(activatedAt.getUTCFullYear() + y);
+    // 29 فبراير في سنة غير كبيسة يتحول إلى 1 مارس: نرجعه لآخر فبراير.
+    if (d.getUTCMonth() !== activatedAt.getUTCMonth()) d.setUTCDate(0);
+    return d;
+  };
+  while (years > 0 && at(years).getTime() > now.getTime()) years--;
+  return at(Math.max(0, years));
+}
+
+/** موعد تجدد الحصة (بداية السنة التالية من الاشتراك)، للعرض فقط. */
+export function quotaPeriodEnd(activatedAt: Date | null | undefined, now = new Date()): Date | null {
+  if (!activatedAt) return null;
+  const start = quotaPeriodStart(activatedAt, now);
+  const d = new Date(start.getTime());
+  d.setUTCFullYear(start.getUTCFullYear() + 1);
+  if (d.getUTCMonth() !== start.getUTCMonth()) d.setUTCDate(0);
+  return d;
 }
 
 /** بداية الشهر الحالي بتوقيت القاهرة (منتصف ليل اليوم الأول بالإزاحة الفعلية صيفاً أو شتاءً). */
@@ -41,7 +71,7 @@ export function cairoMonthStart(now = new Date()): Date {
   return new Date(utcMidnight - 120 * 60_000);
 }
 
-/** ما بقي من حصة الشهر (الطلبات المرفوضة لا تُحسب). */
-export function remainingQuota(usedThisMonth: number, perMonth: number): number {
-  return Math.max(0, perMonth - usedThisMonth);
+/** ما بقي من حصة سنة الاشتراك (الطلبات المرفوضة لا تُحسب). */
+export function remainingQuota(used: number, perYear: number): number {
+  return Math.max(0, perYear - used);
 }

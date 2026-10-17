@@ -1,3 +1,4 @@
+import { monthsLabel } from "@/lib/platform-pricing";
 import Link from "next/link";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { CheckCircle2, XCircle, Wallet, ExternalLink, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
@@ -33,6 +34,8 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
       pAmount: platformPayments.amountPiasters,
       pKind: platformPayments.kind,
       pCoupon: platformPayments.coupon,
+      pPlan: platformPayments.plan,
+      pMonths: platformPayments.months,
       pMethod: platformPayments.method,
       pSenderPhone: platformPayments.senderPhone,
       pScreenshotUrl: platformPayments.screenshotUrl,
@@ -115,7 +118,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <p className="text-xs text-[#8d97c4] font-mono mt-0.5" dir="ltr">{r.sSubdomain ? `${r.sSubdomain}.colapia.com` : "—"}</p>
                     </div>
                     <span className="rounded-xl bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-sm font-black font-mono border border-emerald-500/30 shadow-sm">
-                      {r.pKind === "renewal" ? "تجديد · " : r.pCoupon ? `الدائرة الذهبية (${r.pCoupon}) · ` : "باقة · "}
+                      {r.pKind === "renewal" ? "تجديد · " : r.pPlan === "golden" ? `الدائرة الذهبية${r.pCoupon ? ` (${r.pCoupon})` : ""} · ` : "باقة · "}{r.pMonths ? `${monthsLabel(r.pMonths)} · ` : ""}
                       {formatEgp(r.pAmount)}
                     </span>
                   </div>

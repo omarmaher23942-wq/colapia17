@@ -69,7 +69,7 @@ export function StoresDirectoryClient({
     else setSelected(new Set(filteredRows.map((r) => r.sId)));
   };
 
-  const doBulk = async (action: "freeze" | "activate_lifetime") => {
+  const doBulk = async (action: "freeze" | "activate_bulk") => {
     setLoading(true);
     try {
       const res = await bulkStoreGovernanceAction(Array.from(selected), action);
@@ -164,10 +164,10 @@ export function StoresDirectoryClient({
             </button>
             <button
               disabled={loading}
-              onClick={() => doBulk("activate_lifetime")}
+              onClick={() => doBulk("activate_bulk")}
               className="rounded-lg bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-xs font-bold hover:bg-emerald-500/30 disabled:opacity-50"
             >
-              تفعيل دائم جماعي
+              تفعيل جماعي يدوي
             </button>
           </div>
         </div>

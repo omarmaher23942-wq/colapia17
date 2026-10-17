@@ -22,6 +22,8 @@ export const TRANSFER_ORDER = [
   ["reviews", s.reviews],
   ["abandoned_carts", s.abandonedCarts],
   ["stock_alerts", s.stockAlerts],
+  ["product_questions", s.productQuestions],
+  ["return_requests", s.returnRequests],
   ["analytics_events", s.analyticsEvents],
   ["analytics_daily", s.analyticsDaily],
   ["support_threads", s.supportThreads],
