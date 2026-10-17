@@ -18,6 +18,8 @@ export type OAuthProvider = "merchant" | "platform";
 export type OAuthStatePayload = {
   provider: OAuthProvider;
   redirectAfter?: string;
+  /** رمز رابط الإعداد (إن بدأ الدخول من صفحة الإعداد): يربط الدخول بمتجر بعينه ويعيد صاحبه لصفحته عند الخطأ. لا بريد هنا أبداً. */
+  setupToken?: string;
 };
 
 type SignedState = OAuthStatePayload & { nonce: string };
@@ -74,6 +76,7 @@ export async function consumeOAuthState(state: string): Promise<OAuthStatePayloa
     return {
       provider,
       redirectAfter: typeof payload.redirectAfter === "string" ? payload.redirectAfter : undefined,
+      setupToken: typeof payload.setupToken === "string" ? payload.setupToken : undefined,
     };
   } catch {
     return null;

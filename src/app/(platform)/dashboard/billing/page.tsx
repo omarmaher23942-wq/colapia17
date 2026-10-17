@@ -49,7 +49,7 @@ function inTime(d: Date, now: number): string {
 export default async function BillingPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/billing");
-  if (!session.store) redirect("/start");
+  if (!session.store) redirect("/no-store");
   await requireStoreArea("billing");
   const store = session.store;
 

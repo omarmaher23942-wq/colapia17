@@ -7,20 +7,32 @@
 // - بدون أي emoji، فقط Lucide Icons (E7).
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
+import { NoStoreNotice } from "@/components/auth/NoStoreNotice";
+import { switchMerchantAccountAction } from "./actions";
 import { GoogleAuthCta } from "@/components/landing/GoogleAuthCta";
 import { EmailCodeLogin } from "./EmailCodeLogin";
 
 type Variant = "login" | "signup";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  oauth_failed: "تعذّر إتمام تسجيل الدخول. حاول مرة أخرى.",
-  state_mismatch: "انتهت صلاحية الجلسة. أعد المحاولة.",
-  email_unverified: "يرجى تأكيد بريدك الإلكتروني في Google أولاً.",
-  access_denied: "رفضت الوصول. نحتاج بريدك واسمك للمتابعة.",
+  invalid_state: "انتهت صلاحية محاولة الدخول أو فُتحت من متصفح آخر. أعيدوا المحاولة من هنا.",
+  missing_params: "لم يكتمل الدخول بحساب Google. أعيدوا المحاولة.",
+  no_email: "لم يشارك Google بريد الحساب معنا. اختاروا حساباً يحتوي بريداً وأعيدوا المحاولة.",
+  email_not_verified: "بريد حساب Google غير مؤكد. أكّدوه في Google أولاً ثم أعيدوا المحاولة.",
+  provider_access_denied: "لم تسمحوا بالوصول إلى بريدكم واسمكم، ونحتاجهما لإكمال الدخول.",
+  google_identity_mismatch: "هذا البريد مرتبط بحساب Google آخر. ادخلوا بالحساب الذي استخدمتموه سابقاً.",
+  unsupported_provider: "تعذّر إتمام الدخول. أعيدوا المحاولة.",
+  server_error: "حدث خطأ مؤقت أثناء الدخول. أعيدوا المحاولة بعد لحظات.",
+  // رموز قديمة قد تصل من روابط محفوظة.
+  google_auth_failed: "تعذّر إتمام الدخول بحساب Google. أعيدوا المحاولة.",
+  oauth_failed: "تعذّر إتمام تسجيل الدخول. أعيدوا المحاولة.",
+  state_mismatch: "انتهت صلاحية الجلسة. أعيدوا المحاولة.",
+  email_unverified: "يرجى تأكيد بريدكم في Google أولاً.",
+  access_denied: "لم تسمحوا بالوصول. نحتاج بريدكم واسمكم للمتابعة.",
 };
 
-function errorMessage(code: string): string {
-  return ERROR_MESSAGES[code] ?? "حدث خطأ غير متوقع. حاول مرة أخرى.";
+export function errorMessage(code: string): string {
+  return ERROR_MESSAGES[code] ?? (code.startsWith("provider_") ? "أوقف Google عملية الدخول. أعيدوا المحاولة." : "حدث خطأ غير متوقع. أعيدوا المحاولة.");
 }
 
 export function LoginForm({
@@ -58,8 +70,11 @@ export function LoginForm({
           </p>
         </div>
 
+        {/* لا متجر مرتبط بالحساب: شاشة لطيفة بتبديل الحساب */}
+        {error === "no_store" ? <NoStoreNotice className="relative mt-6" switchAction={switchMerchantAccountAction.bind(null, redirectTo)} /> : null}
+
         {/* رسالة الخطأ */}
-        {error ? (
+        {error && error !== "no_store" ? (
           <div
             role="alert"
             aria-live="polite"
@@ -107,13 +122,7 @@ export function LoginForm({
             </>
           ) : (
             <>
-              ليس لديكم متجر بعد؟{" "}
-              <Link
-                href="/start"
-                className="font-semibold text-[#8fa8ff] transition-colors hover:text-[#eaf0ff]"
-              >
-                اطلب متجرك
-              </Link>
+              ليس لديكم متجر بعد؟ راسلونا على إنستجرام وسيجهّز لكم المساعد متجركم.
             </>
           )}
         </div>

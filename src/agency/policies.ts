@@ -1,11 +1,7 @@
-// policies.ts — سياسات الدفع والشحن والاستبدال كما اختارها التاجر في الاستمارة، محوّلة إلى بيانات المتجر (منطق خالص بلا
-// شبكة ولا قاعدة). المبدأ: ما قاله التاجر يُكتب كما هو (رقم المحفظة، إنستاباي، رسوم الشحن، مدة التوصيل، المعاينة)، وما لم
-// يقله لا يُعلَن في المتجر ولا يُخترع (الضمان وسياسة العيوب تبقى مطفأة حتى يؤكدها الفريق معه).
-import type { StoreBlueprint } from "@/blueprint/schema";
-import { defaultShippingZones, GOVERNORATES } from "@/lib/egypt";
+// policies.ts — قارئات خالصة لكلام التاجر الحر عن الشحن: المحافظات المذكورة، مدة التوصيل، وأسعار «تختلف حسب المحافظة».
+import { GOVERNORATES } from "@/lib/egypt";
 import { normalizeArabic } from "@/lib/arabic";
-import { normalizeDigits, normalizeEgyptianPhone } from "@/lib/phone";
-import type { IntakeData } from "@/intake/schema";
+import { normalizeDigits } from "@/lib/phone";
 
 // ─── المحافظات من نص حر ─────────────────────────────────────────────────────
 
@@ -97,86 +93,4 @@ export function feesFromNote(note: string | undefined | null): { byGov: Map<stri
     }
   }
   return { byGov, rest };
-}
-
-const noteFee = (fees: ReturnType<typeof feesFromNote>, code: string) => fees.byGov.get(code) ?? fees.rest ?? undefined;
-
-/** صفوف مناطق الشحن: المفعّل حسب النطاق، والسعر الموحد أو أسعار المحافظات (إن قالها التاجر)، والمدة (إن فُهمت). */
-export function zoneRows(delivery: IntakeData["delivery"]): ZoneRow[] {
-  const mentioned = delivery.scope === "custom" ? governoratesIn(delivery.note) : [];
-  const eta = parseEtaDays(delivery.eta);
-  const fees = delivery.fee === "varies" ? feesFromNote(delivery.feeNote) : null;
-  return defaultShippingZones().map((z) => {
-    const fromNote = fees ? noteFee(fees, z.governorate) : undefined;
-    return {
-      ...z,
-      isActive:
-        delivery.scope === "cairo_giza" ? z.governorate === "cairo" || z.governorate === "giza" : delivery.scope === "custom" && mentioned.length ? mentioned.includes(z.governorate) : true,
-      ...(delivery.fee === "flat" && delivery.feeAmount ? { feePiasters: delivery.feeAmount * 100 } : {}),
-      ...(fromNote !== undefined ? { feePiasters: fromNote } : {}),
-      ...(eta ? { etaMinDays: eta.min, etaMaxDays: Math.max(eta.min, eta.max) } : {}),
-    };
-  });
-}
-
-/** هل فهمنا من نص «يختلف حسب المحافظة» سعراً لكل محافظة مفعّلة؟ (وإلا يُسأل التاجر في DELIVERY.md). */
-export function feeNoteUnderstood(delivery: IntakeData["delivery"]): boolean {
-  if (delivery.fee !== "varies") return true;
-  const fees = feesFromNote(delivery.feeNote);
-  return zoneRows(delivery)
-    .filter((z) => z.isActive)
-    .every((z) => noteFee(fees, z.governorate) !== undefined);
-}
-
-/** هل فهمنا المحافظات من نص «محافظات معينة»؟ (وإلا تُفعَّل كلها ويُسأل التاجر في DELIVERY.md). */
-export const customScopeUnderstood = (delivery: IntakeData["delivery"]) => delivery.scope !== "custom" || governoratesIn(delivery.note).length > 0;
-
-export function shippingFromIntake(delivery: IntakeData["delivery"], inspectionAllowed: boolean, base: StoreBlueprint["shipping"]): StoreBlueprint["shipping"] {
-  return {
-    ...base,
-    flatRatePiasters: delivery.fee === "flat" && delivery.feeAmount ? delivery.feeAmount * 100 : null,
-    // «الشحن مجاني» = مجاني من أول جنيه (عتبة صفر)، ولا يُعلن مجاناً لمن لم يقلها.
-    freeOverPiasters: delivery.fee === "free" ? 0 : null,
-    generalEta: delivery.eta?.trim() ? delivery.eta.trim().slice(0, 80) : base.generalEta,
-    inspectionAllowed,
-  };
-}
-
-// ─── الدفع ──────────────────────────────────────────────────────────────────
-
-const looksLikePhone = (s: string) => normalizeEgyptianPhone(s) !== null;
-
-/** وسائل الدفع كما قالها التاجر: كل وسيلة بتفاصيلها، وما لم يختره معطَّل. لا رقم يُخترع. */
-export function paymentsFromIntake(p: IntakeData["payment"], base: StoreBlueprint["payments"]): StoreBlueprint["payments"] {
-  const has = (m: IntakeData["payment"]["methods"][number]) => p.methods.includes(m);
-  const wallet = p.walletNumber ? normalizeEgyptianPhone(p.walletNumber) : null;
-  const insta = p.instapayAddress?.trim() ?? "";
-  const instaPhone = insta && looksLikePhone(insta) ? normalizeEgyptianPhone(insta) : null;
-  const next: StoreBlueprint["payments"] = { ...base };
-  // لم يختر أي وسيلة (طلبات قديمة): نترك الافتراضي كما هو.
-  if (!p.methods.length) return next;
-  next.cod = { ...base.cod, enabled: has("cod") };
-  next.vodafoneCash = { ...base.vodafoneCash, enabled: has("wallet"), ...(has("wallet") && wallet ? { number: wallet } : {}) };
-  next.instapay = {
-    ...base.instapay,
-    enabled: has("instapay"),
-    ...(has("instapay") && insta
-      ? instaPhone
-        ? { number: instaPhone }
-        : insta.includes("@") || /^[A-Za-z0-9._-]{3,}$/.test(insta)
-          ? { address: insta.slice(0, 80) }
-          : { holderName: insta.slice(0, 60) }
-      : {}),
-  };
-  return next;
-}
-
-// ─── الاستبدال والاسترجاع ───────────────────────────────────────────────────
-
-/** ما قاله التاجر فقط؛ الضمان وسياسة العيوب تبقى مطفأة (لم تُسأل). */
-export function returnsFromIntake(r: IntakeData["returns"], base: StoreBlueprint["returns"]): StoreBlueprint["returns"] {
-  const off = { ...base, windowDays: 0, allowExchange: false, allowRefund: false, defectPolicy: "none" as const };
-  if (r.mode === "full" && r.days) return { ...off, windowDays: Math.min(60, r.days), allowExchange: true, allowRefund: true };
-  if (r.mode === "exchange" && r.days) return { ...off, windowDays: Math.min(60, r.days), allowExchange: true, allowRefund: false };
-  return off;
 }

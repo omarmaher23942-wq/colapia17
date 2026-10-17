@@ -67,6 +67,7 @@ export type InboundEvent = {
   text?: string;
   timestamp?: number;
   attachments?: { type: string; url?: string }[];
+  referral?: { source?: string; type?: string; ref?: string; adId?: string; adTitle?: string };
   drain?: boolean;
 };
 

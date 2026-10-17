@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle } from "lucide-react";
-import { togglePauseAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
+import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle, Link2, Store } from "lucide-react";
+import { pauseConversationAction, resumeConversationAction, sendSetupLinkNowAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
+import { PAUSE_CHOICES, PAUSE_LABEL, type PauseChoice } from "@/agent/pause";
 import { AIReasoningPanel } from "./AIReasoningPanel";
 import { SentimentBadge } from "./SentimentBadge";
 import { LeadScoringCard } from "./LeadScoringCard";
@@ -30,14 +31,7 @@ type Msg = {
   latency?: number | null;
 };
 
-type IntakeSummary = {
-  completeness: number;
-  finalized: boolean;
-  brief: J;
-  policies: J;
-  products: { name: string; price: number; bestSeller: boolean; imageUrl: string }[];
-  assets: { logo: boolean; covers: number; testimonialShots: number; videos: number };
-};
+type StoreInfo = { id: string; name: string; status: string; subdomain: string; linkSentAt: string | null };
 
 type Conv = {
   id: string;
@@ -45,13 +39,19 @@ type Conv = {
   channel: string;
   stage: string;
   stageKey: string;
+  /** الوكيل موقوف الآن (دائماً أو مؤقتاً لم ينتهِ). */
   paused: boolean;
+  /** وصف حالة الإيقاف وموعد العودة. */
+  pauseText: string;
   lead: number;
   memory: J;
   storeId: string | null;
   storeName: string | null;
   lastUserAt: string | null;
-  intake?: IntakeSummary | null;
+  /** البيانات المجموعة بالترتيب الثابت (مفتاح عربي ← قيمة). */
+  collected: { label: string; value: string | null }[];
+  attribution: string | null;
+  store: StoreInfo | null;
 };
 
 const CANNED = [
@@ -108,6 +108,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
   const [sum, setSum] = useState<string | null>(null);
   const [showThinking, setShowThinking] = useState(false);
   const [tab, setTab] = useState<"chat" | "data" | "crm">("chat");
+  const [choice, setChoice] = useState<PauseChoice>("3h");
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -163,11 +164,45 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
           <button disabled={p} onClick={() => start(async () => setSum(await summarizeLeadAction(conv.id)))} className={GHOST}>
             <Sparkles className="size-3.5" /> ملخص
           </button>
-          <button disabled={p} onClick={() => start(() => togglePauseAction(conv.id, !conv.paused))} className={conv.paused ? SILVER : AMBER}>
-            {conv.paused ? <><Play className="size-3.5" /> شغّل المساعد هنا</> : <><Pause className="size-3.5" /> أوقف المساعد هنا</>}
-          </button>
+          {conv.paused ? (
+            <button
+              disabled={p}
+              onClick={() => start(async () => { const r = await resumeConversationAction(conv.id); if (r?.error) toast.error(r.error); else toast.success("عاد المساعد للعمل في هذه المحادثة"); })}
+              className={SILVER}
+            >
+              <Play className="size-3.5" /> استئناف المساعد
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <label className="sr-only" htmlFor="pause-choice">مدة إيقاف المساعد</label>
+              <select
+                id="pause-choice"
+                value={choice}
+                onChange={(e) => setChoice(e.target.value as PauseChoice)}
+                className="min-h-9 rounded-lg border border-white/10 bg-[#07091a] px-2 text-xs font-bold text-[#c3cdf0] outline-none focus:border-[#8fa8ff]"
+              >
+                {PAUSE_CHOICES.map((c) => <option key={c} value={c}>{PAUSE_LABEL[c]}</option>)}
+              </select>
+              <button
+                disabled={p}
+                onClick={() => start(async () => { const r = await pauseConversationAction(conv.id, choice); if (r?.error) toast.error(r.error); else toast.success(`أُوقف المساعد (${PAUSE_LABEL[choice]})`); })}
+                className={AMBER}
+              >
+                <Pause className="size-3.5" /> إيقاف المساعد
+              </button>
+            </span>
+          )}
         </div>
       </header>
+
+      <div className={`flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2 text-[11.5px] font-bold ${conv.paused ? "bg-amber-500/10 text-amber-200" : "bg-emerald-500/5 text-emerald-200"}`} role="status">
+        {conv.pauseText}
+        {conv.store ? (
+          <span className="ms-auto inline-flex items-center gap-1.5 text-[#c3cdf0]">
+            <Store className="size-3.5" aria-hidden="true" /> {conv.store.name} · {conv.store.status === "setup" ? "قيد الإعداد" : conv.store.status}
+          </span>
+        ) : null}
+      </div>
 
       {sum && (
         <div className="border-b border-[#8fa8ff]/30 bg-[#6f86ff]/10 p-4 text-xs leading-relaxed text-[#eaf0ff] flex items-start gap-2">
@@ -194,16 +229,42 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
 
         {tab === "data" && (
           <div className="space-y-4">
-            <GlassCard icon={Brain} title="الذاكرة التراكمية (Memory)">
+            <GlassCard icon={ClipboardList} title="بيانات المتجر المجموعة">
+              <dl className="grid gap-1.5">
+                {conv.collected.map((r) => (
+                  <div key={r.label} className="grid grid-cols-[120px_1fr] gap-2 text-[11px]">
+                    <dt className="text-[#c3cdf0]/70">{r.label}</dt>
+                    <dd className="min-w-0 leading-5 break-words">{r.value ? <span dir="auto" className="text-[#eaf0ff]">{r.value}</span> : <span className="text-slate-500">لم تُجمع بعد</span>}</dd>
+                  </div>
+                ))}
+                {conv.attribution ? (
+                  <div className="grid grid-cols-[120px_1fr] gap-2 text-[11px]">
+                    <dt className="text-[#c3cdf0]/70">مصدر الإعلان</dt>
+                    <dd className="min-w-0 break-words text-[#eaf0ff]">{conv.attribution}</dd>
+                  </div>
+                ) : null}
+              </dl>
+            </GlassCard>
+            {conv.store ? (
+              <GlassCard icon={Link2} title="رابط الإعداد">
+                <p className="mb-2 text-[11.5px] leading-6 text-[#c3cdf0]">
+                  {conv.store.status !== "setup" ? "أكمل التاجر إعداد متجره." : conv.store.linkSentAt ? `أُرسل الرابط ${new Date(conv.store.linkSentAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}.` : "لم يُرسل بعد؛ يُرسل تلقائياً بعد المهلة المضبوطة."}
+                </p>
+                {conv.store.status === "setup" ? (
+                  <button
+                    type="button"
+                    disabled={p}
+                    onClick={() => start(async () => { const r = await sendSetupLinkNowAction(conv.store!.id); if (r && "error" in r && r.error) toast.error(r.error); else toast.success("أُرسل رابط الإعداد"); })}
+                    className={VIOLET}
+                  >
+                    <Link2 className="size-3.5" aria-hidden="true" /> {conv.store.linkSentAt ? "إعادة إرسال رابط الإعداد" : "أرسل رابط الإعداد الآن"}
+                  </button>
+                ) : null}
+              </GlassCard>
+            ) : null}
+            <GlassCard icon={Brain} title="ذاكرة الوكيل">
               <Rows data={conv.memory} />
             </GlassCard>
-            {conv.intake ? (
-              <GlassCard icon={ClipboardList} title="بيانات الاستمارة المستخرجة">
-                <Rows data={conv.intake.brief} />
-              </GlassCard>
-            ) : (
-              <p className="text-center text-xs text-slate-500 py-8">لم يتم استخراج بيانات استمارة بعد</p>
-            )}
           </div>
         )}
 
@@ -274,7 +335,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             <textarea
               rows={1}
               className="flex-1 min-h-[44px] max-h-32 resize-none rounded-xl border border-white/10 bg-[#07091a] px-4 py-3 text-sm text-[#eaf0ff] outline-none placeholder:text-slate-500 focus:border-[#8fa8ff] transition-colors"
-              placeholder={conv.paused ? "اكتب ردك كإنسان..." : "اكتب ردك (المساعد يبقى يعمل؛ أوقفه من الزر أعلاه إن أردت)..."}
+              placeholder={conv.paused ? "اكتب ردك..." : "اكتب ردك (المساعد يبقى يعمل؛ أوقفه من الزر أعلاه إن أردت)..."}
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}

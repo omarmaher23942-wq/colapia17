@@ -25,6 +25,10 @@ export const JOB_KINDS = [
   "hosting.reminder_1d",
   "hosting.expired",       // انتهت السنة: يبدأ السماح (المتجر يعمل)
   "hosting.paused",        // انتهى السماح: المتجر يتوقف عن الظهور للزوار (لا حذف أبداً)
+  "setup.link",            // رابط إعداد المتجر بعد إنشائه من المحادثة (بعد مهلة قابلة للضبط)
+  "setup.reminder_24h",
+  "setup.reminder_72h",
+  "setup.purge",           // حذف المتجر الذي لم يكتمل إعداده بعد setupDays
 ] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 

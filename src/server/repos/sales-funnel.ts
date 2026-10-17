@@ -21,25 +21,32 @@ async function one(q: ReturnType<typeof sql>): Promise<Record<string, unknown>> 
 
 export async function salesFunnel(days: number): Promise<FunnelCounts> {
   const since = new Date(Date.now() - days * 864e5).toISOString();
-  const [c, r, s, p] = await Promise.all([
-    one(sql`select count(*) as n from conversations where created_at >= ${since}::timestamptz`),
-    one(sql`select count(*) as n from store_requests where submitted_at >= ${since}::timestamptz and status <> 'spam'`),
+  const [c, s, p] = await Promise.all([
     one(sql`
-      select count(*) as delivered,
-             count(*) filter (where exists (select 1 from platform_payments pp where pp.store_id = s.id and pp.kind = 'setup' and pp.status = 'confirmed')) as cohort_paid
-      from stores s where s.delivered_at >= ${since}::timestamptz`),
+      select count(*) as n,
+             count(*) filter (where nullif(memory->'lead'->>'niche','') is not null
+                                and nullif(memory->'lead'->>'storeName','') is not null
+                                and nullif(memory->'lead'->>'email','') is not null
+                                and nullif(memory->'lead'->>'whatsapp','') is not null) as leads
+      from conversations where created_at >= ${since}::timestamptz`),
     one(sql`
-      select count(*) filter (where kind = 'setup') as paid,
-             coalesce(sum(amount_piasters) filter (where kind = 'setup'), 0) as revenue,
+      select count(*) as created,
+             count(*) filter (where s.setup_completed_at is not null) as setup_done,
+             count(*) filter (where exists (select 1 from platform_payments pp where pp.store_id = s.id and pp.kind = 'setup' and pp.status = 'confirmed')) as paid,
+             count(*) filter (where exists (select 1 from platform_payments pp where pp.store_id = s.id and pp.kind = 'setup' and pp.status = 'confirmed' and pp.plan = 'golden')) as paid_golden
+      from stores s where s.source_conversation_id is not null and s.created_at >= ${since}::timestamptz`),
+    one(sql`
+      select coalesce(sum(amount_piasters) filter (where kind = 'setup'), 0) as revenue,
              count(*) filter (where kind = 'renewal') as renewals
       from platform_payments where status = 'confirmed' and coalesce(reviewed_at, created_at) >= ${since}::timestamptz`),
   ]);
   return {
     conversations: num(c.n),
-    submitted: num(r.n),
-    delivered: num(s.delivered),
-    deliveredCohortPaid: num(s.cohort_paid),
-    paid: num(p.paid),
+    leads: num(c.leads),
+    created: num(s.created),
+    setupDone: num(s.setup_done),
+    paid: num(s.paid),
+    paidGolden: num(s.paid_golden),
     revenue: num(p.revenue),
     renewals: num(p.renewals),
   };

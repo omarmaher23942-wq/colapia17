@@ -204,6 +204,10 @@ const STEP_LABEL: Record<string, string> = {
   resume: "عاد الوكيل بعد مهلة التحويل",
   "direct-failed": "فشلت المعالجة المباشرة (أُرسلت للطابور)",
   "inbound-wrong-host": "رُفضت المعالجة على نشر خاطئ",
+  create: "محاولة إنشاء متجر من محادثة",
+  "store-created": "أُنشئ متجر من محادثة",
+  "setup-link": "أُرسل رابط الإعداد",
+  "resend-fail": "فشلت إعادة إرسال رابط الإعداد",
 };
 
 /** حالة الوكيل نفسه: هل هو مطفأ، وكم محادثة موقوفة عنه، وهل رابط الموقع يشير إلى هذا الخادم. */
@@ -213,7 +217,7 @@ const checkAgentState = () =>
     const [on, ig, paused] = await Promise.all([
       isOn("bot.enabled"),
       isOn("bot.instagram"),
-      db.select({ n: sql<number>`count(*)::int` }).from(conversations).where(eq(conversations.botPaused, true)).then((r) => r[0]?.n ?? 0),
+      db.select({ n: sql<number>`count(*)::int` }).from(conversations).where(sql`${conversations.botPaused} = true and (${conversations.botPausedUntil} is null or ${conversations.botPausedUntil} > now())`).then((r) => r[0]?.n ?? 0),
     ]);
     const appHost = (() => {
       try {
@@ -225,13 +229,36 @@ const checkAgentState = () =>
     const problems = [
       !on && "الوكيل مطفأ (bot.enabled في /admin/flags)",
       !ig && "الوكيل مطفأ على إنستجرام (bot.instagram في /admin/flags)",
-      paused > 0 && `${paused} محادثة موقوفة على «تدخل بشري» لن يرد فيها`,
+      paused > 0 && `${paused} محادثة موقوفة (مؤقتاً أو دائماً) لن يرد فيها الوكيل حتى ينتهي الإيقاف أو يُستأنف`,
       appHost && appHost !== env.ROOT_DOMAIN && !appHost.endsWith(`.${env.ROOT_DOMAIN}`) && `رابط الموقع NEXT_PUBLIC_APP_URL يشير إلى ${appHost} لا إلى ${env.ROOT_DOMAIN}`,
     ].filter(Boolean) as string[];
     return problems.length
       ? { status: !on || !ig ? "fail" : "warn", detail: problems.join(" · "), fix: "فعّل المفاتيح من /admin/flags، واضغط «استئناف الوكيل في كل المحادثات»، واجعل NEXT_PUBLIC_APP_URL = https://" + env.ROOT_DOMAIN + " ثم أعد النشر" }
       : { status: "ok", detail: `يعمل على ماسنجر وإنستجرام، ولا محادثات موقوفة · هذا الخادم: ${runtimeTag()}` };
   });
+/** إنشاء المتاجر من المحادثات: متاجر قيد الإعداد، ومتاجر لم يصلها رابط الإعداد في موعده (علامة توقف الجدولة). */
+const checkSetupStores = () =>
+  run("setup-stores", "المتاجر قيد الإعداد (من المحادثات)", async () => {
+    const { stores } = await import("@/db/schema");
+    const { agentConfig } = await import("@/agent/settings");
+    const cfg = await agentConfig();
+    const [r] = await db
+      .select({
+        open: sql<number>`count(*)::int`,
+        noLink: sql<number>`count(*) filter (where ${stores.onboarding}->>'linkSentAt' is null and ${stores.setupStartedAt} < now() - make_interval(mins => ${cfg.setupDelayMinutes + 20}))::int`,
+        stale: sql<number>`count(*) filter (where ${stores.setupStartedAt} < now() - make_interval(days => ${cfg.setupDays}))::int`,
+      })
+      .from(stores)
+      .where(eq(stores.status, "setup"));
+    const problems = [
+      (r?.noLink ?? 0) > 0 && `${r!.noLink} متجر لم يصله رابط الإعداد رغم مرور المهلة (راجعوا المهام المجدولة، أو أرسلوه يدوياً من صفحة المحادثة)`,
+      (r?.stale ?? 0) > 0 && `${r!.stale} متجر تجاوز مهلة الإعداد (${cfg.setupDays} يوماً) ولم يُحذف بعد`,
+    ].filter(Boolean) as string[];
+    return problems.length
+      ? { status: "warn", detail: problems.join(" · "), fix: "تأكدوا من نجاح جداول QStash ومسار ops/sweep" }
+      : { status: "ok", detail: `${r?.open ?? 0} متجر قيد الإعداد · الرابط بعد ${cfg.setupDelayMinutes} دقيقة · الحذف بعد ${cfg.setupDays} يوماً` };
+  });
+
 const checkTrace = () =>
   run("meta-trace", "آخر ما حدث لرسائل الوكيل (الأحدث أولاً)", async () => {
     const rows = await readTrace();
@@ -277,12 +304,12 @@ function configChecks(): Check[] {
 }
 
 export async function runLaunchChecks(): Promise<CheckGroup[]> {
-  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh, agent] = await Promise.all([
-    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(), checkAgentState(),
+  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh, agent, setup] = await Promise.all([
+    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(), checkAgentState(), checkSetupStores(),
   ]);
   return [
     { title: "الأساس", checks: [db1, mig, red, cron, q] },
-    { title: "البريد والرسائل", checks: [mail, meta, agent, metaTrace] },
+    { title: "البريد والرسائل", checks: [mail, meta, agent, setup, metaTrace] },
     { title: "الذكاء الاصطناعي", checks: [groq, gem] },
     { title: "الصور والنطاقات والكود", checks: [media, dom, gh] },
     { title: "إعداداتك", checks: configChecks() },

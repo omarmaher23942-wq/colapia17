@@ -9,7 +9,6 @@ export const MEDIA_ROUTES = {
   transferProof: { maxBytes: 8 << 20, maxFiles: 1 },
   customerReviewImage: { maxBytes: 4 << 20, maxFiles: 3 },
   merchantAvatar: { maxBytes: 4 << 20, maxFiles: 1 },
-  intakeImage: { maxBytes: 8 << 20, maxFiles: 1 },
   // بحث العميل بالصورة في المتجر (لا يُحفظ في أي جدول، ويُحذف بعد المطابقة).
   visualSearch: { maxBytes: 4 << 20, maxFiles: 1 },
 } as const satisfies Record<string, { maxBytes: number; maxFiles: number }>;

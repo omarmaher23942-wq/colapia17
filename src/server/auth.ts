@@ -7,9 +7,10 @@
 //     "اختيار" للمتجر النشط، ولا يُقبل إلا إن كان التاجر يملكه فعلاً.
 //  3) كوكي التاجر والمنصة على النطاق الجذري فقط (host-only) فلا تراها نطاقات المتاجر.
 import "server-only";
+import { cache } from "react";
 import { headers, cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   merchants,
@@ -24,6 +25,7 @@ import { clientEnv } from "@/lib/env";
 import { readRequestId } from "@/lib/correlation";
 import { clientIp } from "@/lib/client-ip";
 import { log } from "@/lib/logger";
+import { canonicalEmail } from "@/lib/contact";
 
 const MERCHANT_COOKIE = "clp_m";
 const PLATFORM_COOKIE = "clp_p";
@@ -129,15 +131,42 @@ export type GoogleIdentity = {
   picture?: string;
 };
 
+/** هل لهذا البريد دعوة فريق نشطة في أي متجر (مطابقة بالبريد القانوني)؟ */
+async function hasActiveInvite(email: string): Promise<boolean> {
+  const canonical = canonicalEmail(email);
+  const rows = await db
+    .select({ email: storeMembers.email })
+    .from(storeMembers)
+    .where(and(eq(storeMembers.status, "active"), isNull(storeMembers.merchantId)))
+    .limit(500)
+    .catch(() => [] as { email: string }[]);
+  return rows.some((r) => canonicalEmail(r.email) === canonical);
+}
+
+/** التاجر الذي يطابق هذا البريد: بالبريد القانوني (يتجاوز نقاط Gmail ووسوم +) ثم بالبريد الحرفي للسجلات القديمة. */
+async function findMerchantByEmail(email: string): Promise<Merchant | null> {
+  const canonical = canonicalEmail(email);
+  const [m] = await db
+    .select()
+    .from(merchants)
+    .where(or(eq(merchants.emailCanonical, canonical), eq(merchants.email, email)))
+    .orderBy(desc(merchants.createdAt))
+    .limit(1);
+  return m ?? null;
+}
+
 /**
- * يُستدعى من OAuth callback فقط بعد تحقق Google من الهوية والبريد.
- * يُنشئ التاجر أو يحدّثه ويبدأ جلسة جديدة على النطاق الجذري.
+ * يُستدعى من OAuth callback فقط بعد تحقق Google من الهوية والبريد. **لا ينشئ تاجراً جديداً لبريد مجهول**: الدخول لمن أنشأ
+ * الوكيل متجره (تطابق البريد القانوني) أو لعضو فريق مدعو. يعيد null إن لم يوجد متجر مرتبط بهذا البريد (فتعرض الواجهة شاشة
+ * لطيفة)، وكذلك إن اشترط المستدعي تاجراً بعينه (`expectMerchantId`) ولم يطابق.
  */
 export async function signInMerchantWithGoogle(
-  identity: GoogleIdentity
-): Promise<{ merchant: Merchant; isNew: boolean }> {
+  identity: GoogleIdentity,
+  opts: { expectMerchantId?: string; storeId?: string } = {}
+): Promise<{ merchant: Merchant; isNew: boolean } | null> {
   const reqId = await readRequestId();
   const email = identity.email.trim().toLowerCase();
+  const canonical = canonicalEmail(email);
   const displayName = identity.name?.trim() || email.split("@")[0] || "تاجر جديد";
 
   const [byGoogle] = await db
@@ -145,10 +174,7 @@ export async function signInMerchantWithGoogle(
     .from(merchants)
     .where(eq(merchants.googleId, identity.googleId))
     .limit(1);
-  const [byEmail] = byGoogle
-    ? [undefined]
-    : await db.select().from(merchants).where(eq(merchants.email, email)).limit(1);
-  const existing = byGoogle ?? byEmail;
+  const existing = byGoogle ?? (await findMerchantByEmail(email));
 
   let merchant: Merchant;
   let isNew = false;
@@ -160,11 +186,16 @@ export async function signInMerchantWithGoogle(
       log.warn("security", "merchant_google_id_mismatch", { reqId, merchantId: existing.id });
       throw new Error("google_identity_mismatch");
     }
+    if (opts.expectMerchantId && existing.id !== opts.expectMerchantId) {
+      log.warn("security", "merchant_setup_account_mismatch", { reqId, merchantId: existing.id });
+      return null;
+    }
     const [updated] = await db
       .update(merchants)
       .set({
         googleId: identity.googleId,
-        email,
+        // البريد الأصلي (الذي أعطاه التاجر للوكيل) يبقى كما هو؛ نكمل الصيغة القانونية فقط.
+        emailCanonical: existing.emailCanonical ?? canonicalEmail(existing.email ?? email),
         avatarUrl: existing.avatarUrl ?? identity.picture ?? null,
         isActivated: true,
         lastLoginAt: now,
@@ -175,10 +206,16 @@ export async function signInMerchantWithGoogle(
     if (!updated) throw new Error("merchant_update_failed");
     merchant = updated;
   } else {
+    // لا حساب بهذا البريد: مسموح فقط لعضو فريق مدعو؛ غير ذلك لا يُنشأ تاجر (المتجر ينشئه الوكيل أولاً).
+    if (opts.expectMerchantId || !(await hasActiveInvite(email))) {
+      log.info("auth", "merchant_google_no_store", { reqId });
+      return null;
+    }
     const [created] = await db
       .insert(merchants)
       .values({
         email,
+        emailCanonical: canonical,
         displayName,
         googleId: identity.googleId,
         avatarUrl: identity.picture ?? null,
@@ -192,7 +229,7 @@ export async function signInMerchantWithGoogle(
   }
 
   await linkMemberships(merchant.id, email);
-  const token = await createSession("merchant", merchant.id, null);
+  const token = await createSession("merchant", merchant.id, opts.storeId ?? null);
   await clearLegacySharedCookie(MERCHANT_COOKIE);
   await writeCookie(MERCHANT_COOKIE, token);
   log.info("auth", isNew ? "merchant_signup_ok" : "merchant_login_ok", {
@@ -204,36 +241,40 @@ export async function signInMerchantWithGoogle(
 
 /** دعوات فريق المتجر بهذا البريد تُربط بهوية التاجر عند دخوله (Google أو رمز البريد). */
 async function linkMemberships(merchantId: string, email: string) {
-  await db
-    .update(storeMembers)
-    .set({ merchantId, updatedAt: new Date() })
-    .where(and(eq(storeMembers.email, email.trim().toLowerCase()), isNull(storeMembers.merchantId), eq(storeMembers.status, "active")))
-    .catch((e) => log.warn("auth", "link_memberships_failed", {}, String(e)));
+  const canonical = canonicalEmail(email);
+  const open = await db
+    .select({ id: storeMembers.id, email: storeMembers.email })
+    .from(storeMembers)
+    .where(and(isNull(storeMembers.merchantId), eq(storeMembers.status, "active")))
+    .limit(500)
+    .catch(() => [] as { id: string; email: string }[]);
+  for (const m of open.filter((r) => canonicalEmail(r.email) === canonical)) {
+    await db
+      .update(storeMembers)
+      .set({ merchantId, updatedAt: new Date() })
+      .where(and(eq(storeMembers.id, m.id), isNull(storeMembers.merchantId)))
+      .catch((e) => log.warn("auth", "link_memberships_failed", {}, String(e)));
+  }
 }
 
 /**
  * يبدأ جلسة تاجر لبريد تحقق منه رمز لمرة واحدة (بديل Google لمن لا يملك حساباً). يُسمح فقط لبريد تاجر موجود
  * (صاحب متجر من الاستمارة) أو عضو فريق مدعو؛ لا إنشاء حسابات جديدة من هنا. يعيد null إن لم يكن البريد معروفاً.
  */
-export async function signInMerchantByEmail(rawEmail: string): Promise<{ merchant: Merchant } | null> {
+export async function signInMerchantByEmail(rawEmail: string, opts: { storeId?: string } = {}): Promise<{ merchant: Merchant } | null> {
   const email = rawEmail.trim().toLowerCase();
   const now = new Date();
-  let [merchant] = await db.select().from(merchants).where(eq(merchants.email, email)).limit(1);
+  let merchant: Merchant | null | undefined = await findMerchantByEmail(email);
   if (!merchant) {
-    const [invite] = await db
-      .select({ id: storeMembers.id })
-      .from(storeMembers)
-      .where(and(eq(storeMembers.email, email), eq(storeMembers.status, "active")))
-      .limit(1);
-    if (!invite) return null;
-    [merchant] = await db.insert(merchants).values({ email, displayName: email.split("@")[0] || "عضو فريق", isActivated: true, lastLoginAt: now }).returning();
+    if (!(await hasActiveInvite(email))) return null;
+    [merchant] = await db.insert(merchants).values({ email, emailCanonical: canonicalEmail(email), displayName: email.split("@")[0] || "عضو فريق", isActivated: true, lastLoginAt: now }).returning();
     if (!merchant) return null;
   } else {
-    [merchant] = await db.update(merchants).set({ isActivated: true, lastLoginAt: now, updatedAt: now }).where(eq(merchants.id, merchant.id)).returning();
+    [merchant] = await db.update(merchants).set({ isActivated: true, emailCanonical: merchant.emailCanonical ?? canonicalEmail(merchant.email ?? email), lastLoginAt: now, updatedAt: now }).where(eq(merchants.id, merchant.id)).returning();
     if (!merchant) return null;
   }
   await linkMemberships(merchant.id, email);
-  const token = await createSession("merchant", merchant.id, null);
+  const token = await createSession("merchant", merchant.id, opts.storeId ?? null);
   await clearLegacySharedCookie(MERCHANT_COOKIE);
   await writeCookie(MERCHANT_COOKIE, token);
   log.info("auth", "merchant_login_email_ok", { reqId: await readRequestId(), merchantId: merchant.id });
@@ -285,7 +326,7 @@ export type MerchantSession = {
  * المتجر النشط = اختيار الجلسة إن كان يملكه أو عضواً فيه، وإلا أحدث متاجره.
  * لا يمكن لأي مسار أن يجعل تاجراً يرى متجراً لا يملكه ولا عضوية له فيه.
  */
-export async function getMerchantSession(): Promise<MerchantSession> {
+export const getMerchantSession = cache(async (): Promise<MerchantSession> => {
   const jar = await cookies();
   const s = await findSession(jar.get(MERCHANT_COOKIE)?.value, "merchant");
   if (!s) return null;
@@ -314,7 +355,7 @@ export async function getMerchantSession(): Promise<MerchantSession> {
     perms: isOwner || !store ? OWNER_PERMS : (membership?.perms ?? NO_PERMS),
     memberId: membership?.memberId ?? null,
   };
-}
+});
 
 export type MerchantStoreSession = NonNullable<MerchantSession> & {
   storeId: string;
@@ -328,9 +369,11 @@ export async function getMerchantStoreOrNull(): Promise<MerchantStoreSession | n
 }
 
 export async function requireMerchantStore(): Promise<MerchantStoreSession> {
-  const session = await getMerchantStoreOrNull();
-  if (!session) redirect("/start");
-  return session;
+  const session = await getMerchantSession();
+  if (!session) redirect("/login");
+  // جلسة بلا متجر (حساب لا متجر له): شاشة لطيفة لا /login، لأن /login يعيد من له جلسة إلى اللوحة فتدور الحلقة.
+  if (!session.store) redirect("/no-store");
+  return session as MerchantStoreSession;
 }
 
 /** يغيّر المتجر النشط في الجلسة الحالية بعد التحقق من الملكية. */

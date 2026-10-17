@@ -144,12 +144,12 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
             <div className="space-y-1.5">
               <p dir="auto" className="whitespace-pre-line break-words text-[14px] font-bold text-emerald-100">{agent.reply || "رد فارغ"}</p>
               <p className="text-[12px] text-[#8d97c4]">
-                <span dir="ltr" className="font-mono">{agent.provider}</span> · {agent.ms}ms · {agent.mode === "object" ? "مخرجات منظمة" : "مخرجات مُصلحة من نص"} · {agent.issueLink ? "سيرسل زر الاستمارة" : "بلا زر"}
+                <span dir="ltr" className="font-mono">{agent.provider}</span> · {agent.ms}ms · {agent.confirmCreate ? "سيبدأ إنشاء المتجر" : "لا يبدأ إنشاء متجر"}{agent.leadFound ? ` · بيانات التقطها: ${agent.leadFound}` : ""}
               </p>
             </div>
           ) : (
             <div className="space-y-1.5 text-rose-100">
-              <p className="font-bold">لم يستطع أي نموذج الرد، فيرد الوكيل الآن بالقواعد الاحتياطية (أبسط).</p>
+              <p className="font-bold">لم يستطع أي نموذج الرد بصيغة صالحة، فيصمت الوكيل الآن ويصلك تنبيه بريدي بالسبب.</p>
               <p dir="auto" className="whitespace-pre-line break-words text-[12px]">{agent.error}</p>
               <p className="text-[12px]">الغالب أن مفتاح Groq أو Gemini منتهٍ أو خاطئ: أنشئ مفتاحاً جديداً وضعه في المتغيرات كما هو دون مسافات أو تنصيص، أعد النشر، ثم اضغط «فك الإيقاف المؤقت» وجرّب ثانية.</p>
             </div>

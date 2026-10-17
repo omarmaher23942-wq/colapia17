@@ -3,7 +3,7 @@
 // ChangeRow.tsx — طلب تعديل واحد في لوحة الوكالة: الإسناد والحالة والرد للتاجر ونسخ البرومبت.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ClipboardCopy, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { STATUS_INFO, type ChangeStatus } from "@/lib/change-requests";
 import { updateChangeRequestAction } from "@/server/actions/agency-changes";
@@ -20,7 +20,6 @@ type Props = {
   team: { id: string; name: string }[];
   canAssign: boolean;
   canWork: boolean;
-  prompt: string;
 };
 
 export function ChangeRow(p: Props) {
@@ -68,13 +67,6 @@ export function ChangeRow(p: Props) {
             <button type="button" disabled={pending} onClick={() => save({ status: "declined", teamNote: note }, "سُجّل الاعتذار وأُبلغ التاجر")} className="min-h-10 rounded-xl px-3 text-[12.5px] font-black text-rose-300">اعتذار</button>
           </>
         ) : null}
-        <button
-          type="button"
-          onClick={() => navigator.clipboard.writeText(p.prompt).then(() => toast.success("نُسخ البرومبت"), () => toast.error("المتصفح منع النسخ"))}
-          className="ms-auto inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-white/[0.06] px-3 text-[12.5px] font-black"
-        >
-          <ClipboardCopy className="size-4" aria-hidden="true" /> البرومبت
-        </button>
       </div>
       {p.canWork ? (
         <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={2} placeholder="رد للتاجر (يظهر له مع الحالة)" className="w-full rounded-xl border border-white/10 bg-white/[0.04] p-3 text-[14px] leading-7 outline-none focus:border-[#6f86ff]" />

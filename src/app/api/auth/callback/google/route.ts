@@ -11,7 +11,8 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { platformUsers } from "@/db/schema";
+import { platformUsers, stores } from "@/db/schema";
+import { verifyDerivedToken } from "@/agent/tokens";
 import { verifyGoogleCode } from "@/server/google-oauth";
 import {
   signInMerchantWithGoogle,
@@ -26,20 +27,17 @@ export const dynamic = "force-dynamic";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function failRedirect(
-  req: Request,
-  reason: string,
-  to = "/",
-  reqId: string,
-  extra?: Record<string, string>
-) {
-  const url = new URL(to, req.url);
-  url.searchParams.set("error", "google_auth_failed");
-  url.searchParams.set("reason", reason);
-  url.searchParams.set("req", reqId);
-  if (extra) {
-    for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v);
-  }
+/**
+ * يعيد المستخدم إلى صفحة الدخول المناسبة برمز السبب الحقيقي (error) والوجهة الأصلية (redirect) ليُكمل بعد التصحيح.
+ * الأسباب يترجمها LoginForm إلى رسائل عربية؛ المرجع (req) للدعم.
+ */
+function failRedirect(req: Request, reason: string, opts: { provider?: "merchant" | "platform"; redirect?: string; reqId: string; extra?: Record<string, string> }) {
+  const base = opts.provider === "platform" ? "/admin/login" : "/login";
+  const url = new URL(base, req.url);
+  url.searchParams.set("error", reason);
+  if (opts.redirect && opts.provider !== "platform") url.searchParams.set("redirect", opts.redirect);
+  url.searchParams.set("req", opts.reqId);
+  if (opts.extra) for (const [k, v] of Object.entries(opts.extra)) url.searchParams.set(k, v);
   return NextResponse.redirect(url);
 }
 
@@ -139,27 +137,28 @@ export async function GET(req: Request) {
 
     if (oauthError) {
       log.warn("auth", "oauth_provider_error", { reqId }, oauthError);
-      return failRedirect(req, `provider_${oauthError}`, "/", reqId);
+      return failRedirect(req, `provider_${oauthError}`, { reqId });
     }
     if (!code || !stateParam) {
       log.warn("auth", "oauth_missing_params", { reqId });
-      return failRedirect(req, "missing_params", "/", reqId);
+      return failRedirect(req, "missing_params", { reqId });
     }
 
     const state = await consumeOAuthState(stateParam);
     if (!state) {
       log.warn("auth", "oauth_invalid_state", { reqId });
-      return failRedirect(req, "invalid_state", "/login", reqId);
+      return failRedirect(req, "invalid_state", { reqId });
     }
 
+    const ctx = { provider: state.provider, redirect: state.redirectAfter, reqId } as const;
     const user = await verifyGoogleCode(code);
     if (!user.email || !user.id) {
       log.warn("auth", "oauth_no_email", { reqId });
-      return failRedirect(req, "no_email", "/login", reqId);
+      return failRedirect(req, "no_email", ctx);
     }
     if (!user.emailVerified) {
       log.warn("security", "oauth_unverified_email", { reqId });
-      return failRedirect(req, "email_not_verified", "/login", reqId);
+      return failRedirect(req, "email_not_verified", ctx);
     }
     const identity = {
       email: user.email,
@@ -170,7 +169,29 @@ export async function GET(req: Request) {
 
     // ─── Merchant ───────────────────────────────────────────────────────
     if (state.provider === "merchant") {
-      const { merchant, isNew } = await signInMerchantWithGoogle(identity);
+      // دخول من رابط الإعداد: مقيّد بصاحب ذلك المتجر، ويُختار متجره في الجلسة.
+      let expectMerchantId: string | undefined;
+      let storeId: string | undefined;
+      if (state.setupToken) {
+        const sid = verifyDerivedToken("setup", state.setupToken);
+        const [st] = sid ? await db.select({ id: stores.id, merchantId: stores.merchantId }).from(stores).where(eq(stores.id, sid)).limit(1) : [];
+        if (!st) return failRedirect(req, "invalid_state", ctx);
+        expectMerchantId = st.merchantId;
+        storeId = st.id;
+      }
+      let signed: Awaited<ReturnType<typeof signInMerchantWithGoogle>>;
+      try {
+        signed = await signInMerchantWithGoogle(identity, { expectMerchantId, storeId });
+      } catch (e) {
+        if ((e as Error)?.message === "google_identity_mismatch") return failRedirect(req, "google_identity_mismatch", ctx);
+        throw e;
+      }
+      if (!signed) {
+        // لا متجر مرتبط بهذا الحساب: من الرابط يعود لصفحة الإعداد (تعرض البريد المتوقع مخفياً)، وإلا شاشة الدخول اللطيفة.
+        if (state.setupToken) return NextResponse.redirect(new URL(`/setup?t=${encodeURIComponent(state.setupToken)}&error=wrong_account`, req.url));
+        return failRedirect(req, "no_store", ctx);
+      }
+      const { merchant, isNew } = signed;
       const to = safeRedirectAfter(state.redirectAfter, "/dashboard");
       log.info("auth", "oauth_merchant_ok", {
         reqId,
@@ -192,7 +213,7 @@ export async function GET(req: Request) {
       });
 
       if (!adminUser) {
-        return failRedirect(req, "unauthorized", "/admin/login", reqId);
+        return failRedirect(req, "unauthorized", { provider: "platform", reqId });
       }
 
       await startPlatformSession(adminUser.id);
@@ -202,7 +223,7 @@ export async function GET(req: Request) {
     }
 
     log.warn("auth", "oauth_unsupported_provider", { reqId }, state.provider);
-    return failRedirect(req, "unsupported_provider", "/", reqId);
+    return failRedirect(req, "unsupported_provider", { reqId });
   } catch (err) {
     log.error(
       "auth",
@@ -211,6 +232,6 @@ export async function GET(req: Request) {
       "استثناء غير متوقع في callback جوجل",
       err
     );
-    return failRedirect(req, "server_error", "/", reqId);
+    return failRedirect(req, "server_error", { reqId });
   }
 }

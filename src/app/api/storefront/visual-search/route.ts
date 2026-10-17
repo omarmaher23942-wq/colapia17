@@ -3,7 +3,7 @@
 import { NextResponse } from "next/server";
 import { getStoreBySubdomain, isStorePubliclyVisible } from "@/lib/tenant";
 import { clientIp, ipBucket } from "@/lib/client-ip";
-import { hit } from "@/intake/guard";
+import { hit } from "@/lib/rate-hit";
 import { runVisualSearch } from "@/server/visual-search";
 
 export const dynamic = "force-dynamic";
