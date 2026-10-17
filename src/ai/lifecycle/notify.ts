@@ -7,10 +7,8 @@ import { meta, type Tag } from "@/channels/meta";
 type LinkButton = { title: string; url: string };
 type Card = { title: string; subtitle?: string; imageUrl: string; buttons: LinkButton[] };
 type Conv = typeof conversations.$inferSelect;
-type Pending = { text: string; buttons?: LinkButton[]; at: string; attempts?: number };
 
 const WINDOW_MS = 23.5 * 36e5;
-const PENDING_CAP = 10;
 
 const EMOJI_RE = /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\uFE0F\u200D\u20E3]/gu;
 const clean = (s: string) => String(s ?? "").replace(EMOJI_RE, "").replace(/[ \t]{2,}/g, " ").replace(/^\s+|\s+$/gm, "").trim();
@@ -32,15 +30,6 @@ async function merchantConversation(storeId: string): Promise<Conv | undefined> 
     .orderBy(sql`${conversations.lastUserMessageAt} desc nulls last`)
     .limit(1);
   return conv;
-}
-
-async function queuePending(conv: Conv, entry: Pending) {
-  const current = ((conv.memory as any)?.pendingOutbound as Pending[] | undefined) ?? [];
-  const next = [...current, entry].slice(-PENDING_CAP);
-  await db
-    .update(conversations)
-    .set({ memory: sql`coalesce(${conversations.memory}, '{}'::jsonb) || ${JSON.stringify({ pendingOutbound: next })}::jsonb` })
-    .where(eq(conversations.id, conv.id));
 }
 
 export async function notifyMerchant(
@@ -72,39 +61,27 @@ export async function notifyMerchant(
   const last = conv.lastUserMessageAt ? new Date(conv.lastUserMessageAt).getTime() : 0;
   const inWindow = last > 0 && Date.now() - last < WINDOW_MS;
   const tag = inWindow ? undefined : (opts.tag ?? "ACCOUNT_UPDATE");
-  const pending: Pending = {
-    text: text || card?.title || "",
-    buttons: buttons?.length ? buttons : card?.buttons.length ? card.buttons : undefined,
-    at: new Date().toISOString(),
-  };
+  const sentText = text || card?.title || "";
 
-  if (!inWindow && (conv.channel === "instagram" || opts.promotional)) {
-    try {
-      await queuePending(conv, pending);
-    } catch (e) {
-      await logEvent(storeId, "error", "تعذر حفظ رسالة معلقة للتاجر", { error: String(e).slice(0, 500) });
-    }
-    return false;
-  }
+  // خارج نافذة الـ 24 ساعة لا يُسمح بالإرسال على إنستجرام ولا بالرسائل الترويجية: لا طابور معلّق
+  // (لم يكن يُفرَّغ أبداً)، والبريد في lifecycle/messenger.ts هو القناة المضمونة.
+  if (!inWindow && (conv.channel === "instagram" || opts.promotional)) return false;
 
   try {
     if (card) await meta.card(conv.channel, conv.externalId, card, tag);
     else if (buttons?.length) await meta.buttons(conv.channel, conv.externalId, text, buttons, tag);
     else await meta.text(conv.channel, conv.externalId, text, tag);
   } catch (e) {
-    await logEvent(storeId, "error", "فشل إرسال رسالة للتاجر عبر ميتا، أضيفت لقائمة الانتظار", {
+    await logEvent(storeId, "error", "فشل إرسال رسالة للتاجر عبر ميتا (البريد يغطيها)", {
       error: String(e).slice(0, 500),
       channel: conv.channel,
       tag: tag ?? null,
     });
-    try {
-      await queuePending(conv, pending);
-    } catch {}
     return false;
   }
 
   try {
-    await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text: pending.text });
+    await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text: sentText });
     await db.update(conversations).set({ lastBotMessageAt: new Date() }).where(eq(conversations.id, conv.id));
   } catch (e) {
     console.error("[notify] delivered but logging failed", e);

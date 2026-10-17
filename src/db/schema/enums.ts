@@ -11,6 +11,7 @@ export const storeStatusEnum = pgEnum("store_status", [
   "active",          // مدفوع ومملوك للتاجر
   "suspended",       // موقوف من المنصة
   "deleted",         // محذوف منطقيًا
+  "setup",           // V2: أنشأه الوكيل والإعداد لم يكتمل (مخفي تماماً حتى عن الزوار)
 ]);
 
 /** حالة الطلب في متجر التاجر */

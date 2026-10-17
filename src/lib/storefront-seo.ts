@@ -1,5 +1,7 @@
 // storefront-seo.ts — بيانات وصفية (metadata) و JSON-LD لصفحات المتجر.
 // كل ما يظهر لمحركات البحث والمتصفح على نطاق المتجر يخص المتجر وحده، لا المنصة.
+import { storeVisibility } from "@/lib/store-visibility";
+import { hostingState } from "@/lib/hosting";
 import "server-only";
 import type { Metadata, Viewport } from "next";
 import type { StoreBlueprint } from "@/blueprint/schema";
@@ -12,7 +14,7 @@ const STORE_ICON = "/api/storefront/icon";
 
 /** المتاجر قيد التجربة أو المجمّدة لا تُفهرس؛ المفعّلة فقط تظهر في البحث. */
 export function isIndexable(store: TenantStore, bp: StoreBlueprint | null): boolean {
-  return store.status === "active" && !store.deletedAt && !bp?.seo.noIndex;
+  return storeVisibility(store, hostingState(store)).indexable && !bp?.seo.noIndex;
 }
 
 const clip = (s: string | undefined | null, max: number) =>

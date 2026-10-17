@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { publicStoreUrl } from "@/lib/utils";
+import { storeVisibility } from "@/lib/store-visibility";
+import { hostingState } from "@/lib/hosting";
 import { getStoreBySubdomain } from "@/lib/tenant";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
@@ -20,7 +22,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   }
 
   const store = await getStoreBySubdomain(sub);
-  const allow = store && store.status === "active" && !store.deletedAt;
+  const allow = store && storeVisibility(store, hostingState(store)).indexable;
 
   return {
     rules: allow

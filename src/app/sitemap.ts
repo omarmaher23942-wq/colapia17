@@ -1,3 +1,5 @@
+import { storeVisibility } from "@/lib/store-visibility";
+import { hostingState } from "@/lib/hosting";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { and, eq, isNull } from "drizzle-orm";
@@ -35,7 +37,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const s = await getStoreBySubdomain(sub);
-  if (!s || s.status !== "active") return [];
+  if (!s || !storeVisibility(s, hostingState(s)).indexable) return [];
 
   const db = await getTenantDb(s.id);
   const [bp, ps, cs] = await Promise.all([

@@ -71,7 +71,7 @@ export default async function BillingPage() {
     .limit(20)) as BillingPayment[];
 
   const now = Date.now();
-  const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now));
+  const stage = billingStage(store, payments, new Date(now));
   const current = await currentPricing();
   // تاجر جاء من «الدائرة الذهبية» (استمارتها المصغّرة): خانة الكود تظهر مملوءة بكود العرض.
   const [req] = await db

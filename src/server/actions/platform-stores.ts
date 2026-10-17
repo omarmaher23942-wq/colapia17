@@ -8,6 +8,7 @@ import { invalidateStoreCache } from "@/lib/tenant";
 import { RESERVED_SUBDOMAINS } from "@/middleware";
 import { secureToken, sha256 } from "@/lib/ids";
 import { activationUrl } from "@/server/claims";
+import { transition } from "@/lifecycle/machine";
 import { notifyMerchant } from "@/ai/lifecycle/notify";
 import { cancelJobs } from "@/ai/lifecycle/schedule";
 
@@ -27,16 +28,16 @@ export async function setStoreStatusAction(storeId: string, status: "suspended" 
   const u = await own();
   const [s] = await db.select().from(stores).where(eq(stores.id, storeId));
   if (!s) return;
-  await db
-    .update(stores)
-    .set({
-      status,
-      updatedAt: new Date(),
-      ...(status === "active"
-        ? { activatedAt: s.activatedAt ?? new Date(), frozenAt: null, purgeAt: null }
-        : {}),
-    })
-    .where(eq(stores.id, storeId));
+  // متجر حُذفت بياناته لا يُفعَّل: لا شيء يُعاد.
+  if (status !== "suspended" && (s.deletedAt || s.status === "deleted")) throw new Error("المتجر محذوف ولا يمكن تفعيله");
+  const r = await transition({
+    storeId,
+    to: status,
+    actor: `platform:${u.id}`,
+    set: status === "active" ? { activatedAt: s.activatedAt ?? new Date(), frozenAt: null, purgeAt: null } : {},
+    reason: "manual_status",
+  });
+  if (!r.ok) throw new Error(`تعذر تغيير الحالة (${r.reason}${r.current ? `: ${r.current}` : ""})`);
   if (status === "active") {
     await cancelJobs(storeId, [
       "trial.freeze",

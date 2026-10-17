@@ -24,6 +24,9 @@ type Miss = typeof NONE;
 // مخفية — الـ storefront layout يعرض FrozenGate لها بشكل أنيق، مع منع
 // الطلبات. هذا أفضل تجربة مستخدم من 404 مخفي.
 // ═══════════════════════════════════════════════════════════════════════════
+import { storeVisibility } from "@/lib/store-visibility";
+import { hostingState } from "@/lib/hosting";
+
 const HIDDEN_STATUSES: ReadonlySet<string> = new Set(["deleted", "suspended"]);
 
 const STORE_DATE_KEYS = Object.entries(getTableColumns(stores))
@@ -203,10 +206,7 @@ export async function invalidateStoreCache(store: {
   }
 }
 
+/** قاعدة الرؤية الواحدة (lib/store-visibility.ts): تجربة أو مفعّل تخدمه استضافته فقط. */
 export function isStorePubliclyVisible(store: TenantStore) {
-  return (
-    store.status === "trial" ||
-    store.status === "active" ||
-    store.status === "review"
-  );
+  return storeVisibility(store, hostingState(store)).public;
 }

@@ -55,6 +55,8 @@ function statusMeta(status: string | null, acceptingOrders: boolean): { label: s
     case "demo":
     case "trial":
       return { label: "تجربة مجانية نشطة", tone: "warn" };
+    case "setup":
+      return { label: "قيد الإعداد", tone: "warn" };
     case "building":
     case "review":
     case "pending_review":

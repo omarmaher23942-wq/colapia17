@@ -15,6 +15,8 @@ export type StoreStatus = Store["status"];
  *   deleted -> frozen          : استرجاع الأونر خلال نافذة الحذف الناعم
  */
 export const TRANSITIONS: Record<StoreStatus, readonly StoreStatus[]> = {
+  // V2: أنشأه الوكيل ← إكمال الإعداد يبدأ التجربة، أو حذف.
+  setup: ["trial", "deleted"],
   intake: ["pending_review", "building", "deleted"],
   pending_review: ["building", "deleted"],
   building: ["review", "trial", "deleted"],
@@ -42,9 +44,13 @@ const TRIAL_KINDS: JobKind[] = ["trial.reminder_6h", "trial.reminder_20h", "tria
 const DOOM_KINDS: JobKind[] = ["doom.reminder_12h", "doom.reminder_1h", "doom.purge"];
 const HOSTING_KINDS: JobKind[] = ["hosting.reminder_30d", "hosting.reminder_7d", "hosting.reminder_1d", "hosting.expired", "hosting.paused"];
 
+const SETUP_KINDS: JobKind[] = JOB_KINDS.filter((k) => k.startsWith("setup."));
+
 /** مؤقتات تُلغى تلقائياً بمجرد دخول الحالة */
 const CANCEL_ON_ENTER: Partial<Record<StoreStatus, readonly JobKind[]>> = {
   building: ["review.auto_release", "review.reminder"],
+  // بدء التجربة يلغي أي مهام إعداد معلّقة (setup.*).
+  trial: SETUP_KINDS,
   active: [...TRIAL_KINDS, ...DOOM_KINDS, "payment.invite"],
   // إلغاء تفعيل (active → frozen): لا تذكيرات تجديد لمتجر غير مدفوع.
   frozen: HOSTING_KINDS,
