@@ -18,6 +18,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { showOrderNotification } from "@/lib/order-notify";
 import { WifiOff } from "lucide-react";
 import { useRealtimeEvent } from "@/lib/realtime-hooks";
 import { channels } from "@/server/realtime/events";
@@ -48,6 +49,9 @@ export const ZERO_COUNTS: AttentionCounts = {
   variantsOut: 0,
   abandoned: 0,
   restockReady: 0,
+  cancelRequests: 0,
+  returnsOpen: 0,
+  questionsPending: 0,
 };
 
 type PulseCtx = {
@@ -154,6 +158,11 @@ export function DashboardPulse({
     (fresh: ArrivedOrder[]) => {
       if (isOrderSoundEnabled()) playOrderChime();
       const first = fresh[0]!;
+      showOrderNotification(
+        fresh.length === 1 ? `طلب جديد من ${first.customerName}` : `وصلكم ${arCount(fresh.length, NOUN.newOrder)}`,
+        fresh.length === 1 ? `${formatEgp(first.totalPiasters)} · ${governorateName(first.governorate)} · ${first.code}` : fresh.map((o) => o.customerName).slice(0, 3).join("، "),
+        { href: fresh.length === 1 ? `/dashboard/orders/${first.id}` : "/dashboard/orders?status=new" }
+      );
       if (fresh.length === 1) {
         toast.success(`طلب جديد من ${first.customerName}`, {
           description: `${formatEgp(first.totalPiasters)} · ${governorateName(first.governorate)} · ${first.code}`,

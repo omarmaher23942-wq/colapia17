@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
-import { LogOut, Menu, X, ExternalLink } from "lucide-react";
+import { LogOut, Menu, PenLine, X, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { merchantLogoutAction } from "@/server/actions/auth";
 import { cn, storeUrl, storeHost } from "@/lib/utils";
@@ -11,7 +11,7 @@ import { arCount, NOUN } from "@/lib/format";
 import { useDashboardPulse } from "./DashboardPulse";
 import { StoreSwitcher, type SwitcherStore } from "./StoreSwitcher";
 import { MOBILE_NAV_HREFS, isNavActive, navItemsFor, navSectionsFor, type BadgeKey, type NavItem } from "./nav";
-import type { StorePerms } from "@/lib/store-perms";
+import { allows, type StorePerms } from "@/lib/store-perms";
 
 const SW = 1.75;
 
@@ -37,6 +37,8 @@ const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
   orders: (n) => `${arCount(n, NOUN.order)} بانتظار إجرائك`,
   reviews: (n) => `${arCount(n, NOUN.review)} بانتظار الاعتماد`,
   products: (n) => `نفد مخزون ${arCount(n, NOUN.product)}`,
+  returns: (n) => `${n} طلبات استبدال أو إلغاء تنتظر قراركم`,
+  questions: (n) => `${n} أسئلة بانتظار إجابتكم`,
 };
 
 const mobileNav = (perms?: StorePerms | null, subdomain?: string | null): NavItem[] => {
@@ -57,6 +59,8 @@ export function DashboardSidebar(props: Props) {
       if (!ready || !key) return 0;
       if (key === "orders") return counts.ordersToHandle;
       if (key === "reviews") return counts.pendingReviews;
+      if (key === "returns") return counts.returnsOpen + counts.cancelRequests;
+      if (key === "questions") return counts.questionsPending;
       return counts.outOfStock;
     },
     [counts, ready]
@@ -171,6 +175,17 @@ export function DashboardSidebar(props: Props) {
           </li>
         </ul>
       </nav>
+
+      {/* زر عائم للموبايل: تسجيل طلب جاء من محادثة، يظهر في الرئيسية والطلبات فقط وفوق الشريط السفلي. */}
+      {(pathname === "/dashboard" || pathname === "/dashboard/orders") && (!props.perms || allows(props.perms, "orders", "manage")) ? (
+        <Link
+          href="/dashboard/orders/new"
+          className="fixed bottom-[4.75rem] end-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-b from-nova to-nova-deep px-4 text-[13px] font-black text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 md:hidden"
+        >
+          <PenLine className="size-4" aria-hidden="true" />
+          طلب من الشات
+        </Link>
+      ) : null}
 
       <AnimatePresence>
         {drawerOpen ? (

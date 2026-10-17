@@ -2,7 +2,7 @@
 
 // OnboardingTour — جولة من 4 خطوات تعرّف التاجر الجديد بأهم ما في لوحته. تظهر وحدها في أول أسبوع
 // (مرة واحدة، وتُحفظ في كوكي)، ويعيد فتحها أي وقت أمر «جولة سريعة في اللوحة» في لوحة الأوامر.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -27,36 +27,39 @@ type Step = {
 const STEPS: Step[] = [
   {
     icon: LayoutDashboard,
-    title: "نظرة عامة",
-    description:
-      "مبيعاتك وطلباتك وزوار متجرك في آخر 30 يوماً مقارنةً بالثلاثين التي قبلها، والجرس في الأعلى يجمع لك ما ينتظر قرارك الآن.",
+    title: "ابدؤوا من الرئيسية",
+    description: "«مهام اليوم» تجمع ما ينتظر قراركم الآن، وتحتها هدف الشهر ووتيرة مبيعاتكم الفعلية وصافي الربح بعد الإعلانات.",
   },
   {
     icon: ShoppingCart,
-    title: "الطلبات",
-    description:
-      "أكّد الطلب وغيّر حالته، وراسل العميل على واتساب، واطبع الفاتورة. ومع كل طلب جديد تسمع نغمة ويظهر تنبيه وأنت في أي صفحة.",
+    title: "الطلبات من التأكيد إلى الشحن",
+    description: "أكّدوا الطلب، ثم جهّزوه من «التجهيز» بقائمة مجمّعة بالمقاس، وصدّروه لشركة الشحن من «الشحن» مع ملصقات جاهزة للطباعة وتتبع للتحصيل.",
   },
   {
     icon: Package,
-    title: "المنتجات والمخزون",
-    description:
-      "أضف منتجاتك بمقاساتها وألوانها ومخزون كل تركيبة، أو استوردها من ملف CSV. وننبهك حين يقل المخزون أو ينفد.",
+    title: "منتجات بلا عناء",
+    description: "عدّلوا أسعار ومخزون عدة منتجات معاً من «تعديل جماعي»، واستوردوا منتجاتكم، وأجيبوا أسئلة الزوار لتظهر تحت المنتج.",
+  },
+  {
+    icon: Sparkles,
+    title: "محتوى وتسويق جاهز",
+    description: "«استوديو المحتوى» يكتب لكم تعليقات وستوري وتقويماً أسبوعياً من منتجاتكم الفعلية، و«الحملات والتتبع» تقيس من أين يأتي كل طلب.",
   },
   {
     icon: BarChart3,
-    title: "التحليلات",
-    description:
-      "المبيعات يوماً بيوم، ومراحل الشراء من الزيارة حتى الطلب، والأكثر مبيعاً، وتوزيع طلباتك على المحافظات. اضغط Ctrl+K في أي وقت للبحث عن طلب أو منتج.",
+    title: "الاستخدام والاشتراك",
+    description: "تابعوا حدود الاستخدام الشهرية من «الاستخدام»، وجدّدوا الاشتراك من «الاشتراك» قبل انتهائه. على الموبايل استخدموا الشريط السفلي وزر «طلب من الشات» العائم.",
   },
 ];
 
-const COOKIE_NAME = "clp_tour_v2_seen";
+const COOKIE_NAME = "clp_tour_v3_seen";
 
 export function OnboardingTour({ autoOpen }: { autoOpen: boolean }) {
   const [open, setOpen] = useState(autoOpen);
   const [step, setStep] = useState(0);
   const reduce = useReducedMotion();
+  // السحب الأفقي على الموبايل: يسار = التالي، يمين = السابق (الواجهة من اليمين لليسار).
+  const touchX = useRef<number | null>(null);
 
   // نصغي لحدث إعادة الفتح من Command Palette.
   useEffect(() => {
@@ -111,6 +114,16 @@ export function OnboardingTour({ autoOpen }: { autoOpen: boolean }) {
           exit={reduce ? undefined : { opacity: 0, y: 16, scale: 0.97 }}
           transition={{ duration: reduce ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
           onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => {
+            touchX.current = e.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(e) => {
+            const x0 = touchX.current;
+            touchX.current = null;
+            const dx = x0 === null ? 0 : (e.changedTouches[0]?.clientX ?? x0) - x0;
+            if (Math.abs(dx) < 50) return;
+            setStep((st) => (dx < 0 ? Math.min(STEPS.length - 1, st + 1) : Math.max(0, st - 1)));
+          }}
           className="relative w-full max-w-md overflow-hidden rounded-3xl border border-edge/10 bg-space-2 shadow-2xl"
           dir="rtl"
         >

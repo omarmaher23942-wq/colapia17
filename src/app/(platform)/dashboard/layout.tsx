@@ -8,7 +8,6 @@ import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { attentionCounts } from "@/server/repos/attention";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { memberPerms } from "@/server/merchant-guard";
-import { areaForPath } from "@/lib/store-perms";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
@@ -18,7 +17,7 @@ import { log } from "@/lib/logger";
 import { DASHBOARD_TITLE_TEMPLATE } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
-import { HostingBanner } from "@/components/dashboard/HostingBanner";
+import { PathBanners } from "@/components/dashboard/PathBanners";
 import { hostingGraceDays } from "@/server/hosting-grace";
 
 export const metadata: Metadata = {
@@ -51,8 +50,6 @@ export default async function DashboardLayout({
 
   // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح والإيقاف. لا تُقفل اللوحة أبداً: البيانات بيانات التاجر.
   const hosting = session.store ? hostingState(session.store, new Date(), await hostingGraceDays().catch(() => undefined)) : ({ phase: "none" } as const);
-  const path = (await headers()).get("x-pathname") ?? "";
-  const onBilling = path.startsWith("/dashboard/billing");
 
   // أعداد «ما يحتاج انتباهك» من الخادم مع أول رسم، فلا تومض الشارات من صفر.
   const pulseAt = new Date().toISOString();
@@ -60,14 +57,22 @@ export default async function DashboardLayout({
 
   // فحص tour الدخول الأول: نستخدم cookie لمنع التكرار المزعج.
   const jar = await cookies();
-  const tourSeen = jar.get("clp_tour_v2_seen")?.value === "1";
-  const theme = jar.get(DASH_THEME_COOKIE)?.value === "light" ? "light" : "dark";
+  const tourSeen = jar.get("clp_tour_v3_seen")?.value === "1";
+  // الافتراضي «حسب النظام»: فاتح في أول زيارة، ويتبع تفضيل الجهاز بسكربت صغير قبل الرسم، حتى يختار التاجر بنفسه (كوكي).
+  const themeCookie = jar.get(DASH_THEME_COOKIE)?.value;
+  const theme = themeCookie === "dark" ? "dark" : "light";
+  const followSystem = !themeCookie;
   const showTour =
     !tourSeen &&
     (isNewMerchant(session.merchant.createdAt) || session.store === null);
 
   return (
-    <div dir="rtl" className={`dash dash-cosmos min-h-dvh text-ink ${theme === "dark" ? "dark" : ""}`}>
+    <div dir="rtl" suppressHydrationWarning className={`dash dash-cosmos min-h-dvh text-ink ${theme === "dark" ? "dark" : ""}`}>
+      {followSystem ? (
+        <script
+          dangerouslySetInnerHTML={{ __html: "try{if(matchMedia('(prefers-color-scheme: dark)').matches)document.currentScript.parentElement.classList.add('dark')}catch(e){}" }}
+        />
+      ) : null}
       {/* Skip-to-content — يظهر عند focus فقط */}
       <a
         href="#dashboard-main"
@@ -112,17 +117,7 @@ export default async function DashboardLayout({
               id="dashboard-main"
               className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
             >
-              {!onBilling && (hosting.phase === "renew_soon" || hosting.phase === "grace" || hosting.phase === "paused") ? <HostingBanner state={hosting} /> : null}
-              {(() => {
-                // عضو فريق بصلاحية «عرض» فقط في هذه الصفحة: نوضح ذلك بدل أن يكتشفه من رفض الحفظ.
-                const mp = memberPerms(session);
-                const area = areaForPath(path);
-                return mp && area && mp[area] === "view" ? (
-                  <p role="note" className="mb-4 rounded-xl border border-warn/30 bg-warn/[0.06] px-4 py-2.5 text-[13px] font-bold text-warn">
-                    صلاحيتك هنا «عرض فقط». أي تعديل يحتاج صلاحية من صاحب المتجر.
-                  </p>
-                ) : null;
-              })()}
+              <PathBanners hosting={hosting} perms={memberPerms(session)} />
               {children}
             </main>
           </div>

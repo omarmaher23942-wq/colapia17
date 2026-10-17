@@ -7,6 +7,10 @@ import { extensionFor, isMediaRoute, looksHeic, MEDIA_ROUTES, sniffImageType } f
 import { mediaApi } from "@/server/media-host";
 import { afterUpload, authorizeUpload, UploadPolicyError } from "@/server/upload-policies";
 import { allow, clientIp } from "@/lib/ratelimit";
+import { checkUploadQuota, recordUpload } from "@/server/usage";
+
+// مسارات رفع التاجر التي تُحسب على حد الاستخدام الشهري (رفع الزوار لإيصالات وتقييمات له حدود معدل خاصة).
+const METERED = new Set(["productImage", "brandAsset"]);
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +52,12 @@ export async function POST(req: Request) {
     throw e;
   }
 
+  const meteredStore = METERED.has(route) && typeof grant.meta.storeId === "string" ? grant.meta.storeId : null;
+  if (meteredStore) {
+    const q = await checkUploadQuota(meteredStore, files.reduce((n, f) => n + f.size, 0), "image", files.length);
+    if (!q.ok) return fail(q.message, 429);
+  }
+
   const host = await mediaApi();
   if (!host) {
     console.error("[upload] لا مساحة ملفات مضبوطة: ضع R2_* أو UPLOADTHING_TOKEN (التفاصيل في /admin/launch)");
@@ -77,5 +87,6 @@ export async function POST(req: Request) {
     }
     out.push({ key: up.key, url: up.url, type, size: bytes.length });
   }
+  if (meteredStore) await recordUpload(meteredStore, out.reduce((n, f) => n + f.size, 0), "image", out.length);
   return NextResponse.json({ files: out }, { headers: { "cache-control": "no-store" } });
 }

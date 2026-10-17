@@ -14,6 +14,7 @@ import { useImageUpload } from "@/editor/useImageUpload";
 import { Field, Section, inputCls } from "../product/parts";
 import { DashDialog } from "../ui/DashDialog";
 import type { StoreInfo } from "./SettingsPage";
+import { OrderAlertsCard } from "./OrderAlertsCard";
 
 export type AccountInfo = { displayName: string; email: string | null; phone: string | null; avatarUrl: string | null };
 
@@ -23,6 +24,7 @@ export function AccountTab({ account, store }: { account: AccountInfo; store: St
   return (
     <div className="space-y-5">
       <ProfileCard account={account} />
+      <OrderAlertsCard />
       <Section title="الخروج" hint="ينهي جلستك على هذا الجهاز">
         <form action={merchantLogoutAction}>
           <button type="submit" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-edge/10 px-3.5 text-[12.5px] font-bold text-ink-2 hover:bg-edge/[0.05] hover:text-ink">

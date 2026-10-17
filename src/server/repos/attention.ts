@@ -28,6 +28,12 @@ export type AttentionCounts = {
   abandoned: number;
   /** منتجات متاحة الآن وفيها من طلب «نبّهني عند التوفر» ولم يُبلَّغ بعد. */
   restockReady: number;
+  /** طلبات طلب أصحابها إلغاءها ولم يُبتّ فيها. */
+  cancelRequests: number;
+  /** طلبات استبدال أو استرجاع جديدة أو قيد المعالجة. */
+  returnsOpen: number;
+  /** أسئلة الزوار عن المنتجات بانتظار إجابة. */
+  questionsPending: number;
 };
 
 export type ArrivedOrder = {
@@ -84,6 +90,17 @@ export async function attentionCounts(storeId: string): Promise<AttentionCounts>
     `)
     .then((r) => Number((r.rows?.[0] as { n?: unknown } | undefined)?.n ?? 0) || 0)
     .catch(() => 0);
+  // استعلام مستقل: جداول V2 قد لا تكون موجودة قبل تطبيق migration 0016، فيعود 0 بدل إسقاط البقية.
+  const v2 = await db
+    .execute(sql`
+      select
+        (select count(*) from orders o where o.store_id = ${storeId} and o.is_test = false and o.cancel_requested_at is not null
+           and o.status in ('new','confirmed','preparing')) as cancel_requests,
+        (select count(*) from return_requests r where r.store_id = ${storeId} and r.status in ('new','approved','received')) as returns_open,
+        (select count(*) from product_questions q where q.store_id = ${storeId} and q.status = 'pending') as questions_pending
+    `)
+    .then((r) => (r.rows?.[0] ?? {}) as Record<string, unknown>)
+    .catch(() => ({}) as Record<string, unknown>);
   const row = (res.rows?.[0] ?? {}) as Record<string, unknown>;
   const n = (k: string) => {
     const v = Number(row[k] ?? 0);
@@ -99,6 +116,9 @@ export async function attentionCounts(storeId: string): Promise<AttentionCounts>
     variantsOut: n("variants_out"),
     abandoned: n("abandoned"),
     restockReady: restock,
+    cancelRequests: Number(v2.cancel_requests ?? 0) || 0,
+    returnsOpen: Number(v2.returns_open ?? 0) || 0,
+    questionsPending: Number(v2.questions_pending ?? 0) || 0,
   };
 }
 

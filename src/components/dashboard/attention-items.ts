@@ -1,6 +1,6 @@
 // attention-items.ts — بنود «ما يحتاج انتباهك» من أعداد النبض: مصدر واحد للجرس في الشريط العلوي
 // ولقائمة الانتباه في صفحة النظرة العامة. دالة نقية بلا React state، تعمل في الخادم والعميل.
-import { BellRing, Layers, PackageMinus, PackageX, Receipt, ShoppingBag, ShoppingCart, Star, type LucideIcon } from "lucide-react";
+import { BellRing, CircleHelp, Layers, PackageOpen, Ban, PackageMinus, PackageX, Receipt, ShoppingBag, ShoppingCart, Star, type LucideIcon } from "lucide-react";
 import { arCount, NOUN } from "@/lib/format";
 import type { AttentionCounts } from "@/server/repos/attention";
 
@@ -45,6 +45,36 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
       chip: arCount(c.receipts, NOUN.receipt),
       desc: "طابق المبلغ في محفظتك أو حسابك، ثم أكّد الدفع أو ارفضه.",
       href: "/dashboard/orders?pay=review",
+    });
+  if (c.cancelRequests > 0)
+    items.push({
+      key: "cancel",
+      icon: Ban,
+      tone: "bad",
+      title: "طلبات إلغاء من العملاء",
+      chip: arCount(c.cancelRequests, NOUN.order),
+      desc: "عملاء طلبوا إلغاء طلباتهم قبل الشحن. وافقوا أو اعتذروا برسالة قبل خروج الشحنة.",
+      href: "/dashboard/returns?tab=cancel",
+    });
+  if (c.returnsOpen > 0)
+    items.push({
+      key: "returns",
+      icon: PackageOpen,
+      tone: "warn",
+      title: "طلبات استبدال واسترجاع",
+      chip: String(c.returnsOpen),
+      desc: "راجعوا الصور والسبب ثم اعتمدوا أو اعتذروا، وسجّلوا الاستلام ليعود المخزون.",
+      href: "/dashboard/returns",
+    });
+  if (c.questionsPending > 0)
+    items.push({
+      key: "questions",
+      icon: CircleHelp,
+      tone: "nova",
+      title: "أسئلة عن المنتجات بانتظار إجابتكم",
+      chip: String(c.questionsPending),
+      desc: "السؤال المجاب عنه يظهر في صفحة المنتج ويحسم تردد الزائرين.",
+      href: "/dashboard/questions",
     });
   if (c.pendingReviews > 0)
     items.push({
@@ -111,5 +141,5 @@ export function attentionItems(c: AttentionCounts): AttentionItem[] {
 
 /** ما يُحسب في رقم الجرس: ما ينتظر قرار التاجر الآن (لا المخزون ولا الفرص). */
 export function urgentCount(c: AttentionCounts): number {
-  return c.ordersToHandle + c.pendingReviews;
+  return c.ordersToHandle + c.pendingReviews + c.cancelRequests;
 }

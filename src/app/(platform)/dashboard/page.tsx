@@ -5,7 +5,12 @@ import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
 import { Eye, Percent, Plus, ShoppingCart, Wallet } from "lucide-react";
 import { getMerchantSession } from "@/server/auth";
-import { EmptyStoreState } from "@/components/dashboard/EmptyStoreState";
+import { redirect } from "next/navigation";
+import QRCode from "qrcode";
+import { NO_STORE_HREF } from "@/lib/edition";
+import { GoalCard } from "@/components/dashboard/overview/GoalCard";
+import { ShareStoreCard } from "@/components/dashboard/overview/ShareStoreCard";
+import { growthData } from "@/server/repos/growth";
 import { TrialCard } from "@/components/dashboard/TrialCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AttentionStrip } from "@/components/dashboard/overview/AttentionStrip";
@@ -17,7 +22,7 @@ import { orderMessage } from "@/lib/order-messages";
 import { waLink } from "@/lib/whatsapp";
 import { memberPerms } from "@/server/merchant-guard";
 import { allows, OWNER_PERMS } from "@/lib/store-perms";
-import { storeUrl } from "@/lib/utils";
+import { publicStoreUrl, storeUrl } from "@/lib/utils";
 import { listDiscounts } from "@/server/repos/discounts-list";
 import { discountState, discountValueLabel } from "@/lib/discounts";
 import {
@@ -34,7 +39,6 @@ import { overviewData, pctChange, OVERVIEW_RANGES, type OverviewRange } from "@/
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";
-import { readRequestId } from "@/lib/correlation";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "نظرة عامة" };
@@ -47,16 +51,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
   await requireStoreArea("analytics");
   const params = await searchParams;
 
-  if (!session.store) {
-    const isError = params.onboarding === "error";
-    return (
-      <EmptyStoreState
-        merchantName={session.merchant.displayName}
-        errorReason={isError ? (params.reason ?? "unknown") : null}
-        correlationId={isError ? await readRequestId() : null}
-      />
-    );
-  }
+  if (!session.store) redirect(NO_STORE_HREF);
 
   const store = session.store;
   const range = (OVERVIEW_RANGES as number[]).includes(Number(params.range)) ? (Number(params.range) as OverviewRange) : 30;
@@ -88,10 +83,26 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
         <TodaySection storeId={store.id} subdomain={store.subdomain} storeName={store.name} canMessage={allows(memberPerms(session) ?? OWNER_PERMS, "orders", "manage")} />
       </Suspense>
 
+      <Suspense fallback={null}>
+        <GrowthSection storeId={store.id} prefs={store.prefs} storeUrlValue={publicStoreUrl(store)} storeName={store.name} />
+      </Suspense>
+
       <Suspense key={range} fallback={<OverviewSkeleton />}>
         <OverviewBody storeId={store.id} subdomain={store.subdomain} storeName={store.name} range={range} customDomainActive={store.customDomainStatus === "active"} />
       </Suspense>
     </div>
+  );
+}
+
+async function GrowthSection({ storeId, prefs, storeUrlValue, storeName }: { storeId: string; prefs: unknown; storeUrlValue: string; storeName: string }) {
+  const g = await growthData(storeId, prefs).catch(() => null);
+  const shareDone = Boolean((prefs as { shareDone?: boolean } | null)?.shareDone);
+  const qr = shareDone ? "" : await QRCode.toDataURL(storeUrlValue, { width: 280, margin: 1 }).catch(() => "");
+  return (
+    <>
+      {g ? <GoalCard g={g} /> : null}
+      {shareDone ? null : <ShareStoreCard url={storeUrlValue} storeName={storeName} qr={qr} />}
+    </>
   );
 }
 
