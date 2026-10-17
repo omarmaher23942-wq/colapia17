@@ -255,9 +255,9 @@ const checkDomains = () =>
   });
 
 const checkGithub = () =>
-  run("github", "GitHub (فروع المتاجر وتسليم الكود)", async () => {
+  run("github", "GitHub (فروع المتاجر)", async () => {
     if (!env.STORES_GITHUB_TOKEN || !env.STORES_GITHUB_REPO)
-      return { status: hostingName() === "cloudflare" ? "fail" : "warn", detail: "غير مضبوط: التجهيز يعطي ZIP بدل فرع، و«نزّل مشروع المتجر» لا يعمل على Cloudflare", fix: "الدليل القسم 5 (توكن GitHub)" };
+      return { status: hostingName() === "cloudflare" ? "fail" : "warn", detail: "غير مضبوط: التجهيز يعطي ZIP بدل فرع", fix: "الدليل القسم 5 (توكن GitHub)" };
     const r = await timed(`https://api.github.com/repos/${env.STORES_GITHUB_REPO}`, { headers: { Authorization: `Bearer ${env.STORES_GITHUB_TOKEN}`, "User-Agent": "colapia" } });
     return r.ok ? { status: "ok", detail: `يصل إلى ${env.STORES_GITHUB_REPO}` } : { status: "fail", detail: `مرفوض (${r.status})`, fix: "التوكن منتهٍ أو بلا صلاحية Contents على المستودع" };
   });

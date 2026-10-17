@@ -4,10 +4,9 @@
 // كوكي التاجر لا يُرى على نطاق المتجر (host-only)، فالمعاينة تُعرف من الرابط وتُحفظ للجلسة.
 import { useEffect, useState } from "react";
 import { Sparkles, ArrowLeft, X } from "lucide-react";
-import { EDITION } from "@/lib/edition";
 
 const dashboardHref = () =>
-  EDITION === "store" ? "/dashboard" : `${process.env.NEXT_PUBLIC_APP_URL ?? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? ""}`}/dashboard`;
+  `${process.env.NEXT_PUBLIC_APP_URL ?? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? ""}`}/dashboard`;
 
 export function OwnerFirstImpressionBanner({ subdomain, storeName }: { subdomain: string; storeName: string }) {
   const [show, setShow] = useState(false);

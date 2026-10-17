@@ -27,7 +27,7 @@ import { arCount, NOUN } from "@/lib/format";
 import { hrefFor } from "@/lib/links";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { CUSTOMER_ACCOUNTS, VISUAL_SEARCH } from "@/lib/edition";
+import { CUSTOMER_ACCOUNTS } from "@/lib/edition";
 import { VisualSearch } from "./VisualSearch";
 import { useCopy, useStore } from "./StoreProvider";
 import type { StoreBlueprint } from "@/blueprint/schema";
@@ -248,7 +248,7 @@ export function Header({
               <Search className="size-4.5" strokeWidth={SW} aria-hidden="true" />
             </button>
 
-            {VISUAL_SEARCH ? <VisualSearch whatsapp={channels.whatsappNumber} storeName={brand.name} /> : null}
+            <VisualSearch whatsapp={channels.whatsappNumber} storeName={brand.name} />
 
             {myOrders.total > 0 ? (
               <Link

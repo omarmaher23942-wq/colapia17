@@ -263,7 +263,7 @@ export async function rejectStorePayment(
 }
 /**
  * إلغاء تفعيل قُبل فورياً ثم تبيّن عند المراجعة أن التحويل لم يصل. يعيد المتجر للتجميد بمهلة،
- * ويُبلغ التاجر بالسبب. لا يُلغى تفعيل متجر انتقل إلى حساباته الخاصة (بياناته لم تعد عندنا).
+ * ويُبلغ التاجر بالسبب.
  */
 export async function revokeStorePayment(
   paymentId: string,
@@ -274,7 +274,6 @@ export async function revokeStorePayment(
   if (!pay || pay.status !== "confirmed") throw new Error("الدفعة ليست مؤكدة");
   const [store] = await db.select().from(stores).where(eq(stores.id, pay.storeId)).limit(1);
   if (!store) throw new Error("المتجر غير موجود");
-  if (store.ownedAt) throw new Error("التاجر استلم متجره على حساباته، لا يمكن إلغاء تفعيله من هنا");
 
   const now = new Date();
   const [claimed] = await db

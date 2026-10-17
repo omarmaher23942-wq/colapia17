@@ -31,7 +31,6 @@ import {
 import { readinessScore, readinessSteps } from "@/lib/store-readiness";
 import { buildNotes } from "@/components/dashboard/overview/notes";
 import { overviewData, pctChange, OVERVIEW_RANGES, type OverviewRange } from "@/server/repos/overview";
-import { EDITION } from "@/lib/edition";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";
@@ -61,7 +60,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
 
   const store = session.store;
   const range = (OVERVIEW_RANGES as number[]).includes(Number(params.range)) ? (Number(params.range) as OverviewRange) : 30;
-  const showTrial = store.status !== "active" && store.demoExpiresAt !== null && EDITION === "platform";
+  const showTrial = store.status !== "active" && store.demoExpiresAt !== null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
@@ -115,7 +114,7 @@ async function TodaySection({ storeId, subdomain, storeName, canMessage }: { sto
 async function OverviewBody({ storeId, subdomain, storeName, range, customDomainActive }: { storeId: string; subdomain: string; storeName: string; range: OverviewRange; customDomainActive: boolean }) {
   const [data, bp] = await Promise.all([overviewData(storeId, range), getBlueprintOrNull(storeId)]);
   const { current: c, previous: p, series } = data;
-  const shareHref = EDITION === "store" ? "/" : "/dashboard/store";
+  const shareHref = "/dashboard/store";
 
   const conv = c.visitors > 0 ? (c.orders / c.visitors) * 100 : null;
   const prevConv = p.visitors > 0 ? (p.orders / p.visitors) * 100 : null;
@@ -143,7 +142,7 @@ async function OverviewBody({ storeId, subdomain, storeName, range, customDomain
       },
       policySet: Boolean(bp && (bp.returns.windowDays > 0 || bp.returns.allowExchange || bp.returns.allowRefund || bp.returns.defectPolicy !== "none")),
       hasPixel: Boolean(bp?.seo?.metaPixelId || bp?.seo?.tiktokPixelId || bp?.seo?.gaMeasurementId),
-      customDomain: EDITION === "platform" ? Boolean(customDomainActive) : null,
+      customDomain: Boolean(customDomainActive),
     },
     shareHref
   );

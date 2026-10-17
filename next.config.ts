@@ -116,12 +116,7 @@ const nextConfig: NextConfig = {
   // خادم Node مستقل (Dockerfile): يحمل ما تحتاجه الصفحات فقط، فتصغر الصورة وذاكرة التشغيل على Railway أو أي مضيف.
   // Vercel يتجاهله ويبني بطريقته.
   output: "standalone",
-  // تسليم الكود يولّد مشروع التاجر من ملفات المشروع نفسها وقت التشغيل (server/ownership/template.ts): على خادم Node
-  // تُرفق الملفات بالدالة، وعلى Cloudflare (بلا ملفات) تُقرأ من مستودع GitHub بنفس الـ commit (server/ownership/source.ts).
-  outputFileTracingIncludes: {
-    "/admin/stores/[id]/project": ["./src/**/*", "./template/**/*", "./public/sounds/**/*", "./public/logo.png", "./package.json", "./package-lock.json", "./postcss.config.mjs", "./next-env.d.ts"],
-  },
-  // الـ commit المنشور (Cloudflare Workers Builds أو Vercel أو Railway): مصدر ملفات تسليم الكود ورقم الإصدار في /api/health.
+  // الـ commit المنشور (Cloudflare Workers Builds أو Vercel أو Railway): رقم الإصدار في /api/health.
   env: {
     BUILD_COMMIT_SHA: process.env.WORKERS_CI_COMMIT_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RAILWAY_GIT_COMMIT_SHA ?? "",
   },

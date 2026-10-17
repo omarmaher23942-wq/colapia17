@@ -29,7 +29,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
 
   const { startUpload } = useMediaUpload("productImage", {
     onUploadError: (e) => {
-      // رسائلنا العربية (مثل «أضف مفتاح UploadThing» في مشروع التاجر) تُعرض كما هي، وغيرها برسالة مفهومة.
+      // رسائلنا العربية تُعرض كما هي، وغيرها برسالة مفهومة.
       toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى");
     },
   });

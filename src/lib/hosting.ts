@@ -5,10 +5,7 @@
 //  - paused: بعد السماح يتوقف المتجر عن الظهور للزوار (صفحة «متوقف مؤقتاً»)، و**لا يُحذف شيء أبداً**؛
 //    التجديد يعيده فوراً كما كان.
 //  - lifetime: متجر «الدائرة الذهبية»: يعمل بلا انتهاء ولا تذكيرات تجديد.
-//  - offline: صاحب المتجر أوقف نسخته على المنصة بنفسه (بعد نقله لموقعه الخاص)، ويعيدها متى شاء.
 // المتجر غير المدفوع (تجربة/تجميد) خارج هذا الملف: له مراحله في lib/billing-stage.ts.
-
-import { EDITION } from "./edition";
 
 export const HOSTING_YEAR_DAYS = 365;
 export const HOSTING_GRACE_DAYS = 14;
@@ -26,8 +23,6 @@ export type HostingStore = {
   plan?: string | null;
   activatedAt: Date | null;
   hostingExpiresAt: Date | null;
-  platformOfflineAt: Date | null;
-  purgedAt?: Date | null;
 };
 
 export type HostingState =
@@ -35,8 +30,7 @@ export type HostingState =
   | { phase: "lifetime" }
   | { phase: "active" | "renew_soon"; expiresAt: Date; daysLeft: number; canRenew: boolean }
   | { phase: "grace"; expiresAt: Date; pauseAt: Date; daysLeft: number }
-  | { phase: "paused"; expiresAt: Date }
-  | { phase: "offline"; expiresAt: Date | null };
+  | { phase: "paused"; expiresAt: Date };
 
 /** نهاية الاستضافة: العمود، وإلا سنة من التفعيل (متجر فُعِّل قبل العمود). */
 export function hostingExpiry(store: Pick<HostingStore, "activatedAt" | "hostingExpiresAt">): Date | null {
@@ -50,12 +44,9 @@ export function extendHosting(current: Date | null, now = new Date()): Date {
   return new Date(from.getTime() + HOSTING_YEAR_DAYS * DAY);
 }
 
-export function hostingState(store: HostingStore, now = new Date(), edition: string = EDITION): HostingState {
-  // مشروع التاجر الخاص يعمل على حساباته: لا اشتراك فيه.
-  if (edition !== "platform") return { phase: "none" };
+export function hostingState(store: HostingStore, now = new Date()): HostingState {
   if (store.status !== "active") return { phase: "none" };
   const expiresAt = hostingExpiry(store);
-  if (store.platformOfflineAt || store.purgedAt) return { phase: "offline", expiresAt };
   if (store.plan === LIFETIME_PLAN) return { phase: "lifetime" };
   if (!expiresAt) return { phase: "none" };
   const left = expiresAt.getTime() - now.getTime();
@@ -72,7 +63,7 @@ export function hostingState(store: HostingStore, now = new Date(), edition: str
 
 /** هل يُعرض المتجر للزوار ويستقبل طلبات على المنصة؟ (حالة الاستضافة فقط؛ حالات التجربة لها بوابتها.) */
 export function hostingServes(state: HostingState): boolean {
-  return state.phase !== "paused" && state.phase !== "offline";
+  return state.phase !== "paused";
 }
 
 /** هل يقبل الدفع الآن تجديداً لهذا المتجر؟ */

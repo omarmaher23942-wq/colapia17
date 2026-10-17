@@ -26,16 +26,12 @@ export type BillingStore = {
   frozenAt: Date | null;
   purgeAt: Date | null;
   activatedAt: Date | null;
-  ownedAt: Date | null;
-  purgedAt: Date | null;
   hostingExpiresAt: Date | null;
-  platformOfflineAt: Date | null;
 };
 
 export type PayPhase = "trial" | "expired" | "frozen" | "rejected";
 
 export type BillingStage =
-  | { kind: "owned" }
   | {
       kind: "active";
       activatedAt: Date | null;
@@ -63,14 +59,12 @@ const DAY = 864e5;
 /** payments بالأحدث أولاً. */
 export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date()): BillingStage {
   if (store.status === "active") {
-    // حذف التاجر بيانات متجره من المنصة بعد نقله: لا شيء يُدفع هنا.
-    if (store.purgedAt) return { kind: "owned" };
     const latestRenewal = payments.find((p) => p.kind === "renewal" && (p.status === "rejected" || p.status === "confirmed")) ?? null;
     return {
       kind: "active",
       activatedAt: store.activatedAt,
       payment: payments.find((p) => p.status === "confirmed") ?? null,
-      hosting: hostingState(store, now, "platform"),
+      hosting: hostingState(store, now),
       renewalPending: payments.find((p) => p.status === "under_review") ?? null,
       renewalRejected: latestRenewal?.status === "rejected" ? latestRenewal : null,
     };

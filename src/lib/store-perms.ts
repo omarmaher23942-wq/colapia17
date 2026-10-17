@@ -1,4 +1,4 @@
-// store-perms.ts — صلاحيات فريق التاجر في لوحة متجره (منطق خالص مختبَر، مشترك مع مشروع التاجر المستقل).
+// store-perms.ts — صلاحيات فريق التاجر في لوحة متجره (منطق خالص مختبَر).
 //
 // صاحب المتجر (stores.merchant_id) يملك كل شيء دائماً. كل عضو يدعوه يأخذ دوراً جاهزاً أو صلاحيات مخصصة: لكل مجال
 // مستوى «لا شيء / عرض / إدارة». الخادم يفرضها في كل صفحة وإجراء (server/merchant-guard.ts)، والواجهة تُخفي فقط.
@@ -131,7 +131,6 @@ const PATH_AREAS: [string, StoreArea][] = [
   ["/dashboard/settings", "settings"],
   ["/dashboard/team", "team"],
   ["/dashboard/billing", "billing"],
-  ["/dashboard/own", "billing"],
   ["/dashboard/store", "billing"],
   ["/dashboard/requests", "requests"],
 ];

@@ -13,7 +13,7 @@ import { PendingImages } from "@/components/dashboard/products/ImageMover";
 import { InventoryMode } from "@/components/dashboard/products/InventoryMode";
 import { getBlueprintOrNull } from "@/lib/tenant";
 import { arCount, fmtNum, NOUN } from "@/lib/format";
-import { NO_STORE_HREF, VISUAL_SEARCH } from "@/lib/edition";
+import { NO_STORE_HREF } from "@/lib/edition";
 import { visualSearchMisses } from "@/server/visual-search-misses";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +55,7 @@ export default async function DashboardProductsPage({ searchParams }: { searchPa
   const [data, bp, misses] = await Promise.all([
     listProducts(store.id, query),
     getBlueprintOrNull(store.id),
-    VISUAL_SEARCH ? visualSearchMisses(store.id).catch(() => []) : Promise.resolve([]),
+    visualSearchMisses(store.id).catch(() => []),
   ]);
   const { counts } = data;
 

@@ -37,7 +37,6 @@ function statusOf(store: Store): { label: string; tone: Tone; detail: string | n
       if (h.phase === "renew_soon") return { label: "مفعّل", tone: "warn", detail: `الاستضافة تنتهي ${dateFmt.format(h.expiresAt)}. التجديد متاح الآن من «الباقة والاستضافة».` };
       if (h.phase === "grace") return { label: "انتهت الاستضافة", tone: "warn", detail: `متجرك يعمل حتى ${dateFmt.format(h.pauseAt)} ثم يتوقف عن الظهور حتى التجديد.` };
       if (h.phase === "paused") return { label: "متوقف حتى التجديد", tone: "bad", detail: "الزوار يرون أن المتجر غير متاح. بياناتك محفوظة كما هي." };
-      if (h.phase === "offline") return { label: "متوقف بطلبك", tone: "muted", detail: null };
       return { label: "مفعّل", tone: "ok", detail: null };
     case "trial":
       return { label: "تجربة نشطة", tone: "warn", detail: store.demoExpiresAt ? `تنتهي ${dateTimeFmt.format(store.demoExpiresAt)}. التفعيل من «الباقة والاستضافة».` : null };

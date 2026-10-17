@@ -1,6 +1,5 @@
 import "server-only";
 // store-secrets.ts — أسرار تكاملات المتجر (رمز Conversions API من ميتا). تُقرأ في الخادم فقط ولا تُعاد للواجهة إلا مقنّعة.
-// نسخة مشروع التاجر المستقل: template/src/server/store-secrets.ts (من جدول store_settings في قاعدته).
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeSecrets } from "@/db/schema";

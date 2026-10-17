@@ -7,10 +7,9 @@ const SW = 1.75;
  * يظهر للزوار بدل المتجر حين لا يعرض محتواه، بلا كشف أي تفاصيل داخلية:
  *  - قيد التجهيز (لم يُسلَّم بعد)، أو محجوز لصاحبه (انتهت تجربته ولم يدفع).
  *  - «paused»: متجر مدفوع انتهت استضافته وفترة السماح (lib/hosting.ts). لا حذف: يعود فور التجديد.
- *  - «offline»: أوقف صاحبه نسخته هنا بنفسه ولا موقع خاص نحوّل إليه.
  */
 export function FrozenGate({ status, name, activateHref = "/admin/activate" }: { status: string; name?: string; activateHref?: string }) {
-  if (status === "paused" || status === "offline") {
+  if (status === "paused") {
     return (
       <Gate icon={PauseCircle} title={name ? `${name} متوقف مؤقتاً` : "المتجر متوقف مؤقتاً"}>
         نعود قريباً بإذن الله. شكراً لزيارتك.

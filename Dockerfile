@@ -35,7 +35,7 @@ ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app app
-# الخادم المستقل يحمل الصفحات وما تستورده فقط (ومعه src/ وtemplate/ لتوليد «امتلك متجرك»: next.config.ts).
+# الخادم المستقل يحمل الصفحات وما تستورده فقط.
 COPY --from=build --chown=app:app /app/.next/standalone ./
 COPY --from=build --chown=app:app /app/.next/static ./.next/static
 COPY --from=build --chown=app:app /app/public ./public

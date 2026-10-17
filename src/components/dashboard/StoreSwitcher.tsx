@@ -1,6 +1,6 @@
 "use client";
 
-// StoreSwitcher — التبديل بين متاجر التاجر (على المنصة فقط؛ مشروع التاجر متجر واحد).
+// StoreSwitcher — التبديل بين متاجر التاجر.
 // يبدّل المتجر النشط في الجلسة بعد التحقق من الملكية على الخادم (switchStoreAction)،
 // ثم يفتح نظرته العامة. يظهر فقط حين يملك التاجر متجرين أو أكثر.
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -10,7 +10,7 @@ import { ChevronDown, Check, Loader2, Plus } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { toast } from "sonner";
 import { cn, storeHost } from "@/lib/utils";
-import { EDITION, NO_STORE_HREF } from "@/lib/edition";
+import { NO_STORE_HREF } from "@/lib/edition";
 import { switchStoreAction } from "@/server/actions/auth";
 
 export type SwitcherStore = {
@@ -176,20 +176,18 @@ export function StoreSwitcher({ currentId, stores }: { currentId: string | null;
               })}
             </ul>
 
-            {EDITION === "platform" ? (
-              <div className="border-t border-edge/10 p-1.5">
-                <Link
-                  href={NO_STORE_HREF}
-                  onClick={() => setOpen(false)}
-                  className="flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-[12.5px] font-bold text-nova-2 transition-colors hover:bg-nova/10"
-                >
-                  <span className="grid size-7 place-items-center rounded-lg bg-nova/15">
-                    <Plus className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
-                  </span>
-                  متجر جديد
-                </Link>
-              </div>
-            ) : null}
+            <div className="border-t border-edge/10 p-1.5">
+              <Link
+                href={NO_STORE_HREF}
+                onClick={() => setOpen(false)}
+                className="flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-[12.5px] font-bold text-nova-2 transition-colors hover:bg-nova/10"
+              >
+                <span className="grid size-7 place-items-center rounded-lg bg-nova/15">
+                  <Plus className="size-3.5" strokeWidth={2.5} aria-hidden="true" />
+                </span>
+                متجر جديد
+              </Link>
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>

@@ -1,33 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readSecret } from "../../template/src/lib/secret-input";
 import { groundedText, storeFacts } from "@/blueprint/facts";
 import { defaultBlueprint } from "@/blueprint/defaults";
 import { blueprintSchema } from "@/blueprint/schema";
-
-const UT = Buffer.from(JSON.stringify({ apiKey: "sk_live_" + "a".repeat(40), appId: "abc123", regions: ["sea1"] })).toString("base64");
-
-describe("pasted provider keys", () => {
-  it("reads the UploadThing token whatever way it was copied", () => {
-    for (const raw of [
-      UT,
-      `UPLOADTHING_TOKEN='${UT}'`,
-      `UPLOADTHING_TOKEN="${UT}"`,
-      `export UPLOADTHING_TOKEN=${UT}`,
-      `  UPLOADTHING_TOKEN = ‘${UT}’ \n`,
-      `UPLOADTHING_SECRET=sk_live_x\nUPLOADTHING_TOKEN='${UT}'\nOTHER=1`,
-      `“${UT}”`,
-    ]) {
-      expect(readSecret("uploadthing", raw)).toBe(UT);
-    }
-  });
-  it("reads Groq and Resend keys from env lines or bearer headers", () => {
-    const g = "gsk_" + "A1b2".repeat(10);
-    expect(readSecret("groq", `GROQ_API_KEY=${g}`)).toBe(g);
-    expect(readSecret("groq", `Bearer ${g}`)).toBe(g);
-    expect(readSecret("groq", ` "${g}" `)).toBe(g);
-    expect(readSecret("resend", "RESEND_API_KEY=re_abc_1234567890")).toBe("re_abc_1234567890");
-  });
-});
 
 describe("truthful free text", () => {
   const bp = blueprintSchema.parse(defaultBlueprint({ name: "ميادة فاشون" } as never));

@@ -11,8 +11,8 @@ const tenant = new Set<string>(TENANT_TABLES);
 const control = new Set<string>(CONTROL_TABLES);
 const anchors = new Set<string>(ANCHOR_TABLES);
 
-// مفاتيح من بيانات المتجر إلى جداول تحكم غير الـ anchors. تُفرَّغ (NULL) عند النقل لمشروع التاجر.
-const NULLED_ON_CUTOVER = new Set(["support_threads.assigned_to"]);
+// مفاتيح من بيانات المتجر إلى جداول تحكم غير الـ anchors (مسموحة استثناءً).
+const ALLOWED_CONTROL_REFS = new Set(["support_threads.assigned_to"]);
 
 describe("data planes", () => {
   it("classifies every table exactly once", () => {
@@ -54,24 +54,21 @@ describe("data planes", () => {
           })
           .map((r) => `${t.name}.${r.columns[0]!.name}`)
       )
-      .filter((k) => !NULLED_ON_CUTOVER.has(k));
+      .filter((k) => !ALLOWED_CONTROL_REFS.has(k));
     expect(bad).toEqual([]);
   });
 });
 
-describe("ownership transfer plan", () => {
-  it("moves every tenant table plus the anchors and blueprint history, anchors first", async () => {
-    const { TRANSFER_TABLES } = await import("@/server/ownership/plan");
-    expect([...TRANSFER_TABLES].sort()).toEqual([...ANCHOR_TABLES, "store_snapshots", ...TENANT_TABLES].sort());
-    expect(TRANSFER_TABLES.slice(0, ANCHOR_TABLES.length)).toEqual([...ANCHOR_TABLES]);
-    const { TRANSFER_TABLE_NAMES } = await import("@/db/transfer-tables");
-    expect(TRANSFER_TABLE_NAMES).toEqual(TRANSFER_TABLES);
+describe("store purge plan", () => {
+  it("deletes every tenant table plus the blueprint and its history", async () => {
+    const { PURGE_TABLES } = await import("@/server/store-purge-plan");
+    expect([...PURGE_TABLES].sort()).toEqual(["store_blueprints", "store_snapshots", ...TENANT_TABLES].sort());
   });
 
-  it("orders the copy so every foreign key target is copied first", async () => {
-    const { PLAN } = await import("@/server/ownership/plan");
-    const order = PLAN.map((p: { table: PgTable }) => getTableConfig(p.table).name);
-    const late = PLAN.flatMap((p: { table: PgTable }, i: number) =>
+  it("lists parents before children so the reversed delete never breaks a foreign key", async () => {
+    const { PURGE_PLAN } = await import("@/server/store-purge-plan");
+    const order = PURGE_PLAN.map((p: { table: PgTable }) => getTableConfig(p.table).name);
+    const late = PURGE_PLAN.flatMap((p: { table: PgTable }, i: number) =>
       getTableConfig(p.table)
         .foreignKeys.map((fk) => getTableConfig(fk.reference().foreignTable).name)
         .filter((target) => order.includes(target) && order.indexOf(target) >= i && target !== order[i])

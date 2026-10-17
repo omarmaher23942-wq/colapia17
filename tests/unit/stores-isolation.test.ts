@@ -6,7 +6,6 @@ import { hasFolderData, loadBlock, loadPage, loadSectionOverride, loadSlot, stor
 import { STORE_REGISTRY } from "@/stores/registry.generated";
 import { blueprintSchema } from "@/blueprint/schema";
 import { storeSeedSchema } from "@/stores/seed";
-import { importSpecs } from "@/server/ownership/template";
 
 const msgs = (file: string, code: string) => checkStoreFile(file, code).map((v) => v.message);
 
@@ -95,10 +94,5 @@ describe("سجل المتاجر المولَّد", () => {
     }
     expect(await storeFolderData("no-such-store")).toEqual({ blueprint: null, seed: null });
     expect(hasFolderData("__proto__")).toBe(false);
-  });
-
-  it("مشروع التاجر المستقل لا يحمل مجلدات المتاجر الأخرى", () => {
-    const overlay = readFileSync("template/src/stores/registry.generated.ts", "utf8");
-    expect(importSpecs(overlay).filter((s) => s.includes("stores/"))).toEqual([]);
   });
 });

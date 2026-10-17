@@ -109,11 +109,6 @@ export default async function BillingPage() {
 
       {stage.kind === "review" ? <InReview payment={stage.payment} /> : null}
       {stage.kind === "active" ? <Hosting stage={stage} renewal={pricing.renewal} now={now} vodafone={env.VODAFONE_CASH_NUMBER} instapay={env.INSTAPAY_NUMBER} /> : null}
-      {stage.kind === "owned" ? (
-        <StateCard tone="ok" icon={CheckCircle2} title="بيانات متجرك حُذفت من Colapia بطلبك" text="متجرك يعمل على حساباتك أنت، ولا شيء مطلوب منك هنا.">
-          <CtaLink href="/dashboard/own">روابط موقعك الجديد</CtaLink>
-        </StateCard>
-      ) : null}
       {stage.kind === "unavailable" ? <Unavailable reason={stage.reason} /> : null}
 
       {/* سجل الإيصالات حين يضيف شيئاً لما في الأعلى (أكثر من إيصال، أو المتجر مفعّل). */}
@@ -312,9 +307,7 @@ function Hosting({
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <div className="space-y-4">
-        <StateCard tone={card.tone} icon={card.icon} title={card.title} text={card.text}>
-          {h.phase === "offline" ? <CtaLink href="/dashboard/own">إدارة نسختك على المنصة</CtaLink> : null}
-        </StateCard>
+        <StateCard tone={card.tone} icon={card.icon} title={card.title} text={card.text} />
         {stage.renewalPending ? <InReview payment={stage.renewalPending} renewal /> : null}
         {stage.renewalRejected && !stage.renewalPending ? (
           <div className="flex items-start gap-3 rounded-2xl border border-bad/30 bg-bad/[0.06] p-4">
@@ -364,8 +357,6 @@ function hostingCard(h: HostingState, now: number): { tone: keyof typeof TONE; i
       return { tone: "bad", icon: PauseCircle, title: "متجرك متوقف مؤقتاً", text: "لا يراه الزوار الآن لانتهاء الاستضافة. لم يُحذف أي شيء: جدّد ويعود فوراً بنفس الرابط ونفس البيانات." };
     case "lifetime":
       return { tone: "ok", icon: CalendarCheck, title: "متجرك مفعّل باستضافة مدى الحياة", text: "عضو «الدائرة الذهبية»: الاستضافة والدعم مستمران بلا تجديد سنوي، طوال تشغيل Colapia للخدمة. لا شيء مطلوب منك." };
-    case "offline":
-      return { tone: "muted", icon: PauseCircle, title: "أوقفت نسخة متجرك على المنصة", text: "زوار رابطك يُحوَّلون لموقعك الخاص. يمكنك إعادة تشغيلها هنا متى شئت ما دام اشتراكك سارياً." };
     default:
       return { tone: "ok", icon: CheckCircle2, title: "متجرك مفعّل", text: "دفعتك مؤكدة." };
   }

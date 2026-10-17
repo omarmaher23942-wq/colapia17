@@ -33,8 +33,6 @@ jobs:
         run: npx next lint --quiet
       - name: الاختبارات
         run: npx vitest run
-      - name: مشروع التاجر المستقل
-        run: npx tsx scripts/store-template.ts --out ../store-check --check
       - name: البناء
         run: npm run build
         env:

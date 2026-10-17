@@ -1,6 +1,6 @@
 // media-host.ts — مساحة الملفات التي يكتب فيها الخادم أو يحذف منها (نقل صور ملف الاستيراد، حذف ملفات متجر أو طلب).
 // على المنصة: R2 متى ضُبطت مفاتيحه (server/r2.ts)، وإلا حساب UploadThing الخاص بالمنصة. الحذف يفرّق بنفسه بين
-// مفتاح R2 (مسار فيه «/») ومفتاح UploadThing القديم. مشروع التاجر له نسخته بمفتاحه هو (template/).
+// مفتاح R2 (مسار فيه «/») ومفتاح UploadThing القديم.
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { UTApi, UTFile } from "uploadthing/server";

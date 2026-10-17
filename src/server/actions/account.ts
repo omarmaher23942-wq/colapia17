@@ -1,8 +1,6 @@
 "use server";
 
 // account.ts — حساب التاجر في المنصة: صورته الشخصية، وحذف متجر التجربة نهائياً بطلبه.
-// نسخة مشروع التاجر (template/src/server/actions/account.ts) لها نفس الواجهة: تغيير كلمة المرور بدل Google،
-// ولا حذف (الموقع موقعه على حساباته).
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
 import { and, eq, inArray } from "drizzle-orm";
@@ -13,7 +11,7 @@ import { getMerchantSession } from "@/server/auth";
 import { ownerStore } from "@/server/merchant-guard";
 import { isHostedImage } from "@/lib/media-hosts";
 import { transition } from "@/lifecycle/machine";
-import { purgeStore } from "@/server/ownership/transfer";
+import { purgeStore } from "@/server/store-purge";
 import { log } from "@/lib/logger";
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -34,19 +32,14 @@ export async function setAvatarAction(url: string | null): Promise<Result> {
   }
 }
 
-/** في المنصة الدخول بـ Google، فلا كلمة مرور تُغيَّر (الواجهة لا تعرض هذا الخيار هنا). */
-export async function changePasswordAction(_raw: unknown): Promise<Result> {
-  return { ok: false, error: "حسابك يدخل بـ Google، ولا كلمة مرور له" };
-}
-
-/** حالات يمكن للتاجر حذف متجره فيها بنفسه: قبل الدفع (التجربة وما بعدها). المدفوع يُستلم ثم يُحذف من المنصة. */
+/** حالات يمكن للتاجر حذف متجره فيها بنفسه: قبل الدفع (التجربة وما بعدها). المدفوع لا يُحذف من هنا. */
 const DELETABLE = ["review", "trial", "frozen"] as const;
 
 const deleteInput = z.object({ confirm: z.string().trim().min(1).max(80) });
 
 /**
  * حذف المتجر نهائياً بطلب صاحبه: يُغلق فوراً (حالة «محذوف» تلغي كل المهام المجدولة)، ثم تُمسح كل بياناته من قاعدة
- * المنصة (منتجات، طلبات، عملاء، تصميم…) وصوره من مساحة الرفع (purgeStore، نفس ما يحدث بعد الاستلام).
+ * المنصة (منتجات، طلبات، عملاء، تصميم…) وصوره من مساحة الرفع (purgeStore، نفس ما يحدث عند انتهاء التجربة بلا دفع).
  * يتطلب كتابة اسم المتجر كما هو، ويُرفض إن كان عنده إيصال دفع قيد المراجعة.
  */
 export async function deleteStoreAction(raw: unknown): Promise<Result> {
@@ -55,7 +48,7 @@ export async function deleteStoreAction(raw: unknown): Promise<Result> {
   const p = deleteInput.safeParse(raw);
   if (!p.success || p.data.confirm !== s.store.name.trim()) return { ok: false, error: "اكتب اسم المتجر كما هو بالضبط للتأكيد" };
   if (!(DELETABLE as readonly string[]).includes(s.store.status)) {
-    return { ok: false, error: s.store.status === "active" ? "متجرك مدفوع ولا يُحذف من هنا. بعد نقل نسخة منه لحساباتك يمكنك حذف بياناتك من صفحة «امتلك متجرك»" : "لا يمكن حذف المتجر في حالته الحالية" };
+    return { ok: false, error: s.store.status === "active" ? "متجرك مدفوع ولا يُحذف من هنا. لأي طلب يخص بياناته تواصلوا مع فريق Colapia" : "لا يمكن حذف المتجر في حالته الحالية" };
   }
   const [pending] = await db
     .select({ id: platformPayments.id })

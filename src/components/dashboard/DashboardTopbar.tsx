@@ -8,7 +8,6 @@ import { ChevronDown, Command as CommandIcon, LogOut, Moon, Search, Settings, Vo
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { merchantLogoutAction } from "@/server/actions/auth";
 import { cn } from "@/lib/utils";
-import { EDITION } from "@/lib/edition";
 import { DashThemeToggle } from "./DashThemeToggle";
 import { AttentionCenter } from "./AttentionCenter";
 import { useDashboardPulse } from "./DashboardPulse";
@@ -42,14 +41,12 @@ function computeGreeting(): string {
 
 type Tone = "ok" | "warn" | "bad" | "neutral";
 
-/** حالة المتجر كما هي فعلاً: في مشروع التاجر يهمه هل يستقبل الطلبات، وعلى المنصة مرحلة متجره. */
+/** حالة المتجر كما هي فعلاً: مرحلة متجره، وللمفعّل هل يستقبل الطلبات. */
 function statusMeta(status: string | null, acceptingOrders: boolean): { label: string; tone: Tone } {
   if (status === null) return { label: "لا يوجد متجر بعد", tone: "neutral" };
-  if (EDITION === "store" || status === "active") {
+  if (status === "active") {
     if (!acceptingOrders) return { label: "استقبال الطلبات متوقف مؤقتاً", tone: "warn" };
-    return EDITION === "store"
-      ? { label: "متجرك يستقبل الطلبات", tone: "ok" }
-      : { label: "مفعّل", tone: "ok" };
+    return { label: "مفعّل", tone: "ok" };
   }
   switch (status) {
     case "demo":
