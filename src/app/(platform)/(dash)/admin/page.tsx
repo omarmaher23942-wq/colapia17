@@ -11,7 +11,6 @@ import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { BroadcastEmailForm } from "@/components/platform/BroadcastEmailForm";
 import { PlatformHealthScore } from "@/components/platform/PlatformHealthScore";
 import { HotLeadsWidget } from "@/components/platform/HotLeadsWidget";
-import { storeRequests } from "@/db/schema/agency";
 import { requirePlatformPage } from "@/server/platform-guard";
 import { SalesFunnel } from "@/components/platform/SalesFunnel";
 import { salesFunnel } from "@/server/repos/sales-funnel";
@@ -36,8 +35,8 @@ async function platformGmv(since: Date): Promise<[{ n: number; v: number }]> {
 
 export default async function AdminCommandCenter({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const me = await requirePlatformPage();
-  // لوحة القيادة فيها الإيرادات والمدفوعات: للمالك والمدير. باقي الفريق يبدأ من لوحة الإنتاج.
-  if (!can(me.role, "stores.manage")) redirect("/admin/requests");
+  // لوحة القيادة فيها الإيرادات والمدفوعات: للمالك والمدير. باقي الفريق يبدأ من المحادثات.
+  if (!can(me.role, "stores.manage")) redirect(can(me.role, "conversations") ? "/admin/conversations" : "/admin/changes");
   const sp = await searchParams;
   const range: FunnelRange = (FUNNEL_RANGES as readonly number[]).includes(Number(sp.range)) ? (Number(sp.range) as FunnelRange) : 30;
   const [funnel, golden] = await Promise.all([salesFunnel(range), goldenStatus()]);
@@ -51,18 +50,18 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
     db.select({ total: sql<number>`count(*)`.mapWith(Number) }).from(merchants),
   ]);
 
-  // طلبات متاجر من الاستمارة: الجديدة التي لم تُفتح، وما تجاوز موعد التسليم الموعود (catch: قبل migration 0006).
-  const [requests] = await db
+  // متاجر أنشأها الوكيل ولم يكتمل إعدادها بعد، وما مضى عليه منها أكثر من 3 أيام.
+  const [setups] = await db
     .select({
-      fresh: sql<number>`count(*) filter (where ${storeRequests.seenAt} is null)`.mapWith(Number),
-      late: sql<number>`count(*) filter (where ${storeRequests.etaTo} < now() and ${storeRequests.stage} <> 'delivery')`.mapWith(Number),
+      open: sql<number>`count(*)`.mapWith(Number),
+      stale: sql<number>`count(*) filter (where ${stores.setupStartedAt} < now() - interval '3 days')`.mapWith(Number),
     })
-    .from(storeRequests)
-    .where(eq(storeRequests.status, "submitted"))
-    .catch(() => [{ fresh: 0, late: 0 }]);
+    .from(stores)
+    .where(eq(stores.status, "setup"))
+    .catch(() => [{ open: 0, stale: 0 }]);
 
   const countFor = (st: string) => byStatus.find((x) => x.status === st)?.c ?? 0;
-  const inPipeline = countFor("review") + countFor("building") + countFor("pending_review");
+  const inPipeline = countFor("setup");
 
   return (
     <div className="space-y-8" dir="rtl">
@@ -71,18 +70,17 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-6">
         <div>
           <h1 className="text-2xl font-black text-white sm:text-3xl">مركز القيادة التنفيذي</h1>
-          <p className="mt-1 text-xs text-[#8d97c4]">مراقبة حية للمنصة، خط الإنتاج، والمبيعات.</p>
+          <p className="mt-1 text-xs text-[#8d97c4]">مراقبة حية للمنصة والمبيعات.</p>
         </div>
       </div>
 
-      {requests && (requests.fresh > 0 || requests.late > 0) ? (
-        <Link href="/admin/requests" className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[#8fa8ff]/30 bg-[#6f86ff]/10 p-4 transition hover:bg-[#6f86ff]/15">
+      {setups && setups.open > 0 ? (
+        <Link href="/admin/stores" className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[#8fa8ff]/30 bg-[#6f86ff]/10 p-4 transition hover:bg-[#6f86ff]/15">
           <span className="text-sm font-black text-white">
-            {requests.fresh > 0 ? `${requests.fresh} طلب متجر جديد لم يُفتح بعد` : ""}
-            {requests.fresh > 0 && requests.late > 0 ? " · " : ""}
-            {requests.late > 0 ? <span className="text-rose-300">{requests.late} تجاوز موعد التسليم</span> : null}
+            {setups.open} متجر قيد الإعداد عند أصحابه
+            {setups.stale > 0 ? <span className="text-rose-300"> · {setups.stale} مضى عليها أكثر من 3 أيام</span> : null}
           </span>
-          <span className="text-xs font-bold text-[#8fa8ff]">افتح طلبات المتاجر ←</span>
+          <span className="text-xs font-bold text-[#8fa8ff]">افتح المتاجر ←</span>
         </Link>
       ) : null}
 
@@ -97,7 +95,7 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
       {/* 4 KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard href="/admin/payments" label="إيرادات المنصة (30 يوماً)" value={formatEgp(rev?.egp ?? 0)} note={`${rev?.pending ?? 0} تحويل معلق`} tone="emerald" icon={Wallet} />
-        <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} بالخط`} tone="blue" icon={Store} />
+        <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} قيد الإعداد`} tone="blue" icon={Store} />
         <KpiCard href="/admin/conversations" label="المحادثات والليدز" value={String(conv?.total ?? 0)} note={`${conv?.hot ?? 0} تاجر مهتم جداً`} noteIcon={Flame} tone="violet" icon={MessagesSquare} />
         <KpiCard label="GMV (مبيعات التجار)" value={formatEgp(gmv?.v ?? 0)} note={`${gmv?.n ?? 0} طلب تم تنفيذه`} tone="emerald" icon={TrendingUp} />
       </div>

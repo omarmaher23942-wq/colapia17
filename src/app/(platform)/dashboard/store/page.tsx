@@ -57,7 +57,7 @@ function statusOf(store: Store, graceDays: number): { label: string; tone: Tone;
 export default async function StoreDetailPage() {
   const session = await getMerchantSession();
   if (!session) redirect("/login?redirect=/dashboard/store");
-  if (!session.store) redirect("/start");
+  if (!session.store) redirect("/no-store");
   await requireStoreArea("billing");
 
   const store = session.store;

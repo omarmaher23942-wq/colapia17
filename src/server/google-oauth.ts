@@ -5,7 +5,11 @@ const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-export function getGoogleAuthUrl(state: string): string {
+/**
+ * رابط الدخول بـ Google. `loginHint` يقترح البريد على Google (يصل Google وحده، ولا يُكتب في أي رابط عندنا).
+ * `forceSelect` يفرض شاشة اختيار الحساب (زر «تبديل الحساب»).
+ */
+export function getGoogleAuthUrl(state: string, opts: { loginHint?: string; forceSelect?: boolean } = {}): string {
   if (!env.GOOGLE_CLIENT_ID) {
     throw new Error("GOOGLE_CLIENT_ID is not configured");
   }
@@ -19,8 +23,10 @@ export function getGoogleAuthUrl(state: string): string {
     scope: "openid email profile",
     access_type: "online",
     state,
-    prompt: "select_account",
   });
+  // مع تلميح البريد: Google يختار الحساب المطابق مباشرة؛ وبلا تلميح (أو عند التبديل) تظهر شاشة اختيار الحساب.
+  if (opts.loginHint) params.set("login_hint", opts.loginHint);
+  if (opts.forceSelect || !opts.loginHint) params.set("prompt", "select_account");
 
   return `${GOOGLE_AUTH_URL}?${params.toString()}`;
 }

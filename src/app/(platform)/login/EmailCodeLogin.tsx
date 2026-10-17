@@ -48,7 +48,7 @@ export function EmailCodeLogin({ redirectTo }: { redirectTo: string }) {
       }}
     >
       <label className="block text-[13px] font-bold text-[#c3cdf0]/80">
-        البريد الذي كتبته في استمارة طلب متجرك (أو الذي دعاك عليه صاحب المتجر)
+        البريد الذي أعطيتموه للمساعد (أو الذي دعاكم عليه صاحب المتجر)
         <input className={`${input} mt-1.5`} type="email" dir="ltr" autoComplete="email" required value={email} disabled={sent} onChange={(e) => setEmail(e.target.value)} />
       </label>
       {sent ? (

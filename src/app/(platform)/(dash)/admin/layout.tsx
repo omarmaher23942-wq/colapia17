@@ -15,7 +15,6 @@ import {
   LogOut,
   Star,
   Mail,
-  Inbox,
   BadgeDollarSign,
   MessageSquarePlus,
   Rocket,
@@ -31,7 +30,6 @@ import {
   platformReviews,
   storeChangeRequests,
 } from "@/db/schema";
-import { storeRequests } from "@/db/schema/agency";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { can, canSeePage, isPlatformRole, ROLE_INFO, type AdminPage } from "@/agency/roles";
 import { cn } from "@/lib/utils";
@@ -40,7 +38,6 @@ const SW = 1.75;
 
 const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
-  ["/admin/requests", "طلبات المتاجر", Inbox],
   ["/admin/changes", "طلبات التعديل", MessageSquarePlus],
   ["/admin/conversations", "المحادثات", MessagesSquare],
   ["/admin/payments", "التحويلات", Wallet],
@@ -73,12 +70,12 @@ export default async function PlatformAdminLayout({
   const h = await headers();
   const path = (h.get("x-pathname") ?? "").toLowerCase();
 
-  const [reviewRows, payRows, unreadRows, reviewsPendingRows, newRequestRows, openChangeRows] =
+  const [reviewRows, payRows, unreadRows, reviewsPendingRows, openChangeRows] =
     await Promise.all([
       db
         .select({ review: sql<number>`count(*)`.mapWith(Number) })
         .from(stores)
-        .where(inArray(stores.status, ["review", "building"]))
+        .where(inArray(stores.status, ["setup"]))
         .catch(() => [{ review: 0 }]),
       db
         .select({ pay: sql<number>`count(*)`.mapWith(Number) })
@@ -97,17 +94,6 @@ export default async function PlatformAdminLayout({
         .from(platformReviews)
         .where(eq(platformReviews.isApproved, false))
         .catch(() => [{ c: 0 }]),
-      // طلبات متاجر جديدة لم يفتحها أحد من الفريق (catch: قبل تشغيل migration 0006 الجدول غير موجود).
-      db
-        .select({ c: sql<number>`count(*)`.mapWith(Number) })
-        .from(storeRequests)
-        // من لا يرى كل الطلبات (المنفّذ): الشارة = ما بين يديه ولم يُسلَّم بعد.
-        .where(
-          can(u.role, "requests.view_all")
-            ? and(eq(storeRequests.status, "submitted"), sql`${storeRequests.seenAt} is null`)
-            : and(eq(storeRequests.status, "submitted"), sql`${storeRequests.production} in ('assigned','building')`, sql`(${storeRequests.builderId} = ${u.id} or ${storeRequests.reviewerId} = ${u.id})`)
-        )
-        .catch(() => [{ c: 0 }]),
       db
         .select({ c: sql<number>`count(*)`.mapWith(Number) })
         .from(storeChangeRequests)
@@ -119,7 +105,6 @@ export default async function PlatformAdminLayout({
     "/admin/payments": payRows[0]?.pay ?? 0,
     "/admin/conversations": unreadRows[0]?.unread ?? 0,
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
-    "/admin/requests": newRequestRows[0]?.c ?? 0,
     "/admin/changes": openChangeRows[0]?.c ?? 0,
   };
 

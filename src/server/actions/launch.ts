@@ -43,7 +43,7 @@ export async function testChatAction(): Promise<{ ok: true; results: ProbeResult
 }
 
 /** رد كامل من الوكيل على رسالة تجريبية (نفس البرومبت والمخطط والسلسلة، بلا إرسال لأحد ولا حفظ). */
-export async function testAgentAction(text: string): Promise<{ ok: true; reply: string; issueLink: boolean; provider: string; mode: string; ms: number } | { ok: false; error: string }> {
+export async function testAgentAction(text: string): Promise<{ ok: true; reply: string; confirmCreate: boolean; leadFound: string; provider: string; ms: number } | { ok: false; error: string }> {
   await requirePlatformCap("settings");
   const t = typeof text === "string" ? text.trim() : "";
   return probeAgent(t || "هاي");
@@ -98,7 +98,7 @@ export async function resumeAllAgentAction(): Promise<{ ok: true; count: number 
   await requirePlatformCap("settings", "غير مصرح");
   const rows = await db
     .update(conversations)
-    .set({ botPaused: false, stage: "persuasion", updatedAt: new Date() })
+    .set({ botPaused: false, botPausedUntil: null, stage: "persuasion", updatedAt: new Date() })
     .where(eq(conversations.botPaused, true))
     .returning({ id: conversations.id });
   return { ok: true, count: rows.length };

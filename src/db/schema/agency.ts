@@ -25,9 +25,9 @@ import {
   type RequestStage,
   type RequestStatus,
   type TranscriptStatus,
-} from "../../intake/constants";
+} from "./agency-constants";
 
-export * from "../../intake/constants";
+export * from "./agency-constants";
 
 const inList = (values: readonly string[]) => sql.raw(values.map((v) => `'${v}'`).join(", "));
 

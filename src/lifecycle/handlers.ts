@@ -18,6 +18,7 @@ import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lif
 import { POSTPONE_MS } from "@/lifecycle/config";
 import { hostingState } from "@/lib/hosting";
 import { invalidateStoreCache } from "@/lib/tenant";
+import { setupHandlers } from "@/agent/setup-jobs";
 
 
 type Store = typeof stores.$inferSelect;
@@ -101,6 +102,7 @@ function trialFactsLine(n: { realOrders: number; visitors: number }): string {
 }
 
 export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
+  ...setupHandlers,
   "delivery.auto": async (s) => {
     if (s.status === "review" || s.status === "building") return { delivered: await deliverStore(s.id, "auto") };
     return { skip: s.status };

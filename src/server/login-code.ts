@@ -3,12 +3,13 @@ import "server-only";
 // محاولات، يُخزَّن تجزئته فقط في Redis. لا يُرسل إلا لبريد معروف (تاجر أو عضو فريق مدعو)، والرد واحد دائماً حتى لا
 // تكشف الصفحة أي البُرد مسجّلة.
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { merchants, storeMembers } from "@/db/schema";
 import { redis } from "@/lib/redis";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
+import { canonicalEmail } from "@/lib/contact";
 
 const TTL_S = 600;
 const MAX_TRIES = 5;
@@ -19,11 +20,13 @@ const triesKey = (email: string) => `lcn:${h(email).slice(0, 32)}`;
 
 export const normalizeLoginEmail = (raw: string) => raw.trim().toLowerCase();
 
+/** البريد معروف: تاجر بالبريد القانوني (نقاط Gmail ووسوم + لا تفرّق) أو عضو فريق مدعو. */
 async function known(email: string): Promise<boolean> {
-  const [m] = await db.select({ id: merchants.id }).from(merchants).where(eq(merchants.email, email)).limit(1);
+  const canonical = canonicalEmail(email);
+  const [m] = await db.select({ id: merchants.id }).from(merchants).where(or(eq(merchants.emailCanonical, canonical), eq(merchants.email, email))).limit(1);
   if (m) return true;
-  const [inv] = await db.select({ id: storeMembers.id }).from(storeMembers).where(and(eq(storeMembers.email, email), eq(storeMembers.status, "active"))).limit(1);
-  return Boolean(inv);
+  const invites = await db.select({ email: storeMembers.email }).from(storeMembers).where(eq(storeMembers.status, "active")).limit(500);
+  return invites.some((r) => canonicalEmail(r.email) === canonical);
 }
 
 /** يرسل رمزاً إن كان البريد معروفاً. يعيد true إن أُرسل فعلاً (للسجل فقط، لا يُعرض للمستخدم). */

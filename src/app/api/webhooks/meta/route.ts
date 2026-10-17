@@ -10,6 +10,7 @@ import { conversations, messages } from "@/db/schema";
 import { meta } from "@/channels/meta";
 import { wasSentByBot } from "@/lib/bot-outbound";
 import { processInboundEvent } from "@/ai/agents/closer/inbound";
+import { patchMemory } from "@/agent/memory";
 
 type Channel = "messenger" | "instagram";
 
@@ -23,7 +24,26 @@ type InboundPayload = {
   text?: string;
   quickReply?: string;
   attachments: InboundAttachment[];
+  /** مصدر الإعلان (Click-to-DM) إن وصلت الرسالة من إعلان. */
+  referral?: Referral;
 };
+
+export type Referral = { source?: string; type?: string; ref?: string; adId?: string; adTitle?: string };
+
+/** مصدر الإعلان من حقل referral (على الحدث أو الرسالة أو الـ postback). كل قيمة نص قصير فقط. */
+function parseReferral(ev: any): Referral | undefined {
+  const r = ev?.referral ?? ev?.message?.referral ?? ev?.postback?.referral;
+  if (!r || typeof r !== "object") return undefined;
+  const str = (v: unknown, max = 120) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+  const out: Referral = {
+    source: str(r.source, 40),
+    type: str(r.type, 40),
+    ref: str(r.ref),
+    adId: str(r.ad_id, 40) ?? str(r.ads_context_data?.ad_id, 40),
+    adTitle: str(r.ads_context_data?.ad_title),
+  };
+  return Object.values(out).some(Boolean) ? out : undefined;
+}
 
 /** مدة تذكّر معرّف الرسالة لمنع التكرار من Meta */
 const DEDUP_TTL_S = 86_400;
@@ -73,7 +93,21 @@ function toPayload(channel: Channel, ev: any): InboundPayload | null {
     text: message?.text ?? postback?.title,
     quickReply: message?.quick_reply?.payload ?? postback?.payload,
     attachments,
+    referral: parseReferral(ev),
   };
+}
+
+/** يحفظ مصدر الإعلان في ذاكرة المحادثة (أول لمسة تبقى، وآخر لمسة تُحدَّث). لا ينشئ محادثة. */
+async function saveReferral(channel: Channel, senderId: string, ref: Referral): Promise<void> {
+  try {
+    const [conv] = await db.select({ id: conversations.id, memory: conversations.memory }).from(conversations).where(and(eq(conversations.channel, channel), eq(conversations.externalId, senderId))).limit(1);
+    if (!conv) return;
+    const prev = (conv.memory as { attribution?: { first?: unknown } } | null)?.attribution?.first;
+    const stamp = { ...ref, at: new Date().toISOString() };
+    await patchMemory(conv.id, { attribution: { first: prev ?? stamp, last: stamp } });
+  } catch (e) {
+    console.error("[webhooks/meta] referral save failed", e);
+  }
 }
 
 /**
@@ -97,8 +131,8 @@ async function handleEcho(channel: Channel, ev: any): Promise<void> {
     const where = and(eq(conversations.channel, channel), eq(conversations.externalId, customerId));
     let [conv] = await db.select().from(conversations).where(where).limit(1);
     if (!conv) {
-      const name = await meta.profile(channel, customerId).catch(() => null);
-      [conv] = await db.insert(conversations).values({ channel, externalId: customerId, profileName: name ?? undefined }).onConflictDoNothing().returning();
+      const prof = await meta.profile(channel, customerId).catch(() => null);
+      [conv] = await db.insert(conversations).values({ channel, externalId: customerId, profileName: prof?.name ?? undefined, memory: prof?.username ? { igUsername: prof.username } : {} }).onConflictDoNothing().returning();
       conv ??= (await db.select().from(conversations).where(where).limit(1))[0];
     }
     if (!conv) return;
@@ -203,6 +237,13 @@ export async function POST(req: Request) {
       if (ev?.message?.is_echo) {
         echoes++;
         after(() => handleEcho(channel, ev));
+        continue;
+      }
+      // حدث referral وحده (بلا رسالة): مصدر الإعلان لمحادثة قائمة. يُحفظ في الذاكرة دون معالجة رسالة.
+      if (ev?.referral && !ev?.message && !ev?.postback) {
+        const ref = parseReferral(ev);
+        const sid = ev?.sender?.id ? String(ev.sender.id) : null;
+        if (ref && sid) after(() => saveReferral(channel, sid, ref));
         continue;
       }
       const p = toPayload(channel, ev);

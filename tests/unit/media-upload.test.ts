@@ -26,7 +26,7 @@ describe("media types and hosts", () => {
   it("has no voice route any more and knows its routes", async () => {
     const { isMediaRoute, MEDIA_ROUTES } = await import("@/lib/media");
     expect(isMediaRoute("productImage")).toBe(true);
-    expect(isMediaRoute("intakeImage")).toBe(true);
+    expect(isMediaRoute("productImage")).toBe(true);
     expect(isMediaRoute("intakeVoice")).toBe(false);
     expect(isMediaRoute("toString")).toBe(false);
     expect(MEDIA_ROUTES.productImage.maxFiles).toBe(10);
@@ -121,22 +121,22 @@ beforeEach(() => {
 
 describe("POST /api/upload (server-mediated)", () => {
   it("stores the image with its real type even if the browser declares something else", async () => {
-    const r = await post({ route: "intakeImage", input: { token: "t", kind: "image" }, files: [{ bytes: PNG, type: "application/octet-stream", name: "IMG_0001" }] });
+    const r = await post({ route: "productImage", input: { token: "t", kind: "image" }, files: [{ bytes: PNG, type: "application/octet-stream", name: "IMG_0001" }] });
     expect(r.status).toBe(200);
     expect(r.body.files?.[0]).toMatchObject({ key: "requests/r1/abc.png", url: "https://media.colapia.com/requests/r1/abc.png", type: "image/png" });
     expect(upload).toHaveBeenCalledWith(expect.objectContaining({ type: "image/png", ext: "png", prefix: "requests/r1" }));
-    expect(after).toHaveBeenCalledWith("intakeImage", { requestId: "r1", kind: "image" }, expect.objectContaining({ key: "requests/r1/abc.png", type: "image/png" }));
+    expect(after).toHaveBeenCalledWith("productImage", { requestId: "r1", kind: "image" }, expect.objectContaining({ key: "requests/r1/abc.png", type: "image/png" }));
   });
 
   it("rejects non-images, HEIC, empty files, unknown routes and missing files without storing anything", async () => {
-    expect((await post({ route: "intakeImage", files: [{ bytes: TEXT }] })).status).toBe(400);
-    const heic = await post({ route: "intakeImage", files: [{ bytes: HEIC, type: "image/heic" }] });
+    expect((await post({ route: "productImage", files: [{ bytes: TEXT }] })).status).toBe(400);
+    const heic = await post({ route: "productImage", files: [{ bytes: HEIC, type: "image/heic" }] });
     expect(heic.status).toBe(400);
     expect(heic.body.error).toMatch(/HEIC/);
-    expect((await post({ route: "intakeImage", files: [{ bytes: new Uint8Array([1, 2]) }] })).status).toBe(400);
+    expect((await post({ route: "productImage", files: [{ bytes: new Uint8Array([1, 2]) }] })).status).toBe(400);
     expect((await post({ route: "nope", files: [{ bytes: PNG }] })).status).toBe(400);
     expect((await post({ route: "intakeVoice", files: [{ bytes: PNG }] })).status).toBe(400);
-    expect((await post({ route: "intakeImage", files: [] })).status).toBe(400);
+    expect((await post({ route: "productImage", files: [] })).status).toBe(400);
     expect((await post({ files: [{ bytes: PNG }] })).status).toBe(400);
     expect(upload).not.toHaveBeenCalled();
   });
@@ -151,19 +151,19 @@ describe("POST /api/upload (server-mediated)", () => {
 
   it("applies the policy and the rate limit before touching storage", async () => {
     denied = true;
-    expect((await post({ route: "intakeImage", files: [{ bytes: PNG }] })).status).toBe(403);
+    expect((await post({ route: "productImage", files: [{ bytes: PNG }] })).status).toBe(403);
     denied = false;
     allowFn.mockResolvedValue(false);
-    expect((await post({ route: "intakeImage", files: [{ bytes: PNG }] })).status).toBe(429);
+    expect((await post({ route: "productImage", files: [{ bytes: PNG }] })).status).toBe(429);
     expect(upload).not.toHaveBeenCalled();
   });
 
   it("answers 503 when no storage is configured and cleans up when registering fails", async () => {
     hostOn = false;
-    expect((await post({ route: "intakeImage", files: [{ bytes: JPEG }] })).status).toBe(503);
+    expect((await post({ route: "productImage", files: [{ bytes: JPEG }] })).status).toBe(503);
     hostOn = true;
     after.mockRejectedValue(new Error("db down"));
-    const r = await post({ route: "intakeImage", files: [{ bytes: JPEG }] });
+    const r = await post({ route: "productImage", files: [{ bytes: JPEG }] });
     expect(r.status).toBe(500);
     expect(remove).toHaveBeenCalledWith(["requests/r1/abc.jpg"]);
   });

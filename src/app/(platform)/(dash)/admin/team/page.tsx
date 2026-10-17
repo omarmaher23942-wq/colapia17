@@ -8,7 +8,7 @@ import { requirePlatformPage } from "@/server/platform-guard";
 import { can, isPlatformRole, PLATFORM_ROLES, ROLE_INFO } from "@/agency/roles";
 import { recentActivity } from "@/agency/activity";
 import { AddMember, MemberControls } from "@/components/platform/TeamManager";
-import { at } from "@/components/platform/requests/format";
+const at = (d: Date) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Africa/Cairo" }).format(d);
 
 export const dynamic = "force-dynamic";
 
@@ -112,9 +112,7 @@ export default async function TeamPage() {
                   <span className="text-slate-400">{at(a.createdAt)} · </span>
                   <b>{a.actorId ? (names.get(a.actorId) ?? "عضو") : "النظام"}</b> {ACTION_LABEL[a.action] ?? a.action}
                   {a.target?.startsWith("request:") ? (
-                    <a href={`/admin/requests/${a.target.slice(8)}`} className="ms-1 text-[#8fa8ff] underline">
-                      الطلب
-                    </a>
+                    <span className="ms-1 text-slate-300">طلب قديم</span>
                   ) : a.target?.startsWith("member:") ? (
                     <span className="ms-1 text-slate-300">{names.get(a.target.slice(7)) ?? ""}</span>
                   ) : null}

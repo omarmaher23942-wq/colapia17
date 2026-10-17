@@ -7,17 +7,18 @@ export type FunnelRange = (typeof FUNNEL_RANGES)[number];
 export type FunnelCounts = {
   /** محادثات جديدة (إعلانات ورسائل) في الفترة. */
   conversations: number;
-  /** استمارات أُرسلت في الفترة. */
-  submitted: number;
-  /** متاجر سُلّمت للتجربة في الفترة. */
-  delivered: number;
-  /** باقات أولى قُبل دفعها في الفترة، ومبلغها بالقروش. */
+  /** من هذه المحادثات: كم اكتملت بياناتها الأربع (النشاط، الاسم، البريد، واتساب). */
+  leads: number;
+  /** متاجر أنشأها الوكيل من المحادثات في الفترة. */
+  created: number;
+  /** من هذه المتاجر: كم أكمل صاحبها الإعداد. */
+  setupDone: number;
+  /** ومنها: كم دفع (باقة أولى مقبولة)، ومنها مقاعد الدائرة الذهبية. */
   paid: number;
+  paidGolden: number;
+  /** إيراد الباقات الأولى المقبولة في الفترة بالقروش، والتجديدات المقبولة فيها. */
   revenue: number;
-  /** تجديدات قُبلت في الفترة. */
   renewals: number;
-  /** من سُلّموا في الفترة: كم دفع منهم حتى الآن (تحويل التجربة لنفس الدفعة). */
-  deliveredCohortPaid: number;
 };
 
 export type FunnelStep = { key: string; label: string; value: number; rate: number | null; hint: string };
@@ -27,9 +28,10 @@ const rate = (n: number, d: number) => (d > 0 ? Math.min(100, Math.round((n / d)
 export function funnelSteps(c: FunnelCounts): FunnelStep[] {
   return [
     { key: "conversations", label: "محادثات جديدة", value: c.conversations, rate: null, hint: "من الإعلانات والرسائل" },
-    { key: "submitted", label: "أرسلوا الاستمارة", value: c.submitted, rate: rate(c.submitted, c.conversations), hint: "من المحادثات" },
-    { key: "delivered", label: "استلموا متاجرهم", value: c.delivered, rate: rate(c.delivered, c.submitted), hint: "من الاستمارات" },
-    { key: "paid", label: "دفعوا", value: c.paid, rate: rate(c.paid, c.delivered), hint: "من المتاجر المسلّمة" },
+    { key: "leads", label: "بيانات كاملة", value: c.leads, rate: rate(c.leads, c.conversations), hint: "من المحادثات" },
+    { key: "created", label: "متاجر أُنشئت", value: c.created, rate: rate(c.created, c.leads), hint: "من البيانات الكاملة" },
+    { key: "setupDone", label: "أكملوا الإعداد", value: c.setupDone, rate: rate(c.setupDone, c.created), hint: "من المتاجر المنشأة" },
+    { key: "paid", label: "دفعوا", value: c.paid, rate: rate(c.paid, c.setupDone), hint: "ممن أكملوا الإعداد" },
   ];
 }
 
@@ -46,7 +48,8 @@ export function weakestStep(steps: FunnelStep[]): FunnelStep | null {
 
 /** نصيحة واحدة للخطوة الأضعف (مبنية على ما يملكه الفريق فعلاً من أدوات). */
 export const STEP_ADVICE: Record<string, string> = {
-  submitted: "المحادثات لا تصل للاستمارة: راجع برومبت الوكيل وردوده في «المحادثات»، وهل يرسل الرابط مبكراً بما يكفي.",
-  delivered: "استمارات لا تتحول لمتاجر مسلّمة: افتح لوحة الإنتاج وراجع المتأخر و«بانتظار العميل».",
-  paid: "متاجر تُسلَّم ولا تدفع: راجع رسائل التجربة وصفحة الدفع، واتصل بمن انتهت تجربته اليوم.",
+  leads: "المحادثات لا تكتمل بياناتها: راجع ردود الوكيل في «المحادثات»، وأين يتوقف العملاء (غالباً عند البريد أو الرقم).",
+  created: "بيانات كاملة بلا متجر: العملاء لم يوافقوا بعد على بدء التجهيز، أو بلغ السقف اليومي. راجعوا المحادثات وسقف المتاجر في الإعدادات.",
+  setupDone: "متاجر أُنشئت ولم يكتمل إعدادها: راجعوا وصول رابط الإعداد (الرسالة والبريد) والتذكيرات، وأرسلوه يدوياً من صفحة المحادثة.",
+  paid: "متاجر مكتملة ولا تدفع: راجعوا رسائل التجربة وصفحة الدفع، وتواصلوا مع من انتهت تجربته اليوم.",
 };

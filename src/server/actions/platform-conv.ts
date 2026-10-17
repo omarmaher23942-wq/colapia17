@@ -2,20 +2,59 @@
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversations, messages, intakes, systemEvents } from "@/db/schema";
+import { conversations, messages, stores, systemEvents } from "@/db/schema";
 import { requirePlatformCap } from "@/server/platform-guard";
 import { meta, replyMode } from "@/channels/meta";
 import { aiText } from "@/ai/providers";
+import { isPauseChoice, pauseUntil, PAUSE_LABEL } from "@/agent/pause";
+import { sendSetupLink } from "@/agent/setup-jobs";
+import { patchMemory } from "@/agent/memory";
 
 async function guard() { return requirePlatformCap("conversations", "غير مصرح"); }
 
-export async function togglePauseAction(id: string, paused: boolean) {
-  const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return;
-  // إيقاف يدوي من الفريق يبقى حتى يُلغى: نمسح علامة تحويل الوكيل (التي تعود وحدها بعد 3 ساعات).
-  const { handoffBy: _b, handoffAt: _a, ...mem } = (c.memory as Record<string, unknown> | null) ?? {};
-  await db.update(conversations).set({ botPaused: paused, stage: paused ? "human" : c.stage === "human" ? "persuasion" : c.stage, memory: mem, updatedAt: new Date() }).where(eq(conversations.id, id));
-  await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: paused ? "إيقاف المساعد (Takeover)" : "إعادة تشغيل المساعد", data: { conversationId: id } });
+/**
+ * إيقاف الوكيل في هذه المحادثة: ساعة / 3 ساعات / 24 ساعة (يعود وحده) أو دائماً (حتى الاستئناف). قرار الفريق وحده؛ رد الموظف
+ * وحده لا يوقف الوكيل.
+ */
+export async function pauseConversationAction(id: string, choice: string) {
+  const u = await guard();
+  if (!isPauseChoice(choice)) return { error: "مدة غير صالحة" };
+  const [c] = await db.select().from(conversations).where(eq(conversations.id, id));
+  if (!c) return { error: "محادثة غير موجودة" };
+  const until = pauseUntil(choice);
+  await db.update(conversations).set({ botPaused: true, botPausedUntil: until, stage: "human", updatedAt: new Date() }).where(eq(conversations.id, id));
+  await patchMemory(id, { handoffBy: "team", handoffAt: new Date().toISOString() }).catch(() => {});
+  await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: `إيقاف المساعد (${PAUSE_LABEL[choice]})`, data: { conversationId: id } });
   revalidatePath("/admin/conversations");
+  return {};
+}
+
+/** استئناف الوكيل فوراً في هذه المحادثة. */
+export async function resumeConversationAction(id: string) {
+  const u = await guard();
+  const [c] = await db.select().from(conversations).where(eq(conversations.id, id));
+  if (!c) return { error: "محادثة غير موجودة" };
+  await db.update(conversations).set({ botPaused: false, botPausedUntil: null, stage: c.stage === "human" ? "persuasion" : c.stage, updatedAt: new Date() }).where(eq(conversations.id, id));
+  await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: "إعادة تشغيل المساعد", data: { conversationId: id } });
+  revalidatePath("/admin/conversations");
+  return {};
+}
+
+/** يرسل رابط الإعداد الآن بدل انتظار المهلة (أو يعيد إرساله بعد إرساله). */
+export async function sendSetupLinkNowAction(storeId: string) {
+  const u = await guard();
+  const [s] = await db.select({ status: stores.status }).from(stores).where(eq(stores.id, storeId)).limit(1);
+  if (!s) return { error: "المتجر غير موجود" };
+  if (s.status !== "setup") return { error: "هذا المتجر أكمل إعداده بالفعل." };
+  try {
+    const r = await sendSetupLink(storeId, { force: true });
+    if ("skip" in r) return { error: `لم يُرسل: ${r.skip}` };
+    await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: "أُرسل رابط الإعداد يدوياً", data: { storeId } });
+    revalidatePath("/admin/conversations");
+    return { sent: true as const, viaMeta: r.viaMeta, emailed: r.emailed };
+  } catch (e) {
+    return { error: String((e as Error)?.message ?? e).slice(0, 200) };
+  }
 }
 /** رد بشري يرسل عبر القناة (مع tag خارج النافذة) ويحفظ. لا يوقف المساعد (قرار المالك 2026-10-12): الإيقاف بزر «أوقف المساعد» فقط. */
 export async function humanReplyAction(id: string, text: string) {
@@ -29,10 +68,10 @@ export async function humanReplyAction(id: string, text: string) {
   await db.update(conversations).set({ lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, id));
   revalidatePath("/admin/conversations"); return {};
 }
-export async function setStageAction(id: string, stage: string) { await guard(); await db.update(conversations).set({ stage: stage as any, botPaused: stage === "human", updatedAt: new Date() }).where(eq(conversations.id, id)); revalidatePath("/admin/conversations"); }
+export async function setStageAction(id: string, stage: string) { await guard(); await db.update(conversations).set({ stage: stage as any, botPaused: stage === "human", botPausedUntil: null, updatedAt: new Date() }).where(eq(conversations.id, id)); revalidatePath("/admin/conversations"); }
 /** ملخص سريع بـ Groq (رخيص) */
 export async function summarizeLeadAction(id: string) {
-  await guard(); const ms = (await db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(desc(messages.createdAt)).limit(40)).reverse(); const [i] = await db.select().from(intakes).where(eq(intakes.conversationId, id));
-  const r = await aiText("fast", { system: "لخّص المحادثة لمدير المبيعات في 5 نقاط قصيرة بالعربية: من العميل وماذا يبيع، أين هو في الرحلة، اعتراضاته، ما جُمع، والخطوة المقترحة التالية (جملة عملية).", messages: [{ role: "user", content: `الرسائل:\n${ms.map((m) => `${m.role}: ${m.text ?? "[مرفق]"}`).join("\n")}\n\nالبيانات: ${JSON.stringify(i?.brief ?? {})}\nمنتجات: ${i?.products.length ?? 0}\nسياسات: ${JSON.stringify(i?.policies ?? {})}` }], maxTokens: 450, temperature: 0.2 }, { purpose: "lead_summary", conversationId: id });
+  await guard(); const ms = (await db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(desc(messages.createdAt)).limit(40)).reverse(); const [conv] = await db.select({ memory: conversations.memory }).from(conversations).where(eq(conversations.id, id)).limit(1);
+  const r = await aiText("fast", { system: "لخّص المحادثة لمدير المبيعات في 5 نقاط قصيرة بالعربية: من العميل وماذا يبيع، أين هو في الرحلة، اعتراضاته، ما جُمع من بيانات المتجر، والخطوة المقترحة التالية (جملة عملية).", messages: [{ role: "user", content: `الرسائل:\n${ms.map((m) => `${m.role}: ${m.text ?? "[مرفق]"}`).join("\n")}\n\nما جُمع عنه: ${JSON.stringify((conv?.memory as { lead?: unknown } | null)?.lead ?? {})}` }], maxTokens: 450, temperature: 0.2 }, { purpose: "lead_summary", conversationId: id });
   return r.text;
 }

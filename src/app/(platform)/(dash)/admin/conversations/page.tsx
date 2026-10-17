@@ -2,7 +2,9 @@ import Link from "next/link";
 import { desc, eq, sql } from "drizzle-orm";
 import { Flame, MessagesSquare, Search, Bot, User } from "lucide-react";
 import { db } from "@/db/client";
-import { conversations, messages, stores, intakes } from "@/db/schema";
+import { conversations, messages, stores } from "@/db/schema";
+import { pauseLabel, pauseState } from "@/agent/pause";
+import type { Lead } from "@/agent/lead";
 import { ConversationView } from "@/components/platform/ConversationView";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -14,11 +16,34 @@ const SW = 1.75;
 const STAGE_LABEL: Record<string, string> = {
   greeting: "ترحيب", discovery: "اكتشاف", persuasion: "إقناع", trial_offer: "عرض التجربة",
   brief: "بيانات", products: "المنتجات", proof: "البرهان", policies: "السياسات",
-  summary: "ملخص", handoff: "تسليم", building: "بناء", delivered: "مُسلَّم",
+  summary: "ملخص", handoff: "تسليم", building: "قيد الإعداد", link_sent: "أُرسل الرابط", delivered: "مُسلَّم",
   trial: "تجربة", payment: "دفع", activated: "مفعّل", frozen: "مجمّد", lost: "ضائع", human: "بشري",
 };
 
 const FILTERS = ["", "human", "persuasion", "products", "proof", "building", "trial", "lost"];
+
+const FIELD_ROWS: { key: keyof Lead; label: string }[] = [
+  { key: "niche", label: "النشاط" },
+  { key: "storeName", label: "اسم المتجر" },
+  { key: "email", label: "البريد" },
+  { key: "whatsapp", label: "واتساب" },
+  { key: "instagram", label: "إنستجرام" },
+];
+
+/** ما جمعه الوكيل بالترتيب الثابت. */
+function collectedRows(memory: unknown, channel: string): { label: string; value: string | null }[] {
+  const lead = ((memory as { lead?: Lead } | null)?.lead ?? {}) as Lead;
+  const rows = FIELD_ROWS.map((f) => ({ label: f.label, value: typeof lead[f.key] === "string" ? (f.key === "instagram" ? `@${lead.instagram}` : (lead[f.key] as string)) : null }));
+  const assets = lead.assets?.length ?? 0;
+  if (assets) rows.push({ label: "صور أرسلها", value: String(assets) });
+  return channel === "instagram" ? rows : rows.filter((r) => r.label !== "إنستجرام" || r.value);
+}
+
+function attributionText(memory: unknown): string | null {
+  const a = (memory as { attribution?: { first?: { source?: string; type?: string; adId?: string; adTitle?: string; ref?: string } } } | null)?.attribution?.first;
+  if (!a) return null;
+  return [a.adTitle, a.adId && `إعلان ${a.adId}`, a.source, a.type, a.ref].filter(Boolean).join(" · ") || null;
+}
 
 export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ id?: string; stage?: string; q?: string }> }) {
   await requirePlatformPage({ cap: "conversations" });
@@ -35,13 +60,15 @@ export default async function ConversationsPage({ searchParams }: { searchParams
   const filtered = q ? list.filter((x) => (x.c.profileName ?? "").includes(q) || (x.storeName ?? "").includes(q)) : list;
   const active = id ? filtered.find((x) => x.c.id === id) ?? list.find((x) => x.c.id === id) : filtered[0];
 
-  const [msgs, intakeRow, stats] = await Promise.all([
+  const [msgs, storeRow, stats] = await Promise.all([
     active ? db.select().from(messages).where(eq(messages.conversationId, active.c.id)).orderBy(messages.createdAt).limit(400) : Promise.resolve([]),
-    active ? db.select().from(intakes).where(eq(intakes.conversationId, active.c.id)).limit(1).then((r) => r[0] ?? null) : Promise.resolve(null),
+    active?.c.storeId
+      ? db.select({ id: stores.id, name: stores.name, status: stores.status, subdomain: stores.subdomain, onboarding: stores.onboarding }).from(stores).where(eq(stores.id, active.c.storeId)).limit(1).then((r) => r[0] ?? null)
+      : Promise.resolve(null),
     db.select({
       total: sql<number>`count(*)`.mapWith(Number),
       hot: sql<number>`count(*) filter (where lead_score >= 70)`.mapWith(Number),
-      human: sql<number>`count(*) filter (where stage = 'human')`.mapWith(Number),
+      human: sql<number>`count(*) filter (where stage = 'human' and bot_paused)`.mapWith(Number),
     }).from(conversations)
   ]);
 
@@ -133,9 +160,11 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             conv={{
               id: active.c.id, name: active.c.profileName ?? "مستخدم", channel: active.c.channel,
               stage: STAGE_LABEL[active.c.stage] ?? active.c.stage, stageKey: active.c.stage,
-              paused: active.c.botPaused, lead: active.c.leadScore, memory: active.c.memory,
+              paused: pauseState(active.c) === "paused", pauseText: pauseLabel(active.c), lead: active.c.leadScore, memory: active.c.memory,
               storeId: active.c.storeId, storeName: active.storeName, lastUserAt: active.c.lastUserMessageAt?.toISOString() ?? null,
-              intake: intakeRow as any,
+              collected: collectedRows(active.c.memory, active.c.channel),
+              attribution: attributionText(active.c.memory),
+              store: storeRow ? { id: storeRow.id, name: storeRow.name, status: storeRow.status, subdomain: storeRow.subdomain, linkSentAt: typeof (storeRow.onboarding as Record<string, unknown>)?.linkSentAt === "string" ? ((storeRow.onboarding as Record<string, unknown>).linkSentAt as string) : null } : null,
             }}
             msgs={msgs.map((m) => ({
               id: m.id, role: m.role, text: m.text, atts: m.attachments, at: m.createdAt.toISOString(),

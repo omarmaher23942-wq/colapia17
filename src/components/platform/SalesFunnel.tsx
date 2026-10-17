@@ -1,5 +1,5 @@
-// SalesFunnel — قمع المبيعات في مركز القيادة (الجولة 4.1): المحادثات ← الاستمارات ← التسليم ← الدفع بنسبة كل خطوة،
-// ومقاعد «الدائرة الذهبية»، وتحويل التجربة لمن سُلّموا في الفترة، وأضعف خطوة مع نصيحة.
+// SalesFunnel — قمع المبيعات V2 في مركز القيادة: محادثات ← بيانات كاملة ← متاجر أُنشئت ← إعداد مكتمل ← دفع، بنسبة كل خطوة،
+// ومقاعد «الدائرة الذهبية» المستخدمة، وأضعف خطوة مع نصيحة.
 import Link from "next/link";
 import { Crown, TrendingDown } from "lucide-react";
 import { formatEgp } from "@/lib/money";
@@ -10,7 +10,7 @@ const n = (v: number) => v.toLocaleString("en-US");
 export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; range: FunnelRange; golden: { code: string; used: number; seats: number } }) {
   const main = funnelSteps(counts);
   const weak = weakestStep(main);
-  const trialRate = counts.delivered > 0 ? Math.round((counts.deliveredCohortPaid / counts.delivered) * 100) : null;
+  const setupRate = counts.created > 0 ? Math.round((counts.setupDone / counts.created) * 100) : null;
   const seatsLeft = Math.max(0, golden.seats - golden.used);
 
   return (
@@ -33,7 +33,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="إيراد الباقات" value={formatEgp(counts.revenue)} note={counts.renewals ? `${n(counts.renewals)} تجديد أيضاً` : "بلا تجديدات في الفترة"} />
-        <Stat label="تحويل التجربة" value={trialRate === null ? "—" : `${trialRate}%`} note={counts.delivered ? `${n(counts.deliveredCohortPaid)} من ${n(counts.delivered)} سُلّموا في الفترة دفعوا` : "لا تسليمات في الفترة"} />
+        <Stat label="إكمال الإعداد" value={setupRate === null ? "—" : `${setupRate}%`} note={counts.created ? `${n(counts.setupDone)} من ${n(counts.created)} متجراً أنشأه الوكيل في الفترة` : "لم يُنشأ متجر في الفترة"} />
         <Link href="/admin/pricing" className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4 transition hover:bg-amber-400/10">
           <p className="flex items-center gap-1.5 text-xs font-bold text-amber-200">
             <Crown className="size-3.5" aria-hidden="true" /> الدائرة الذهبية ({golden.code})
@@ -41,7 +41,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
           <p className="mt-1 font-mono text-2xl font-black text-white">
             {n(golden.used)}/{n(golden.seats)}
           </p>
-          <p className="text-xs text-[#8d97c4]">{seatsLeft ? `باقٍ ${n(seatsLeft)} مقاعد` : "اكتملت المقاعد"}</p>
+          <p className="text-xs text-[#8d97c4]">{seatsLeft ? `باقٍ ${n(seatsLeft)} مقاعد` : "اكتملت المقاعد"}{counts.paidGolden ? ` · ${n(counts.paidGolden)} من المتاجر المنشأة في الفترة` : ""}</p>
         </Link>
       </div>
 
@@ -60,7 +60,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
 function Steps({ steps }: { steps: FunnelStep[] }) {
   const max = Math.max(1, ...steps.map((s) => s.value));
   return (
-    <ol className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {steps.map((s) => (
         <li key={s.key} className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
           <p className="text-[11px] font-bold text-[#8d97c4]">{s.label}</p>

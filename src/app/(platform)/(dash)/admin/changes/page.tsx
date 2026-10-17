@@ -1,4 +1,4 @@
-// /admin/changes — طلبات تعديل التجار («اطلب تعديل» من لوحاتهم): المفتوحة أولاً، بالإسناد والحالة والرد، وبرومبت جاهز.
+// /admin/changes — طلبات تعديل التجار («اطلب تعديل» من لوحاتهم): المفتوحة أولاً، بالإسناد والحالة والرد.
 import { asc, desc, eq, inArray, or } from "drizzle-orm";
 import { MessageSquarePlus } from "lucide-react";
 import { db } from "@/db/client";
@@ -6,7 +6,6 @@ import { platformUsers, storeChangeRequests, stores } from "@/db/schema";
 import { requirePlatformPage } from "@/server/platform-guard";
 import { can, isPlatformRole } from "@/agency/roles";
 import { AREA_INFO, type ChangeArea } from "@/lib/change-requests";
-import { renderPrompt } from "@/agency/prompt";
 import { ChangeRow } from "@/components/platform/ChangeRow";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +55,6 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
             team={team.map((t) => ({ id: t.id, name: t.name }))}
             canAssign={can(me.role, "requests.assign")}
             canWork={can(me.role, "requests.assign") || (r.assignedTo === me.id && can(me.role, "requests.work"))}
-            prompt={renderPrompt({ slug: store.subdomain, code: `CHG-${r.id.slice(0, 6)}`, storeName: store.name, brief: "", provisioned: true, branch: `build/${store.subdomain}-c${r.id.slice(0, 6)}`, teamNotes: r.teamNote ? [r.teamNote] : [], reviewerNote: null, changeRequest: r.body })}
           />
         ))}
       </ul>

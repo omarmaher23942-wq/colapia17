@@ -1,7 +1,5 @@
 import { db } from "@/db/client";
-import { DEFAULT_INTAKE_LIMITS } from "@/intake/rules";
-import { DEFAULT_CAPACITY_PER_DAY } from "@/intake/eta";
-import { DEFAULT_SLA_HOURS } from "@/agency/production";
+import { AGENT_FLAG, DEFAULT_AGENT_CONFIG } from "@/agent/config";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -11,22 +9,16 @@ export const dynamic = "force-dynamic";
 const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; config?: Record<string, unknown> }[] = [
   { key: "bot.enabled", enabled: true, description: "تشغيل الوكيل الآلي على رسائل فيسبوك وإنستجرام لكل المحادثات (مفتاح الطوارئ؛ الإيقاف لمحادثة واحدة من صفحتها)" },
   { key: "bot.instagram", enabled: true, description: "الرد التلقائي على إنستاجرام" },
-  { key: "production", enabled: true, description: "مهلة كل حالة إنتاج بالساعات قبل تنبيه التأخر", config: { sla: { ...DEFAULT_SLA_HOURS } } },
+  { key: AGENT_FLAG, enabled: true, description: "إعداد وكيل الرسائل وإنشاء المتاجر: setupDelayMinutes = دقائق الانتظار قبل إرسال رابط الإعداد، setupDays = أيام الانتظار قبل حذف متجر لم يكتمل إعداده، dailyStoreCap = سقف المتاجر المنشأة آلياً يومياً، handoffPauseHours = مدة إيقاف الوكيل بعد طلب موظف، demoUrl = رابط المتجر التجريبي (فارغ = demo.النطاق)", config: { ...DEFAULT_AGENT_CONFIG } },
   { key: "visual_search", enabled: true, description: "«البحث بالصورة» في كل المتاجر: perMonth = حد البحث الشهري لكل متجر (الإيقاف يخفي الزر)", config: { perMonth: 400 } },
   { key: "change_requests", enabled: true, description: "طلبات التعديل للتاجر بعد الدفع: perYear = عددها لكل سنة اشتراك (يظهر في الهبوط والشروط ولوحة التاجر)", config: { perYear: 2 } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
-  {
-    key: "intake",
-    enabled: true,
-    description: "استمارة طلب المتجر (/start): الإيقاف يغلق استقبال الطلبات. capacityPerDay = متاجر يسلّمها الفريق يومياً (لحساب موعد التسليم الصادق)، والباقي حدود الحماية من الإساءة",
-    config: { capacityPerDay: DEFAULT_CAPACITY_PER_DAY, ...DEFAULT_INTAKE_LIMITS },
-  },
 ];
 
 export default async function FlagsPage() {
   await requirePlatformPage({ cap: "settings" });
   const existing = await db.select().from(featureFlags);
-  // أي إعداد افتراضي جديد (مثل «intake») يُضاف للقاعدة القائمة أيضاً، لا عند أول تشغيل فقط.
+  // أي إعداد افتراضي جديد (مثل «agent») يُضاف للقاعدة القائمة أيضاً، لا عند أول تشغيل فقط.
   const missing = FLAG_DEFAULTS.filter((f) => !existing.some((r) => r.key === f.key));
   if (missing.length) await db.insert(featureFlags).values(missing).onConflictDoNothing();
   const rows = missing.length ? await db.select().from(featureFlags) : existing;

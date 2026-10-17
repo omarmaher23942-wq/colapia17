@@ -329,8 +329,10 @@ async function sendCard(
   });
 }
 
-/** اسم العميل من الملف الشخصي */
-async function fetchProfile(ch: Channel, id: string): Promise<string | null> {
+export type ProfileInfo = { name: string | null; /** اسم حساب إنستجرام بلا @ (قناة إنستجرام فقط). */ username: string | null };
+
+/** الاسم واسم الحساب من الملف الشخصي للمرسل. */
+async function fetchProfile(ch: Channel, id: string): Promise<ProfileInfo> {
   try {
     const tok = token(ch);
     const fields = ch === "instagram" ? "name,username" : "first_name,last_name";
@@ -339,15 +341,13 @@ async function fetchProfile(ch: Channel, id: string): Promise<string | null> {
       signal: AbortSignal.timeout(PROFILE_TIMEOUT_MS),
       cache: "no-store",
     });
-    if (!r.ok) return null;
+    if (!r.ok) return { name: null, username: null };
     const j = await readJson(r);
-    const name =
-      ch === "instagram"
-        ? (j.name ?? j.username ?? "")
-        : [j.first_name, j.last_name].filter(Boolean).join(" ");
-    return sanitize(String(name)) || null;
+    const name = ch === "instagram" ? (j.name ?? j.username ?? "") : [j.first_name, j.last_name].filter(Boolean).join(" ");
+    const username = ch === "instagram" && typeof j.username === "string" ? j.username.replace(/^@+/, "").trim().toLowerCase() : "";
+    return { name: sanitize(String(name)) || null, username: username || null };
   } catch {
-    return null;
+    return { name: null, username: null };
   }
 }
 
