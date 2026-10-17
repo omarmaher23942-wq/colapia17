@@ -71,11 +71,6 @@ const serverSchema = z.object({
   VODAFONE_CASH_NUMBER: z.string().regex(/^01[0125]\d{8}$/),
   INSTAPAY_NUMBER: z.string().regex(/^01[0125]\d{8}$/),
 
-  // الأسعار تُقرأ من lib/platform-pricing.ts (مصدر واحد)؛ هنا للتحقق من الصيغة فقط.
-  PLATFORM_BASE_PRICE_EGP: z.coerce.number().int().positive().default(7999),
-  PLATFORM_PRICE_EGP: z.coerce.number().int().positive().default(1999),
-  PLATFORM_RENEWAL_EGP: z.coerce.number().int().positive().default(1299),
-
   /**
    * مدة التجربة النشطة (Demo Active Window) بالدقائق.
    * 480 = 8 ساعات — وهي المدة التي يرى فيها التاجر متجره حياً بعد التسليم

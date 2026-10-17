@@ -15,6 +15,7 @@ import { fmtNum } from "@/lib/format";
 import { cn, publicStoreUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
 import { orderStatusLabel, orderStatusTone, TONE_CHIP } from "@/lib/order-status";
+import { hostingGraceDays } from "@/server/hosting-grace";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "متجري" };
@@ -28,11 +29,10 @@ const TONE: Record<Tone, string> = { ok: "bg-ok/12 text-ok", warn: "bg-warn/12 t
 type Store = NonNullable<NonNullable<Awaited<ReturnType<typeof getMerchantSession>>>["store"]>;
 
 /** حالة المتجر بلغة صاحبه: ماذا يرى الزائر، ومتى يتغير ذلك. */
-function statusOf(store: Store): { label: string; tone: Tone; detail: string | null } {
-  const h = hostingState(store);
+function statusOf(store: Store, graceDays: number): { label: string; tone: Tone; detail: string | null } {
+  const h = hostingState(store, new Date(), graceDays);
   switch (store.status) {
     case "active":
-      if (h.phase === "lifetime") return { label: "مفعّل", tone: "ok", detail: "استضافة مستمرة ضمن «الدائرة الذهبية»." };
       if (h.phase === "active") return { label: "مفعّل", tone: "ok", detail: `الاستضافة سارية حتى ${dateFmt.format(h.expiresAt)}.` };
       if (h.phase === "renew_soon") return { label: "مفعّل", tone: "warn", detail: `الاستضافة تنتهي ${dateFmt.format(h.expiresAt)}. التجديد متاح الآن من «الباقة والاستضافة».` };
       if (h.phase === "grace") return { label: "انتهت الاستضافة", tone: "warn", detail: `متجرك يعمل حتى ${dateFmt.format(h.pauseAt)} ثم يتوقف عن الظهور حتى التجديد.` };
@@ -59,7 +59,7 @@ export default async function StoreDetailPage() {
   await requireStoreArea("billing");
 
   const store = session.store;
-  const status = statusOf(store);
+  const status = statusOf(store, await hostingGraceDays().catch(() => 3));
   const url = publicStoreUrl(store);
   const host = url.replace(/^https?:\/\//, "");
 

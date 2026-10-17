@@ -1,12 +1,14 @@
 import { Markdown } from "@/components/storefront/Markdown";
 import { currentPricing } from "@/server/pricing";
+import { hostingGraceDays } from "@/server/hosting-grace";
+import { monthsLabel, type PricingModel } from "@/lib/platform-pricing";
 import { fmtNum } from "@/lib/format";
 
 export const metadata = { title: "الشروط والأحكام" };
 export const dynamic = "force-dynamic";
 
-const body = (price: number, renewal: number) => `## Terms of Service (English summary)
-Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. The package (EGP ${price}) covers the store and the first year of hosting; each following year costs EGP ${renewal}. We take no commission on your sales. Invited "Golden Circle" brands receive a one-time package that includes hosting and support for as long as Colapia operates the service, under fair-use limits. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
+const body = (p: PricingModel, grace: number) => `## Terms of Service (English summary)
+Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Submitting the store request form is free and creates no obligation to pay. Packages cover building the store plus hosting for 3, 6 or 12 months at the prices shown on the payment page; renewal is priced per duration and can be chosen freely at each renewal. Invited "Golden Circle" brands receive a limited-seat offer: hosting for a short fixed term at a symbolic price with the build free, in exchange for a collab Instagram post or a shareable testimonial; afterwards the store renews like any other. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
 
 ## 1. الخدمة
 Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
@@ -19,18 +21,18 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 ## 2. التجربة المجانية
 تجربة مجانية بلا بطاقة بنكية لمدة نُعلمك بها عند البدء. خلالها يعمل متجرك ولوحة تحكمه بالكامل. إن لم تفعّل متجرك بعدها يُجمَّد ثم يُحذف بعد مهلة نعلنها لك قبل الحذف، بالبريد أو واتساب حسب وسيلة التواصل التي كتبتها.
 
-## 3. الباقة والأسعار
-- الباقة: **${fmtNum(price)} ج.م**، وتشمل إنشاء متجرك وأول سنة استضافة وتشغيل (الخادم، قاعدة البيانات، تخزين الصور، التحديثات، والدعم الفني).
-- التجديد: **${fmtNum(renewal)} ج.م** لكل سنة بعد الأولى، وتُضاف السنة الجديدة إلى نهاية اشتراكك الحالي.
-- لا عمولة على مبيعاتك ولا رسوم خفية. السعر الذي تدفعه هو المعلن في صفحة الدفع لحظة دفعك، وسعر التجديد معلن فيها أيضاً.
-- بعد التفعيل يشمل اشتراكك عدداً من طلبات التعديل الشهرية ينفذها فريقنا (يظهر رصيدك في صفحة «طلبات التعديل» بلوحتك)، وما زاد عليها نتفق عليه معك قبل تنفيذه.
+## 3. الباقات والأسعار
+- الباقات: ${p.plans.map((x) => `**${monthsLabel(x.months)}** بـ ${fmtNum(x.price)} ج.م`).join("، ")}. يشمل السعر بناء متجرك واستضافته وتشغيله طوال المدة المختارة (الخادم، قاعدة البيانات، تخزين الصور، التحديثات، والدعم الفني).
+- التجديد: سعر كل مدة عند التجديد معلن في صفحة الاشتراك (${p.plans.map((x) => `${monthsLabel(x.months)}: ${fmtNum(x.renewal)} ج.م`).join("، ")})، وتختارون أي مدة عند كل تجديد، وتُضاف المدة الجديدة إلى نهاية اشتراككم الحالي.
+- لا عمولة على مبيعاتك ولا رسوم خفية. السعر الذي تدفعه هو المعلن في صفحة الدفع لحظة دفعك.
+- يشمل اشتراكك طلبي تعديل خلال سنة الاشتراك ينفذهما فريقنا (يظهر رصيدك في صفحة «طلبات التعديل» بلوحتك)، وما زاد عليهما نتفق عليه معك قبل تنفيذه، أما كل ما يمكنك تعديله من لوحتك فمفتوح دائماً بلا حد.
 - يجوز أن نغيّر الأسعار للمشتركين الجدد في أي وقت، ولا يسري تغيير على اشتراك قائم قبل تجديده التالي، ونعلنك به مسبقاً.
 
 ## 3.1 عرض «الدائرة الذهبية»
-- عرض بدعوة منا لعدد محدود من براندات الملابس (خمسة براندات بحد أقصى)، يُفعَّل بكود عرض في صفحة الدفع، ويتوقف الكود تلقائياً عند اكتمال العدد.
-- يُدفع مرة واحدة بالسعر المعلن في الدعوة، ويشمل بناء المتجر واستضافته وتشغيله والدعم الفني **طوال تشغيل Colapia للخدمة**، دون رسوم تجديد سنوية.
-- مقابل العرض يصوّر صاحب البراند فيديو قصيراً عن تجربته مع متجره، يراجعه فريقنا ويُنتجه ويُنشر منشوراً مشتركاً (Collab) على حسابي البراند وColapia بعد موافقته على النسخة النهائية.
-- يسري على العرض ما يسري على كل المتاجر من هذه الشروط، ومنه حدود الاستخدام العادل في البند 3.2. ولو أوقفنا الخدمة يوماً نُعلمك قبلها بمدة كافية ونسلّمك نسخة كاملة من متجرك وبياناته (البند 6).
+- عرض بدعوة منا لعدد محدود من الأنشطة التجارية، تحدَّد مقاعده في صفحة الاشتراك (${p.golden.seats} مقاعد حالياً)، ويُفعَّل بكود عرض في صفحة الدفع للباقة الأولى، ويتوقف الكود تلقائياً عند اكتمال العدد أو إيقاف العرض.
+- يُدفع ${fmtNum(p.golden.price)} ج.م عن ${monthsLabel(p.golden.months)} استضافة وتشغيل ودعماً فنياً فقط، أما بناء المتجر فبلا مقابل. القيمة المعلنة ليست سعر المتجر، بل تكلفة التشغيل لهذه المدة.
+- مقابل العرض يلتزم صاحب النشاط بمنشور مشترك (Collab) على إنستجرام عن تجربته مع متجره ننتج مونتاجه نحن بلا مقابل ونراجعه معه قبل النشر، وإن اعتذر عن المنشور فيكفي رأي مكتوب يسمح لنا بمشاركته بعد موافقته على صياغته.
+- بعد انتهاء المدة يجدد المتجر بأي باقة عادية بسعر التجديد المعلن، ولا يوجد أي التزام بالتجديد. ويسري على العرض ما يسري على كل المتاجر من هذه الشروط، ومنه حدود الاستخدام العادل في البند 3.2.
 
 ## 3.2 الاستخدام العادل
 بعض ميزات المتجر تعمل بحدود شهرية لكل متجر حتى تبقى الخدمة سريعة ومتاحة للجميع، ومنها «البحث بالصورة». عند بلوغ الحد يظهر للزائر البحث بالكلمات وزر التواصل مع متجرك، ويعود البحث بالصورة مع بداية الشهر التالي. نراجع الحدود دورياً ونعلنك قبل أي تخفيض لها.
@@ -40,7 +42,7 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 
 ## 5. التجديد والتوقف
 - نذكّرك بالبريد قبل انتهاء اشتراكك بشهر وأسبوع ويوم.
-- بعد انتهاء السنة يبقى متجرك يعمل أربعة عشر يوماً (فترة سماح)، ثم يتوقف عن الظهور للزوار ولا يستقبل طلبات.
+- بعد انتهاء المدة يبقى متجرك يعمل ${grace} ${grace === 1 ? "يوماً" : grace === 2 ? "يومين" : grace <= 10 ? "أيام" : "يوماً"} (فترة سماح)، ثم يتوقف عن الظهور للزوار ولا يستقبل طلبات.
 - **لا نحذف بياناتك بسبب التأخر في التجديد.** تبقى منتجاتك وطلباتك وعملاؤك وتصميمك محفوظة، ويعود متجرك فور التجديد بنفس الرابط.
 - تظل لوحة تحكمك متاحة لك أثناء التوقف للاطلاع على بياناتك وتجديد اشتراكك.
 
@@ -66,11 +68,11 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 privacy@colapia.com`;
 
 export default async function Terms() {
-  const { price, renewal } = await currentPricing();
+  const [pricing, grace] = await Promise.all([currentPricing(), hostingGraceDays()]);
   return (
     <article className="container-x max-w-3xl py-12">
       <h1 className="mb-6 text-3xl font-black">الشروط والأحكام</h1>
-      <Markdown text={body(price, renewal)} />
+      <Markdown text={body(pricing, grace)} />
     </article>
   );
 }

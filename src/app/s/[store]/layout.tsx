@@ -26,6 +26,7 @@ import { notFound } from "next/navigation";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot, storeTheme } from "@/stores/resolve";
 import { isTeamPreview } from "@/server/store-preview";
+import { hostingGraceDays } from "@/server/hosting-grace";
 
 type Props = {
   children: React.ReactNode;
@@ -88,7 +89,7 @@ export default async function StoreLayout({ children, params }: Props) {
   // بوابة الحالات: نتحقق قبل تحميل الـ blueprint.
   // هذا يمنع 404 لو المتجر قيد البناء (blueprint قد يكون غير موجود).
   // ═════════════════════════════════════════════════════════════════════
-  const hosting = hostingState(store);
+  const hosting = hostingState(store, new Date(), await hostingGraceDays().catch(() => undefined));
   const gated = GATED_STATUSES.has(store.status) || !hostingServes(hosting);
   // الفريق يرى المتجر خلف البوابة (نشرة معاينة بـ ?store=، أو مفتاح المعاينة على نطاقه) لمراجعته قبل التسليم.
   const teamPreview = await isTeamPreview();

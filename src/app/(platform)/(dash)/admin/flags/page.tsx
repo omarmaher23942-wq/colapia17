@@ -1,7 +1,6 @@
 import { db } from "@/db/client";
 import { DEFAULT_INTAKE_LIMITS } from "@/intake/rules";
 import { DEFAULT_CAPACITY_PER_DAY } from "@/intake/eta";
-import { DEFAULT_LADDER } from "@/lib/platform-pricing";
 import { DEFAULT_SLA_HOURS } from "@/agency/production";
 import { featureFlags } from "@/db/schema";
 import { FlagsEditor } from "@/components/platform/FlagsEditor";
@@ -12,11 +11,9 @@ export const dynamic = "force-dynamic";
 const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; config?: Record<string, unknown> }[] = [
   { key: "bot.enabled", enabled: true, description: "تشغيل الوكيل الآلي على رسائل فيسبوك وإنستجرام لكل المحادثات (مفتاح الطوارئ؛ الإيقاف لمحادثة واحدة من صفحتها)" },
   { key: "bot.instagram", enabled: true, description: "الرد التلقائي على إنستاجرام" },
-  { key: "pricing", enabled: true, description: "سلّم الأسعار والتجديد (يُعدَّل من صفحة «الأسعار»)", config: { ...DEFAULT_LADDER } },
-  { key: "lifecycle", enabled: true, description: "مدد ما بعد التسليم بالساعات: التجربة، ثم التنبيه الأخير بعد الإيقاف، ثم الحذف (يُعدَّل من صفحة «الأسعار»)", config: { trialHours: 24, noticeHours: 24, deleteHours: 24 } },
   { key: "production", enabled: true, description: "مهلة كل حالة إنتاج بالساعات قبل تنبيه التأخر", config: { sla: { ...DEFAULT_SLA_HOURS } } },
   { key: "visual_search", enabled: true, description: "«البحث بالصورة» في كل المتاجر: perMonth = حد البحث الشهري لكل متجر (الإيقاف يخفي الزر)", config: { perMonth: 400 } },
-  { key: "change_requests", enabled: true, description: "طلبات التعديل الشهرية للتاجر بعد الدفع: perMonth = عددها كل شهر (يظهر في الهبوط والشروط ولوحة التاجر)", config: { perMonth: 2 } },
+  { key: "change_requests", enabled: true, description: "طلبات التعديل للتاجر بعد الدفع: perYear = عددها لكل سنة اشتراك (يظهر في الهبوط والشروط ولوحة التاجر)", config: { perYear: 2 } },
   { key: "models", enabled: true, description: "تجاوز الموديلات بدون إعادة نشر (Deploy)", config: { chat: null, architect: null, compose: null } },
   {
     key: "intake",
@@ -34,7 +31,8 @@ export default async function FlagsPage() {
   if (missing.length) await db.insert(featureFlags).values(missing).onConflictDoNothing();
   const rows = missing.length ? await db.select().from(featureFlags) : existing;
 
-  const all = rows.length ? rows : FLAG_DEFAULTS.map((f) => ({ ...f, config: f.config ?? null, updatedAt: new Date() }));
+  // «pricing» و«lifecycle» تُعدَّلان من صفحة «الأسعار» فقط (بتحقق وسجل نشاط)، فلا تظهران في المحرر الخام.
+  const all = (rows.length ? rows : FLAG_DEFAULTS.map((f) => ({ ...f, config: f.config ?? null, updatedAt: new Date() }))).filter((r) => r.key !== "pricing" && r.key !== "lifecycle");
 
   return (
     <div className="space-y-6 bg-[#07091a] text-[#eaf0ff]" dir="rtl">

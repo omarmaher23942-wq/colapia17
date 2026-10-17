@@ -4,6 +4,12 @@ import { productStatusEnum } from "./enums";
 import { stores } from "./stores";
 import type { IntakeOptionDef } from "./ai";
 
+export type ProductVideo = { url: string; poster?: string };
+export type ProductPreorder = { until?: string; note?: string };
+export type VolumeTier = { minQty: number; percentOff: number };
+export const PRODUCT_QUESTION_STATUSES = ["pending", "answered", "hidden"] as const;
+export type ProductQuestionStatus = (typeof PRODUCT_QUESTION_STATUSES)[number];
+
 export const categories = pgTable(
   "categories",
   {
@@ -51,6 +57,14 @@ export const products = pgTable(
     aiDraft: boolean("ai_draft").notNull().default(false),
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
     badges: jsonb("badges").$type<string[]>().notNull().default([]),
+    /** فيديوهات المنتج (رابط من مساحة الملفات وصورة غلاف اختيارية). */
+    videos: jsonb("videos").$type<ProductVideo[]>().notNull().default([]),
+    /** نشر مجدول: المنتج لا يظهر للزوار قبل هذا الوقت. */
+    publishAt: timestamp("publish_at", { withTimezone: true }),
+    /** طلب مسبق: null = منتج عادي. */
+    preorder: jsonb("preorder").$type<ProductPreorder | null>(),
+    /** خصم الكمية: نسبة خصم عند شراء minQty قطعة فأكثر. */
+    volumeTiers: jsonb("volume_tiers").$type<VolumeTier[]>().notNull().default([]),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     status: productStatusEnum("status").notNull().default("active"),
@@ -89,11 +103,34 @@ export const productVariants = pgTable(
     imageUrl: text("image_url"),
     imageUrls: jsonb("image_urls").$type<string[]>().notNull().default([]),
     isAvailable: boolean("is_available").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("variants_product_idx").on(t.productId),
     index("variants_store_idx").on(t.storeId),
     check("variants_stock_nonnegative", sql`${t.stock} IS NULL OR ${t.stock} >= 0`),
+  ]
+);
+
+/** أسئلة الزوار عن المنتج وأجوبة التاجر (تظهر في صفحة المنتج بعد الإجابة). */
+export const productQuestions = pgTable(
+  "product_questions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    productId: uuid("product_id").notNull().references(() => products.id, { onDelete: "cascade" }),
+    question: text("question").notNull(),
+    answer: text("answer"),
+    askerName: text("asker_name"),
+    askerPhone: text("asker_phone"),
+    visitorId: text("visitor_id"),
+    status: text("status").$type<ProductQuestionStatus>().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    answeredAt: timestamp("answered_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("product_questions_store_status_idx").on(t.storeId, t.status),
+    index("product_questions_product_idx").on(t.productId),
   ]
 );

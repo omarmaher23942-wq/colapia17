@@ -5,7 +5,7 @@
 import { currentPricing } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { getFlag } from "@/lib/flags";
-import { perMonthFrom } from "@/lib/change-requests";
+import { perYearFrom } from "@/lib/change-requests";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { cached } from "@/lib/redis";
@@ -70,11 +70,16 @@ export default async function Page() {
     getSessionState(),
   ]);
 
-  const [{ price, renewal }, timings, changes] = await Promise.all([
+  const [pricing, timings, changes] = await Promise.all([
     currentPricing(),
     lifecycleTimings(),
     getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
   ]);
+
+  // الهبوط الحالي يعرض باقة السنة (يُعاد تصميم قسم الأسعار في موجة الهبوط V2 ليعرض الباقات الثلاث).
+  const year = pricing.plans.find((p) => p.months === 12) ?? pricing.plans[pricing.plans.length - 1]!;
+  const price = year.price;
+  const renewal = year.renewal;
 
   // بيانات منظمة صادقة: المنظمة والخدمة بسعرها الحالي الفعلي من سلّم الأسعار.
   const jsonLd = {
@@ -95,7 +100,7 @@ export default async function Page() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerMonth={perMonthFrom(changes.config)} />
+      <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerYear={perYearFrom(changes.config)} />
     </>
   );
 }

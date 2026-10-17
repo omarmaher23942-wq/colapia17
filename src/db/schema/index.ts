@@ -11,7 +11,6 @@ export * from "./onboarding";
 export * from "./lifecycle";
 export * from "./support";
 export * from "./growth";
-export * from "./ownership";
 export * from "./outreach";
 export * from "./agency";
 export * from "./members";

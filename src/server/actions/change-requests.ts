@@ -1,5 +1,5 @@
 "use server";
-// change-requests.ts — «اطلب تعديل» من لوحة التاجر (المرحلة 9): حصة شهرية (افتراضياً 2، من /admin/flags ← change_requests)،
+// change-requests.ts — «اطلب تعديل» من لوحة التاجر (المرحلة 9): حصة سنة الاشتراك (افتراضياً 2، من /admin/flags ← change_requests)،
 // والطلب يصل للفريق ببريد وتنبيه، ويظهر في لوحة الوكالة (/admin/changes).
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -21,7 +21,7 @@ export async function submitChangeRequestAction(raw: z.input<typeof schema>): Pr
   const p = schema.safeParse(raw);
   if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "بيانات غير صالحة" };
   const q = await quotaFor(s.storeId);
-  if (q.remaining <= 0) return { ok: false, error: `استخدمت طلبات هذا الشهر (${q.perMonth}). تتجدد أول الشهر، ولأي أمر عاجل تواصل معنا.` };
+  if (q.remaining <= 0) return { ok: false, error: `استخدمتم طلبات سنة الاشتراك (${q.perYear}). تتجدد الحصة مع سنة الاشتراك التالية، ولأي أمر عاجل تواصل معنا.` };
   await db.insert(storeChangeRequests).values({ storeId: s.storeId, merchantId: s.merchantId, area: p.data.area, body: p.data.body });
   const msg = `طلب تعديل جديد من متجر ${s.store.name} (${s.store.subdomain}): ${p.data.body.slice(0, 160)}`;
   await notifyAdmin(msg, { storeId: s.storeId }).catch(() => {});

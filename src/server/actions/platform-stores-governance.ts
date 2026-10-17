@@ -345,7 +345,7 @@ export async function bindCustomDomainAction(
 
 export async function bulkStoreGovernanceAction(
   storeIds: string[],
-  action: "freeze" | "unfreeze" | "activate_lifetime"
+  action: "freeze" | "unfreeze" | "activate_bulk"
 ) {
   try {
     const u = await requireOwner();
@@ -369,7 +369,7 @@ export async function bulkStoreGovernanceAction(
             actor: `owner:${u.id}`,
             reason: "bulk_unfreeze",
           });
-        } else if (action === "activate_lifetime") {
+        } else if (action === "activate_bulk") {
           await transition({
             storeId: id,
             to: "active",

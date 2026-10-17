@@ -10,7 +10,8 @@ import { recordEvent, transition } from "@/lifecycle/machine";
 import { schedule, type JobKind } from "@/lifecycle/scheduler";
 import { deliverToMerchant } from "@/lifecycle/messenger";
 import { currentPricing } from "@/server/pricing";
-import { lifecycleTimings } from "@/lifecycle/timings";
+import { hostingGraceDays, lifecycleTimings } from "@/lifecycle/timings";
+import { startingPrice } from "@/lib/platform-pricing";
 import { purgeStore } from "@/server/store-purge";
 import { trialFacts } from "@/server/repos/trial-facts";
 import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
@@ -52,17 +53,17 @@ async function postponeIfReviewing(s: Store, kind: JobKind): Promise<boolean> {
 
 /** تذكير قبل انتهاء سنة الاستضافة؛ يتخطى إن جُدِّد الاشتراك (تغيّر تاريخ الانتهاء) أو أوقف التاجر متجره. */
 async function hostingReminder(s: Store, days: number) {
-  const st = hostingState(s);
+  const st = await hosting(s);
   if (st.phase !== "renew_soon") return { skip: st.phase };
   if (Math.abs(st.daysLeft - days) > 1) return { skip: "renewed_or_moved" };
-  const { renewal } = await currentPricing();
+  const renewal = await renewalFrom();
   const when = days === 1 ? "غداً" : `بعد ${days === 7 ? "أسبوع" : "شهر"}`;
   return deliverToMerchant(s.id, {
     key: `hosting.reminder_${days}d:${s.id}:${st.expiresAt.getTime()}`,
-    text: `تنبيه: سنة استضافة متجر ${s.name} تنتهي ${when} (${cairoDay(st.expiresAt)}). التجديد سنة كاملة بـ ${renewal} ج، ويُضاف لنهاية الاشتراك الحالي فلا يضيع أي يوم. متجرك وبياناتك كما هم دائماً.`,
+    text: `تنبيه: اشتراك متجر ${s.name} ينتهي ${when} (${cairoDay(st.expiresAt)}). يمكنكم التجديد بالمدة التي تناسبكم (يبدأ من ${renewal})، وتُضاف المدة إلى نهاية الاشتراك الحالي فلا يضيع أي يوم. المتجر وبياناته كما هي دائماً.`,
     purpose: "transactional",
-    buttons: [{ title: `التجديد الآن (${renewal} ج)`, url: billingUrl() }],
-    email: { subject: `اشتراك متجرك ${s.name} ينتهي ${when}`, always: days <= 7 },
+    buttons: [{ title: "التجديد الآن", url: billingUrl() }],
+    email: { subject: `اشتراك متجركم ${s.name} ينتهي ${when}`, always: days <= 7 },
   });
 }
 
@@ -81,8 +82,15 @@ async function sendTemplate(
   });
 }
 
-/** سعر باقة هذا المتجر (المثبَّت عند التسليم) للرسائل. */
-const storePrice = async (s: Store) => s.priceLockedEgp ?? (await currentPricing()).price;
+/** أرخص باقة الآن (للرسائل: «الباقات تبدأ من …»). */
+const storePrice = async (_s: Store) => startingPrice(await currentPricing()).toLocaleString("en-US");
+/** أرخص تجديد الآن ومدته (للتذكيرات). */
+async function renewalFrom(): Promise<string> {
+  const p = await currentPricing();
+  const cheapest = [...p.plans].sort((a, b) => a.renewal - b.renewal)[0]!;
+  return `${cheapest.renewal.toLocaleString("en-US")} ج لـ ${cheapest.months} أشهر`;
+}
+const hosting = async (s: Store) => hostingState(s, new Date(), await hostingGraceDays().catch(() => undefined));
 
 const storeNumbers = (s: Store) => trialFacts(s);
 
@@ -108,7 +116,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
     const report = await sendTemplate(s, "payment.invite", await paymentVars(s, activateUrl()), {
       purpose: "promotional",
-      subject: `افتحوا متجر ${s.name} لعملائكم: ${await storePrice(s)} ج تشمل سنة استضافة`,
+      subject: `افتحوا متجر ${s.name} لعملائكم: الباقات تبدأ من ${await storePrice(s)} ج`,
     });
     if (report.viaMeta || report.emailed) {
       await db.update(stores).set({ paymentInvitedAt: new Date(), updatedAt: new Date() }).where(eq(stores.id, s.id));
@@ -142,9 +150,9 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     const n = await storeNumbers(s);
     return deliverToMerchant(s.id, {
       key: `trial.reminder_20h:${s.id}`,
-      text: `تجربة متجر ${s.name} بتخلص ${ends}.${trialFactsLine(n)} عشان يفضل شغال لعملائكم بنفس الرابط: الباقة ${price} جنيه وتشمل سنة استضافة وتشغيل كاملة، ومن غير أي عمولة على المبيعات. التحويل ورفع الإيصال من هنا:`,
+      text: `تنتهي تجربة متجر ${s.name} ${ends}.${trialFactsLine(n)} ليبقى متاحاً لعملائكم بنفس الرابط، اختاروا باقة 3 أو 6 أشهر أو سنة (تبدأ من ${price} ج شاملة البناء والاستضافة والتشغيل، بلا أي عمولة على المبيعات). التحويل ورفع الإيصال من هنا:`,
       purpose: "promotional",
-      buttons: [{ title: `تفعيل المتجر (${price} ج)`, url: activateUrl() }],
+      buttons: [{ title: "تفعيل المتجر", url: activateUrl() }],
       email: { subject: `تجربة متجرك ${s.name} قربت تخلص` },
     });
   },
@@ -174,9 +182,9 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     const n = await storeNumbers(s);
     await deliverToMerchant(s.id, {
       key: `trial.freeze:${s.id}`,
-      text: `انتهت تجربة متجر ${s.name} ووقّفناه مؤقتاً عن الزوار.${trialFactsLine(n)} كل حاجة محفوظة زي ما هي (${n.products} منتج، والتصميم، والإعدادات) لحد ${cairoDay(purgeAt)}، وبعدها هيتحذف نهائياً. لو تم الدفع قبلها يرجع يشتغل فوراً بنفس الرابط: الباقة ${price} ج تشمل سنة استضافة كاملة.`,
+      text: `انتهت تجربة متجر ${s.name} ووقّفناه مؤقتاً عن الزوار.${trialFactsLine(n)} كل حاجة محفوظة زي ما هي (${n.products} منتج، والتصميم، والإعدادات) لحد ${cairoDay(purgeAt)}، وبعدها هيتحذف نهائياً. إن تم الدفع قبلها يعود فوراً بنفس الرابط، والباقات تبدأ من ${price} ج شاملة البناء والاستضافة.`,
       purpose: "transactional",
-      buttons: [{ title: `تفعيل المتجر (${price} ج)`, url: activateUrl() }],
+      buttons: [{ title: "تفعيل المتجر", url: activateUrl() }],
       email: { subject: `انتهت تجربة متجرك ${s.name} وهو محفوظ لحد ${cairoDay(purgeAt)}`, always: true },
     });
     return { frozen: true };
@@ -189,7 +197,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     const when = s.purgeAt ? cairoDay(s.purgeAt) : "خلال ساعات";
     return deliverToMerchant(s.id, {
       key: `trial.last_chance:${s.id}`,
-      text: `تنبيه أخير قبل حذف متجر ${s.name} نهائياً (${when}). بعد الحذف مش هنقدر نرجّع التصميم ولا المنتجات. للاحتفاظ بيه: التفعيل بالباقة (${price} ج تشمل سنة استضافة) من هنا:`,
+      text: `تنبيه أخير قبل حذف متجر ${s.name} نهائياً (${when}). بعد الحذف مش هنقدر نرجّع التصميم ولا المنتجات. للاحتفاظ به: التفعيل بأي باقة (تبدأ من ${price} ج) من هنا:`,
       purpose: "transactional",
       buttons: [{ title: "تفعيل المتجر قبل الحذف", url: activateUrl() }],
       email: { subject: `تنبيه أخير: متجرك ${s.name} هيتحذف ${when}`, always: true },
@@ -225,32 +233,32 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   "hosting.reminder_1d": (s) => hostingReminder(s, 1),
 
   "hosting.expired": async (s) => {
-    const st = hostingState(s);
+    const st = await hosting(s);
     if (st.phase !== "grace") return { skip: st.phase };
     await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.expired", actor: "timer" });
-    const { renewal } = await currentPricing();
+    const renewal = await renewalFrom();
     return deliverToMerchant(s.id, {
       key: `hosting.expired:${s.id}:${st.expiresAt.getTime()}`,
-      text: `انتهت سنة استضافة متجر ${s.name}. متجرك ما زال يعمل كالمعتاد حتى ${cairoDay(st.pauseAt)}، وبعدها يتوقف عن الظهور للزوار حتى التجديد. التجديد سنة كاملة بـ ${renewal} ج من صفحة الدفع، ولا يُحذف أي شيء من بياناتك.`,
+      text: `انتهى اشتراك متجر ${s.name}. المتجر ما زال يعمل كالمعتاد حتى ${cairoDay(st.pauseAt)}، ثم يتوقف عن الظهور للزوار حتى التجديد. التجديد من صفحة الدفع بالمدة التي تناسبكم (يبدأ من ${renewal})، ولا يُحذف أي شيء من بياناتكم.`,
       purpose: "transactional",
-      buttons: [{ title: `التجديد الآن (${renewal} ج)`, url: billingUrl() }],
-      email: { subject: `انتهت سنة استضافة متجرك ${s.name}`, always: true },
+      buttons: [{ title: "التجديد الآن", url: billingUrl() }],
+      email: { subject: `انتهى اشتراك متجركم ${s.name}`, always: true },
     });
   },
 
   "hosting.paused": async (s) => {
-    const st = hostingState(s);
+    const st = await hosting(s);
     if (st.phase !== "paused") return { skip: st.phase };
     await invalidateStoreCache(s).catch(() => {});
     await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.paused", actor: "timer" });
     await notifyAdmin(`توقف متجر ${s.subdomain} لانتهاء الاستضافة وفترة السماح (بياناته محفوظة)`, { storeId: s.id });
-    const { renewal } = await currentPricing();
+    const renewal = await renewalFrom();
     return deliverToMerchant(s.id, {
       key: `hosting.paused:${s.id}:${st.expiresAt.getTime()}`,
-      text: `توقف متجر ${s.name} مؤقتاً عن الظهور للزوار لانتهاء الاستضافة. لم يُحذف أي شيء: منتجاتك وطلباتك وعملاؤك وتصميمك محفوظون كما هم، وبمجرد التجديد (${renewal} ج للسنة) يعود متجرك فوراً بنفس الرابط.`,
+      text: `توقف متجر ${s.name} مؤقتاً عن الظهور للزوار لانتهاء الاشتراك. لم يُحذف أي شيء: المنتجات والطلبات والعملاء والتصميم محفوظة كما هي، وبمجرد التجديد (يبدأ من ${renewal}) يعود المتجر فوراً بنفس الرابط.`,
       purpose: "transactional",
       buttons: [{ title: "التجديد وإعادة المتجر", url: billingUrl() }],
-      email: { subject: `متجرك ${s.name} متوقف مؤقتاً حتى التجديد`, always: true },
+      email: { subject: `متجركم ${s.name} متوقف مؤقتاً حتى التجديد`, always: true },
     });
   },
 

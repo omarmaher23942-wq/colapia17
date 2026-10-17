@@ -1,5 +1,6 @@
 import "server-only";
 import { currentPricing } from "@/server/pricing";
+import { monthsLabel, startingPrice } from "@/lib/platform-pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { and, desc, eq, like, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
@@ -38,17 +39,16 @@ const LINK_MARK = "[زر الاستمارة:";
 const LINK_MARK_RE = /\n?\[زر الاستمارة:[^\]]*\]/g;
 
 async function interpolateVars(): Promise<Record<string, string>> {
-  const [{ price, basePrice, renewal, remaining }, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
-  const discounted = basePrice > price;
+  const [pricing, timings] = await Promise.all([currentPricing(), lifecycleTimings()]);
+  const start = startingPrice(pricing);
+  const cheapest = pricing.plans.find((p) => p.price === start) ?? pricing.plans[0]!;
   return {
-    price: String(price),
-    basePrice: String(basePrice),
-    // سطر السعر بصيغته الصادقة: «بدلاً من» فقط إن كان هناك سعر أعلى فعلاً.
-    priceLine: discounted ? `${formatEgpNumber(price)} جنيه بدلاً من ${formatEgpNumber(basePrice)}` : `${formatEgpNumber(price)} جنيه`,
-    renewal: String(renewal),
+    price: String(start),
+    basePrice: String(start),
+    priceLine: `تبدأ من ${formatEgpNumber(start)} جنيه (${monthsLabel(cheapest.months)})`,
+    renewal: String(cheapest.renewal),
     trialHours: String(timings.trialHours),
-    // ندرة حقيقية فقط: عدّاد من المدفوعات المؤكدة (فارغ إن لم يكن للسعر حد).
-    remainingLine: remaining ? `باقٍ ${remaining} ${remaining === 1 ? "متجر" : remaining <= 10 ? "متاجر" : "متجراً"} فقط بهذا السعر. ` : "",
+    remainingLine: "",
   };
 }
 

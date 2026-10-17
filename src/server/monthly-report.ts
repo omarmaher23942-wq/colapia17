@@ -65,7 +65,7 @@ export async function storeReport(store: typeof stores.$inferSelect, month: Retu
     topProducts: top,
     bestCampaign: best,
     recoveredCarts: recovered[0]?.n ?? 0,
-    requestsLeft: quota ? quota.perMonth : null,
+    requestsLeft: quota ? quota.remaining : null,
     renewBy: renewSoon ? expiry!.toLocaleDateString("ar-EG", { day: "numeric", month: "long", year: "numeric", timeZone: "Africa/Cairo" }) : null,
   });
 }

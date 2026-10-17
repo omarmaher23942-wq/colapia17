@@ -57,14 +57,14 @@ export type BillingStage =
 const DAY = 864e5;
 
 /** payments بالأحدث أولاً. */
-export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date()): BillingStage {
+export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date(), hostingGrace?: number): BillingStage {
   if (store.status === "active") {
     const latestRenewal = payments.find((p) => p.kind === "renewal" && (p.status === "rejected" || p.status === "confirmed")) ?? null;
     return {
       kind: "active",
       activatedAt: store.activatedAt,
       payment: payments.find((p) => p.status === "confirmed") ?? null,
-      hosting: hostingState(store, now),
+      hosting: hostingState(store, now, hostingGrace),
       renewalPending: payments.find((p) => p.status === "under_review") ?? null,
       renewalRejected: latestRenewal?.status === "rejected" ? latestRenewal : null,
     };

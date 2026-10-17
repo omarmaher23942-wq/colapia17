@@ -1,5 +1,8 @@
 // timings-rules.ts — قراءة مدد ما بعد التسليم ومواعيدها (منطق خالص مختبَر).
-export type LifecycleTimings = { trialHours: number; noticeHours: number; deleteHours: number };
+import { graceDaysFrom } from "@/lib/hosting";
+
+/** graceDays = مهلة السماح بعد انتهاء الاشتراك المدفوع قبل إيقاف المتجر (بالأيام، بلا حذف). */
+export type LifecycleTimings = { trialHours: number; noticeHours: number; deleteHours: number; graceDays: number };
 
 const hours = (v: unknown, min: number, max: number, fallback: number) => {
   const n = Number(v);
@@ -12,6 +15,7 @@ export function timingsFrom(config: unknown, trialFallback = 24): LifecycleTimin
     trialHours: hours(c.trialHours, 1, 24 * 30, hours(trialFallback, 1, 24 * 30, 24)),
     noticeHours: hours(c.noticeHours, 1, 24 * 30, 24),
     deleteHours: hours(c.deleteHours, 1, 24 * 30, 24),
+    graceDays: graceDaysFrom(c.graceDays),
   };
 }
 

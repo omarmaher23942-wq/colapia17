@@ -10,6 +10,9 @@ import { requirePlatformCap } from "@/server/platform-guard";
 const keyField = z.string().min(1).max(80).regex(/^[a-z0-9._-]+$/i);
 const configField = z.string().max(20_000).optional();
 
+/** إعدادات تُعدَّل من صفحاتها المخصصة (بتحقق وسجل نشاط) فقط، لا من محرر JSON الخام. */
+const MANAGED_FLAGS = new Set(["pricing", "lifecycle"]);
+
 async function requireOwner() {
   return requirePlatformCap("settings", "هذه العملية مخصصة لمالك المنصة أو المدير فقط");
 }
@@ -24,6 +27,9 @@ export async function setFlagAction(
   const parsedKey = keyField.safeParse(rawKey);
   if (!parsedKey.success) {
     throw new Error("مفتاح غير صالح");
+  }
+  if (MANAGED_FLAGS.has(parsedKey.data)) {
+    throw new Error("هذا الإعداد يُعدَّل من صفحة «الأسعار» فقط");
   }
 
   const parsedConfig = configField.safeParse(configJson);

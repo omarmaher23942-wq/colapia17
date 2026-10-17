@@ -6,8 +6,8 @@ import { ownerStore } from "@/server/merchant-guard";
 import { allow } from "@/lib/ratelimit";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import { type PaymentKind } from "@/lib/platform-pricing";
-import { amountForStore, resolveCoupon } from "@/server/pricing";
+import { isPlanMonths, type PaymentKind, type PaymentPlan } from "@/lib/platform-pricing";
+import { amountFor, resolveCoupon } from "@/server/pricing";
 import { canRenewNow, hostingState } from "@/lib/hosting";
 import { verifyPlatformPayment } from "@/ai/verify-payment";
 import { emitPaymentSubmitted } from "@/server/realtime/emitters";
@@ -15,25 +15,28 @@ import { assessReceipt } from "@/lifecycle/payment-policy";
 import { notifyOwnerOfPayment } from "@/lifecycle/owner-alerts";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
+import { hostingGraceDays } from "@/server/hosting-grace";
 
 
 /** حالات المتجر التي يُقبل فيها إيصال الباقة الأولى: التجربة (ومنها مهلة ما بعد الرفض) والتجميد. */
 const PAYABLE = new Set(["trial", "frozen"]);
 
 /** يتحقق من كود عرض قبل الدفع ويعيد السعر بعده (للعرض في صفحة الدفع؛ الخادم يعيد التحقق عند الإرسال). */
-export async function checkCouponAction(raw: string): Promise<{ ok: true; code: string; price: number } | { ok: false; error: string }> {
+export async function checkCouponAction(raw: string): Promise<{ ok: true; code: string; price: number; months: number } | { ok: false; error: string }> {
   const session = await ownerStore();
   if (!session?.store) return { ok: false, error: "الدفع لصاحب المتجر فقط." };
   if (!PAYABLE.has(session.store.status)) return { ok: false, error: "الكود للباقة الأولى فقط." };
-  if (!(await allow("platformPayment", `coupon:${session.merchantId}`))) return { ok: false, error: "محاولات كثيرة، حاول بعد قليل" };
+  if (!(await allow("platformPayment", `coupon:${session.merchantId}`))) return { ok: false, error: "محاولات كثيرة، حاولوا بعد قليل." };
   const r = await resolveCoupon(raw, session.store.id);
-  return r.ok ? { ok: true, code: r.code, price: r.price } : r;
+  return r.ok ? { ok: true, code: r.code, price: r.price, months: r.months } : r;
 }
 
 export async function submitPlatformPaymentAction(input: {
   method: "vodafone_cash" | "instapay";
   senderPhone: string;
   screenshotUrl: string;
+  /** مدة الباقة المختارة (3 أو 6 أو 12). تُتجاهل مع كود الدائرة الذهبية (مدته من العرض). */
+  months?: number;
   coupon?: string;
 }) {
   try {
@@ -44,11 +47,11 @@ export async function submitPlatformPaymentAction(input: {
     if (!session || !store) {
       return { ok: false as const, error: "الدفع لصاحب المتجر فقط. ادخل بحسابه." };
     }
-    // متجر مفعّل = تجديد سنة استضافة (قبل الانتهاء بشهرين، أو في السماح أو الإيقاف). غير ذلك = الباقة الأولى.
+    // متجر مفعّل = تجديد بمدة يختارها التاجر (قبل الانتهاء بشهرين، أو في السماح أو الإيقاف). غير ذلك = الباقة الأولى.
     let kind: PaymentKind = "setup";
     if (store.status === "active") {
-      if (!canRenewNow(hostingState(store))) {
-        return { ok: false as const, error: "اشتراكك سارٍ، والتجديد يُفتح قبل انتهائه بشهرين" };
+      if (!canRenewNow(hostingState(store, new Date(), await hostingGraceDays().catch(() => undefined)))) {
+        return { ok: false as const, error: "الاشتراك سارٍ، والتجديد يُفتح قبل انتهائه بشهرين." };
       }
       kind = "renewal";
     } else if (!PAYABLE.has(store.status)) {
@@ -76,13 +79,23 @@ export async function submitPlatformPaymentAction(input: {
 
     // كود «الدائرة الذهبية» للباقة الأولى فقط، ويُعاد التحقق منه هنا (المقاعد قد تكتمل بعد فحصه في الصفحة).
     let coupon: string | null = null;
-    let requiredAmountEgp = await amountForStore(store, kind);
+    let plan: PaymentPlan = "standard";
+    let months: number;
+    let requiredAmountEgp: number;
     if (input.coupon?.trim()) {
-      if (kind !== "setup") return { ok: false as const, error: "الكود للباقة الأولى فقط" };
+      if (kind !== "setup") return { ok: false as const, error: "الكود للباقة الأولى فقط." };
       const c = await resolveCoupon(input.coupon, store.id);
       if (!c.ok) return { ok: false as const, error: c.error };
       coupon = c.code;
+      plan = "golden";
+      months = c.months;
       requiredAmountEgp = c.price;
+    } else {
+      if (!isPlanMonths(input.months)) return { ok: false as const, error: "اختاروا مدة الباقة أولاً." };
+      const amount = await amountFor(input.months, kind);
+      if (!amount) return { ok: false as const, error: "هذه الباقة غير متاحة الآن." };
+      months = Number(input.months);
+      requiredAmountEgp = amount;
     }
     const requiredAmountPiasters = requiredAmountEgp * 100;
 
@@ -92,6 +105,8 @@ export async function submitPlatformPaymentAction(input: {
         storeId: store.id,
         method: input.method,
         kind,
+        plan,
+        months,
         coupon,
         amountPiasters: requiredAmountPiasters,
         senderPhone: phone,
@@ -103,7 +118,7 @@ export async function submitPlatformPaymentAction(input: {
       scope: "payment",
       storeId: store.id,
       actor: `merchant:${session.merchantId}`,
-      message: `${kind === "renewal" ? "تجديد استضافة" : "تحويل جديد للمنصة"} بقيمة ${requiredAmountEgp} ج.م من متجر ${store.subdomain}`,
+      message: `${kind === "renewal" ? "تجديد استضافة" : plan === "golden" ? "تحويل الدائرة الذهبية" : "تحويل جديد للمنصة"} (${months} أشهر) بقيمة ${requiredAmountEgp} ج.م من متجر ${store.subdomain}`,
     });
 
     if (paymentRecord?.id) {
@@ -131,6 +146,8 @@ export async function submitPlatformPaymentAction(input: {
           senderPhone: phone,
           amountEgp: requiredAmountEgp,
           kind,
+          plan,
+          months,
           screenshotUrl: url.toString(),
           assessment: assessReceipt(verification, requiredAmountEgp),
         }).catch((e) => console.error("[submitPlatformPaymentAction] owner alert failed:", e));

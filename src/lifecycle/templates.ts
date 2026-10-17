@@ -1,11 +1,12 @@
 // templates.ts — رسائل دورة حياة المتجر (البوت والبريد). المالك يعدّلها من لوحته (message_templates)، وهذه القيم الافتراضية.
-// نموذج الاستضافة (2026-10-10): الباقة = إنشاء المتجر + سنة استضافة، ثم تجديد سنوي معلن. لا «للأبد» ولا «بلا اشتراك».
+// نموذج الأسعار v3 (V2-PLAN 3.4): باقات 3 و6 و12 شهراً (البناء + المدة)، ثم تجديد بمدة يختارها التاجر. لا «مدى الحياة».
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { messageTemplates } from "@/db/schema";
 import { clientEnv, env } from "@/lib/env";
 import { currentPricing } from "@/server/pricing";
+import { monthsLabel, startingPrice } from "@/lib/platform-pricing";
 import { stripEmoji } from "@/lib/emoji";
 import { sendTemplatedEmail } from "@/lib/email";
 
@@ -39,33 +40,38 @@ export const TEMPLATE_DEFAULTS = {
   },
   "payment.invite": {
     label: "دعوة لتفعيل المتجر (الباقة)",
-    vars: ["store", "price", "renewal", "vodafone", "instapay", "activate_url"],
-    body: "عجبكم متجر {{store}}؟ عشان يفتح لعملائكم ويستقبل طلبات حقيقية: الباقة {{price}} جنيه، وتشمل المتجر نفسه + سنة استضافة وتشغيل كاملة علينا مع التحديثات، ومن غير أي عمولة على المبيعات. التجديد بعد السنة الأولى {{renewal}} جنيه للسنة.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفعوا صورة الإيصال من هنا: {{activate_url}}\nبنراجع الإيصال بنفسنا، وأول ما نقبله المتجر يتفعّل ويوصلكم بريد.",
+    vars: ["store", "price", "plans", "vodafone", "instapay", "activate_url"],
+    body: "هل أعجبكم متجر {{store}}؟ ليفتح لعملائكم ويستقبل طلبات حقيقية، اختاروا الباقة المناسبة: {{plans}}. كل باقة تشمل المتجر نفسه والاستضافة والتشغيل والتحديثات طوال مدتها، بلا أي عمولة على المبيعات.\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}\nبعد التحويل ارفعوا صورة الإيصال من هنا: {{activate_url}}\nنراجع الإيصال بأنفسنا، وفور قبوله يُفعَّل المتجر ويصلكم بريد بذلك.",
   },
   "payment.confirmed": {
     label: "تأكيد الدفع وتفعيل المتجر",
-    vars: ["store", "store_url", "expires"],
-    body: "تم تأكيد الدفع! متجر {{store}} اتفعّل وبقى مفتوح لعملائكم، والاستضافة سارية لحد {{expires}}، ومن غير أي عمولة على المبيعات.\nرابط المتجر: {{store_url}}\nأي تعديل محتاجينه: ردّوا علينا هنا أو اطلبوه من «اطلب تعديل» في اللوحة.",
+    vars: ["store", "store_url", "expires", "months"],
+    body: "تم تأكيد الدفع، ومتجر {{store}} مفعّل الآن ومفتوح لعملائكم. باقة {{months}} سارية حتى {{expires}}، بلا أي عمولة على المبيعات.\nرابط المتجر: {{store_url}}\nلأي تعديل تحتاجونه: ردّوا علينا هنا أو اطلبوه من «طلبات التعديل» في لوحة التحكم.",
   },
   "payment.golden": {
     label: "تأكيد دفع «الدائرة الذهبية»",
-    vars: ["store", "store_url"],
-    body: "تم تأكيد الدفع! متجر {{store}} اتفعّل وبقى مفتوح لعملائكم، واستضافته ودعمه مستمرين طوال تشغيل Colapia للخدمة كعضو في «الدائرة الذهبية» من غير أي تجديد، ومن غير أي عمولة على المبيعات.\nرابط المتجر: {{store_url}}\nفاضل فيديو الإطلاق: ابعتوا لنا الفيديو القصير عن البراند، وإحنا نمنتجه وننشره Collab بينا وبينكم.",
+    vars: ["store", "store_url", "expires", "months"],
+    body: "تم تأكيد الدفع، ومتجر {{store}} مفعّل الآن ضمن «الدائرة الذهبية». المبلغ الذي دفعتموه يغطي تكلفة استضافة {{months}} فقط، والبناء مجاني، والاستضافة سارية حتى {{expires}}. بعدها يمكنكم التجديد بأي باقة عادية.\nرابط المتجر: {{store_url}}\nالخطوة المتبقية: بوست Collab على إنستجرام بيننا وبينكم عن المتجر (والمونتاج علينا مجاناً)، أو رسالة رأي نشاركها إن لم يناسبكم البوست.",
   },
   "hosting.renewed": {
     label: "تأكيد تجديد الاستضافة",
-    vars: ["store", "store_url", "expires"],
-    body: "تم تجديد استضافة متجر {{store}} سنة كاملة، وبقت سارية لحد {{expires}}. شكراً لثقتكم!\nرابط المتجر: {{store_url}}",
+    vars: ["store", "store_url", "expires", "months"],
+    body: "تم تجديد استضافة متجر {{store}} لمدة {{months}}، وهي سارية الآن حتى {{expires}}. شكراً لثقتكم.\nرابط المتجر: {{store_url}}",
+  },
+  "hosting.renewal_revoked": {
+    label: "إلغاء تجديد بعد المراجعة",
+    vars: ["store", "expires", "reason_line", "activate_url"],
+    body: "راجعنا إيصال تجديد متجر {{store}} ولم نتمكن من تأكيده، فأُلغي التجديد.{{reason_line}}\nالاشتراك الحالي يبقى سارياً حتى {{expires}} ولم يتغير شيء في متجركم. إن تم التحويل فعلاً، ارفعوا الإيصال الصحيح من هنا: {{activate_url}}",
   },
   "payment.rejected": {
     label: "رفض الدفع",
     vars: ["store", "hours", "reason_line", "vodafone", "instapay", "activate_url"],
-    body: "راجعنا إيصال التحويل ومقدرناش نأكده.{{reason_line}}\nمتجر {{store}} لسه محفوظ لكم لمدة {{hours}} ساعة. لو تم التحويل، ارفعوا الإيصال الصحيح من هنا: {{activate_url}}\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}",
+    body: "راجعنا إيصال التحويل ولم نتمكن من تأكيده.{{reason_line}}\nمتجر {{store}} محفوظ لكم لمدة {{hours}} ساعة. إن تم التحويل، ارفعوا الإيصال الصحيح من هنا: {{activate_url}}\nفودافون كاش: {{vodafone}}\nإنستاباي: {{instapay}}",
   },
   "doom.reminder_12h": {
     label: "تذكير قبل المسح بـ 12 ساعة",
     vars: ["store", "price", "activate_url"],
-    body: "فاضل 12 ساعة على انتهاء مهلة حفظ متجر {{store}}. لتفعيله بالباقة ({{price}} ج تشمل سنة استضافة) ارفعوا إثبات الدفع من هنا: {{activate_url}}",
+    body: "باقٍ 12 ساعة على انتهاء مهلة حفظ متجر {{store}}. لتفعيله اختاروا باقة (تبدأ من {{price}} ج شاملة البناء والاستضافة) وارفعوا إثبات الدفع من هنا: {{activate_url}}",
   },
   "doom.reminder_1h": {
     label: "تذكير قبل المسح بساعة",
@@ -121,13 +127,20 @@ export async function renderTemplate(
 /** صفحة الدفع على المنصة: كل رسالة تدعو للدفع تشير إليها (صفحة /admin/activate في المتجر تحوّل إليها). */
 export const billingUrl = () => `${clientEnv.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/dashboard/billing`;
 
-/** متغيرات رسائل الدفع لمتجر بعينه: سعره المثبَّت عند التسليم (أو سعر السلّم الحالي) والتجديد. */
-export async function paymentVars(store: { name: string; priceLockedEgp?: number | null }, activateUrl: string = billingUrl()) {
+const egp = (n: number) => n.toLocaleString("en-US");
+
+/** سطر الباقات للرسائل: «3 أشهر بـ 1,999 ج، 6 أشهر بـ 2,499 ج، سنة بـ 3,499 ج». */
+export function plansLine(plans: { months: number; price: number }[]): string {
+  return plans.map((p) => `${monthsLabel(p.months)} بـ ${egp(p.price)} ج`).join("، ");
+}
+
+/** متغيرات رسائل الدفع: أرخص باقة وسطر كل الباقات من الأسعار الحالية. */
+export async function paymentVars(store: { name: string }, activateUrl: string = billingUrl()) {
   const p = await currentPricing();
   return {
     store: store.name,
-    price: store.priceLockedEgp ?? p.price,
-    renewal: p.renewal,
+    price: egp(startingPrice(p)),
+    plans: plansLine(p.plans),
     vodafone: env.VODAFONE_CASH_NUMBER,
     instapay: env.INSTAPAY_NUMBER,
     activate_url: activateUrl,
@@ -165,6 +178,7 @@ export async function sendEmailFromTemplate(
       "delivery.welcome": `متجرك جاهز — ${vars.store ?? ""}`,
       "payment.confirmed": `تم تفعيل متجرك — ${vars.store ?? ""}`,
       "hosting.renewed": `تم تجديد الاستضافة — ${vars.store ?? ""}`,
+      "hosting.renewal_revoked": `بخصوص تجديد متجركم — ${vars.store ?? ""}`,
       "payment.golden": `تم تفعيل متجرك في الدائرة الذهبية — ${vars.store ?? ""}`,
       "payment.rejected": `تعذّر تأكيد الدفع — ${vars.store ?? ""}`,
       "form.received": `استلمنا استمارتك — ${vars.name ?? ""}`,

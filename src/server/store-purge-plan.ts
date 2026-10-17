@@ -15,12 +15,14 @@ export const PURGE_PLAN: PurgeSpec[] = [
   { table: s.storeSnapshots, scope: (id) => eq(s.storeSnapshots.storeId, id) },
   { table: s.categories, scope: (id) => eq(s.categories.storeId, id) },
   { table: s.products, scope: (id) => eq(s.products.storeId, id) },
+  { table: s.productQuestions, scope: (id) => eq(s.productQuestions.storeId, id) },
   { table: s.productVariants, scope: (id) => eq(s.productVariants.storeId, id) },
   { table: s.customers, scope: (id) => eq(s.customers.storeId, id) },
   { table: s.shippingZones, scope: (id) => eq(s.shippingZones.storeId, id) },
   { table: s.discounts, scope: (id) => eq(s.discounts.storeId, id) },
   { table: s.orders, scope: (id) => eq(s.orders.storeId, id) },
   { table: s.orderItems, scope: (id) => eq(s.orderItems.storeId, id) },
+  { table: s.returnRequests, scope: (id) => eq(s.returnRequests.storeId, id) },
   { table: s.payments, scope: (id) => eq(s.payments.storeId, id) },
   { table: s.reviews, scope: (id) => eq(s.reviews.storeId, id) },
   { table: s.abandonedCarts, scope: (id) => eq(s.abandonedCarts.storeId, id) },
@@ -37,4 +39,4 @@ export const purgeTableName = (t: PgTable) => getTableConfig(t).name;
 export const PURGE_TABLES = PURGE_PLAN.map((p) => purgeTableName(p.table));
 
 /** جداول لا تحتوي صوراً (لا داعي لفحصها عند جمع الوسائط). */
-export const MEDIA_FREE_TABLES = new Set<string>(["analytics_events", "analytics_daily", "shipping_zones", "discounts", "abandoned_carts", "stock_alerts"]);
+export const MEDIA_FREE_TABLES = new Set<string>(["analytics_events", "analytics_daily", "shipping_zones", "discounts", "abandoned_carts", "stock_alerts", "product_questions"]);

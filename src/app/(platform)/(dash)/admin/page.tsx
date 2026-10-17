@@ -16,7 +16,7 @@ import { requirePlatformPage } from "@/server/platform-guard";
 import { SalesFunnel } from "@/components/platform/SalesFunnel";
 import { salesFunnel } from "@/server/repos/sales-funnel";
 import { FUNNEL_RANGES, type FunnelRange } from "@/lib/sales-funnel";
-import { goldenSeatsUsed, priceLadder } from "@/server/pricing";
+import { goldenStatus } from "@/server/pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
   if (!can(me.role, "stores.manage")) redirect("/admin/requests");
   const sp = await searchParams;
   const range: FunnelRange = (FUNNEL_RANGES as readonly number[]).includes(Number(sp.range)) ? (Number(sp.range) as FunnelRange) : 30;
-  const [funnel, ladder, seatsUsed] = await Promise.all([salesFunnel(range), priceLadder(), goldenSeatsUsed()]);
+  const [funnel, golden] = await Promise.all([salesFunnel(range), goldenStatus()]);
   const d30 = new Date(Date.now() - 30 * 864e5);
 
   const [byStatus, [conv], [rev], [gmv], [merchantStats]] = await Promise.all([
@@ -86,7 +86,7 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
         </Link>
       ) : null}
 
-      <SalesFunnel counts={funnel} range={range} golden={{ code: ladder.golden.code, used: seatsUsed, seats: ladder.golden.seats }} />
+      <SalesFunnel counts={funnel} range={range} golden={{ code: golden.code, used: golden.confirmed + golden.underReview, seats: golden.seats }} />
 
       {/* Top Widgets Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
