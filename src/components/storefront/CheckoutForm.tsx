@@ -1,49 +1,28 @@
 "use client";
 
-// CheckoutForm — التدفق الكامل:
-// - 3 خطوات ذكية عبر CheckoutProgress.
-// - Live validation للهاتف المصري + الاسم.
-// - quoteAction عند اختيار المحافظة (Suspense-free debounced).
-// - idempotencyKey per session لمنع تكرار الأوردر.
-// - saveAbandonedAction بعد إدخال الهاتف.
-// - تذكّر بيانات المشتري عبر cart.rememberCustomer.
+// CheckoutForm — الدفع في صفحة واحدة بالهاتف أولاً، بتوكنات المتجر وحدها (.s-btn/.s-input/.s-chip):
+// - بيانات التوصيل: الاسم والموبايل (أرقام عربية و+20 مقبولة) والمحافظة والمنطقة والعنوان وأقرب معلم وموبايل بديل وملاحظات.
+// - الأخطاء تظهر في مكانها ويُنتقل إلى أولها؛ الزر لا يُعطَّل بصمت.
+// - جهاز عاد: وضع سريع بعنوانه المحفوظ مع «تعديل» و«ليس أنا؟ مسح بياناتي».
+// - خيار الهدية، وطرق الدفع (التحويل: اسم صاحب الحساب والتعليمات ونسخ المبلغ بالقروش)، وكود الخصم، وملخص من الخادم.
+// - لا بريد إلكتروني للزبائن، وهوية الجهاز من الخادم (لا يُرسل المتصفح معرّفاً).
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  ShieldCheck,
-  Loader2,
-  Check,
-  AlertCircle,
-  ShoppingBag,
-  Truck,
-  Copy,
-  User,
-  Phone,
-  MapPin,
-  RotateCcw,
-  Lock,
-  Banknote,
-  Smartphone,
-} from "lucide-react";
+import { Check, Copy, Gift, Loader2, MapPin, RefreshCw, ShieldCheck, ShoppingBag, Truck, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import { useCart, itemKey } from "@/store/cart";
-import { GOVERNORATES } from "@/lib/egypt";
+import { useCart } from "@/store/cart";
+import { GOVERNORATES, governorateName } from "@/lib/egypt";
 import { formatEgp } from "@/lib/money";
-import { clearPromo, readPromo } from "./PromoFromLink";
+import { clearPromo, readPromo, savePromo } from "./PromoFromLink";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import {
-  placeOrderAction,
-  quoteAction,
-  saveAbandonedAction,
-  type Quote,
-} from "@/server/actions/checkout";
+import { placeOrderAction, quoteAction, saveAbandonedAction, type Quote } from "@/server/actions/checkout";
 import { MediaUploadButton } from "@/components/storefront/MediaUploadButton";
 import { paymentMethods } from "@/lib/payment-methods";
 import type { StoreBlueprint } from "@/blueprint/schema";
 import { useHydrated } from "./CartView";
-import { CheckoutProgress, useCheckoutProgress } from "./CheckoutProgress";
+import { AREAS, deliveryRange, exactAmount, firstErrorField, validateCheckout, type FieldErrors } from "@/lib/checkout-form";
 import { cn } from "@/lib/utils";
 
 type PM = "cod" | "vodafone_cash" | "instapay";
@@ -61,12 +40,12 @@ type Form = {
   transferSenderPhone: string;
   transferScreenshotUrl: string;
 };
-
-type Method = { id: PM; label: string; desc: string; targetNumber?: string };
 type QuoteOk = Extract<Quote, { ok: true }>;
 
+// 16px على الموبايل حتى لا يكبّر المتصفح الصفحة عند التركيز.
 const F =
-  "w-full rounded-xl border bg-[var(--background)] px-3.5 py-3 text-sm text-[var(--foreground)] outline-none transition-all placeholder:opacity-40 focus:ring-2 focus:ring-[var(--primary)]/30";
+  "s-input w-full border bg-[var(--background)] px-3.5 py-3 text-base text-[var(--foreground)] outline-none transition-shadow placeholder:opacity-40 focus:ring-2 focus:ring-[var(--primary)]/35 aria-[invalid=true]:border-danger";
+const CARD = "space-y-4 rounded-2xl border p-4 sm:p-6";
 const SW = 1.75;
 
 function newKey(): string {
@@ -77,14 +56,6 @@ function newKey(): string {
   }
 }
 
-const methodsOf = (p: StoreBlueprint["payments"]) => paymentMethods(p) as Method[];
-
-const PHONE_RE = /^01[0125]\d{8}$/;
-function isPhoneValid(v: string) {
-  const n = v.replace(/\D/g, "");
-  return PHONE_RE.test(n);
-}
-
 export type CheckoutZone = { code: string; fee: number; etaMin: number; etaMax: number; cod?: number };
 export type CheckoutPolicy = {
   flatPiasters: number | null;
@@ -92,7 +63,51 @@ export type CheckoutPolicy = {
   generalEta: string;
   inspectionAllowed: boolean;
   returnDays: number;
+  giftEnabled?: boolean;
+  giftWrapPiasters?: number;
 };
+
+function Field({ id, label, optional, error, hint, children }: { id: string; label: string; optional?: boolean; error?: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-bold">
+        <span>{label}</span>
+        {optional ? <span className="text-[11px] font-normal opacity-60">اختياري</span> : null}
+      </label>
+      {children}
+      {hint && !error ? <p className="mt-1 text-[11.5px] opacity-65">{hint}</p> : null}
+      {error ? (
+        <p id={`${id}-err`} role="alert" className="mt-1 text-xs font-bold text-danger">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          setDone(true);
+          setTimeout(() => setDone(false), 1800);
+        } catch {
+          toast.error("تعذّر النسخ، يمكن نسخه يدوياً");
+        }
+      }}
+      className="s-chip inline-flex h-9 shrink-0 items-center gap-1.5 border px-3 text-xs font-bold"
+      style={{ borderColor: "var(--border)" }}
+      aria-label={label}
+    >
+      {done ? <Check className="size-3.5" strokeWidth={2.25} aria-hidden="true" /> : <Copy className="size-3.5" strokeWidth={SW} aria-hidden="true" />}
+      {done ? "تم النسخ" : "نسخ"}
+    </button>
+  );
+}
 
 export function CheckoutForm({
   subdomain,
@@ -103,12 +118,10 @@ export function CheckoutForm({
 }: {
   subdomain: string;
   payments: StoreBlueprint["payments"];
-
   remember: boolean;
   zones?: CheckoutZone[];
   policy?: CheckoutPolicy;
 }) {
-  // المحافظات التي يشحن إليها المتجر فعلاً (من جدول مناطقه)، وإلا كل المحافظات.
   const zoneByCode = useMemo(() => new Map(zones.map((z) => [z.code, z])), [zones]);
   const governorates = zones.length ? GOVERNORATES.filter((g) => zoneByCode.has(g.code)) : GOVERNORATES;
   const hydrated = useHydrated();
@@ -116,12 +129,11 @@ export function CheckoutForm({
   const clear = useCart((s) => s.clear);
   const savedCustomer = useCart((s) => s.customer);
   const rememberCustomer = useCart((s) => s.rememberCustomer);
+  const forgetCustomer = useCart((s) => s.forgetCustomer);
   const router = useRouter();
-  const methods = useMemo(() => methodsOf(payments), [payments]);
+  const methods = useMemo(() => paymentMethods(payments), [payments]);
+  const prepaidPct = payments.prepaidDiscountPercent ?? 0;
 
-  // الحقول الاختيارية مطوية حتى يطلبها العميل (أو كانت مكتوبة): صفحة أقصر وطلب أسرع.
-  const [extras, setExtras] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
   const [f, setF] = useState<Form>(() => ({
     name: "",
     phone: "",
@@ -136,77 +148,68 @@ export function CheckoutForm({
     transferSenderPhone: "",
     transferScreenshotUrl: "",
   }));
+  const [errors, setErrors] = useState<FieldErrors & { discountCode?: string; paymentMethod?: string; form?: string }>({});
+  const [editing, setEditing] = useState(false);
+  const [gift, setGift] = useState({ on: false, wrap: false, message: "", hidePrices: false });
+  const [codeOpen, setCodeOpen] = useState(false);
   const [quote, setQuote] = useState<QuoteOk | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
-  const [quoting, setQuoting] = useState(false);
   const [pending, start] = useTransition();
-  const [err, setErr] = useState<{ field?: string; msg: string } | null>(null);
-
-  // كود من رابط خصم شاركه التاجر (?promo=): يُملأ بعد التركيب (التخزين المحلي لا يُقرأ أثناء العرض على الخادم).
-  const [promoFromLink, setPromoFromLink] = useState<string | null>(null);
-  useEffect(() => {
-    const code = readPromo(subdomain);
-    if (!code) return;
-    setPromoFromLink(code);
-    setF((x) => (x.discountCode ? x : { ...x, discountCode: code }));
-  }, [subdomain]);
-
   const idemKey = useRef("");
   const quoteSeq = useRef(0);
   const savedPhone = useRef<string | null>(null);
+  const prefilled = useRef(false);
+
+  // كود من رابط خصم أو من السلة: يُملأ بعد التركيب (التخزين المحلي لا يُقرأ أثناء العرض على الخادم).
+  useEffect(() => {
+    const code = readPromo(subdomain);
+    if (code) setF((x) => (x.discountCode ? x : { ...x, discountCode: code }));
+  }, [subdomain]);
 
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     setF((s) => ({ ...s, [k]: v }));
-    setErr((e) => (e?.field === k ? null : e));
+    setErrors((e) => (e[k as keyof typeof e] ? { ...e, [k]: undefined } : e));
   };
 
-  const localSub = items.reduce((a, i) => a + i.unitPiasters * i.qty, 0);
-  const cartPayload = useMemo(
-    () =>
-      items.map((i) => ({
-        productId: i.productId,
-        variantId: i.variantId,
-        qty: i.qty,
-        bundleId: i.bundleId,
-      })),
-    [items]
-  );
+  const cartPayload = useMemo(() => items.map((i) => ({ productId: i.productId, variantId: i.variantId, qty: i.qty, bundleId: i.bundleId })), [items]);
   const cartSig = JSON.stringify(cartPayload);
   const phoneNorm = normalizeEgyptianPhone(f.phone) ?? "";
+  const giftWrapOn = gift.on && gift.wrap;
 
-  // Progress
-  const progress = useCheckoutProgress({
-    name: f.name,
-    phone: phoneNorm,
-    governorate: f.governorate,
-    address: f.address,
-    paymentMethod: f.paymentMethod,
-    transferScreenshotUrl: f.transferScreenshotUrl,
-    requireTransferProof: payments.requireTransferProof,
-  });
-
-  // Prefill from remembered customer
+  // بيانات الجهاز المحفوظة: تُملأ مرة واحدة، ووضعها السريع يخفي النموذج حتى «تعديل».
   useEffect(() => {
-    if (!remember || !savedCustomer) return;
-    setF((s) => ({ ...s, ...savedCustomer }));
+    if (!remember || !savedCustomer || prefilled.current) return;
+    prefilled.current = true;
+    setF((s) => ({
+      ...s,
+      name: savedCustomer.name ?? s.name,
+      phone: savedCustomer.phone ?? s.phone,
+      altPhone: savedCustomer.altPhone ?? s.altPhone,
+      governorate: savedCustomer.governorate ?? s.governorate,
+      city: savedCustomer.city ?? s.city,
+      address: savedCustomer.address ?? s.address,
+      landmark: savedCustomer.landmark ?? s.landmark,
+    }));
   }, [remember, savedCustomer]);
+  const express =
+    remember &&
+    !editing &&
+    Boolean(savedCustomer?.name && savedCustomer.address && savedCustomer.governorate && normalizeEgyptianPhone(savedCustomer.phone ?? "")) &&
+    Boolean(f.name && f.address && f.governorate && phoneNorm);
 
-  // Idempotency key per checkout session
   useEffect(() => {
     idemKey.current = newKey();
     window.clpTrack?.("begin_checkout", { value: items.reduce((a, i) => a + i.unitPiasters * i.qty, 0), items: items.reduce((a, i) => a + i.qty, 0) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Quote on change (debounced)
+  // عرض سعر الخادم عند أي تغيير (مؤجَّل قليلاً).
   useEffect(() => {
     if (!cartPayload.length) {
       setQuote(null);
-      setQuoting(false);
       return;
     }
     const seq = ++quoteSeq.current;
-    setQuoting(true);
     const t = setTimeout(async () => {
       try {
         const q = await quoteAction(subdomain, {
@@ -215,6 +218,7 @@ export function CheckoutForm({
           paymentMethod: f.paymentMethod,
           discountCode: f.discountCode || undefined,
           phone: phoneNorm || undefined,
+          giftWrap: giftWrapOn,
         });
         if (seq !== quoteSeq.current) return;
         if (q.ok) {
@@ -225,708 +229,403 @@ export function CheckoutForm({
           setQuoteError(q.error);
         }
       } catch {
-        if (seq === quoteSeq.current) {
-          setQuote(null);
-          setQuoteError(null);
-        }
-      } finally {
-        if (seq === quoteSeq.current) setQuoting(false);
+        if (seq === quoteSeq.current) setQuoteError(null);
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [cartSig, f.governorate, f.paymentMethod, f.discountCode, phoneNorm, subdomain]);
+  }, [cartSig, f.governorate, f.paymentMethod, f.discountCode, phoneNorm, subdomain, cartPayload, giftWrapOn]);
 
-  // Save abandoned cart after valid phone
+  // حفظ السلة المتروكة بعد رقم صالح (الجهاز يُعرف من الخادم).
   useEffect(() => {
-    if (!phoneNorm || !PHONE_RE.test(phoneNorm)) return;
-    if (phoneNorm === savedPhone.current || !cartPayload.length) return;
-    const vid = (() => {
-      try {
-        return localStorage.getItem("clp-vid");
-      } catch {
-        return null;
-      }
-    })();
-    if (!vid) return;
+    if (!phoneNorm || phoneNorm === savedPhone.current || !cartPayload.length) return;
     const t = setTimeout(() => {
       savedPhone.current = phoneNorm;
-      void saveAbandonedAction(subdomain, {
-        visitorId: vid,
-        phone: phoneNorm,
-        name: f.name || undefined,
-        items: cartPayload,
-      });
+      void saveAbandonedAction(subdomain, { phone: phoneNorm, name: f.name || undefined, items: cartPayload });
     }, 1200);
     return () => clearTimeout(t);
-  }, [f.phone, cartPayload, subdomain, f.name, phoneNorm]);
+  }, [phoneNorm, cartPayload, subdomain, f.name]);
+
+  const eta = useMemo(() => {
+    const z = zoneByCode.get(f.governorate);
+    return z ? deliveryRange(new Date(), z.etaMin, z.etaMax) : null;
+  }, [zoneByCode, f.governorate]);
 
   if (!hydrated) {
     return (
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]" aria-busy="true">
-        <div className="h-96 animate-pulse rounded-3xl bg-[var(--muted)]" />
-        <div className="h-64 animate-pulse rounded-3xl bg-[var(--muted)]" />
+      <div className="grid gap-6 lg:grid-cols-[1fr_380px]" aria-busy="true">
+        <div className="h-96 animate-pulse rounded-2xl bg-[var(--muted)]" />
+        <div className="h-64 animate-pulse rounded-2xl bg-[var(--muted)]" />
       </div>
     );
   }
 
   if (!items.length) {
     return (
-      <div
-        className="space-y-4 rounded-3xl border p-10 text-center"
-        style={{ background: "var(--card)", borderColor: "var(--border)" }}
-      >
-        <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--muted)] opacity-60">
+      <div className="space-y-4 rounded-2xl border p-10 text-center" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
+        <div className="mx-auto grid size-16 place-items-center rounded-full bg-[var(--muted)] opacity-70">
           <ShoppingBag className="size-8" strokeWidth={SW} aria-hidden="true" />
         </div>
-        <p className="text-base font-black">سلة مشترياتك فارغة</p>
-        <Link
-          href="/"
-          className="inline-flex h-11 items-center justify-center rounded-xl px-6 text-xs font-black shadow-md"
-          style={{
-            background: "var(--primary)",
-            color: "var(--primary-foreground)",
-          }}
-        >
+        <p className="text-base font-black">السلة فارغة</p>
+        <Link href="/" className="s-btn mx-auto">
           عرض المنتجات
         </Link>
       </div>
     );
   }
 
-  const selectedMethod = methods.find((m) => m.id === f.paymentMethod);
-  const hasCod = methods.some((m) => m.id === "cod");
-  const prepaid = methods.filter((m) => m.id !== "cod");
-  // رسوم التحصيل في المحافظة المختارة (أو أعلاها قبل الاختيار) لتظهر المقارنة بصدق.
-  const codFeeHere = f.governorate ? zoneByCode.get(f.governorate)?.cod ?? 0 : Math.max(0, ...zones.map((z) => z.cod ?? 0));
-  const isElectronicPay =
-    f.paymentMethod === "vodafone_cash" || f.paymentMethod === "instapay";
-  const blocked = pending || !!quote?.shippingError;
+  const selected = methods.find((m) => m.id === f.paymentMethod);
+  const isTransfer = f.paymentMethod !== "cod";
+  const holder = f.paymentMethod === "vodafone_cash" ? payments.vodafoneCash.holderName : f.paymentMethod === "instapay" ? payments.instapay.holderName : undefined;
+  const localSub = items.reduce((a, i) => a + i.unitPiasters * i.qty, 0);
+  const total = quote?.total ?? null;
+  const freeOver = policy?.freeOverPiasters ?? null;
+  const giftFee = policy?.giftWrapPiasters ?? 0;
+
+  const goToError = (k: string) => {
+    const el = document.getElementById(`co-${k}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    if ("focus" in el) (el as HTMLElement).focus({ preventScroll: true });
+  };
 
   const submit = () =>
     start(async () => {
-      setErr(null);
-      if (isElectronicPay && payments.requireTransferProof && !f.transferScreenshotUrl) {
-        toast.error("يرجى إرفاق صورة إيصال التحويل لإتمام طلبك");
+      const e = validateCheckout(f, { requireProof: payments.requireTransferProof });
+      if (Object.keys(e).length) {
+        // في الوضع السريع بيانات الشحن مخفية: نفتح التعديل ثم ننتقل للخطأ.
+        setEditing(true);
+        setErrors(e);
+        const first = firstErrorField(e)!;
+        toast.error(e[first]!);
+        setTimeout(() => goToError(first), 60);
         return;
       }
+      setErrors({});
       if (!idemKey.current) idemKey.current = newKey();
       try {
         const r = await placeOrderAction(subdomain, {
-          ...f,
+          name: f.name,
+          phone: f.phone,
           altPhone: f.altPhone || undefined,
+          governorate: f.governorate,
           city: f.city || undefined,
+          address: f.address,
           landmark: f.landmark || undefined,
           notes: f.notes || undefined,
+          paymentMethod: f.paymentMethod,
           discountCode: f.discountCode || undefined,
-          transferSenderPhone: isElectronicPay
-            ? f.transferSenderPhone || f.phone
-            : undefined,
-          transferScreenshotUrl: isElectronicPay ? f.transferScreenshotUrl : undefined,
+          transferSenderPhone: isTransfer ? f.transferSenderPhone || f.phone : undefined,
+          transferScreenshotUrl: isTransfer ? f.transferScreenshotUrl || undefined : undefined,
+          gift: gift.on ? { wrap: gift.wrap, message: gift.message || undefined, hidePrices: gift.hidePrices } : undefined,
           items: cartPayload,
-          visitorId: (() => {
-            try {
-              return localStorage.getItem("clp-vid") ?? undefined;
-            } catch {
-              return undefined;
-            }
-          })(),
           idempotencyKey: idemKey.current,
         });
         if (!r.ok) {
-          setErr({ field: r.field, msg: r.error });
+          const field = r.field && ["name", "phone", "governorate", "address", "discountCode", "paymentMethod"].includes(r.field) ? r.field : "form";
+          setErrors({ [field]: r.error } as typeof errors);
+          setEditing(true);
           toast.error(r.error);
+          setTimeout(() => goToError(field === "form" ? "form-error" : field), 60);
           return;
         }
-        if (remember) rememberCustomer({ ...f });
-        window.clpTrack?.("purchase", {
-          code: r.data.code,
-          total: r.data.total,
-          productIds: [...new Set(items.map((i) => i.productId))],
-        });
+        if (remember) rememberCustomer({ name: f.name, phone: f.phone, altPhone: f.altPhone, governorate: f.governorate, city: f.city, address: f.address, landmark: f.landmark });
+        window.clpTrack?.("purchase", { code: r.data.code, total: r.data.total, productIds: [...new Set(items.map((i) => i.productId))] });
         clear();
         clearPromo(subdomain);
         router.push(`/order/${encodeURIComponent(r.data.code)}`);
       } catch {
-        toast.error("تعذّر تأكيد الطلب، يرجى المحاولة ثانية");
+        toast.error("تعذّر تأكيد الطلب، يرجى المحاولة مرة أخرى");
       }
     });
 
-  const fieldError = (k: keyof Form) =>
-    err?.field === k ? (
-      <p className="mt-1 text-[11px] font-bold text-rose-500">{err.msg}</p>
-    ) : null;
+  const err = (k: keyof typeof errors) => errors[k];
+  const bind = (k: keyof Form & keyof typeof errors) => ({
+    id: `co-${k}`,
+    "aria-invalid": err(k) ? true : undefined,
+    "aria-describedby": err(k) ? `co-${k}-err` : undefined,
+  });
 
-  const shownSub = quote?.subtotal ?? localSub;
-  const showExtras = extras || Boolean(f.notes);
-  const showCode = codeOpen || Boolean(f.discountCode) || Boolean(quote?.discountError);
-  const shippingReady = !!quote && quote.shipping !== null;
-
-  const inputStyle: React.CSSProperties = {
-    borderColor: "var(--border)",
-  };
+  const summary = (
+    <aside id="order-summary" className="h-fit space-y-3 rounded-2xl border p-4 sm:p-5 lg:sticky lg:top-24" style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-label="ملخص الطلب">
+      <h2 className="flex items-center gap-2 font-heading text-base font-black">
+        <ShoppingBag className="size-4" strokeWidth={SW} style={{ color: "var(--primary)" }} aria-hidden="true" /> ملخص الطلب
+      </h2>
+      <ul className="max-h-64 divide-y overflow-y-auto" style={{ borderColor: "var(--border)" }}>
+        {(quote?.lines ?? items.map((i) => ({ key: `${i.productId}:${i.variantId ?? ""}`, name: i.name, qty: i.qty, net: i.unitPiasters * i.qty, lineOff: 0, isGift: false } as const))).map((l) => {
+          const it = items.find((i) => i.productId === l.key.split(":")[0] && (i.variantId ?? "") === (l.key.split(":")[1] ?? ""));
+          return (
+            <li key={l.key} className="flex items-center gap-3 py-2 text-sm" style={{ borderColor: "var(--border)" }}>
+              <span className="relative size-12 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--muted)" }}>
+                {it?.imageUrl ? <Image src={it.imageUrl} alt="" fill sizes="48px" className="object-cover" /> : null}
+                <span className="absolute -top-0 end-0 grid min-w-5 place-items-center rounded-es-lg px-1 text-[10px] font-bold" style={{ background: "var(--foreground)", color: "var(--background)" }}>{l.qty}</span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 font-bold leading-snug">{l.name}</span>
+                {it?.variantLabel ? <span className="block text-[11px] opacity-65">{it.variantLabel}</span> : null}
+              </span>
+              <span className="shrink-0 font-mono text-xs font-bold tabular-nums">{l.isGift ? "مجاناً" : formatEgp(l.net)}</span>
+            </li>
+          );
+        })}
+      </ul>
+      <dl className="space-y-1.5 border-t pt-3 text-sm" style={{ borderColor: "var(--border)" }}>
+        <div className="flex justify-between"><dt className="opacity-70">المجموع</dt><dd className="font-mono tabular-nums">{formatEgp(quote?.subtotal ?? localSub)}</dd></div>
+        {quote?.adjustments.map((a, i) => (
+          <div key={i} className="flex justify-between gap-3 text-success"><dt>{a.label}</dt><dd className="font-mono tabular-nums">- {formatEgp(a.amount)}</dd></div>
+        ))}
+        <div className="flex justify-between">
+          <dt className="opacity-70">الشحن{f.governorate ? ` إلى ${governorateName(f.governorate)}` : ""}</dt>
+          <dd className="font-mono tabular-nums">{quote?.shipping == null ? "اختاروا المحافظة" : quote.shipping === 0 ? "مجاني" : formatEgp(quote.shipping)}</dd>
+        </div>
+        {quote && quote.codFee > 0 ? <div className="flex justify-between"><dt className="opacity-70">رسوم الدفع عند الاستلام</dt><dd className="font-mono tabular-nums">{formatEgp(quote.codFee)}</dd></div> : null}
+        {quote && quote.giftWrap > 0 ? <div className="flex justify-between"><dt className="opacity-70">تغليف هدية</dt><dd className="font-mono tabular-nums">{formatEgp(quote.giftWrap)}</dd></div> : null}
+        <div className="flex items-baseline justify-between border-t pt-2.5 text-base font-black" style={{ borderColor: "var(--border)" }}>
+          <dt>الإجمالي</dt>
+          <dd className="font-mono text-lg tabular-nums">{total !== null ? formatEgp(total) : `${formatEgp(quote?.afterDiscount ?? localSub)} + الشحن`}</dd>
+        </div>
+      </dl>
+      {freeOver ? (
+        <p className="flex items-start gap-1.5 text-[11.5px] leading-5 opacity-80">
+          <Truck className="mt-0.5 size-3.5 shrink-0" strokeWidth={SW} aria-hidden="true" />
+          {quote?.freeShipping ? "الشحن مجاني على هذا الطلب." : `الشحن مجاني للطلبات من ${formatEgp(freeOver)} فأكثر، ويُحتسب على المجموع بعد الخصم.`}
+        </p>
+      ) : null}
+      {quoteError ? <p role="alert" className="text-xs font-bold text-danger">{quoteError}</p> : null}
+      {quote?.shippingError ? <p role="alert" className="text-xs font-bold text-danger">{quote.shippingError}</p> : null}
+      <button type="submit" form="checkout-form" disabled={pending} className="s-btn hidden h-12 w-full text-sm lg:inline-flex">
+        {pending ? <Loader2 className="size-5 animate-spin" strokeWidth={SW} aria-hidden="true" /> : <ShieldCheck className="size-5" strokeWidth={SW} aria-hidden="true" />}
+        {pending ? "جارٍ تأكيد الطلب" : "تأكيد الطلب"}
+      </button>
+      <p className="text-center text-[11px] opacity-60">بالضغط على «تأكيد الطلب» تؤكدون صحة البيانات.{policy?.returnDays ? ` الاستبدال والاسترجاع خلال ${policy.returnDays} يوماً.` : ""}</p>
+    </aside>
+  );
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_380px]" dir="rtl">
-      <div className="space-y-6">
-        <CheckoutProgress
-          completed={progress.completed}
-          current={progress.current}
-        />
+    <div className="grid gap-6 pb-24 lg:grid-cols-[1fr_380px] lg:pb-0" dir="rtl">
+      <form id="checkout-form" className="space-y-5" onSubmit={(e) => { e.preventDefault(); submit(); }} noValidate>
+        {errors.form ? <p id="co-form-error" tabIndex={-1} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-bold text-danger">{errors.form}</p> : null}
 
-        {/* على الموبايل الملخص تحت الاستمارة: سطر الإجمالي هنا يغني عن النزول، ويفتح الملخص كاملاً. */}
-        <a href="#order-summary" className="mb-4 flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-sm lg:hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-          <span className="flex items-center gap-2 font-bold">
-            <ShoppingBag className="size-4" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" />
-            طلبك: {items.reduce((a, i) => a + i.qty, 0)} {items.reduce((a, i) => a + i.qty, 0) === 1 ? "قطعة" : "قطع"}
-          </span>
-          <span className="font-mono font-black">{formatEgp(shippingReady && quote ? quote.total : shownSub)}{shippingReady && quote ? "" : " + الشحن"}</span>
-        </a>
-        <form
-          className="space-y-6"
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit();
-          }}
-          noValidate
-        >
-          {/* Step 1 — Contact */}
-          <section
-            className="space-y-4 rounded-3xl border p-6 shadow-xs sm:p-7"
-            style={{ background: "var(--card)", borderColor: "var(--border)" }}
-          >
-            <header
-              className="flex items-center justify-between gap-2 border-b pb-3"
-              style={{ borderColor: "var(--border)" }}
-            >
-              <h2 className="flex items-center gap-2 font-heading text-base font-black">
-                <User className="size-4" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" />
-                بيانات التوصيل
-              </h2>
-              {policy?.inspectionAllowed ? (
-                <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-600">
-                  <ShieldCheck className="inline size-3.5" strokeWidth={SW} aria-hidden="true" /> معاينة مع المندوب
-                </span>
-              ) : null}
-            </header>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="co-name" className="mb-1 block text-xs font-bold">الاسم بالكامل *</label>
-                <input
-                  id="co-name"
-                  className={F}
-                  style={inputStyle}
-                  placeholder="الاسم الثلاثي"
-                  autoComplete="name"
-                  value={f.name}
-                  onChange={(e) => set("name", e.target.value)}
-                  required
-                  maxLength={60}
-                  aria-invalid={!!(err?.field === "name")}
-                />
-                {fieldError("name")}
-              </div>
-
-              <div>
-                <label htmlFor="co-phone" className="mb-1 block text-xs font-bold">رقم الموبايل *</label>
-                <div className="relative">
-                  <Phone
-                    className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 opacity-40"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                  <input
-                    id="co-phone"
-                    className={cn(F, "pl-9 font-mono")}
-                    style={inputStyle}
-                    placeholder="01xxxxxxxxx"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    dir="ltr"
-                    value={f.phone}
-                    onChange={(e) => set("phone", e.target.value)}
-                    required
-                    maxLength={20}
-                    aria-invalid={!!(err?.field === "phone")}
-                  />
-                </div>
-                {f.phone.length >= 11 && !isPhoneValid(f.phone) ? (
-                  <p className="mt-1 text-[11px] font-bold text-rose-500">رقم غير صحيح — يجب أن يبدأ بـ 010/011/012/015</p>
-                ) : null}
-                {fieldError("phone")}
-              </div>
-
-              <div>
-                <label htmlFor="co-gov" className="mb-1 block text-xs font-bold">المحافظة *</label>
-                <div className="relative">
-                  <MapPin
-                    className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 opacity-40"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                  <select
-                    id="co-gov"
-                    className={cn(F, "pe-9 appearance-none")}
-                    style={inputStyle}
-                    value={f.governorate}
-                    onChange={(e) => set("governorate", e.target.value)}
-                    required
-                  >
-                    <option value="">المحافظة (لحساب الشحن)</option>
-                    {governorates.map((g) => {
-                      const z = zoneByCode.get(g.code);
-                      const showFee = z && policy && policy.flatPiasters === null && policy.freeOverPiasters !== 0;
-                      return (
-                        <option key={g.code} value={g.code}>
-                          {showFee ? `${g.name} — ${formatEgp(z.fee)}` : g.name}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-                {fieldError("governorate")}
-                {f.governorate && zoneByCode.get(f.governorate) ? (
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[11.5px] font-bold text-emerald-600">
-                    <Truck className="size-3.5" strokeWidth={SW} aria-hidden="true" />
-                    يوصلك خلال {zoneByCode.get(f.governorate)!.etaMin}-{zoneByCode.get(f.governorate)!.etaMax} أيام عمل
-                  </p>
-                ) : null}
-              </div>
-
-              <div>
-                <label htmlFor="co-city" className="mb-1 block text-xs font-bold">المدينة / الحي</label>
-                <input
-                  id="co-city"
-                  className={F}
-                  style={inputStyle}
-                  placeholder="المعادي / مدينة نصر"
-                  value={f.city}
-                  onChange={(e) => set("city", e.target.value)}
-                  maxLength={60}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="co-address" className="mb-1 block text-xs font-bold">العنوان بالتفصيل *</label>
-              <textarea
-                id="co-address"
-                className={F}
-                style={inputStyle}
-                rows={2}
-                placeholder="اسم الشارع، رقم العمارة، الدور، الشقة"
-                autoComplete="street-address"
-                value={f.address}
-                onChange={(e) => set("address", e.target.value)}
-                required
-                maxLength={300}
-              />
-              {fieldError("address")}
-            </div>
-
-            {showExtras ? (
-            <div>
-              <label htmlFor="co-notes" className="mb-1 block text-xs font-bold">ملاحظات للطلب (اختياري)</label>
-              <input
-                id="co-notes"
-                className={F}
-                style={inputStyle}
-                placeholder="أي تفاصيل خاصة بتوقيت الاستلام"
-                value={f.notes}
-                onChange={(e) => set("notes", e.target.value)}
-                maxLength={300}
-              />
-            </div>
-            ) : (
-              <button type="button" onClick={() => setExtras(true)} className="text-xs font-bold underline underline-offset-4 opacity-70 hover:opacity-100">
-                + إضافة ملاحظة للطلب (اختياري)
-              </button>
-            )}
-          </section>
-
-          {/* Step 2 — Payment */}
-          <section
-            className="space-y-4 rounded-3xl border p-6 shadow-xs sm:p-7"
-            style={{ background: "var(--card)", borderColor: "var(--border)" }}
-          >
-            <h2 className="border-b pb-3 font-heading text-base font-black" style={{ borderColor: "var(--border)" }}>
-              طريقة الدفع
+        {/* التوصيل */}
+        <section className={CARD} style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-labelledby="co-h-ship">
+          <header className="flex items-center justify-between gap-2">
+            <h2 id="co-h-ship" className="flex items-center gap-2 font-heading text-base font-black">
+              <UserRound className="size-4" strokeWidth={SW} style={{ color: "var(--primary)" }} aria-hidden="true" /> بيانات التوصيل
             </h2>
-
-            {/* سؤال واحد واضح: الآن بالتحويل أم عند الاستلام. لا اختيار مفروض، ولا رسوم مخفية. */}
-            <div className={cn("grid gap-3", hasCod && prepaid.length ? "sm:grid-cols-2" : "grid-cols-1")} role="radiogroup" aria-label="وقت الدفع">
-              {hasCod ? (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={f.paymentMethod === "cod"}
-                  onClick={() => set("paymentMethod", "cod")}
-                  className={cn("flex items-start gap-3 rounded-2xl border-2 p-4 text-start transition-all", f.paymentMethod === "cod" ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_6%,transparent)]" : "border-[var(--border)] hover:border-[var(--foreground)]/30")}
-                >
-                  <span className="s-icon !size-10"><Banknote className="size-5" aria-hidden="true" /></span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black">عند الاستلام</span>
-                    <span className="mt-0.5 block text-xs leading-5 opacity-75">{policy?.inspectionAllowed ? "تفتح الشحنة وتعاين المنتج قبل ما تدفع للمندوب" : "تدفع نقداً للمندوب لما الطلب يوصلك"}</span>
-                    <span className={cn("mt-1.5 inline-block text-[11px] font-black", codFeeHere > 0 ? "text-[color-mix(in_srgb,var(--warning)_55%,var(--foreground))]" : "opacity-60")}>
-                      {codFeeHere > 0 ? `+ ${formatEgp(codFeeHere)} رسوم تحصيل` : "بدون رسوم إضافية"}
-                    </span>
-                  </span>
-                </button>
-              ) : null}
-              {prepaid.length ? (
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={isElectronicPay}
-                  onClick={() => !isElectronicPay && set("paymentMethod", prepaid[0]!.id)}
-                  className={cn("flex items-start gap-3 rounded-2xl border-2 p-4 text-start transition-all", isElectronicPay ? "border-[var(--primary)] bg-[color-mix(in_srgb,var(--primary)_6%,transparent)]" : "border-[var(--border)] hover:border-[var(--foreground)]/30")}
-                >
-                  <span className="s-icon !size-10"><Smartphone className="size-5" aria-hidden="true" /></span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-black">الآن بالتحويل</span>
-                    <span className="mt-0.5 block text-xs leading-5 opacity-75">{prepaid.map((m) => (m.id === "vodafone_cash" ? "فودافون كاش" : "إنستاباي")).join(" أو ")}، وطلبك يتأكد أسرع</span>
-                    {codFeeHere > 0 ? <span className="mt-1.5 inline-block text-[11px] font-black text-[color-mix(in_srgb,var(--success)_75%,var(--foreground))]">توفّر {formatEgp(codFeeHere)} رسوم التحصيل</span> : null}
-                  </span>
-                </button>
-              ) : null}
-            </div>
-
-            {isElectronicPay && prepaid.length > 1 ? (
-              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="وسيلة التحويل">
-                {prepaid.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={f.paymentMethod === m.id}
-                    onClick={() => set("paymentMethod", m.id)}
-                    className={cn("s-chip min-h-11 border-2 px-3 text-xs font-black transition", f.paymentMethod === m.id ? "border-[var(--primary)] text-[var(--primary)]" : "border-[var(--border)]")}
-                  >
-                    {m.id === "vodafone_cash" ? "فودافون كاش" : "إنستاباي"}
-                  </button>
-                ))}
-              </div>
+            {policy?.inspectionAllowed ? (
+              <span className="s-chip inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold" style={{ background: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
+                <ShieldCheck className="size-3.5" strokeWidth={SW} aria-hidden="true" /> معاينة مع المندوب
+              </span>
             ) : null}
+          </header>
 
-            {isElectronicPay && selectedMethod ? (
-              <div
-                className="mt-3 space-y-3 rounded-2xl border p-4"
-                style={{
-                  borderColor: "var(--border)",
-                  background: "color-mix(in srgb, var(--muted) 40%, transparent)",
-                }}
-              >
-                <ol className="list-inside list-decimal space-y-1 text-[12px] font-bold opacity-80">
-                  <li>نسخ الرقم وتحويل المبلغ بالضبط.</li>
-                  <li>صوّر شاشة نجاح التحويل وارفعها هنا.</li>
-                  <li>الضغط على «تأكيد الطلب»، ثم نراجع التحويل ونؤكد لك.</li>
-                </ol>
-                {quote ? (
-                  <div className="flex items-center justify-between gap-2 rounded-xl border bg-[var(--background)] p-3" style={{ borderColor: "var(--border)" }}>
-                    <div>
-                      <span className="block text-[10.5px] font-bold opacity-60">المبلغ المطلوب تحويله</span>
-                      <span className="block font-mono text-lg font-black">{formatEgp(quote.total)}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(String(Math.round(quote.total / 100)));
-                        toast.success("تم نسخ المبلغ");
-                      }}
-                      className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors hover:bg-[var(--muted)]"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <Copy className="size-3.5" aria-hidden="true" />
-                      نسخ
-                    </button>
-                  </div>
-                ) : null}
-                <div
-                  className="flex items-center justify-between gap-2 rounded-xl border bg-[var(--background)] p-3"
-                  style={{ borderColor: "var(--border)" }}
-                >
-                  <div className="min-w-0">
-                    <span className="block text-[10.5px] font-bold opacity-60">
-                      {f.paymentMethod === "vodafone_cash"
-                        ? "رقم المحفظة للتحويل:"
-                        : "عنوان / رقم إنستاباي:"}
-                    </span>
-                    <span className="block select-all font-mono text-sm font-black" dir="ltr">
-                      {selectedMethod.targetNumber || "01xxxxxxxxx"}
-                    </span>
-                  </div>
+          {express ? (
+            <div className="flex items-start gap-3 rounded-xl border p-3" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--muted) 55%, transparent)" }}>
+              <MapPin className="mt-0.5 size-5 shrink-0" strokeWidth={SW} style={{ color: "var(--primary)" }} aria-hidden="true" />
+              <div className="min-w-0 flex-1 text-sm leading-6">
+                <p className="font-black">{f.name} · <span dir="ltr" className="font-mono">{phoneNorm}</span></p>
+                <p className="opacity-80">{[governorateName(f.governorate), f.city, f.address].filter(Boolean).join("، ")}</p>
+                <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs font-bold">
+                  <button type="button" onClick={() => setEditing(true)} className="underline underline-offset-4">تعديل</button>
                   <button
                     type="button"
                     onClick={() => {
-                      if (!selectedMethod.targetNumber) return;
-                      navigator.clipboard.writeText(selectedMethod.targetNumber);
-                      toast.success("تم نسخ الرقم");
+                      forgetCustomer();
+                      prefilled.current = true;
+                      setF((s) => ({ ...s, name: "", phone: "", altPhone: "", governorate: "", city: "", address: "", landmark: "" }));
+                      setEditing(true);
                     }}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-bold transition-colors hover:bg-[var(--muted)]"
-                    style={{ borderColor: "var(--border)" }}
+                    className="underline underline-offset-4 opacity-75"
                   >
-                    <Copy className="size-3.5" strokeWidth={SW} aria-hidden="true" />
-                    نسخ
+                    ليس أنا؟ مسح بياناتي
                   </button>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field id="co-name" label="الاسم بالكامل" error={err("name")}>
+                <input {...bind("name")} className={F} placeholder="الاسم الثلاثي" autoComplete="name" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={60} />
+              </Field>
+              <Field id="co-phone" label="رقم الموبايل" error={err("phone")}>
+                <input {...bind("phone")} className={F} dir="ltr" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={f.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} />
+              </Field>
+              <Field id="co-governorate" label="المحافظة" error={err("governorate")}>
+                <select {...bind("governorate")} className={F} autoComplete="address-level1" value={f.governorate} onChange={(e) => { set("governorate", e.target.value); set("city", ""); }}>
+                  <option value="">اختاروا المحافظة</option>
+                  {governorates.map((g) => (
+                    <option key={g.code} value={g.code}>{g.name}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="co-city" label="المنطقة أو المدينة" optional>
+                <input id="co-city" className={F} list="co-areas" autoComplete="address-level2" placeholder="مثال: مدينة نصر" value={f.city} onChange={(e) => set("city", e.target.value)} maxLength={60} />
+                <datalist id="co-areas">{(AREAS[f.governorate] ?? []).map((a) => <option key={a} value={a} />)}</datalist>
+              </Field>
+              <div className="sm:col-span-2">
+                <Field id="co-address" label="العنوان بالتفصيل" error={err("address")} hint="اسم الشارع ورقم العمارة والدور والشقة">
+                  <textarea {...bind("address")} className={cn(F, "min-h-[84px] resize-y")} autoComplete="street-address" value={f.address} onChange={(e) => set("address", e.target.value)} maxLength={300} />
+                </Field>
+              </div>
+              <Field id="co-landmark" label="أقرب معلم" optional>
+                <input id="co-landmark" className={F} placeholder="بجوار مسجد أو صيدلية…" value={f.landmark} onChange={(e) => set("landmark", e.target.value)} maxLength={120} />
+              </Field>
+              <Field id="co-altPhone" label="موبايل بديل" optional error={err("altPhone")}>
+                <input {...bind("altPhone")} className={F} dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" value={f.altPhone} onChange={(e) => set("altPhone", e.target.value)} maxLength={20} />
+              </Field>
+            </div>
+          )}
 
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold">
-                    رقم المحفظة التي حوّلت منها:
-                  </label>
-                  <input
-                    type="tel"
-                    dir="ltr"
-                    className={cn(F, "font-mono")}
-                    style={inputStyle}
-                    placeholder="01xxxxxxxxx"
-                    value={f.transferSenderPhone}
-                    onChange={(e) => set("transferSenderPhone", e.target.value)}
-                  />
-                </div>
+          <Field id="co-notes" label="ملاحظات للمتجر أو المندوب" optional>
+            <textarea id="co-notes" className={cn(F, "min-h-[64px] resize-y")} placeholder="مواعيد مناسبة للتوصيل أو أي تفاصيل أخرى" value={f.notes} onChange={(e) => set("notes", e.target.value)} maxLength={300} />
+          </Field>
 
-                <div>
-                  <label className="mb-1 block text-[11px] font-bold">
-                    صورة إيصال التحويل *
+          {f.governorate ? (
+            <p className="flex items-start gap-2 text-[12.5px] leading-6" style={{ color: "var(--primary)" }}>
+              <Truck className="mt-1 size-4 shrink-0" strokeWidth={SW} aria-hidden="true" />
+              <span>{eta ? `موعد التوصيل المتوقع: ${eta}` : policy?.generalEta ? `مدة التوصيل: ${policy.generalEta}` : null}</span>
+            </p>
+          ) : null}
+        </section>
+
+        {/* الهدية */}
+        {policy?.giftEnabled ? (
+          <section className={CARD} style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-labelledby="co-h-gift">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={gift.on} onChange={(e) => setGift((g) => ({ ...g, on: e.target.checked }))} />
+              <span id="co-h-gift" className="flex items-center gap-2 text-sm font-black">
+                <Gift className="size-4" strokeWidth={SW} style={{ color: "var(--primary)" }} aria-hidden="true" /> هذا الطلب هدية
+              </span>
+            </label>
+            {gift.on ? (
+              <div className="space-y-3">
+                {giftFee > 0 ? (
+                  <label className="flex cursor-pointer items-center gap-3 text-sm">
+                    <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={gift.wrap} onChange={(e) => setGift((g) => ({ ...g, wrap: e.target.checked }))} />
+                    <span>تغليف هدية (+ {formatEgp(giftFee)})</span>
                   </label>
-                  {f.transferScreenshotUrl ? (
-                    <div
-                      className="flex items-center justify-between gap-2 rounded-xl border bg-[var(--background)] p-2"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <Image
-                        src={f.transferScreenshotUrl}
-                        alt="إيصال"
-                        width={56}
-                        height={56}
-                        className="size-14 rounded-lg object-cover"
-                        unoptimized
-                      />
-                      <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
-                        <Check className="size-4" strokeWidth={SW} aria-hidden="true" />
-                        تم إرفاق الإيصال
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => set("transferScreenshotUrl", "")}
-                        className="text-xs font-bold text-rose-500 hover:underline"
-                      >
-                        تغيير
-                      </button>
-                    </div>
-                  ) : (
-                    <MediaUploadButton
-                      route="transferProof"
-                      input={{ subdomain }}
-                      label="رفع صورة الإيصال"
-                      onUploaded={(url) => {
-                        set("transferScreenshotUrl", url);
-                        toast.success("تم إرفاق الإيصال");
-                      }}
-                      onError={(m) => toast.error(m)}
-                    />
-                  )}
-                </div>
+                ) : (
+                  <label className="flex cursor-pointer items-center gap-3 text-sm">
+                    <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={gift.wrap} onChange={(e) => setGift((g) => ({ ...g, wrap: e.target.checked }))} />
+                    <span>تغليف هدية بلا رسوم</span>
+                  </label>
+                )}
+                <label className="flex cursor-pointer items-center gap-3 text-sm">
+                  <input type="checkbox" className="size-5 accent-[var(--primary)]" checked={gift.hidePrices} onChange={(e) => setGift((g) => ({ ...g, hidePrices: e.target.checked }))} />
+                  <span>إخفاء الأسعار من الفاتورة</span>
+                </label>
+                <Field id="co-giftmsg" label="رسالة الهدية" optional>
+                  <textarea id="co-giftmsg" className={cn(F, "min-h-[64px] resize-y")} maxLength={200} value={gift.message} onChange={(e) => setGift((g) => ({ ...g, message: e.target.value }))} />
+                </Field>
               </div>
             ) : null}
           </section>
-
-          {/* Step 3 — Discount + Confirm */}
-          <section
-            className="space-y-4 rounded-3xl border p-6 shadow-xs sm:p-7"
-            style={{ background: "var(--card)", borderColor: "var(--border)" }}
-          >
-            {!showCode ? (
-              <button type="button" onClick={() => setCodeOpen(true)} className="text-sm font-bold underline underline-offset-4 opacity-80 hover:opacity-100">
-                عندك كود خصم؟
-              </button>
-            ) : (
-            <>
-            <h2 className="border-b pb-3 font-heading text-base font-black" style={{ borderColor: "var(--border)" }}>
-              كود الخصم
-            </h2>
-            <input
-              className={cn(F, "font-mono font-bold uppercase")}
-              style={inputStyle}
-              placeholder="كود الخصم"
-              dir="ltr"
-              value={f.discountCode}
-              onChange={(e) =>
-                set("discountCode", e.target.value.toUpperCase().slice(0, 20))
-              }
-            />
-            {quote?.discountError ? (
-              <p className="text-xs font-bold text-rose-500">{quote.discountError}</p>
-            ) : null}
-            {promoFromLink && f.discountCode === promoFromLink && !quote?.discountError ? (
-              <p className="text-xs text-[var(--muted-foreground)]">من رابط الخصم الذي فتحته.</p>
-            ) : null}
-            {quote && quote.discount > 0 ? (
-              <p className="flex items-center gap-1.5 rounded-lg bg-emerald-500/10 p-2 text-xs font-bold text-emerald-700">
-                <Check strokeWidth={SW} className="size-4" aria-hidden="true" />
-                تم تطبيق خصم بقيمة {formatEgp(quote.discount)}
-              </p>
-            ) : null}
-            </>
-            )}
-          </section>
-
-          {err && !err.field ? (
-            <p className="flex items-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs font-bold text-rose-700">
-              <AlertCircle strokeWidth={SW} className="size-4 shrink-0" aria-hidden="true" />
-              {err.msg}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={blocked || !progress.completed.confirm}
-            className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-base font-black text-white shadow-md transition-all hover:bg-emerald-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {pending ? (
-              <Loader2 strokeWidth={SW} className="size-5 animate-spin" aria-hidden="true" />
-            ) : (
-              <ShieldCheck strokeWidth={SW} className="size-5" aria-hidden="true" />
-            )}
-            <span>تأكيد الطلب الآن</span>
-            {shippingReady && quote ? (
-              <span className="ms-1 rounded-lg bg-emerald-800/40 px-2.5 py-0.5 font-mono text-sm">
-                {formatEgp(quote.total)}
-              </span>
-            ) : null}
-          </button>
-
-          {f.paymentMethod === "cod" && policy?.inspectionAllowed ? (
-            <p className="flex items-center justify-center gap-1.5 text-center text-xs opacity-60">
-              <Truck className="size-3.5" strokeWidth={SW} aria-hidden="true" />
-              المعاينة متاحة مع المندوب قبل دفع أي مليم
-            </p>
-          ) : null}
-        </form>
-      </div>
-
-      {/* Sidebar Summary */}
-      <aside
-        id="order-summary"
-        className="scroll-mt-24 h-fit space-y-5 rounded-3xl border p-6 shadow-xs lg:sticky lg:top-32"
-        style={{ background: "var(--card)", borderColor: "var(--border)" }}
-      >
-        <h2
-          className="border-b pb-3 font-heading text-base font-black"
-          style={{ borderColor: "var(--border)" }}
-        >
-          ملخص الطلب ({items.length})
-        </h2>
-        <ul className="max-h-72 divide-y overflow-y-auto" style={{ borderColor: "var(--border)" }}>
-          {items.map((i) => (
-            <li key={itemKey(i)} className="flex items-center gap-3 py-3" style={{ borderColor: "var(--border)" }}>
-              <div
-                className="relative size-14 shrink-0 overflow-hidden rounded-xl border"
-                style={{ background: "var(--muted)", borderColor: "var(--border)" }}
-              >
-                {i.imageUrl ? (
-                  <Image src={i.imageUrl} alt="" fill sizes="56px" className="object-cover" />
-                ) : null}
-                <span className="absolute -end-1 -top-1 grid size-5 place-items-center rounded-full bg-[var(--foreground)] font-mono text-[10px] font-black text-[var(--background)] shadow">
-                  {i.qty}
-                </span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-black">{i.name}</p>
-                {i.variantLabel ? (
-                  <p className="mt-0.5 text-[11px] opacity-60">{i.variantLabel}</p>
-                ) : null}
-              </div>
-              <span className="font-mono text-xs font-black">
-                {formatEgp(i.unitPiasters * i.qty)}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {quoteError ? (
-          <p className="flex items-start gap-2 rounded-xl bg-rose-500/10 p-3 text-xs font-bold text-rose-700">
-            <AlertCircle strokeWidth={SW} className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            {quoteError}
-          </p>
         ) : null}
 
-        <dl
-          className={cn("space-y-2.5 border-t pt-4 text-xs", quoting && "opacity-60")}
-          style={{ borderColor: "var(--border)" }}
-        >
-          <div className="flex justify-between opacity-80">
-            <dt>مجموع المنتجات</dt>
-            <dd className="font-mono font-bold">{formatEgp(shownSub)}</dd>
+        {/* الدفع */}
+        <section className={CARD} style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-labelledby="co-h-pay">
+          <h2 id="co-h-pay" className="font-heading text-base font-black">طريقة الدفع</h2>
+          <div role="radiogroup" aria-labelledby="co-h-pay" className="grid gap-3">
+            {methods.map((m) => {
+              const on = f.paymentMethod === m.id;
+              return (
+                <label
+                  key={m.id}
+                  className={cn("flex cursor-pointer items-start gap-3 rounded-xl border-2 p-3.5 transition-colors", on && "shadow-sm")}
+                  style={{ borderColor: on ? "var(--primary)" : "var(--border)", background: on ? "color-mix(in srgb, var(--primary) 7%, transparent)" : undefined }}
+                >
+                  <input type="radio" name="payment" className="mt-1 size-5 accent-[var(--primary)]" checked={on} onChange={() => set("paymentMethod", m.id)} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex flex-wrap items-center gap-2 text-sm font-black">
+                      {m.label}
+                      {m.id !== "cod" && prepaidPct > 0 ? <span className="s-chip px-2 py-0.5 text-[11px] font-bold" style={{ background: "color-mix(in srgb, var(--primary) 14%, transparent)", color: "var(--primary)" }}>خصم {prepaidPct}%</span> : null}
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-5 opacity-75">{m.id === "cod" ? "الدفع كاشاً للمندوب عند الاستلام" : "تحويل قبل الشحن لتأكيد أسرع"}</span>
+                  </span>
+                </label>
+              );
+            })}
           </div>
-          <div className="flex justify-between opacity-80">
-            <dt>تكلفة التوصيل</dt>
-            <dd className="font-mono font-bold">
-              {quote?.shippingError ? (
-                <span className="text-rose-500">{quote.shippingError}</span>
-              ) : !shippingReady ? (
-                <span className="font-sans font-normal opacity-60">
-                  {f.governorate ? "جاري الحساب…" : "حسب المحافظة"}
-                </span>
-              ) : quote!.shipping === 0 ? (
-                <span className="font-sans font-bold text-emerald-600">مجاني</span>
+
+          {isTransfer ? (
+            <div className="space-y-3 rounded-xl border p-3.5" style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--muted) 45%, transparent)" }}>
+              {selected?.targetNumber ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 text-sm">
+                    <p className="text-xs opacity-70">{f.paymentMethod === "vodafone_cash" ? "رقم المحفظة" : "عنوان إنستاباي أو الرقم"}</p>
+                    <p dir="ltr" className="select-all break-all text-end font-mono text-base font-black">{selected.targetNumber}</p>
+                    {holder ? <p className="text-xs opacity-75">باسم: <b>{holder}</b></p> : null}
+                  </div>
+                  <CopyButton text={selected.targetNumber} label="نسخ رقم التحويل" />
+                </div>
               ) : (
-                formatEgp(quote!.shipping!)
+                <p className="text-sm font-bold">تواصلوا مع المتجر للحصول على بيانات التحويل قبل إتمام الدفع.</p>
               )}
-            </dd>
-          </div>
-          {quote && quote.codFee > 0 ? (
-            <div className="flex justify-between opacity-80">
-              <dt>رسوم الدفع عند الاستلام</dt>
-              <dd className="font-mono font-bold">{formatEgp(quote.codFee)}</dd>
+              {payments.transferInstructions ? <p className="text-xs leading-6 opacity-80">{payments.transferInstructions}</p> : null}
+              <div className="flex items-center justify-between gap-3 border-t pt-3" style={{ borderColor: "var(--border)" }}>
+                <div className="text-sm">
+                  <p className="text-xs opacity-70">المبلغ المطلوب تحويله بالضبط</p>
+                  {total !== null ? <p dir="ltr" className="text-end font-mono text-lg font-black tabular-nums">{exactAmount(total)} <span className="text-xs font-bold">ج.م</span></p> : <p className="text-xs font-bold">اختاروا المحافظة ليظهر المبلغ بعد الشحن</p>}
+                </div>
+                {total !== null ? <CopyButton text={exactAmount(total)} label="نسخ المبلغ" /> : null}
+              </div>
+              <Field id="co-transferScreenshotUrl" label="صورة إيصال التحويل" error={err("transferScreenshotUrl")}>
+                <div id="co-transferScreenshotUrl" tabIndex={-1} className="outline-none">
+                {f.transferScreenshotUrl ? (
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={f.transferScreenshotUrl} alt="إيصال التحويل" className="h-20 rounded-lg border" style={{ borderColor: "var(--border)" }} />
+                    <button type="button" onClick={() => set("transferScreenshotUrl", "")} className="inline-flex items-center gap-1.5 text-xs font-bold opacity-75 hover:opacity-100">
+                      <RefreshCw className="size-3.5" strokeWidth={SW} aria-hidden="true" /> تغيير الصورة
+                    </button>
+                  </div>
+                ) : (
+                  <MediaUploadButton route="transferProof" input={{ subdomain }} label="رفع صورة التحويل" onUploaded={(u) => set("transferScreenshotUrl", u)} onError={(m) => toast.error(m)} />
+                )}
+                </div>
+              </Field>
+              <Field id="co-transferSenderPhone" label="الرقم الذي حُوّل منه" optional>
+                <input id="co-transferSenderPhone" className={F} dir="ltr" inputMode="tel" placeholder={f.phone || "01xxxxxxxxx"} value={f.transferSenderPhone} onChange={(e) => set("transferSenderPhone", e.target.value)} maxLength={20} />
+              </Field>
             </div>
           ) : null}
-          {quote && quote.discount > 0 ? (
-            <div className="flex justify-between font-bold text-emerald-600">
-              <dt>الخصم</dt>
-              <dd className="font-mono">− {formatEgp(quote.discount)}</dd>
-            </div>
-          ) : null}
-          <div
-            className="flex justify-between border-t pt-3 text-sm font-black"
-            style={{ borderColor: "var(--border)" }}
-          >
-            <dt>الإجمالي</dt>
-            <dd className="font-mono text-base text-emerald-600">
-              {formatEgp(quote?.total ?? localSub)}
-            </dd>
-          </div>
-        </dl>
+          {err("paymentMethod") ? <p role="alert" className="text-xs font-bold text-danger">{err("paymentMethod")}</p> : null}
 
-        {policy?.freeOverPiasters && quote?.shipping && quote.shipping > 0 && shownSub < policy.freeOverPiasters ? (
-          <div className="space-y-1.5 rounded-2xl p-3" style={{ background: "var(--muted)" }}>
-            <p className="text-[11.5px] font-bold">
-              باقي <span className="font-mono">{formatEgp(policy.freeOverPiasters - shownSub)}</span> على الشحن المجاني
-            </p>
-            <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "var(--border)" }}>
-              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.min(100, (shownSub / policy.freeOverPiasters) * 100)}%` }} />
-            </div>
-          </div>
-        ) : null}
+          {/* كود الخصم */}
+          {codeOpen || f.discountCode ? (
+            <Field id="co-discountCode" label="كود الخصم" error={err("discountCode") ?? quote?.discountError}>
+              <input
+                {...bind("discountCode")}
+                className={cn(F, "uppercase")}
+                dir="ltr"
+                maxLength={20}
+                value={f.discountCode}
+                onChange={(e) => { set("discountCode", e.target.value.trim().toUpperCase()); if (!e.target.value) clearPromo(subdomain); else savePromo(subdomain, e.target.value); }}
+              />
+            </Field>
+          ) : (
+            <button type="button" onClick={() => setCodeOpen(true)} className="text-sm font-bold underline underline-offset-4 opacity-80 hover:opacity-100">
+              لديكم كود خصم؟
+            </button>
+          )}
+        </section>
 
-        {policy ? (
-          <ul className="grid gap-2 border-t pt-4 text-[11.5px] font-bold" style={{ borderColor: "var(--border)" }}>
-            {policy.inspectionAllowed ? (
-              <li className="flex items-center gap-2">
-                <ShieldCheck className="size-4 shrink-0 text-emerald-600" strokeWidth={SW} aria-hidden="true" /> افحص المنتج مع المندوب قبل ما تدفع
-              </li>
-            ) : null}
-            {policy.returnDays > 0 ? (
-              <li className="flex items-center gap-2">
-                <RotateCcw className="size-4 shrink-0 text-emerald-600" strokeWidth={SW} aria-hidden="true" /> استبدال واسترجاع خلال {policy.returnDays} يوماً
-              </li>
-            ) : null}
-            <li className="flex items-center gap-2">
-              <Lock className="size-4 shrink-0 text-emerald-600" strokeWidth={SW} aria-hidden="true" /> بياناتك محمية ولا نشاركها إلا مع شركة الشحن
-            </li>
-          </ul>
-        ) : null}
-      </aside>
+      </form>
+
+      {summary}
+
+      {/* شريط الإجمالي والتأكيد الثابت على الموبايل */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t px-4 py-3 backdrop-blur-xl lg:hidden" style={{ background: "color-mix(in srgb, var(--background) 92%, transparent)", borderColor: "var(--border)" }}>
+        <div className="mx-auto flex max-w-xl items-center gap-3">
+          <div className="min-w-0 flex-1 leading-tight">
+            <p className="text-[11px] opacity-70">الإجمالي</p>
+            <p className="font-mono text-base font-black tabular-nums">{total !== null ? formatEgp(total) : `${formatEgp(quote?.afterDiscount ?? localSub)}+`}</p>
+          </div>
+          <button type="submit" form="checkout-form" disabled={pending} className="s-btn h-12 flex-[1.4] text-sm">
+            {pending ? <Loader2 className="size-5 animate-spin" strokeWidth={SW} aria-hidden="true" /> : <ShieldCheck className="size-5" strokeWidth={SW} aria-hidden="true" />}
+            {pending ? "جارٍ التأكيد" : "تأكيد الطلب"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

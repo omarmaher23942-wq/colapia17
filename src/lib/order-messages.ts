@@ -122,11 +122,13 @@ export function shippingLabelText(o: MessageOrder, storeName: string): string {
 export function customerOrderWhatsApp(
   o: { code: string; customerName: string; totalPiasters: number; items: { name: string; variantLabel: string | null; quantity: number }[] },
   storeName: string,
-  fmt: (piasters: number) => string
+  fmt: (piasters: number) => string,
+  /** «رابط طلباتي» الموقّع: من يفتحه يجد الطلب على جهازه دون حساب. */
+  link?: string
 ): string {
   const items = o.items.slice(0, 6).map((i) => `• ${i.name}${i.variantLabel ? ` (${i.variantLabel})` : ""} × ${i.quantity}`);
   if (o.items.length > 6) items.push(`• و${o.items.length - 6} أصناف أخرى`);
-  return [`أهلاً ${storeName}، لسه عامل طلب من المتجر.`, `رقم الطلب: ${o.code}`, ...items, `الإجمالي: ${fmt(o.totalPiasters)}`, `الاسم: ${o.customerName}`].join("\n");
+  return [`أهلاً ${storeName}، تم إرسال طلب من المتجر.`, `رقم الطلب: ${o.code}`, ...items, `الإجمالي: ${fmt(o.totalPiasters)}`, `الاسم: ${o.customerName}`, ...(link ? [`رابط طلباتي: ${link}`] : [])].join("\n");
 }
 
 /** عربون مقترح لطلب مخاطِر بالدفع عند الاستلام: مصاريف الشحن إن وُجدت، وإلا 10% من الإجمالي (50 ج على الأقل)، مقرّب لأقرب 10 ج. */

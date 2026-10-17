@@ -8,6 +8,8 @@ export const MEDIA_ROUTES = {
   platformReceipt: { maxBytes: 8 << 20, maxFiles: 1 },
   transferProof: { maxBytes: 8 << 20, maxFiles: 1 },
   customerReviewImage: { maxBytes: 4 << 20, maxFiles: 3 },
+  // صور طلب الاستبدال/الاسترجاع من صفحة الطلب.
+  returnPhoto: { maxBytes: 4 << 20, maxFiles: 4 },
   merchantAvatar: { maxBytes: 4 << 20, maxFiles: 1 },
   // بحث العميل بالصورة في المتجر (لا يُحفظ في أي جدول، ويُحذف بعد المطابقة).
   visualSearch: { maxBytes: 4 << 20, maxFiles: 1 },

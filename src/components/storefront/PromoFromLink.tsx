@@ -20,6 +20,14 @@ export function readPromo(subdomain: string): string | null {
   }
 }
 
+export function savePromo(subdomain: string, code: string) {
+  try {
+    localStorage.setItem(keyOf(subdomain), JSON.stringify({ code: code.trim().toUpperCase(), at: Date.now() }));
+  } catch {
+    /* التخزين غير متاح */
+  }
+}
+
 export function clearPromo(subdomain: string) {
   try {
     localStorage.removeItem(keyOf(subdomain));

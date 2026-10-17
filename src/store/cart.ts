@@ -33,7 +33,7 @@ export type CartItem = {
 export type CustomerSnapshot = {
   name?: string;
   phone?: string;
-  email?: string;
+  altPhone?: string;
   governorate?: string;
   city?: string;
   address?: string;
@@ -49,6 +49,8 @@ type CartState = {
   remove: (key: string) => void;
   setQty: (key: string, qty: number) => void;
   clear: () => void;
+  /** يطابق السلة مع ما قاله الخادم: سعر جديد أو كمية متاحة أقل، أو إزالة سطر لم يعد متاحاً. */
+  reconcile: (fixes: { key: string; unitPiasters?: number; maxQty?: number | null; qty?: number; drop?: boolean }[]) => void;
   open: () => void;
   close: () => void;
   rememberCustomer: (snap: CustomerSnapshot) => void;
@@ -102,7 +104,7 @@ function sanitizeCustomer(raw: unknown): CustomerSnapshot | null {
   const snap: CustomerSnapshot = {
     name: pick("name", 80),
     phone: pick("phone", 20),
-    email: pick("email", 120),
+    altPhone: pick("altPhone", 20),
     governorate: pick("governorate", 40),
     city: pick("city", 60),
     address: pick("address", 300),
@@ -158,6 +160,21 @@ function createCartStore(storeId: string) {
           })),
 
         clear: () => set({ items: [] }),
+        reconcile: (fixes) =>
+          set((s) => {
+            if (!fixes.length) return s;
+            const by = new Map(fixes.map((f) => [f.key, f]));
+            const next = s.items
+              .filter((i) => !by.get(itemKey(i))?.drop)
+              .map((i) => {
+                const f = by.get(itemKey(i));
+                if (!f) return i;
+                const merged = { ...i, ...(f.unitPiasters !== undefined ? { unitPiasters: f.unitPiasters } : {}), ...(f.maxQty !== undefined ? { maxQty: f.maxQty } : {}) };
+                return { ...merged, qty: f.qty !== undefined ? clampQty(f.qty, lineCap(merged)) : merged.qty };
+              })
+              .filter((i) => i.qty > 0);
+            return JSON.stringify(next) === JSON.stringify(s.items) ? s : { items: next };
+          }),
         open: () => set({ isOpen: true }),
         close: () => set({ isOpen: false }),
 

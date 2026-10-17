@@ -56,6 +56,12 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     const store = await publicStore(input);
     return { prefix: `stores/${store.id}/reviews`, meta: { storeId: store.id } };
   },
+  // صور طلب الاستبدال/الاسترجاع: حد معدل لكل عنوان، لمتجر ظاهر فقط.
+  async returnPhoto({ headers, input }) {
+    if (!(await allow("review", `ut_return:${clientIp(headers)}`))) throw new UploadPolicyError("محاولات كثيرة، حاول بعد دقائق");
+    const store = await publicStore(input);
+    return { prefix: `stores/${store.id}/returns`, meta: { storeId: store.id } };
+  },
   async merchantAvatar() {
     const s = await getMerchantSession();
     if (!s) throw new UploadPolicyError("غير مصرح");

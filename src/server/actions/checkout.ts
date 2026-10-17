@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import {
   getStoreBySubdomain,
   getBlueprint,
@@ -36,7 +36,6 @@ import { cleanMetaPixel } from "@/lib/tracking";
 import { CAMPAIGN_COOKIE, orderSourceFrom } from "@/lib/campaigns";
 import { metaCapiToken } from "@/server/store-secrets";
 import { sendCapiPurchase } from "@/server/meta-capi";
-import { newOrderCode } from "@/lib/ids";
 import { phoneOrderBlock } from "@/lib/order-spam";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
 import {
@@ -47,7 +46,10 @@ import { syncVariantTotals } from "@/server/inventory";
 import { getMerchantSession } from "@/server/auth";
 import { hostingServes, hostingState } from "@/lib/hosting";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
-import { CheckoutError, GOV_CODES, isGovernorate, cartItemsSchema, computeShipping, priceLines, validateDiscount } from "@/server/order-lines";
+import { nextOrderCode } from "@/server/order-seq";
+import { CheckoutError, GOV_CODES, cartItemsSchema, priceLines, quoteCart, type CartQuote } from "@/server/order-lines";
+import { isTeamPreview } from "@/server/store-preview";
+import type { OrderGift } from "@/db/schema/commerce";
 import { hostingGraceDays } from "@/server/hosting-grace";
 
 
@@ -55,62 +57,111 @@ export type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: string; field?: string };
 
+export type QuoteLine = {
+  key: string;
+  productId: string;
+  variantId?: string;
+  name: string;
+  unit: number;
+  qty: number;
+  net: number;
+  lineOff: number;
+  reason: "volume" | "bundle" | null;
+  isGift: boolean;
+};
+
+/** عرض سعر الخادم: هذه الأرقام هي الحقيقة، وما في السلة على الجهاز تقدير فقط. */
 export type Quote =
   | {
       ok: true;
+      lines: QuoteLine[];
+      gross: number;
+      /** مجموع الأسطر بعد خصم الكمية والطقم. */
       subtotal: number;
+      adjustments: { kind: "auto" | "coupon" | "prepaid"; label: string; amount: number }[];
+      discount: number;
+      afterDiscount: number;
       shipping: number | null;
       codFee: number;
-      discount: number;
-      total: number;
+      giftWrap: number;
+      total: number | null;
+      freeShipping: null | "coupon" | "threshold";
+      nudges: { kind: "gift" | "discount" | "free_shipping"; label: string; remainingPiasters: number }[];
       discountError?: string;
       shippingError?: string;
     }
   | { ok: false; error: string };
 
-const GENERIC_ERROR = "حدث خطأ أثناء تنفيذ طلبك، يرجى المحاولة ثانية";
+function toQuote(cq: CartQuote, extra: { shippingError?: string } = {}): Extract<Quote, { ok: true }> {
+  const r = cq.result;
+  return {
+    ok: true,
+    lines: r.lines.map((l) => ({
+      key: l.key,
+      productId: l.productId,
+      variantId: l.variantId ?? undefined,
+      name: l.name,
+      unit: l.unit,
+      qty: l.qty,
+      net: l.net,
+      lineOff: l.lineOff,
+      reason: l.lineOffReason,
+      isGift: l.isGift,
+    })),
+    gross: r.gross,
+    subtotal: r.subtotal,
+    adjustments: r.adjustments.map((x) => ({ kind: x.kind, label: x.label, amount: x.amount })),
+    discount: r.orderDiscount,
+    afterDiscount: r.afterDiscount,
+    shipping: r.shipping,
+    codFee: r.codFee,
+    giftWrap: r.giftWrap,
+    total: r.total,
+    freeShipping: r.freeShipping,
+    nudges: r.nudges,
+    discountError: cq.couponError,
+    shippingError: extra.shippingError,
+  };
+}
+
+const GENERIC_ERROR = "حدث خطأ أثناء تنفيذ طلبكم، يرجى المحاولة مرة أخرى";
 const IDEM_TTL_S = 900;
 const ORDER_CODE_ATTEMPTS = 3;
 
+const paymentMethodSchema = z.enum(["cod", "vodafone_cash", "instapay"]);
 
+const giftSchema = z.object({
+  wrap: z.boolean().default(false),
+  message: z.string().trim().max(200).optional(),
+  hidePrices: z.boolean().default(false),
+});
 
 const checkoutSchema = z.object({
-  name: z.string().trim().min(2, "اكتب اسمك الثلاثي").max(60),
+  name: z.string().trim().min(2, "اكتبوا الاسم بالكامل").max(60),
   phone: z.string().transform((v, ctx) => {
     const n = normalizeEgyptianPhone(v);
     if (!n)
       ctx.addIssue({
         code: "custom",
-        message: "رقم موبايل مصري غير صحيح (01xxxxxxxxx)",
+        message: "رقم موبايل مصري غير صحيح (مثال: 01012345678)",
       });
     return n ?? "";
   }),
-  email: z.string().email("بريد إلكتروني غير صحيح").optional().or(z.literal("")),
   altPhone: z
     .string()
     .optional()
-    .transform((v) =>
-      v ? normalizeEgyptianPhone(v) ?? undefined : undefined
-    ),
-  governorate: z.enum(GOV_CODES, { message: "اختر المحافظة" }),
+    .transform((v) => (v ? normalizeEgyptianPhone(v) ?? undefined : undefined)),
+  governorate: z.enum(GOV_CODES, { message: "اختاروا المحافظة" }),
   city: z.string().trim().max(60).optional(),
-  address: z
-    .string()
-    .trim()
-    .min(5, "اكتب اسم الشارع ورقم العمارة والشقة")
-    .max(300),
+  address: z.string().trim().min(5, "اكتبوا اسم الشارع ورقم العمارة والشقة").max(300),
   landmark: z.string().trim().max(120).optional(),
   notes: z.string().trim().max(300).optional(),
-  paymentMethod: z.enum(["cod", "vodafone_cash", "instapay"]),
+  paymentMethod: paymentMethodSchema,
   discountCode: z.string().trim().toUpperCase().max(20).optional(),
   transferSenderPhone: z.string().max(30).optional(),
-  transferScreenshotUrl: z
-    .string()
-    .max(500)
-    .refine(isTrustedUploadUrl, "رابط صورة التحويل غير صالح")
-    .optional(),
+  transferScreenshotUrl: z.string().max(500).refine(isTrustedUploadUrl, "رابط صورة التحويل غير صالح").optional(),
+  gift: giftSchema.optional(),
   items: cartItemsSchema,
-  visitorId: z.string().max(64).optional(),
   idempotencyKey: z.string().min(8).max(64).optional(),
 });
 
@@ -120,14 +171,7 @@ async function ip() {
   return clientIp(await headers());
 }
 
-
-
-
-
-export async function placeOrderAction(
-  subdomain: string,
-  raw: unknown
-): Promise<ActionResult<Done>> {
+export async function placeOrderAction(subdomain: string, raw: unknown): Promise<ActionResult<Done>> {
   const parsed = checkoutSchema.safeParse(raw);
   if (!parsed.success) {
     return {
@@ -137,44 +181,30 @@ export async function placeOrderAction(
     };
   }
   const input = parsed.data;
-
   const store = await getStoreBySubdomain(subdomain);
-  if (!store || !isStorePubliclyVisible(store) || !hostingServes(hostingState(store, new Date(), await hostingGraceDays().catch(() => undefined))))
+  // صاحب المتجر وفريقه (تمرير المالك) يجرّبون الشراء حتى قبل النشر؛ الزوار لا.
+  const teamPass = await isTeamPreview();
+  if (!store || (!teamPass && !isStorePubliclyVisible(store)) || (!teamPass && !hostingServes(hostingState(store, new Date(), await hostingGraceDays().catch(() => undefined)))))
     return { ok: false, error: "المتجر لا يستقبل طلبات حالياً" };
   const db = await getTenantDb(store.id);
-  if (!store.acceptingOrders)
-    return {
-      ok: false,
-      error: store.vacationMessage || "المتجر متوقف مؤقتاً عن استقبال الطلبات",
-    };
+  if (!store.acceptingOrders && !teamPass)
+    return { ok: false, error: store.vacationMessage || "المتجر متوقف مؤقتاً عن استقبال الطلبات" };
 
-  const idemKey = input.idempotencyKey
-    ? `idem:order:${store.id}:${input.idempotencyKey}`
-    : null;
+  const idemKey = input.idempotencyKey ? `idem:order:${store.id}:${input.idempotencyKey}` : null;
   if (idemKey) {
     let claimed = true;
     try {
-      claimed = !!(await redis.set(idemKey, "pending", {
-        nx: true,
-        ex: IDEM_TTL_S,
-      }));
+      claimed = !!(await redis.set(idemKey, "pending", { nx: true, ex: IDEM_TTL_S }));
     } catch {
       claimed = true;
     }
     if (!claimed) {
       const prev = await redis.get<Done | string>(idemKey).catch(() => null);
-      if (
-        prev &&
-        typeof prev === "object" &&
-        typeof (prev as Done).code === "string"
-      ) {
+      if (prev && typeof prev === "object" && typeof (prev as Done).code === "string") {
         await grantOrderAccess(store.id, (prev as Done).code);
         return { ok: true, data: prev as Done };
       }
-      return {
-        ok: false,
-        error: "طلبك قيد التنفيذ، يرجى الانتظار ثواني",
-      };
+      return { ok: false, error: "طلبكم قيد التنفيذ، يرجى الانتظار ثوانٍ" };
     }
   }
 
@@ -184,7 +214,7 @@ export async function placeOrderAction(
 
   if (!(await allow("checkout", await ip()))) {
     await release();
-    return { ok: false, error: "محاولات كثيرة في وقت قصير، انتظر دقائق" };
+    return { ok: false, error: "محاولات كثيرة في وقت قصير، يرجى الانتظار بضع دقائق" };
   }
 
   try {
@@ -192,76 +222,46 @@ export async function placeOrderAction(
     const pm = bp.payments;
     if (
       (input.paymentMethod === "cod" && !pm.cod.enabled) ||
-      (input.paymentMethod === "vodafone_cash" &&
-        !pm.vodafoneCash.enabled) ||
+      (input.paymentMethod === "vodafone_cash" && !pm.vodafoneCash.enabled) ||
       (input.paymentMethod === "instapay" && !pm.instapay.enabled)
     ) {
       throw new CheckoutError("وسيلة الدفع المختارة غير متاحة", "paymentMethod");
     }
+    const giftOn = Boolean(input.gift && (bp.shipping.giftEnabled ?? true) && (input.gift.wrap || input.gift.message || input.gift.hidePrices));
 
-    const { lines, subtotal } = await priceLines(store.id, input.items, bp);
+    const cq = await quoteCart(store.id, bp, {
+      items: input.items,
+      governorate: input.governorate,
+      paymentMethod: input.paymentMethod,
+      discountCode: input.discountCode,
+      phone: input.phone,
+      giftWrap: giftOn && input.gift!.wrap,
+    });
+    if (input.discountCode && cq.couponError) throw new CheckoutError(cq.couponError, "discountCode");
+    const r = cq.result;
+    if (r.total === null || r.shipping === null) throw new CheckoutError("اختاروا المحافظة أولاً", "governorate");
+    const total = r.total;
+    const subtotal = r.subtotal;
+    const shippingFee = r.shipping;
+    const codFee = r.codFee;
 
     const [existingCustomer] = await db
       .select({ isBlocked: customers.isBlocked })
       .from(customers)
-      .where(
-        and(
-          eq(customers.storeId, store.id),
-          eq(customers.phone, input.phone)
-        )
-      )
+      .where(and(eq(customers.storeId, store.id), eq(customers.phone, input.phone)))
       .limit(1);
-
     if (existingCustomer?.isBlocked) {
-      throw new CheckoutError(
-        "عذراً، تعذر إتمام الطلب، تواصل مع المتجر مباشرة"
-      );
+      throw new CheckoutError("عذراً، تعذر إتمام الطلب، يرجى التواصل مع المتجر مباشرة");
     }
 
-    let discountAmount = 0;
-    let discountCode: string | undefined;
-    let discountId: string | undefined;
-    let freeShip = false;
-
-    if (input.discountCode) {
-      const r = await validateDiscount(
-        store.id,
-        input.discountCode,
-        subtotal,
-        input.phone
-      );
-      if ("error" in r)
-        throw new CheckoutError(
-          r.error ?? "كود الخصم غير صالح",
-          "discountCode"
-        );
-      discountAmount = r.amount;
-      discountCode = r.discount.code;
-      discountId = r.discount.id;
-      freeShip = r.freeShipping;
-    }
-
-    const ship = freeShip
-      ? { fee: 0, codExtra: 0 }
-      : await computeShipping(
-          store.id,
-          bp,
-          input.governorate,
-          subtotal,
-          input.paymentMethod
-        );
-    const total =
-      Math.max(0, subtotal - discountAmount) + ship.fee + ship.codExtra;
     const now = new Date();
     // الطلب يُحفظ بجهاز العميل: يجده في «طلباتي» على نفس الجهاز دون حساب ولا رقم طلب.
     const deviceId = await ensureDeviceId(store.id);
-    // طلب صاحب المتجر من متجره (تجربة الشراء) = طلب تجريبي: يظهر في لوحته بشارة «تجريبي»، ولا يخصم المخزون ولا
-    // يُحسب في المبيعات ولا في عدد طلبات العميل والمنتج ولا في استخدام كود الخصم.
+    // طلب صاحب المتجر أو فريقه من متجره (تجربة الشراء) = طلب تجريبي: لا يخصم المخزون ولا يُحسب في المبيعات والعدادات.
     const owner = await getMerchantSession().catch(() => null);
-    const isTest = Boolean(owner?.stores.some((x) => x.id === store.id));
+    const isTest = teamPass || Boolean(owner?.stores.some((x) => x.id === store.id));
     const counted = isTest ? 0 : 1;
     if (!isTest) {
-      // حماية من الطلبات الوهمية المتكررة بنفس الرقم (lib/order-spam.ts).
       const [c] = await db
         .select({
           open: sql<number>`count(*) filter (where ${orders.status} in ('new','confirmed'))::int`,
@@ -272,18 +272,27 @@ export async function placeOrderAction(
       const blocked = phoneOrderBlock({ open: Number(c?.open ?? 0), lastDay: Number(c?.lastDay ?? 0) });
       if (blocked) throw new CheckoutError(blocked, "phone");
     }
-    const customerRef =
-      sql`(select ${customers.id} from ${customers} where ${customers.storeId} = ${store.id} and ${customers.phone} = ${input.phone})`;
+    const customerRef = sql`(select ${customers.id} from ${customers} where ${customers.storeId} = ${store.id} and ${customers.phone} = ${input.phone})`;
+    const giftData: OrderGift | null = giftOn ? { wrap: input.gift!.wrap, message: input.gift!.message || undefined, hidePrices: input.gift!.hidePrices } : null;
+
+    // أسطر الطلب: المنتجات بخصم كل سطر، ثم الهدايا المجانية (بسعر صفر).
+    const productLines = r.lines.filter((l) => !l.isGift);
+    const giftLines = r.lines.filter((l) => l.isGift);
+    const lineOf = new Map(cq.lines.map((l, i) => [cq.engineKeys[i]!, l]));
+    const giftIds = [...new Set(giftLines.map((g) => g.productId))];
+    const giftRows = giftIds.length ? await db.select().from(products).where(and(eq(products.storeId, store.id), inArray(products.id, giftIds))) : [];
+    const couponUsed = cq.couponRow && !cq.couponError ? cq.couponRow : null;
+    const usedDiscountIds = [...cq.autoIds.filter((id) => r.adjustments.some((a) => a.id === id)), ...(couponUsed ? [couponUsed.id] : [])];
 
     let orderId = "";
     let code = "";
 
     for (let attempt = 1; ; attempt++) {
       orderId = crypto.randomUUID();
-      code = newOrderCode();
+      code = await nextOrderCode(store.id, bp.invoice.orderPrefix);
 
       try {
-        const stockLines = isTest ? [] : lines.filter((l) => l.p.trackStock);
+        const stockLines = isTest ? [] : cq.lines.filter((l) => l.p.trackStock);
         const variantProducts = [...new Set(stockLines.filter((l) => l.v && l.v.stock !== null).map((l) => l.p.id))];
         await db.batch([
           db
@@ -292,7 +301,6 @@ export async function placeOrderAction(
               storeId: store.id,
               phone: input.phone,
               name: input.name,
-              email: input.email || null,
               altPhone: input.altPhone,
               governorate: input.governorate,
               city: input.city,
@@ -305,7 +313,6 @@ export async function placeOrderAction(
               target: [customers.storeId, customers.phone],
               set: {
                 name: input.name,
-                email: input.email || null,
                 address: input.address,
                 governorate: input.governorate,
                 city: input.city,
@@ -324,7 +331,6 @@ export async function placeOrderAction(
             code,
             customerName: input.name,
             customerPhone: input.phone,
-            customerEmail: input.email || null,
             customerAltPhone: input.altPhone,
             governorate: input.governorate,
             city: input.city,
@@ -332,128 +338,124 @@ export async function placeOrderAction(
             landmark: input.landmark,
             customerNotes: input.notes,
             subtotalPiasters: subtotal,
-            shippingPiasters: ship.fee,
-            codFeePiasters: ship.codExtra,
-            discountPiasters: discountAmount,
-            discountCode,
+            shippingPiasters: shippingFee,
+            codFeePiasters: codFee,
+            discountPiasters: r.orderDiscount,
+            discountCode: couponUsed?.code,
             totalPiasters: total,
             paymentMethod: input.paymentMethod,
-            paymentStatus:
-              input.paymentMethod === "cod" ? "pending" : "under_review",
-            transferSenderPhone: input.transferSenderPhone || null,
-            transferScreenshotUrl: input.transferScreenshotUrl || null,
+            paymentStatus: input.paymentMethod === "cod" ? "pending" : "under_review",
+            transferSenderPhone: input.paymentMethod === "cod" ? null : input.transferSenderPhone || input.phone,
+            transferScreenshotUrl: input.paymentMethod === "cod" ? null : input.transferScreenshotUrl || null,
             statusHistory: [{ status: "new", at: now.toISOString() }],
             source: orderSourceFrom((await cookies()).get(CAMPAIGN_COOKIE)?.value, bp.campaigns),
             visitorId: deviceId,
             idempotencyKey: input.idempotencyKey,
+            gift: giftData,
             isTest,
           }),
 
-          db.insert(orderItems).values(
-            lines.map((l) => ({
-              orderId,
-              storeId: store.id,
-              productId: l.p.id,
-              variantId: l.v?.id,
-              name: l.p.name,
-              variantLabel: l.v?.optionValues.join(" / "),
-              imageUrl: l.v?.imageUrl ?? l.p.images[0]?.url,
-              unitPiasters: l.unit,
-              quantity: l.qty,
-              totalPiasters: l.total,
-            }))
-          ),
+          db.insert(orderItems).values([
+            ...productLines.map((o) => {
+              const l = lineOf.get(o.key)!;
+              return {
+                orderId,
+                storeId: store.id,
+                productId: l.p.id,
+                variantId: l.v?.id,
+                name: l.p.name,
+                variantLabel: l.v?.optionValues.join(" / "),
+                imageUrl: l.v?.imageUrl ?? l.p.images[0]?.url,
+                unitPiasters: o.unit,
+                quantity: o.qty,
+                totalPiasters: o.net,
+                discountPiasters: o.lineOff,
+              };
+            }),
+            ...giftLines.map((g) => {
+              const p = giftRows.find((x) => x.id === g.productId);
+              return {
+                orderId,
+                storeId: store.id,
+                productId: g.productId,
+                name: `هدية: ${g.name}`,
+                imageUrl: p?.images[0]?.url,
+                unitPiasters: 0,
+                quantity: 1,
+                totalPiasters: 0,
+                discountPiasters: 0,
+              };
+            }),
+          ]),
 
-          ...(isTest ? [] : lines).map((l) =>
+          ...(isTest ? [] : cq.lines).map((l) =>
             db
               .update(products)
               .set({
                 orderCount: sql`${products.orderCount} + ${l.qty}`,
-                ...(l.p.trackStock && !l.v && l.p.stock !== null
-                  ? { stock: sql`${products.stock} - ${l.qty}` }
-                  : {}),
+                ...(l.p.trackStock && !l.v && l.p.stock !== null ? { stock: sql`${products.stock} - ${l.qty}` } : {}),
               })
               .where(eq(products.id, l.p.id))
           ),
 
+          ...(isTest ? [] : giftRows)
+            .filter((p) => p.trackStock && p.stock !== null)
+            .map((p) => db.update(products).set({ stock: sql`${products.stock} - 1` }).where(eq(products.id, p.id))),
+
           ...stockLines
             .filter((l) => l.v && l.v.stock !== null)
-            .map((l) =>
-              db
-                .update(productVariants)
-                .set({
-                  stock: sql`${productVariants.stock} - ${l.qty}`,
-                })
-                .where(eq(productVariants.id, l.v!.id))
-            ),
+            .map((l) => db.update(productVariants).set({ stock: sql`${productVariants.stock} - ${l.qty}` }).where(eq(productVariants.id, l.v!.id))),
 
           // مخزون المنتج ذي التركيبات = مجموع تركيباته بعد الخصم (وإلا يبقى رقمه القديم ويخفي النفاد).
           ...(variantProducts.length ? [syncVariantTotals(db, store.id, variantProducts)] : []),
 
-          ...(discountId && !isTest
-            ? [
-                db
-                  .update(discounts)
-                  .set({ usedCount: sql`${discounts.usedCount} + 1` })
-                  .where(eq(discounts.id, discountId)),
-              ]
+          ...(!isTest
+            ? usedDiscountIds.map((id) => db.update(discounts).set({ usedCount: sql`${discounts.usedCount} + 1` }).where(eq(discounts.id, id)))
             : []),
 
-          ...(input.visitorId
-            ? [
-                db
-                  .update(abandonedCarts)
-                  .set({ recoveredOrderId: orderId })
-                  .where(
-                    and(
-                      eq(abandonedCarts.storeId, store.id),
-                      eq(abandonedCarts.visitorId, input.visitorId)
-                    )
-                  ),
-              ]
-            : []),
+          // السلة المتروكة تُعدّ مستردة إن أُتم الطلب من نفس الجهاز أو بنفس الرقم.
+          db
+            .update(abandonedCarts)
+            .set({ recoveredOrderId: orderId })
+            .where(
+              and(
+                eq(abandonedCarts.storeId, store.id),
+                isNull(abandonedCarts.recoveredOrderId),
+                or(eq(abandonedCarts.visitorId, deviceId), eq(abandonedCarts.phone, input.phone))
+              )
+            ),
         ]);
         break;
       } catch (e) {
         const info = dbErrorInfo(e);
-        if (
-          info.code === PG_UNIQUE &&
-          info.constraint?.includes("orders_store_code_uq") &&
-          attempt < ORDER_CODE_ATTEMPTS
-        ) {
-          continue;
-        }
+        if (info.code === PG_UNIQUE && info.constraint?.includes("orders_store_code_uq") && attempt < ORDER_CODE_ATTEMPTS) continue;
         if (info.code === PG_CHECK && info.constraint?.includes("stock")) {
-          throw new CheckoutError(
-            "عذراً، نفدت كمية أحد المنتجات قبل إتمام طلبك بقليل، يرجى مراجعة السلة"
-          );
+          throw new CheckoutError("عذراً، نفدت كمية أحد المنتجات قبل إتمام الطلب بقليل، يرجى مراجعة السلة");
         }
         if (info.code === PG_CHECK && info.constraint?.includes("discounts")) {
-          throw new CheckoutError(
-            "تم استهلاك كود الخصم بالكامل أثناء إتمام الطلب",
-            "discountCode"
-          );
+          throw new CheckoutError("تم استهلاك الخصم بالكامل أثناء إتمام الطلب، يرجى مراجعة الإجمالي", "discountCode");
         }
         throw e;
       }
     }
 
     const done: Done = { code, total };
-    if (idemKey)
-      await redis.set(idemKey, done, { ex: IDEM_TTL_S }).catch(() => {});
+    if (idemKey) await redis.set(idemKey, done, { ex: IDEM_TTL_S }).catch(() => {});
     await grantOrderAccess(store.id, code);
 
-    // إطلاق حدث Pusher للتاجر — fire-and-forget.
-    void emitOrderCreated(store.id, {
-      orderId,
-      code,
-      customerName: input.name,
-      governorate: governorateName(input.governorate),
-      totalPiasters: total,
-      itemsCount: lines.reduce((a, l) => a + l.qty, 0),
-      paymentMethod: input.paymentMethod,
-      createdAt: now.toISOString(),
-    });
+    // إطلاق حدث Pusher للتاجر — fire-and-forget (الطلب التجريبي بلا نغمة).
+    if (!isTest) {
+      void emitOrderCreated(store.id, {
+        orderId,
+        code,
+        customerName: input.name,
+        governorate: governorateName(input.governorate),
+        totalPiasters: total,
+        itemsCount: cq.lines.reduce((a, l) => a + l.qty, 0),
+        paymentMethod: input.paymentMethod,
+        createdAt: now.toISOString(),
+      });
+    }
 
     // «شراء» لميتا من الخادم (إن وضع التاجر البكسل ورمز الواجهة): بنفس معرّف حدث البكسل في المتصفح (رقم الطلب).
     const pixelId = isTest ? null : cleanMetaPixel(bp.seo?.metaPixelId);
@@ -465,10 +467,10 @@ export async function placeOrderAction(
         pixelId,
         orderCode: code,
         totalPiasters: total,
-        contentIds: [...new Set(lines.map((l) => l.p.id))],
-        numItems: lines.reduce((a, l) => a + l.qty, 0),
+        contentIds: [...new Set(cq.lines.map((l) => l.p.id))],
+        numItems: cq.lines.reduce((a, l) => a + l.qty, 0),
         phone: input.phone,
-        email: input.email,
+        email: undefined,
         name: input.name,
         city: input.city,
         externalId: deviceId,
@@ -486,140 +488,85 @@ export async function placeOrderAction(
     }
 
     // بريد «طلب جديد» للتاجر خارج مسار استجابة الطلب (لا بريد لزبائن التاجر).
-    after(async () => {
-      try {
-        const [m] = await platformDb
-          .select({ email: merchants.email })
-          .from(merchants)
-          .where(eq(merchants.id, store.merchantId))
-          .limit(1);
-
-        if (m?.email) {
-          await sendMerchantNewOrderEmail({
-            merchantEmail: m.email,
-            storeName: bp.brand.name,
-            storeSubdomain: store.subdomain,
-            storeId: store.id,
-            merchantId: store.merchantId,
-            orderCode: code,
-            customerName: input.name,
-            totalAmount: formatEgp(total),
-            governorate: governorateName(input.governorate),
-            adminOrderUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard/orders/${orderId}`,
-          });
+    if (!isTest) {
+      after(async () => {
+        try {
+          const [m] = await platformDb.select({ email: merchants.email }).from(merchants).where(eq(merchants.id, store.merchantId)).limit(1);
+          if (m?.email) {
+            await sendMerchantNewOrderEmail({
+              merchantEmail: m.email,
+              storeName: bp.brand.name,
+              storeSubdomain: store.subdomain,
+              storeId: store.id,
+              merchantId: store.merchantId,
+              orderCode: code,
+              customerName: input.name,
+              totalAmount: formatEgp(total),
+              governorate: governorateName(input.governorate),
+              adminOrderUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard/orders/${orderId}`,
+            });
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[checkout] post-order emails failed:", err);
         }
-      } catch (err) {
-        // eslint-disable-next-line no-console
-        console.error("[checkout] post-order emails failed:", err);
-      }
-    });
+      });
+    }
 
     return { ok: true, data: done };
   } catch (e) {
     await release();
-    if (e instanceof CheckoutError)
-      return { ok: false, error: e.message, field: e.field };
+    if (e instanceof CheckoutError) return { ok: false, error: e.message, field: e.field };
     // eslint-disable-next-line no-console
     console.error("[checkout] placeOrder failed:", e);
     return { ok: false, error: GENERIC_ERROR };
   }
 }
 
-export async function quoteAction(
-  subdomain: string,
-  raw: unknown
-): Promise<Quote> {
+export async function quoteAction(subdomain: string, raw: unknown): Promise<Quote> {
   const parsed = z
     .object({
       items: cartItemsSchema,
       governorate: z.string().max(40).default(""),
-      paymentMethod: z.enum(["cod", "vodafone_cash", "instapay"]),
+      paymentMethod: paymentMethodSchema,
       discountCode: z.string().trim().toUpperCase().max(20).optional(),
       phone: z.string().max(30).optional(),
+      giftWrap: z.boolean().optional(),
     })
     .safeParse(raw);
 
-  if (!parsed.success)
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? GENERIC_ERROR,
-    };
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? GENERIC_ERROR };
   const input = parsed.data;
-  if (!(await allow("quote", await ip())))
-    return { ok: false, error: "محاولات كثيرة، انتظر لحظة" };
+  if (!(await allow("quote", await ip()))) return { ok: false, error: "محاولات كثيرة، يرجى الانتظار لحظة" };
 
   try {
     const store = await getStoreBySubdomain(subdomain);
     if (!store) return { ok: false, error: "المتجر لا يستقبل طلبات حالياً" };
     const bp = await getBlueprint(store.id);
-    const { subtotal } = await priceLines(store.id, input.items, bp);
-
-    let discount = 0;
-    let discountError: string | undefined;
-    let freeShip = false;
-
-    if (input.discountCode) {
-      const r = await validateDiscount(
-        store.id,
-        input.discountCode,
-        subtotal,
-        normalizeEgyptianPhone(input.phone) ?? ""
-      );
-      if ("error" in r) discountError = r.error;
-      else {
-        discount = r.amount;
-        freeShip = r.freeShipping;
-      }
-    }
-
-    let shipping: number | null = null;
-    let codFee = 0;
-    let shippingError: string | undefined;
-
-    if (isGovernorate(input.governorate)) {
-      if (freeShip) shipping = 0;
-      else {
-        try {
-          const s = await computeShipping(
-            store.id,
-            bp,
-            input.governorate,
-            subtotal,
-            input.paymentMethod
-          );
-          shipping = s.fee;
-          codFee = s.codExtra;
-        } catch (e) {
-          if (!(e instanceof CheckoutError)) throw e;
-          shippingError = e.message;
-        }
-      }
-    }
-
-    return {
-      ok: true,
-      subtotal,
-      shipping,
-      codFee,
-      discount,
-      total: Math.max(0, subtotal - discount) + (shipping ?? 0) + codFee,
-      discountError,
-      shippingError,
+    const base = {
+      items: input.items,
+      paymentMethod: input.paymentMethod,
+      discountCode: input.discountCode,
+      phone: normalizeEgyptianPhone(input.phone) ?? "",
+      giftWrap: Boolean(input.giftWrap && (bp.shipping.giftEnabled ?? true)),
     };
+    try {
+      return toQuote(await quoteCart(store.id, bp, { ...base, governorate: input.governorate || undefined }));
+    } catch (e) {
+      // محافظة غير مخدومة: السلة تُسعَّر بلا شحن مع شرح السبب.
+      if (e instanceof CheckoutError && e.field === "governorate") return toQuote(await quoteCart(store.id, bp, base), { shippingError: e.message });
+      throw e;
+    }
   } catch (e) {
     if (e instanceof CheckoutError) return { ok: false, error: e.message };
     return { ok: false, error: GENERIC_ERROR };
   }
 }
 
-export async function saveAbandonedAction(
-  subdomain: string,
-  raw: unknown
-): Promise<void> {
+export async function saveAbandonedAction(subdomain: string, raw: unknown): Promise<void> {
   try {
     const parsed = z
       .object({
-        visitorId: z.string().min(8).max(64),
         phone: z.string().max(30),
         name: z.string().trim().max(60).optional(),
         items: cartItemsSchema,
@@ -633,11 +580,10 @@ export async function saveAbandonedAction(
     const store = await getStoreBySubdomain(subdomain);
     if (!store) return;
     const db = await getTenantDb(store.id);
+    // هوية الجهاز من الخادم (لا قيمة يرسلها المتصفح).
+    const deviceId = await ensureDeviceId(store.id);
 
-    const { lines, subtotal } = await priceLines(
-      store.id,
-      parsed.data.items
-    );
+    const { lines, subtotal } = await priceLines(store.id, parsed.data.items);
     const items = lines.map((l) => ({
       productId: l.p.id,
       variantId: l.v?.id,
@@ -649,14 +595,7 @@ export async function saveAbandonedAction(
 
     await db
       .insert(abandonedCarts)
-      .values({
-        storeId: store.id,
-        visitorId: parsed.data.visitorId,
-        phone,
-        name: parsed.data.name || undefined,
-        items,
-        subtotalPiasters: subtotal,
-      })
+      .values({ storeId: store.id, visitorId: deviceId, phone, name: parsed.data.name || undefined, items, subtotalPiasters: subtotal })
       .onConflictDoUpdate({
         target: [abandonedCarts.storeId, abandonedCarts.visitorId],
         set: {
@@ -664,79 +603,57 @@ export async function saveAbandonedAction(
           name: parsed.data.name || undefined,
           items,
           subtotalPiasters: subtotal,
+          // سلة جديدة بعد طلب مكتمل تبدأ من جديد (وإلا بقيت «مستردة» فلا تظهر للتاجر أبداً).
+          recoveredOrderId: null,
+          whatsappContactedAt: null,
           lastSeenAt: new Date(),
         },
       });
-
-    // حدث Pusher: سلة متروكة.
-    void emitCartAbandoned(store.id, {
-      cartId: parsed.data.visitorId,
-      customerName: parsed.data.name ?? "زائر",
-      phone,
-      subtotalPiasters: subtotal,
-      itemsCount: items.reduce((a, i) => a + i.qty, 0),
-      lastSeenAt: new Date().toISOString(),
-    });
   } catch {
     /* silent */
   }
 }
 
 const transferProofSchema = z.object({
-  code: z.string().trim().min(1, "كود الطلب مطلوب"),
+  code: z.string().trim().min(1, "رقم الطلب مطلوب"),
   senderPhone: z.string().transform((v, ctx) => {
     const n = normalizeEgyptianPhone(v);
-    if (!n)
-      ctx.addIssue({
-        code: "custom",
-        message: "رقم موبايل مصري غير صحيح",
-      });
+    if (!n) ctx.addIssue({ code: "custom", message: "رقم موبايل مصري غير صحيح" });
     return n ?? "";
   }),
   screenshotUrl: z.string().max(500).refine(isTrustedUploadUrl, "رابط صورة التحويل غير صحيح"),
   accessPhone: z.string().optional(),
 });
 
-export async function submitTransferProofAction(
-  subdomain: string,
-  raw: unknown
-): Promise<ActionResult<{ success: true }>> {
+export async function submitTransferProofAction(subdomain: string, raw: unknown): Promise<ActionResult<{ success: true }>> {
   const parsed = transferProofSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]!.message };
-  }
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]!.message };
   const input = parsed.data;
 
   try {
     const store = await getStoreBySubdomain(subdomain);
     if (!store) return { ok: false, error: "المتجر غير موجود" };
-      const db = await getTenantDb(store.id);
+    const db = await getTenantDb(store.id);
 
     const [order] = await db
       .select()
       .from(orders)
-      .where(
-        and(eq(orders.storeId, store.id), eq(orders.code, input.code))
-      )
+      .where(and(eq(orders.storeId, store.id), eq(orders.code, input.code.toUpperCase())))
       .limit(1);
-
     if (!order) return { ok: false, error: "الطلب غير موجود" };
 
-    const hasAccess = await hasOrderAccess(store.id, input.code, order.visitorId);
-    const normalizedAccessPhone = input.accessPhone
-      ? normalizeEgyptianPhone(input.accessPhone)
-      : null;
-    const phoneMatches =
-      normalizedAccessPhone && order.customerPhone === normalizedAccessPhone;
+    const hasAccess = await hasOrderAccess(store.id, order.code, order.visitorId);
+    const normalizedAccessPhone = input.accessPhone ? normalizeEgyptianPhone(input.accessPhone) : null;
+    const phoneMatches = normalizedAccessPhone && order.customerPhone === normalizedAccessPhone;
+    if (!hasAccess && !phoneMatches) return { ok: false, error: "غير مصرح بتحديث هذا الطلب" };
 
-    if (!hasAccess && !phoneMatches) {
-      return { ok: false, error: "غير مصرح لك بتحديث هذا الطلب" };
-    }
+    // الإيصال للتحويل فقط، وقبل التأكيد: الطلب عند الاستلام أو المؤكد دفعه أو الملغي لا يقبل إيصالاً.
+    if (order.paymentMethod === "cod") return { ok: false, error: "هذا الطلب بالدفع عند الاستلام ولا يحتاج إيصالاً" };
+    if (order.paymentStatus === "confirmed" || order.paymentStatus === "refunded") return { ok: false, error: "تم تأكيد دفع هذا الطلب بالفعل" };
+    if (order.status === "cancelled" || order.status === "returned") return { ok: false, error: "هذا الطلب لم يعد قائماً" };
 
     const now = new Date();
-    const history = Array.isArray(order.statusHistory)
-      ? [...order.statusHistory]
-      : [];
+    const history = Array.isArray(order.statusHistory) ? [...order.statusHistory] : [];
     history.push({ status: "proof_submitted", at: now.toISOString() });
 
     await db
@@ -748,15 +665,12 @@ export async function submitTransferProofAction(
         statusHistory: history,
         updatedAt: now,
       })
-      .where(eq(orders.id, order.id));
+      .where(and(eq(orders.id, order.id), eq(orders.storeId, store.id)));
 
     return { ok: true, data: { success: true } };
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[checkout] submitTransferProof failed:", e);
-    return {
-      ok: false,
-      error: "تعذّر إرسال إثبات الدفع، يرجى المحاولة لاحقاً",
-    };
+    return { ok: false, error: "تعذّر إرسال إثبات الدفع، يرجى المحاولة لاحقاً" };
   }
 }

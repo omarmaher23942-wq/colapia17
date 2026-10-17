@@ -11,10 +11,11 @@ import { customers, orderItems, orders, products, productVariants } from "@/db/s
 import { storeFor } from "@/server/merchant-guard";
 import { getBlueprint } from "@/lib/tenant";
 import { normalizeEgyptianPhone } from "@/lib/phone";
-import { newOrderCode } from "@/lib/ids";
+import { priceCart } from "@/lib/pricing/engine";
 import { syncVariantTotals } from "@/server/inventory";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
 import { CHAT_SOURCES, CHAT_SOURCE_LABEL, manualSource } from "@/lib/manual-order";
+import { nextOrderCode } from "@/server/order-seq";
 import { CheckoutError, GOV_CODES, computeShipping, priceLines } from "@/server/order-lines";
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: string; field?: string };
@@ -132,7 +133,18 @@ export async function createManualOrderAction(raw: unknown): Promise<Result<{ id
         l.total = l.unit * l.qty;
       }
     }
-    const subtotal = lines.reduce((a, l) => a + l.total, 0);
+    // نفس محرك تسعير المتجر: أسعار الكمية على الأصناف بسعرها الأصلي فقط (السعر الخاص لا يُخصم مرتين).
+    const special = new Set(lines.filter((l) => input.items.some((i) => i.productId === l.p.id && (i.variantId ?? null) === (l.v?.id ?? null) && i.unitPiasters !== undefined)));
+    const priced = priceCart({
+      lines: lines.map((l, i) => ({ key: String(i), productId: l.p.id, variantId: l.v?.id, categoryId: l.p.categoryId, name: l.p.name, unit: l.unit, qty: l.qty, volumeTiers: special.has(l) ? [] : l.p.volumeTiers })),
+      paymentMethod: input.paymentMethod,
+      shipping: null,
+    });
+    lines.forEach((l, i) => {
+      l.total = priced.lines[i]!.net;
+      l.bundleOff = priced.lines[i]!.lineOff;
+    });
+    const subtotal = priced.subtotal;
     const discount = Math.min(input.discountPiasters, subtotal);
     let ship: { fee: number; codExtra: number };
     if (input.shippingPiasters !== undefined) ship = { fee: input.shippingPiasters, codExtra: 0 };
@@ -154,7 +166,7 @@ export async function createManualOrderAction(raw: unknown): Promise<Result<{ id
 
     for (let attempt = 1; ; attempt++) {
       const id = crypto.randomUUID();
-      const code = newOrderCode();
+      const code = await nextOrderCode(storeId, (await getBlueprint(storeId)).invoice.orderPrefix);
       try {
         await db.batch([
           db
@@ -221,6 +233,7 @@ export async function createManualOrderAction(raw: unknown): Promise<Result<{ id
               unitPiasters: l.unit,
               quantity: l.qty,
               totalPiasters: l.total,
+              discountPiasters: l.bundleOff,
             }))
           ),
           ...lines.map((l) =>

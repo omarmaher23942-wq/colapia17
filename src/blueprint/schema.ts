@@ -468,6 +468,8 @@ export const paymentsSchema = z.object({
   instapay: z.object({ enabled: z.boolean().default(false), address: z.string().max(80).optional(), number: z.string().regex(/^01[0125]\d{8}$/).optional(), holderName: z.string().max(60).optional() }),
   requireTransferProof: z.boolean().default(true),
   transferInstructions: z.string().max(400).optional(),
+  // خصم الدفع المسبق: نسبة من المجموع لمن يدفع بفودافون كاش أو إنستاباي (0 = لا خصم).
+  prepaidDiscountPercent: z.number().int().min(0).max(30).optional(),
 });
 
 export const shippingSchema = z.object({
@@ -478,6 +480,9 @@ export const shippingSchema = z.object({
   pickupAddress: z.string().max(200).optional(),
   // سياسة المعاينة قبل الدفع: تحكم شارة "معاينة قبل الدفع" في صفحة المنتج والـ checkout.
   inspectionAllowed: z.boolean().default(true),
+  // خيار الهدية في الدفع: تغليف برسوم اختيارية ورسالة، وإخفاء الأسعار من الفاتورة والبوليصة.
+  giftEnabled: z.boolean().optional(),
+  giftWrapPiasters: z.number().int().min(0).max(100000).optional(),
 });
 
 // سياسة الاستبدال والاسترجاع كبيانات: تُولَّد منها صفحة "الاستبدال والاسترجاع" وشارات الثقة.
@@ -577,6 +582,8 @@ export const invoiceSchema = z.object({
   accentColor: hex.optional(),
   paperSize: z.enum(["A5", "A4", "thermal80"]).default("A5"),
   showPrices: z.boolean().default(true),
+  // بادئة رقم الطلب (الافتراضية #): الرقم تسلسل المتجر نفسه.
+  orderPrefix: z.string().max(6).optional(),
 });
 
 export const brandSchema = z.object({

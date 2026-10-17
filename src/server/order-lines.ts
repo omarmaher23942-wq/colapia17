@@ -5,6 +5,8 @@ import "server-only";
 import { z } from "zod";
 import { and, eq, ne, sql, inArray, isNull } from "drizzle-orm";
 import type { StoreBlueprint } from "@/blueprint/schema";
+import { priceCart, type AutoRule, type CouponDef, type EngineInput, type EngineResult, type GiftProduct, type PayMethod } from "@/lib/pricing/engine";
+import { autoRuleLabel } from "@/lib/discounts";
 import { applyBundleDiscounts } from "@/server/pricing/bundles";
 import { getTenantDb } from "@/db/tenant";
 import { orders, products, productVariants, discounts, shippingZones } from "@/db/schema";
@@ -42,6 +44,8 @@ export type PricedLine = {
   qty: number;
   unit: number;
   total: number;
+  /** خصم الطقم على هذا السطر (قروش)؛ المحرك يطبّقه مع أسعار الكمية. */
+  bundleOff: number;
 };
 
 export async function priceLines(
@@ -112,10 +116,17 @@ export async function priceLines(
       );
     }
     const unit = v?.pricePiasters ?? p.pricePiasters;
-    return { p, v, qty: i.qty, unit, total: unit * i.qty };
+    return { p, v, qty: i.qty, unit, total: unit * i.qty, bundleOff: 0 };
   });
 
-  if (bp) applyBundleDiscounts(lines, input, bp);
+  if (bp) {
+    applyBundleDiscounts(lines, input, bp);
+    // خصم الطقم يُنقل إلى bundleOff ويبقى total سعر السطر قبل الخصم: المحرك (lib/pricing) هو من يخصم.
+    for (const l of lines) {
+      l.bundleOff = Math.max(0, l.unit * l.qty - l.total);
+      l.total = l.unit * l.qty;
+    }
+  }
   return { lines, subtotal: lines.reduce((a, l) => a + l.total, 0) };
 }
 
@@ -153,68 +164,135 @@ export async function computeShipping(
   return { fee: Math.max(0, z.feePiasters), codExtra };
 }
 
-export async function validateDiscount(
+/** شحن المحافظة: يتحقق دائماً من المنطقة (حتى مع الشحن الموحد أو كود الشحن المجاني) ويعيد الرسم الأساسي ورسوم الاستلام. */
+export async function resolveShipping(
   storeId: string,
-  code: string,
-  subtotal: number,
-  phone: string
-) {
+  bp: { shipping: { flatRatePiasters: number | null } },
+  governorate: string,
+  method: string
+): Promise<{ baseFee: number; codExtra: number }> {
   const db = await getTenantDb(storeId);
-  const [d] = await db
+  if (!isGovernorate(governorate)) throw new CheckoutError("اختاروا المحافظة أولاً", "governorate");
+  const [z] = await db
     .select()
-    .from(discounts)
-    .where(
-      and(
-        eq(discounts.storeId, storeId),
-        eq(discounts.code, code),
-        eq(discounts.isActive, true)
-      )
-    )
+    .from(shippingZones)
+    .where(and(eq(shippingZones.storeId, storeId), eq(shippingZones.governorate, governorate)))
     .limit(1);
-
-  if (!d) return { error: "كود الخصم غير صحيح" } as const;
-  const now = Date.now();
-  if (d.startsAt && d.startsAt.getTime() > now)
-    return { error: "كود الخصم لم يبدأ بعد" } as const;
-  if (d.endsAt && d.endsAt.getTime() < now)
-    return { error: "كود الخصم منتهي الصلاحية" } as const;
-  if (d.maxUses && d.usedCount >= d.maxUses)
-    return { error: "تم استهلاك كود الخصم بالكامل" } as const;
-  if (d.minSubtotalPiasters && subtotal < d.minSubtotalPiasters) {
-    return {
-      error: `الحد الأدنى لتطبيق الخصم هو ${
-        d.minSubtotalPiasters / 100
-      } ج.م`,
-    } as const;
-  }
-  if (d.perCustomerLimit && phone) {
-    const [row] = await db
-      .select({ c: sql<number>`count(*)`.mapWith(Number) })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.storeId, storeId),
-          eq(orders.customerPhone, phone),
-          eq(orders.discountCode, code),
-          // الطلب الملغي لا يستهلك حق العميل في الكود.
-          ne(orders.status, "cancelled")
-        )
-      );
-    if ((row?.c ?? 0) >= d.perCustomerLimit)
-      return { error: "استخدمت هذا الكود من قبل بالفعل" } as const;
-  }
-
-  const amount =
-    d.type === "percentage"
-      ? Math.min(
-          subtotal,
-          Math.round(
-            (subtotal * Math.min(100, Math.max(0, d.value))) / 100
-          )
-        )
-      : d.type === "fixed"
-      ? Math.min(Math.max(0, d.value), subtotal)
-      : 0;
-
-  return { discount: d, amount, freeShipping: d.type === "free_shipping" } as const;
+  if (z && !z.isActive) throw new CheckoutError("الشحن غير متوفر لهذه المحافظة حالياً", "governorate");
+  if (!z && bp.shipping.flatRatePiasters === null) throw new CheckoutError("الشحن غير متوفر لهذه المحافظة حالياً", "governorate");
+  return {
+    baseFee: bp.shipping.flatRatePiasters ?? Math.max(0, z?.feePiasters ?? 0),
+    codExtra: method === "cod" ? Math.max(0, z?.codExtraPiasters ?? 0) : 0,
+  };
 }
+
+type DiscountRow = typeof discounts.$inferSelect;
+
+/** الخصومات الجارية الآن (تلقائية وكود) بعد فحص الوقت والاستهلاك؛ والكود يُفحص أيضاً لكل رقم موبايل. */
+export async function loadDiscountContext(
+  storeId: string,
+  code: string | undefined,
+  phone: string
+): Promise<{ autoRules: AutoRule[]; autoIds: string[]; coupon: CouponDef | null; couponRow: DiscountRow | null; couponError?: string; giftProducts: Record<string, GiftProduct> }> {
+  const db = await getTenantDb(storeId);
+  const now = Date.now();
+  const rows = await db.select().from(discounts).where(and(eq(discounts.storeId, storeId), eq(discounts.isActive, true)));
+  const live = (d: DiscountRow) =>
+    (!d.startsAt || d.startsAt.getTime() <= now) && (!d.endsAt || d.endsAt.getTime() >= now) && (!d.maxUses || d.usedCount < d.maxUses);
+
+  const autos = rows.filter((d) => d.isAutoApply && d.rule && live(d));
+  const autoRules: AutoRule[] = autos.map((d) => ({ id: d.id, label: autoRuleLabel(d.rule!), rule: d.rule!, scope: d.scope }));
+
+  const giftIds = [...new Set(autos.flatMap((d) => (d.rule!.type === "free_gift" ? [d.rule!.productId] : [])))];
+  const giftProducts: Record<string, GiftProduct> = {};
+  if (giftIds.length) {
+    const gp = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.storeId, storeId), inArray(products.id, giftIds), eq(products.status, "active"), isNull(products.deletedAt)));
+    for (const p of gp) giftProducts[p.id] = { productId: p.id, name: p.name, available: !p.trackStock || p.stock === null || p.stock > 0 };
+  }
+
+  let coupon: CouponDef | null = null;
+  let couponRow: DiscountRow | null = null;
+  let couponError: string | undefined;
+  if (code) {
+    const d = rows.find((x) => x.code === code && !x.isAutoApply);
+    if (!d) couponError = "كود الخصم غير صحيح";
+    else if (d.startsAt && d.startsAt.getTime() > now) couponError = "كود الخصم لم يبدأ بعد";
+    else if (d.endsAt && d.endsAt.getTime() < now) couponError = "كود الخصم منتهي الصلاحية";
+    else if (d.maxUses && d.usedCount >= d.maxUses) couponError = "تم استهلاك كود الخصم بالكامل";
+    else {
+      if (d.perCustomerLimit && phone) {
+        const [row] = await db
+          .select({ c: sql<number>`count(*)`.mapWith(Number) })
+          .from(orders)
+          .where(and(eq(orders.storeId, storeId), eq(orders.customerPhone, phone), eq(orders.discountCode, code), ne(orders.status, "cancelled")));
+        if ((row?.c ?? 0) >= d.perCustomerLimit) couponError = "استخدمتم هذا الكود من قبل بالفعل";
+      }
+      if (!couponError) {
+        couponRow = d;
+        coupon = { id: d.id, code: d.code, type: d.type, value: d.value, minSubtotalPiasters: d.minSubtotalPiasters, scope: d.scope };
+      }
+    }
+  }
+  return { autoRules, autoIds: autos.map((d) => d.id), coupon, couponRow, couponError, giftProducts };
+}
+
+export type CartQuote = {
+  lines: PricedLine[];
+  result: EngineResult;
+  couponRow: DiscountRow | null;
+  couponError?: string;
+  autoIds: string[];
+  /** الأسطر المرسلة لمحرك التسعير بنفس ترتيب lines (الهدايا بعدها). */
+  engineKeys: string[];
+};
+
+/** عرض سعر كامل لسلة: يُستدعى من عرض السعر وإتمام الطلب بنفس المدخلات فيتطابق الرقمان دائماً. */
+export async function quoteCart(
+  storeId: string,
+  bp: StoreBlueprint,
+  q: {
+    items: z.infer<typeof cartItemsSchema>;
+    governorate?: string;
+    paymentMethod: PayMethod;
+    discountCode?: string;
+    phone?: string;
+    giftWrap?: boolean;
+  }
+): Promise<CartQuote> {
+  const { lines } = await priceLines(storeId, q.items, bp);
+  const ctx = await loadDiscountContext(storeId, q.discountCode, q.phone ?? "");
+  let shipping: EngineInput["shipping"] = null;
+  if (q.governorate && isGovernorate(q.governorate)) {
+    const s = await resolveShipping(storeId, bp, q.governorate, q.paymentMethod);
+    shipping = { baseFee: s.baseFee, codExtra: s.codExtra, freeOverPiasters: bp.shipping.freeOverPiasters };
+  } else if (q.governorate) {
+    throw new CheckoutError("اختاروا المحافظة أولاً", "governorate");
+  }
+  const engineKeys = lines.map((l) => `${l.p.id}:${l.v?.id ?? ""}`);
+  const result = priceCart({
+    lines: lines.map((l, i) => ({
+      key: engineKeys[i]!,
+      productId: l.p.id,
+      variantId: l.v?.id,
+      categoryId: l.p.categoryId,
+      name: l.p.name,
+      unit: l.unit,
+      qty: l.qty,
+      volumeTiers: l.p.volumeTiers,
+      bundleOff: l.bundleOff,
+    })),
+    autoRules: ctx.autoRules,
+    coupon: ctx.coupon,
+    giftProducts: ctx.giftProducts,
+    paymentMethod: q.paymentMethod,
+    prepaidPercent: bp.payments.prepaidDiscountPercent ?? 0,
+    shipping,
+    wantsGiftWrap: q.giftWrap,
+    giftWrapPiasters: bp.shipping.giftWrapPiasters ?? 0,
+  });
+  return { lines, result, couponRow: ctx.couponRow, couponError: ctx.couponError ?? result.couponError, autoIds: ctx.autoIds, engineKeys };
+}
+
