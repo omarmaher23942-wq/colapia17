@@ -10,14 +10,14 @@ export function paymentMethods(p: StoreBlueprint["payments"]): PaymentMethodView
     out.push({
       id: "cod",
       label: "الدفع عند الاستلام كاش",
-      desc: "ادفع كاش للمندوب عند الاستلام",
+      desc: "الدفع كاشاً للمندوب عند الاستلام",
     });
   if (p.vodafoneCash.enabled)
     out.push({
       id: "vodafone_cash",
       label: "فودافون كاش / محافظ إلكترونية",
       desc: p.vodafoneCash.number
-        ? `حوّل على ${p.vodafoneCash.number}${p.vodafoneCash.holderName ? ` (باسم ${p.vodafoneCash.holderName})` : ""}`
+        ? `التحويل على ${p.vodafoneCash.number}${p.vodafoneCash.holderName ? ` (باسم ${p.vodafoneCash.holderName})` : ""}`
         : "تحويل فودافون كاش",
       targetNumber: p.vodafoneCash.number,
     });
@@ -27,7 +27,7 @@ export function paymentMethods(p: StoreBlueprint["payments"]): PaymentMethodView
       label: "إنستاباي (InstaPay)",
       desc:
         p.instapay.address ?? p.instapay.number
-          ? `حوّل على ${p.instapay.address ?? p.instapay.number}${p.instapay.holderName ? ` (باسم ${p.instapay.holderName})` : ""}`
+          ? `التحويل على ${p.instapay.address ?? p.instapay.number}${p.instapay.holderName ? ` (باسم ${p.instapay.holderName})` : ""}`
           : "تحويل إنستاباي",
       targetNumber: p.instapay.address ?? p.instapay.number,
     });

@@ -22,7 +22,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
     return (
       <p className="mt-4 flex items-center gap-2 rounded-lg bg-success/10 p-3 font-bold text-success">
         <CheckCircle2 strokeWidth={SW} className="size-5 shrink-0" />
-        استلمنا إثبات التحويل وهنأكد طلبك في أقرب وقت
+        استلمنا إثبات التحويل وسنؤكد الطلب في أقرب وقت
       </p>
     );
   }
@@ -38,7 +38,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
         toast.error(r.error);
       }
     } catch {
-      toast.error("تعذّر الإرسال، حاول تاني");
+      toast.error("تعذّر الإرسال، يرجى المحاولة مرة أخرى");
     }
   });
 
@@ -46,8 +46,8 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
     <div className="mt-4 space-y-3">
       <div>
         <input
-          className="w-full rounded-lg border bg-background px-3 py-3 outline-none focus:ring-2 ring-primary/30"
-          placeholder="الرقم اللي حوّلت منه"
+          className="s-input w-full border bg-background px-3 py-3 text-base outline-none focus:ring-2 ring-primary/30"
+          placeholder="الرقم الذي حُوّل منه"
           inputMode="tel"
           dir="ltr"
           maxLength={20}
@@ -71,7 +71,7 @@ export function TransferProof({ subdomain, code, accessPhone }: { subdomain: str
 
       {err && <p className="text-sm text-danger">{err}</p>}
 
-      <button type="button" disabled={!url || !validPhone || pending} onClick={submit} className="btn-brand w-full disabled:opacity-60">
+      <button type="button" disabled={!url || !validPhone || pending} onClick={submit} className="s-btn w-full">
         {pending && <Loader2 strokeWidth={SW} className="size-4 animate-spin" />}
         إرسال إثبات الدفع
       </button>

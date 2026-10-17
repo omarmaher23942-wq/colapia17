@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { env } from "@/lib/env";
 import { VISITOR_COOKIE, visitorOf } from "@/server/visitor";
+import { DEVICE_ID_RE, signParts, verifyParts } from "@/lib/signed-token";
 
 /**
  * صلاحية فتح صفحة الطلب بدون تسجيل دخول ولا وضع رقم الموبايل في الرابط:
@@ -33,7 +34,7 @@ export async function ensureDeviceId(storeId: string): Promise<string> {
 /** معرّف الجهاز إن وُجد (للقراءة أثناء رسم الصفحة؛ لا يكتب cookies). */
 export async function currentDeviceId(): Promise<string | null> {
   const v = (await cookies()).get(VISITOR_COOKIE)?.value;
-  return v && /^d-[0-9a-f]{32}$/.test(v) ? v : null;
+  return v && DEVICE_ID_RE.test(v) ? v : null;
 }
 
 /** تُستدعى من Server Action فقط (كتابة cookies غير مسموحة أثناء رسم الصفحة) */
@@ -96,3 +97,8 @@ export function validCartToken(storeId: string, cartId: string, token: string | 
   const received = Buffer.from(token);
   return received.length === expected.length && timingSafeEqual(received, expected);
 }
+
+/** رمز «رابط طلباتي»: يُرسل في رسالة واتساب وصفحة الطلب، ومن يفتحه يربط الطلب بجهازه (route: /order/<code>/open). */
+export const orderLinkToken = (storeId: string, orderId: string) => signParts(env.AUTH_SECRET, "olink", storeId, orderId);
+export const validOrderLinkToken = (storeId: string, orderId: string, token: string | null | undefined) =>
+  verifyParts(env.AUTH_SECRET, token, "olink", storeId, orderId);

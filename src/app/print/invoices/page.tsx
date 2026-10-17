@@ -62,6 +62,8 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     paymentStatus: o.paymentStatus,
     shipment: [o.courierName, o.trackingNumber].filter(Boolean).join(" · ") || null,
     qr: qrs[i] ?? "",
+    hidePrices: Boolean(o.gift?.hidePrices),
+    giftMessage: o.gift?.message ?? null,
   }));
 
   return (

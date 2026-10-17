@@ -66,3 +66,17 @@ export function suggestCode(prefix = "SAVE"): string {
   for (const b of r) tail += abc[b % abc.length];
   return `${prefix}${tail}`.slice(0, 20);
 }
+
+/** اسم الخصم التلقائي كما يراه العميل في السلة والملخص. */
+export function autoRuleLabel(rule: import("@/lib/pricing/engine").AutoRuleDef): string {
+  switch (rule.type) {
+    case "spend_percent":
+      return `خصم ${fmtNum(rule.percent)}% على طلبات من ${egp(rule.minSubtotalPiasters)}`;
+    case "spend_amount":
+      return `خصم ${egp(rule.amountPiasters)} على طلبات من ${egp(rule.minSubtotalPiasters)}`;
+    case "free_gift":
+      return `هدية مجانية مع طلبات من ${egp(rule.minSubtotalPiasters)}`;
+    case "buy_x_get_y":
+      return rule.percentOff >= 100 ? `اشتروا ${fmtNum(rule.buyQty)} واحصلوا على ${fmtNum(rule.getQty)} مجاناً` : `اشتروا ${fmtNum(rule.buyQty)} واحصلوا على خصم ${fmtNum(rule.percentOff)}% على ${fmtNum(rule.getQty)}`;
+  }
+}

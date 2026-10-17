@@ -16,7 +16,7 @@ async function handle(req: Request) {
   try {
     // "يشاهد الآن" بعدد الأجهزة الحقيقية (نفس هوية التحليلات)، بلا برامج الفحص ولا صاحب المتجر.
     const counted = req.method === "POST" && !isBot(req.headers) && !isStoreOwner(req.headers);
-    const vid = counted ? visitorOf(req.headers, store.id).id : undefined;
+    const vid = counted ? visitorOf(req.headers, store.id).analyticsId : undefined;
     if (vid && (await allow("track_events", `live:${store.id}:${clientIp(req.headers)}`))) {
       const pipe = redis.pipeline();
       pipe.zadd(key, { score: Date.now(), member: vid });

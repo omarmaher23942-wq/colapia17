@@ -18,6 +18,7 @@ import {
   isPreviewSlug,
   previewKeyMatches,
 } from "@/lib/store-preview";
+import { OWNER_COOKIE, OWNER_COOKIE_TTL_S, safeLandingPath, verifyOwnerPass } from "@/lib/owner-pass";
 
 const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000").toLowerCase();
 
@@ -194,6 +195,22 @@ export async function middleware(req: NextRequest) {
     return res;
   }
   if (!preview && key && previewKeyMatches(req.cookies.get(PREVIEW_KEY_COOKIE)?.value, key)) preview = true;
+
+  // تمرير المالك (lib/owner-pass.ts): /__owner?t=<رمز>&to=<مسار> يحفظ كوكي لهذا المضيف وحده ثم يفتح الوجهة؛ وبعده
+  // يُعامل الطلب كمعاينة فريق (يتجاوز بوابة الحالة، والطلبات تجريبية). الرمز مرتبط بالنطاق الفرعي لهذا المتجر.
+  const authSecret = process.env.AUTH_SECRET ?? "";
+  if (pathname === "/__owner") {
+    const t = url.searchParams.get("t");
+    const ok = await verifyOwnerPass(t, authSecret, { sub });
+    const dest = new URL(ok ? safeLandingPath(url.searchParams.get("to")) : "/", req.url);
+    const res = NextResponse.redirect(dest, 307);
+    if (ok && t) res.cookies.set(OWNER_COOKIE, t, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: OWNER_COOKIE_TTL_S });
+    return res;
+  }
+  if (!preview) {
+    const oc = req.cookies.get(OWNER_COOKIE)?.value;
+    if (oc && (await verifyOwnerPass(oc, authSecret, { sub }))) preview = true;
+  }
 
   // متجر له نطاق خاص مفعّل: نطاقه الفرعي يحوّل إليه (نفس المسار)، عدا الفريق في المعاينة ومسارات الـ API.
   if (!onCustomDomain && !preview && (req.method === "GET" || req.method === "HEAD") && !isUnder(pathname, "/api")) {

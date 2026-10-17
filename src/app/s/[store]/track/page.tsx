@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
-import { Check, ChevronLeft, PackageCheck, Smartphone, Star } from "lucide-react";
+import Image from "next/image";
+import { ChevronLeft, PackageCheck, Smartphone, Star } from "lucide-react";
 import { requireStore } from "@/lib/tenant";
 import { getOrderByCode, getOrderByCodeAndPhone, listDeviceOrders } from "@/server/repos/orders";
 import { currentDeviceId, hasOrderAccess } from "@/lib/order-access";
 import { formatEgp } from "@/lib/money";
+import { OrderTimeline } from "@/components/storefront/OrderTimeline";
 import { AutoRefresh } from "@/components/storefront/AutoRefresh";
 import { allow, clientIp } from "@/lib/ratelimit";
 import { trackOrderAction } from "@/server/actions/track";
 import { cn } from "@/lib/utils";
 
 const SW = 1.75;
-const CODE_RE = /^[A-Z0-9-]{3,20}$/;
+const CODE_RE = /^[A-Z0-9#-]{2,20}$/;
 const STEPS = [
   ["new", "تم الاستلام"],
   ["confirmed", "تم التأكيد"],
@@ -63,8 +65,6 @@ export default async function TrackPage({ params, searchParams }: Props) {
     }
   }
 
-  const idx = o ? STEPS.findIndex(([k]) => k === o!.status) : -1;
-  const bad = !!o && (o.status === "cancelled" || o.status === "returned");
 
   return (
     <div className="container-x max-w-xl py-12">
@@ -113,49 +113,33 @@ export default async function TrackPage({ params, searchParams }: Props) {
 
       {mine.length ? <h2 className="mb-3 text-base font-bold">طلبت من جهاز آخر؟</h2> : null}
       <form action={trackOrderAction.bind(null, store.subdomain)} className="surface grid gap-3 p-5 sm:grid-cols-[1fr_1fr_auto]">
-        <input name="code" defaultValue={code} placeholder="رقم الطلب (CLP-XXXXX)" dir="ltr" maxLength={20} className={cn(INPUT, "uppercase")} required />
+        <input name="code" defaultValue={code} placeholder="رقم الطلب (مثال: 1042)" dir="ltr" maxLength={20} className={cn(INPUT, "uppercase")} required />
         <input name="phone" placeholder="رقم الموبايل" inputMode="tel" autoComplete="tel" dir="ltr" maxLength={20} className={INPUT} required />
         <button type="submit" className="btn-brand">تتبع</button>
       </form>
 
-      {limited && <p className="mt-4 text-danger">محاولات كثيرة، حاول بعد دقائق</p>}
-      {missing && !limited && !o && <p className="mt-4 text-danger">مش لاقيين طلب بالبيانات دي. اتأكد من رقم الطلب والموبايل.</p>}
+      {limited && <p className="mt-4 text-danger">محاولات كثيرة، يرجى المحاولة بعد دقائق</p>}
+      {missing && !limited && !o && <p className="mt-4 text-danger">لا يوجد طلب بهذه البيانات. يرجى التأكد من رقم الطلب والموبايل.</p>}
 
       {o && (
         <div className="surface mt-6 p-6">
           <p className="text-sm text-muted-foreground">الطلب</p>
           <p className="text-2xl font-black text-primary" dir="ltr">{o.code}</p>
 
-          {bad ? (
-            <p className="mt-4 rounded-lg bg-danger/10 p-3 font-bold text-danger">
-              {o.status === "cancelled" ? "تم إلغاء هذا الطلب" : "تم إرجاع هذا الطلب"}
-            </p>
-          ) : (
-            <ol className="mt-6 space-y-4">
-              {STEPS.map(([k, label], i) => {
-                const h = o!.statusHistory.find((x) => x.status === k);
-                const done = i <= idx;
-                return (
-                  <li key={k} className="flex items-center gap-4">
-                    <span className={cn("grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold", done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                      {done ? <Check strokeWidth={SW} className="size-4" aria-hidden="true" /> : i + 1}
-                    </span>
-                    <div className="flex-1">
-                      <p className={cn("font-bold", !done && "text-muted-foreground")}>{label}</p>
-                      {h && <p className="text-xs text-muted-foreground">{new Date(h.at).toLocaleString("ar-EG", { timeZone: "Africa/Cairo" })}</p>}
-                    </div>
-                    {i === idx && <span className="animate-pulse text-xs font-bold text-primary">الحالة الحالية</span>}
-                  </li>
-                );
-              })}
-            </ol>
-          )}
+          <div className="mt-5">
+            <OrderTimeline status={o.status} history={o.statusHistory} createdAt={o.createdAt} courier={o.courierName} tracking={o.trackingNumber} />
+          </div>
 
-          {o.trackingNumber && (
-            <p className="mt-4 text-sm">
-              رقم الشحنة: <b dir="ltr">{o.trackingNumber}</b> {o.courierName && `(${o.courierName})`}
-            </p>
-          )}
+          <ul className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="منتجات الطلب">
+            {o.items.map((it) => (
+              <li key={it.id} className="relative size-14 shrink-0 overflow-hidden rounded-lg bg-muted" title={it.name}>
+                {it.imageUrl ? <Image src={it.imageUrl} alt={it.name} fill sizes="56px" className="object-cover" /> : null}
+              </li>
+            ))}
+          </ul>
+          <Link href={`/order/${encodeURIComponent(o.code)}`} className="mt-4 inline-flex text-sm font-bold underline underline-offset-4">
+            تفاصيل الطلب وخيارات الإلغاء والاستبدال
+          </Link>
 
           {o.status === "delivered" ? (
             <Link href={`/review?o=${encodeURIComponent(o.code)}`} className="btn-brand mt-6 w-full">

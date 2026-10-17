@@ -4,6 +4,7 @@
 import "server-only";
 import { and, desc, eq, gte, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
+import { abandonedBefore } from "@/lib/abandoned";
 import { abandonedCarts, analyticsEvents, customers, orderItems, orders, products, shippingZones } from "@/db/schema";
 
 export type OverviewRange = 7 | 30 | 90;
@@ -213,7 +214,9 @@ export async function overviewData(storeId: string, days: OverviewRange) {
           eq(abandonedCarts.storeId, storeId),
           isNotNull(abandonedCarts.phone),
           isNull(abandonedCarts.recoveredOrderId),
-          gte(abandonedCarts.lastSeenAt, new Date(now.getTime() - 7 * DAY))
+          gte(abandonedCarts.lastSeenAt, new Date(now.getTime() - 7 * DAY)),
+          // «متروكة» بعد 45 دقيقة بلا طلب (قبلها صاحبها ما زال يكتب بيانات الدفع).
+          lt(abandonedCarts.lastSeenAt, abandonedBefore(now.getTime()))
         )
       )
       .orderBy(sql`${abandonedCarts.whatsappContactedAt} is not null`, desc(abandonedCarts.lastSeenAt))
