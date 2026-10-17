@@ -11,7 +11,8 @@ function walk(dir: string): string[] {
 }
 
 // no-access: صفحة الرفض نفسها. store/[id]: تعرض متجراً يملكه التاجر فقط (شرط stores.merchant_id في الاستعلام).
-const PUBLIC_PAGES = ["no-access", "store/[id]"];
+// setup-pending: وجهة تحويل موظف متجر قيد الإعداد (لا تستدعي requireStoreArea لأنه هو من يحوّل إليها).
+const PUBLIC_PAGES = ["no-access", "store/[id]", "setup-pending"];
 
 describe("فرض صلاحيات فريق التاجر", () => {
   it("كل page.tsx تحت dashboard تستدعي requireStoreArea", () => {

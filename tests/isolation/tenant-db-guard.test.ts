@@ -32,6 +32,9 @@ const REVIEWED_MIXED = new Set([
   "src/server/actions/motion.ts",
   "src/server/actions/platform-stores-governance.ts",
   "src/server/actions/shipping.ts",
+  // قراءات الإعداد: الـ Blueprint (تحكم) + أعداد المنتجات والأقسام والشحن من بيانات المتجر بـ tdb.
+  "src/server/setup-data.ts",
+  "src/server/actions/setup.ts", // تقدم الإعداد والتفعيل على stores (تحكم)، وكل استعلام منتجات/أقسام/شحن عبر tdb
 ]);
 
 function walk(dir: string): string[] {
