@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
 import { isAuthorizedCron } from "@/server/cron-auth";
-import { Client } from "@upstash/qstash";
 import { and, asc, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
-import { env, clientEnv } from "@/lib/env";
+import { runJob } from "@/lifecycle/run";
+import { JOB_KINDS, type JobKind } from "@/lifecycle/scheduler";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const MAX_ATTEMPTS = 5;
 const RUNNING_STALE_MS = 10 * 60_000;
+/** ميزانية التشغيل داخل الطلب الواحد (الحد الأقصى للدالة 60 ثانية). */
+const BUDGET_MS = 45_000;
 
+const isKind = (k: string): k is JobKind => (JOB_KINDS as readonly string[]).includes(k);
+
+/**
+ * الكنّاس: يشغّل المهام المتأخرة داخل العملية نفسها (استلام ← معالج ← إنهاء).
+ * QStash مسرّع فقط؛ إن لم تصل رسالته (جدار، مفاتيح، نطاق) تُنفَّذ المهمة هنا بعد دقيقتين من موعدها.
+ */
 export async function GET(req: Request) {
   if (!(await isAuthorizedCron(req))) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -42,57 +50,38 @@ export async function GET(req: Request) {
   } catch (e) {
     console.error("[ops/sweep] query failed", e);
     return NextResponse.json(
-      { ok: false, stage: "query", error: String((e as any)?.message ?? e).slice(0, 300) },
+      { ok: false, stage: "query", error: String((e as { message?: unknown })?.message ?? e).slice(0, 300) },
       { status: 500 }
     );
   }
 
-  if (!jobs.length) {
-    return NextResponse.json({ ok: true, recovered: 0, failed: 0, total: 0 });
-  }
+  if (!jobs.length) return NextResponse.json({ ok: true, ran: 0, failed: 0, skipped: 0, total: 0 });
 
-  let client: Client;
-  try {
-    client = new Client({ token: env.QSTASH_TOKEN });
-  } catch (e) {
-    return NextResponse.json(
-      { ok: false, stage: "qstash_init", error: String((e as any)?.message ?? e).slice(0, 300) },
-      { status: 500 }
-    );
-  }
-
-  let recovered = 0;
+  const started = Date.now();
+  let ran = 0;
   let failed = 0;
+  let skipped = 0;
   const errors: string[] = [];
 
-  await Promise.all(
-    jobs.map(async (job) => {
-      if (!job.storeId) return;
-      try {
-        const r = await client.publishJSON({
-          url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/jobs/lifecycle`,
-          body: { storeId: job.storeId, kind: job.kind, jobId: job.id },
-          headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
-          retries: 3,
-        });
-        await db
-          .update(scheduledJobs)
-          .set({ qstashMessageId: r.messageId })
-          .where(eq(scheduledJobs.id, job.id));
-        recovered++;
-      } catch (e) {
-        failed++;
-        const msg = String((e as any)?.message ?? e).slice(0, 200);
-        errors.push(`${job.kind}/${job.id.slice(0, 8)}: ${msg}`);
-        console.error("[ops/sweep] republish failed", job.id, e);
-      }
-    })
-  );
+  for (const job of jobs) {
+    if (Date.now() - started > BUDGET_MS) break;
+    if (!job.storeId || !isKind(job.kind)) {
+      skipped++;
+      continue;
+    }
+    const out = await runJob({ jobId: job.id, storeId: job.storeId, kind: job.kind });
+    if (out.status === "done") ran++;
+    else if (out.status === "failed") {
+      failed++;
+      errors.push(`${job.kind}/${job.id.slice(0, 8)}: ${out.error.slice(0, 160)}`);
+    } else skipped++;
+  }
 
   return NextResponse.json({
     ok: true,
-    recovered,
+    ran,
     failed,
+    skipped,
     total: jobs.length,
     ...(errors.length ? { errors: errors.slice(0, 5) } : {}),
   });

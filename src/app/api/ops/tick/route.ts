@@ -3,7 +3,7 @@ import { redis } from "@/lib/redis";
 import { isAuthorizedCron } from "@/server/cron-auth";
 import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { scheduledJobs, stores, platformPayments } from "@/db/schema";
+import { scheduledJobs, stores, platformPayments, sessions } from "@/db/schema";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { purgeExpiredDrafts } from "@/intake/purge";
 import { retryPendingNotifications } from "@/intake/notify";
@@ -65,6 +65,17 @@ export async function GET(req: Request) {
     return 0;
   });
 
+  // جلسات منتهية (تاجر، فريق، زبون): تُحذف حتى لا يتضخم الجدول.
+  const expiredSessions = await db
+    .delete(sessions)
+    .where(sql`${sessions.expiresAt} < now()`)
+    .returning({ id: sessions.id })
+    .then((r) => r.length)
+    .catch((e) => {
+      console.error("[ops/tick] session cleanup failed", e);
+      return 0;
+    });
+
   const alerts: string[] = [];
   if ((stuck?.c ?? 0) > 5) alerts.push(`${stuck!.c} مهمة QStash متأخرة`);
   if ((overdueReview?.c ?? 0) > 0) alerts.push(`${overdueReview!.c} متجر مراجعته متأخرة`);
@@ -90,6 +101,7 @@ export async function GET(req: Request) {
     overdueRequests,
     domainsActivated,
     monthlyReports,
+    expiredSessions,
   });
 }
 

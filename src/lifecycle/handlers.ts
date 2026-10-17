@@ -297,6 +297,10 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
       reason: "doom_unpaid",
     });
     if (!r.ok) return { skip: r.reason };
+    // حذف كامل لبيانات المتجر وصوره (كما في trial.purge)، لا تغيير حالة فقط.
+    const purged = await purgeStore(s);
+    if (!purged) throw new Error("purge failed");
+    await invalidateStoreCache(s).catch(() => {});
     await db
       .update(conversations)
       .set({ stage: "lost", lostReason: "doom_unpaid", updatedAt: new Date() })

@@ -27,6 +27,8 @@ function statusMeta(status: string): { label: string; color: string } {
     case "trial":
     case "demo":
       return { label: "تجربة", color: "text-warn" };
+    case "setup":
+      return { label: "قيد الإعداد", color: "text-warn" };
     case "review":
     case "building":
     case "pending_review":

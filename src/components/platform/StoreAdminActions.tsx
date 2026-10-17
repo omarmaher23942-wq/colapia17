@@ -73,12 +73,6 @@ export function StoreAdminActions({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {s.status === "review" && (
-          <>
-            <button disabled={p} onClick={() => go(() => deliverNowAction(s.id), "تم التسليم")} className={`${B} bg-teal-500 text-black hover:bg-teal-400`}>🚀 سلّم الآن</button>
-            <button disabled={p} onClick={() => { const h = Number(prompt("مدّ المراجعة كم ساعة؟", "2")); if (h) go(() => extendAction(s.id, "deliver", h), "تم التمديد"); }} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>⏱ مدّ المراجعة</button>
-          </>
-        )}
         {s.status === "trial" && (
           <>
             <button disabled={p} onClick={() => { const h = Number(prompt("مدّ التجربة كم ساعة؟", "24")); if (h) go(() => extendAction(s.id, "trial", h), "تم التمديد"); }} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>⏱ مدّ التجربة</button>
@@ -88,7 +82,7 @@ export function StoreAdminActions({
         {s.status === "frozen" && (
           <button disabled={p} onClick={() => { const d = Number(prompt("مدّ فترة السماح كم يوم؟", "7")); if (d) go(() => extendAction(s.id, "grace", d * 24), "تم التمديد"); }} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>⏱ مدّ السماح</button>
         )}
-        {["trial", "frozen", "review"].includes(s.status) && (
+        {["trial", "frozen"].includes(s.status) && (
           <button disabled={p} onClick={() => confirm("تفعيل المتجر بدون دفع (هدية)؟") && go(async () => { await setStoreStatusAction(s.id, "active"); if (!merchantActivated) await resendMagicLinkAction(s.id); }, "تم التفعيل")} className={`${B} bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30`}>🎁 تفعيل استثنائي</button>
         )}
         {s.status === "active" && (

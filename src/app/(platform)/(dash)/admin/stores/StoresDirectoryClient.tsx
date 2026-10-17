@@ -139,6 +139,7 @@ export function StoresDirectoryClient({
             <option value="">كل الحالات</option>
             <option value="active">مفعّل</option>
             <option value="trial">تجربة نشطة</option>
+            <option value="setup">قيد الإعداد</option>
             <option value="frozen">مجمّد</option>
             <option value="review">بانتظار التسليم</option>
           </select>

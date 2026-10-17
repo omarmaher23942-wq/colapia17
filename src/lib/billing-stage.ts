@@ -1,5 +1,6 @@
 // billing-stage.ts — في أي مرحلة دفع يقف التاجر (صفحة /dashboard/billing). منطق خالص مختبَر: نفس قواعد دورة الحياة
-// (lifecycle/scheduler.ts و payments.ts): التجربة تنتهي عند demoExpiresAt فيُجمَّد المتجر، ويُحذف بعد GRACE_DAYS؛
+// (lifecycle/scheduler.ts و payments.ts): التجربة تنتهي عند trialEndsAt فيُجمَّد المتجر، ويُحذف عند purgeAt
+// (المدد من lifecycle/timings.ts، وهي نفسها المكتوبة على المتجر لحظة الجدولة)؛
 // ورفض الإيصال يضع doomAt (موعد حذف أقرب)؛ والإيصال قيد المراجعة يؤجل أي تجميد أو حذف حتى يُحسم.
 // المتجر المفعّل له اشتراك استضافة سنوي (lib/hosting.ts): المرحلة «active» تحمل حالته وإيصال التجديد إن وُجد.
 
@@ -21,7 +22,10 @@ export type BillingPayment = {
 
 export type BillingStore = {
   status: string;
-  demoExpiresAt: Date | null;
+  /** نهاية التجربة (المصدر الوحيد). */
+  trialEndsAt: Date | null;
+  /** عمود قديم يُكتب مع trialEndsAt للتوافق؛ احتياط لمتاجر قديمة بلا trialEndsAt فقط. */
+  demoExpiresAt?: Date | null;
   doomAt: Date | null;
   frozenAt: Date | null;
   purgeAt: Date | null;
@@ -54,10 +58,8 @@ export type BillingStage =
     }
   | { kind: "unavailable"; reason: "building" | "suspended" | "deleted" };
 
-const DAY = 864e5;
-
 /** payments بالأحدث أولاً. */
-export function billingStage(store: BillingStore, payments: BillingPayment[], graceDays: number, now = new Date(), hostingGrace?: number): BillingStage {
+export function billingStage(store: BillingStore, payments: BillingPayment[], now = new Date(), hostingGrace?: number): BillingStage {
   if (store.status === "active") {
     const latestRenewal = payments.find((p) => p.kind === "renewal" && (p.status === "rejected" || p.status === "confirmed")) ?? null;
     return {
@@ -86,8 +88,9 @@ export function billingStage(store: BillingStore, payments: BillingPayment[], gr
   if (store.doomAt) {
     return { kind: "pay", phase: "rejected", freezeAt: null, deleteAt: store.doomAt, rejected };
   }
-  const end = store.demoExpiresAt;
-  const deleteAt = end ? new Date(end.getTime() + graceDays * DAY) : null;
+  const end = store.trialEndsAt ?? store.demoExpiresAt ?? null;
+  // موعد الحذف المعلن = purgeAt المجدول فعلاً، لا حساب من متغير بيئة.
+  const deleteAt = store.purgeAt;
   if (end && end.getTime() > now.getTime()) return { kind: "pay", phase: "trial", freezeAt: end, deleteAt, rejected };
   return { kind: "pay", phase: "expired", freezeAt: null, deleteAt, rejected };
 }

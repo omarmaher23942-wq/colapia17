@@ -16,6 +16,20 @@ export function FrozenGate({ status, name, activateHref = "/admin/activate" }: {
       </Gate>
     );
   }
+  if (status === "setup") {
+    // متجر لم يكتمل إعداده: صفحة محايدة بلا اسم المتجر، ورابط صغير لصاحبه.
+    return (
+      <Gate icon={Wrench} title="هذا المتجر قيد الإعداد">
+        نفتح قريباً بإذن الله. شكراً لزيارتك.
+        <span className="mt-8 block text-[13px]">
+          <a href="https://colapia.com/dashboard/setup" className="text-slate-400 underline underline-offset-4 hover:text-slate-600">
+            صاحب المتجر؟ أكمل الإعداد من لوحتك
+          </a>
+        </span>
+      </Gate>
+    );
+  }
+  if (status === "unavailable") return <Gate icon={Lock} title="المتجر غير متاح حالياً">شكراً لزيارتك.</Gate>;
   const frozen = status === "frozen";
   // الزائر زبون لا صاحب المتجر: نص محايد، ورابط صغير لصاحبه فقط (لا زر «فعّل» يربك الزبون).
   return (

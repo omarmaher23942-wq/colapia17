@@ -1,9 +1,9 @@
 import "server-only";
 import { Client } from "@upstash/qstash";
-import { and, asc, eq, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
-import { env, clientEnv } from "@/lib/env";
+import { env } from "@/lib/env";
 import { hostingGraceDays } from "./timings";
 import { timingsFrom, trialSchedule, type LifecycleTimings } from "./timings-rules";
 
@@ -73,7 +73,7 @@ export async function schedule(storeId: string, kind: JobKind, runAt: Date, payl
 
   try {
     const r = await q().publishJSON({
-      url: `${clientEnv.NEXT_PUBLIC_APP_URL}/api/jobs/lifecycle`,
+      url: `https://${env.ROOT_DOMAIN}/api/jobs/lifecycle`,
       body: { storeId, kind, jobId: row.id },
       notBefore: Math.max(Math.floor(runAt.getTime() / 1000), Math.floor(Date.now() / 1000)),
       headers: { "x-internal": env.QSTASH_INTERNAL_SECRET },
@@ -124,27 +124,6 @@ export async function finishJob(id: string, ok: boolean, error?: unknown) {
     .update(scheduledJobs)
     .set({ status: ok ? "done" : "failed", lastError: ok ? null : errText(error) })
     .where(eq(scheduledJobs.id, id));
-}
-
-/** للكنّاس: مهام تأخرت عن موعدها بأكثر من دقيقتين. يتجاهل الصفوف القديمة بلا dedupeKey */
-export async function dueJobs(limit = 50) {
-  const late = new Date(Date.now() - 2 * 60_000);
-  const stale = new Date(Date.now() - RUNNING_STALE_MS);
-  return db
-    .select()
-    .from(scheduledJobs)
-    .where(
-      and(
-        isNotNull(scheduledJobs.dedupeKey),
-        lt(scheduledJobs.attempts, MAX_ATTEMPTS),
-        or(
-          and(inArray(scheduledJobs.status, ["scheduled", "failed"]), lt(scheduledJobs.runAt, late)),
-          and(eq(scheduledJobs.status, "running"), lt(scheduledJobs.firedAt, stale))
-        )
-      )
-    )
-    .orderBy(asc(scheduledJobs.runAt))
-    .limit(limit);
 }
 
 /* ───────────── مساعدات دورة الحياة ───────────── */

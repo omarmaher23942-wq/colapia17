@@ -60,7 +60,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
 
   const store = session.store;
   const range = (OVERVIEW_RANGES as number[]).includes(Number(params.range)) ? (Number(params.range) as OverviewRange) : 30;
-  const showTrial = store.status !== "active" && store.demoExpiresAt !== null;
+  const showTrial = store.status !== "active" && (store.trialEndsAt ?? store.demoExpiresAt) != null;
 
   return (
     <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">

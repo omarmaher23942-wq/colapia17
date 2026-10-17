@@ -74,7 +74,7 @@ export default async function BillingPage() {
 
   const now = Date.now();
   const grace = await hostingGraceDays().catch(() => 3);
-  const stage = billingStage(store, payments, env.GRACE_DAYS, new Date(now), grace);
+  const stage = billingStage(store, payments, new Date(now), grace);
   const [current, goldenNow] = await Promise.all([currentPricing(), goldenStatus(store.id)]);
   // تاجر جاء من «الدائرة الذهبية» (استمارتها المصغّرة): خانة الكود تظهر مملوءة بكود العرض.
   const [req] = await db

@@ -39,9 +39,11 @@ function statusOf(store: Store, graceDays: number): { label: string; tone: Tone;
       if (h.phase === "paused") return { label: "متوقف حتى التجديد", tone: "bad", detail: "الزوار يرون أن المتجر غير متاح. بياناتك محفوظة كما هي." };
       return { label: "مفعّل", tone: "ok", detail: null };
     case "trial":
-      return { label: "تجربة نشطة", tone: "warn", detail: store.demoExpiresAt ? `تنتهي ${dateTimeFmt.format(store.demoExpiresAt)}. التفعيل من «الباقة والاستضافة».` : null };
+      return { label: "تجربة نشطة", tone: "warn", detail: (store.trialEndsAt ?? store.demoExpiresAt) ? `تنتهي ${dateTimeFmt.format((store.trialEndsAt ?? store.demoExpiresAt)!)}. التفعيل من «الباقة والاستضافة».` : null };
     case "frozen":
       return { label: "متوقف بانتظار التفعيل", tone: "bad", detail: store.purgeAt ? `تُحذف بيانات التجربة ${dateTimeFmt.format(store.purgeAt)} إن لم يُفعَّل.` : "التفعيل من «الباقة والاستضافة»." };
+    case "setup":
+      return { label: "قيد الإعداد", tone: "warn", detail: "أكملوا إعداد المتجر من لوحتكم ليبدأ العمل." };
     case "building":
     case "intake":
     case "review":

@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { requireStore, getBlueprint } from "@/lib/tenant";
 import { renderSection } from "@/blueprint/registry";
+import { storeVisibility, gateShowsName } from "@/lib/store-visibility";
+import { hostingState } from "@/lib/hosting";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
 import { getStoreFacts } from "@/server/repos/facts";
 import { truthfulBlueprint } from "@/blueprint/facts";
@@ -18,8 +20,9 @@ export default async function Home({
   const { store: sub } = await params;
   const store = await requireStore(sub);
 
-  if ((store.status === "frozen" || store.status === "intake" || store.status === "building") && !(await isTeamPreview())) {
-    return <FrozenGate status={store.status} name={store.name} />;
+  const visibility = storeVisibility(store, hostingState(store));
+  if (!visibility.public && !(await isTeamPreview())) {
+    return <FrozenGate status={visibility.gate ?? "paused"} name={gateShowsName(visibility.gate) ? store.name : undefined} />;
   }
 
   const bp = await getBlueprint(store.id);

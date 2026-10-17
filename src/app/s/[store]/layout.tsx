@@ -19,7 +19,8 @@ import { Analytics } from "@/components/storefront/Analytics";
 import { StorePixels } from "@/components/storefront/StorePixels";
 import { trackingFrom } from "@/lib/tracking";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
-import { hostingServes, hostingState } from "@/lib/hosting";
+import { hostingState } from "@/lib/hosting";
+import { storeVisibility, gateShowsName } from "@/lib/store-visibility";
 import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstImpressionBanner";
 import { listVisibleCategories } from "@/server/repos/catalog";
 import { notFound } from "next/navigation";
@@ -56,17 +57,6 @@ export async function generateViewport({
   return storeViewport(store ? await getBlueprintOrNull(store.id) : null);
 }
 
-/**
- * حالات المتجر التي تمنع التسوق العام وتعرض FrozenGate بدلاً من المحتوى.
- * هذه الحالات مقصودة ومصممة لمصلحة التاجر — نعرض شاشة أنيقة بدل 404 مخفي.
- */
-const GATED_STATUSES: ReadonlySet<string> = new Set([
-  "frozen",
-  "intake",
-  "building",
-  "pending_review",
-]);
-
 export default async function StoreLayout({ children, params }: Props) {
   const { store: sub } = await params;
   const store = await requireStore(sub);
@@ -90,18 +80,19 @@ export default async function StoreLayout({ children, params }: Props) {
   // هذا يمنع 404 لو المتجر قيد البناء (blueprint قد يكون غير موجود).
   // ═════════════════════════════════════════════════════════════════════
   const hosting = hostingState(store, new Date(), await hostingGraceDays().catch(() => undefined));
-  const gated = GATED_STATUSES.has(store.status) || !hostingServes(hosting);
+  const visibility = storeVisibility(store, hosting);
+  const gated = !visibility.public;
   // الفريق يرى المتجر خلف البوابة (نشرة معاينة بـ ?store=، أو مفتاح المعاينة على نطاقه) لمراجعته قبل التسليم.
   const teamPreview = await isTeamPreview();
   if (gated && !teamPreview) {
     return (
       <div className="min-h-dvh bg-[#f8fafc] text-slate-900">
-        <FrozenGate status={GATED_STATUSES.has(store.status) ? store.status : "paused"} name={store.name} />
+        <FrozenGate status={visibility.gate ?? "paused"} name={gateShowsName(visibility.gate) ? store.name : undefined} />
       </div>
     );
   }
 
-  // من هنا، status إما review | trial | active
+  // من هنا، status إما trial | active
   const [rawBp, categories] = await Promise.all([
     getBlueprintOrNull(store.id),
     listVisibleCategories(store.id),
