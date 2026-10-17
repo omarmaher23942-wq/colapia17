@@ -161,7 +161,7 @@ export async function listCustomers(storeId: string, query: CustomersQuery) {
 }
 
 export type CustomerProfile = {
-  customer: CustomerRow & { altPhone: string | null; address: string | null; notes: string; googleLinked: boolean };
+  customer: CustomerRow & { altPhone: string | null; address: string | null; notes: string };
   orders: { id: string; code: string; createdAt: string; status: string; paymentMethod: string; totalPiasters: number; pieces: number; firstItem: string | null }[];
   topProducts: { productId: string | null; name: string; pieces: number }[];
   firstOrderAt: string | null;
@@ -172,7 +172,7 @@ export async function customerProfile(storeId: string, id: string): Promise<Cust
   const db = await getTenantDb(storeId);
   const [baseRes, extraRes, ordersRes, topRes] = await Promise.all([
     db.execute(sql`${base(storeId)} select * from c where c.id = ${id}`),
-    db.execute(sql`select alt_phone, address, notes, google_id is not null as google from customers where store_id = ${storeId} and id = ${id}`),
+    db.execute(sql`select alt_phone, address, notes from customers where store_id = ${storeId} and id = ${id}`),
     db.execute(sql`
       select o.id, o.code, o.created_at, o.status, o.payment_method, o.total_piasters,
         (select coalesce(sum(i.quantity), 0) from order_items i where i.order_id = o.id)::int as pieces,
@@ -208,7 +208,6 @@ export async function customerProfile(storeId: string, id: string): Promise<Cust
       altPhone: (extra.alt_phone as string | null) ?? null,
       address: (extra.address as string | null) ?? null,
       notes: (extra.notes as string | null) ?? "",
-      googleLinked: extra.google === true || extra.google === "t",
     },
     orders,
     topProducts: rowsOf(topRes).map((t) => ({ productId: (t.product_id as string | null) ?? null, name: String(t.name), pieces: Number(t.pieces) || 0 })),

@@ -35,7 +35,6 @@ export function CardsDemo({ bp }: { bp: StoreBlueprint }) {
         shipping: bp.shipping,
         acceptingOrders: true,
         vacationMessage: null,
-        customer: null,
         copy: bp.copy,
         design: bp.design,
         cardStyle: bp.theme.productCardStyle,

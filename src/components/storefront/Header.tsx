@@ -17,7 +17,6 @@ import {
   ShoppingBag,
   Heart,
   X,
-  User,
   Package,
 } from "lucide-react";
 import { useCart } from "@/store/cart";
@@ -27,7 +26,6 @@ import { arCount, NOUN } from "@/lib/format";
 import { hrefFor } from "@/lib/links";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { CUSTOMER_ACCOUNTS } from "@/lib/edition";
 import { VisualSearch } from "./VisualSearch";
 import { useCopy, useStore } from "./StoreProvider";
 import type { StoreBlueprint } from "@/blueprint/schema";
@@ -74,7 +72,7 @@ export function Header({
   }, [q]);
   const wishSaved = useWishlist((s) => s.slugs.length);
   const wishCount = hydrated ? wishSaved : 0;
-  const { customer, design } = useStore();
+  const { design } = useStore();
   const t = useCopy();
   const surface = design.header.surface;
   const layout = header.variant;
@@ -264,29 +262,6 @@ export function Header({
               </Link>
             ) : null}
 
-            {CUSTOMER_ACCOUNTS ? (
-<Link
-              href={customer ? "/account" : "/account/login"}
-              className="grid size-10 place-items-center rounded-xl transition-colors hover:bg-[var(--muted)]"
-              aria-label={
-                customer ? `حسابي (${customer.name})` : "تسجيل الدخول"
-              }
-              title={customer ? customer.name : "تسجيل الدخول"}
-            >
-              {customer?.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={customer.avatarUrl}
-                  alt=""
-                  className="size-7 rounded-full border object-cover"
-                  style={{ borderColor: "var(--border)" }}
-                />
-              ) : (
-                <User className="size-4.5" strokeWidth={SW} aria-hidden="true" />
-              )}
-            </Link>
-) : null}
-
             <Link href="/wishlist" className="relative grid size-10 place-items-center rounded-xl transition-transform active:scale-95" aria-label={wishCount > 0 ? `المفضلة — ${wishCount}` : "المفضلة"}>
               <Heart className="size-5" strokeWidth={SW} aria-hidden="true" />
               {wishCount > 0 ? (
@@ -420,33 +395,6 @@ export function Header({
                   <X className="size-5" strokeWidth={SW} aria-hidden="true" />
                 </button>
               </div>
-
-              {CUSTOMER_ACCOUNTS ? (
-<Link
-                href={customer ? "/account" : "/account/login"}
-                onClick={() => setMenu(false)}
-                className="flex items-center gap-2.5 rounded-xl border p-3 text-xs font-bold"
-                style={{ borderColor: "var(--border)" }}
-              >
-                {customer?.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={customer.avatarUrl}
-                    alt=""
-                    className="size-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <User
-                    className="size-4"
-                    strokeWidth={SW}
-                    aria-hidden="true"
-                  />
-                )}
-                <span>
-                  {customer ? `حسابي (${customer.name})` : "تسجيل الدخول"}
-                </span>
-              </Link>
-) : null}
 
               <Link
                 href="/track"

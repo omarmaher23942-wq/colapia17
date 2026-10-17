@@ -30,7 +30,6 @@ import { clientEnv } from "@/lib/env";
 import { ensureDeviceId, grantOrderAccess, hasOrderAccess } from "@/lib/order-access";
 import {
   sendMerchantNewOrderEmail,
-  sendCustomerOrderConfirmationEmail,
 } from "@/lib/email";
 import { storeUrl } from "@/lib/utils";
 import { cleanMetaPixel } from "@/lib/tracking";
@@ -485,7 +484,7 @@ export async function placeOrderAction(
       });
     }
 
-    // إرسال الإشعارات البريدية خارج مسار استجابة الطلب.
+    // بريد «طلب جديد» للتاجر خارج مسار استجابة الطلب (لا بريد لزبائن التاجر).
     after(async () => {
       try {
         const [m] = await platformDb
@@ -506,21 +505,6 @@ export async function placeOrderAction(
             totalAmount: formatEgp(total),
             governorate: governorateName(input.governorate),
             adminOrderUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/dashboard/orders/${orderId}`,
-          });
-        }
-        if (input.email) {
-          await sendCustomerOrderConfirmationEmail({
-            customerEmail: input.email,
-            customerName: input.name,
-            storeName: bp.brand.name,
-            storeSubdomain: store.subdomain,
-            storeId: store.id,
-            orderCode: code,
-            totalAmount: formatEgp(total),
-            trackingUrl: storeUrl(
-              store.subdomain,
-              `/track?code=${encodeURIComponent(code)}`
-            ),
           });
         }
       } catch (err) {

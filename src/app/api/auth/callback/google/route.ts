@@ -7,7 +7,7 @@
 // 4) [جديد] Auto-provisioning للمالكين: أي إيميل في PLATFORM_OWNER_EMAILS
 //    يتم إنشاؤه أو تفعيله تلقائياً بصفة owner عند أول تسجيل دخول.
 //    الحل دائم — لا يحتاج SQL يدوي لأي مسؤول مستقبلي.
-// 5) عميل المتجر يُعاد إلى نطاق متجره بعد الدخول.
+// 5) لا دخول للمشترين: الدخول للتاجر وفريق المنصة فقط.
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -15,12 +15,9 @@ import { platformUsers } from "@/db/schema";
 import { verifyGoogleCode } from "@/server/google-oauth";
 import {
   signInMerchantWithGoogle,
-  signInCustomerWithGoogle,
   startPlatformSession,
 } from "@/server/auth";
 import { consumeOAuthState } from "@/server/oauth-state";
-import { requireStore } from "@/lib/tenant";
-import { storeUrl } from "@/lib/utils";
 import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
 import { getPlatformOwnerEmails } from "@/lib/env";
@@ -202,35 +199,6 @@ export async function GET(req: Request) {
       const to = safeRedirectAfter(state.redirectAfter, "/admin");
       log.info("auth", "oauth_platform_ok", { reqId, userId: adminUser.id });
       return NextResponse.redirect(new URL(to, req.url));
-    }
-
-    // ─── Customer (storefront) ──────────────────────────────────────────
-    if (state.provider === "customer") {
-      const sub = state.storeSubdomain;
-      if (!sub) {
-        log.warn("auth", "oauth_customer_missing_store", { reqId });
-        return failRedirect(req, "missing_store", "/", reqId);
-      }
-
-      const store = await requireStore(sub).catch(() => null);
-      if (!store) {
-        log.warn("auth", "oauth_customer_store_not_found", { reqId }, sub);
-        return failRedirect(req, "store_not_found", "/", reqId);
-      }
-
-      const customer = await signInCustomerWithGoogle(store.id, identity);
-
-      const path = safeRedirectAfter(state.redirectAfter, "/account");
-      // نبني الـ URL على النطاق الفرعي (colapia.com/account غير موجود).
-      const destination = storeUrl(store.subdomain, path);
-
-      log.info("auth", "oauth_customer_ok", {
-        reqId,
-        storeId: store.id,
-        userId: customer.id,
-        redirectTo: destination,
-      });
-      return NextResponse.redirect(destination);
     }
 
     log.warn("auth", "oauth_unsupported_provider", { reqId }, state.provider);

@@ -19,11 +19,8 @@ describe("realtime channel authorization", () => {
     expect(canSubscribeToChannel(channels.order(B, "CLP-ABCDE"), merchantA)).toBe(false);
   });
 
-  it("lets a customer hear only their own orders in their own store", () => {
-    const customer = { kind: "customer" as const, customerId: "c", storeId: A, orderCodes: ["CLP-ABCDE"] };
-    expect(canSubscribeToChannel(channels.order(A, "CLP-ABCDE"), customer)).toBe(true);
-    expect(canSubscribeToChannel(channels.order(B, "CLP-ABCDE"), customer)).toBe(false);
-    expect(canSubscribeToChannel(channels.order(A, "CLP-ZZZZZ"), customer)).toBe(false);
-    expect(canSubscribeToChannel(channels.store(A), customer)).toBe(false);
+  it("never authorizes a merchant for another store's presence or order channels", () => {
+    expect(canSubscribeToChannel(channels.presenceStore(A), merchantA)).toBe(true);
+    expect(canSubscribeToChannel(channels.merchant("m-b"), merchantA)).toBe(false);
   });
 });
