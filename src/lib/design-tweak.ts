@@ -112,7 +112,11 @@ export function guardContrast(p: Palette): { palette: Palette; fixes: string[] }
     }
   }
   for (const [fg, bg] of [["primaryForeground", "primary"], ["accentForeground", "accent"], ["secondaryForeground", "secondary"]] as const) {
-    if (contrastRatio(out[fg], out[bg]) < 4.5) out[fg] = readableOn(out[bg]);
+    if (contrastRatio(out[fg], out[bg]) < 4.5) {
+      out[fg] = readableOn(out[bg]);
+      // لون وسطي لا يبلغ 4.5 مع الأبيض ولا الأسود: نعدّل الخلفية نفسها حتى يقرأ النص عليها.
+      if (contrastRatio(out[fg], out[bg]) < 4.5) out[bg] = ensureContrast(out[bg], out[fg], 4.5);
+    }
   }
   // الأزرار الأساسية على خلفية المتجر يجب أن تبقى ظاهرة (3:1 على الأقل).
   if (contrastRatio(out.primary, out.background) < 3) {
