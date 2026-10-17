@@ -26,6 +26,8 @@ const ROOTS = [
   "src/agent/state.ts",
   "src/lifecycle/templates.ts",
   "src/lifecycle/handlers.ts",
+  "src/lib/landing-pricing.ts",
+  "src/app/(platform)/page.tsx",
   "src/components/dashboard/billing",
   "src/components/onboarding",
   "src/components/dashboard/design",

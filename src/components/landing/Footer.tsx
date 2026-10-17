@@ -3,22 +3,21 @@ import Link from "next/link";
 import { Mail, MapPin } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 
-const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
+const columns = (igUrl: string): { title: string; links: { label: string; href: string }[] }[] => [
   {
     title: "المنتج",
     links: [
       { label: "كيف يعمل", href: "#how" },
-      { label: "أمثلة", href: "#designs" },
-      { label: "لوحة التحكم", href: "#dashboard" },
+            { label: "لوحة التحكم", href: "#dashboard" },
       { label: "المميزات", href: "#features" },
-      { label: "الأسعار", href: "#pricing" },
+      { label: "الباقات", href: "#pricing" },
       { label: "الأسئلة الشائعة", href: "#faq" },
     ],
   },
   {
     title: "الشركة",
     links: [
-      { label: "ابدأ متجرك", href: "/start" },
+      { label: "ابدأوا من إنستجرام", href: igUrl },
       { label: "تواصل معنا", href: "mailto:support@colapia.com" },
     ],
   },
@@ -32,7 +31,7 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
   },
 ];
 
-export function Footer() {
+export function Footer({ igUrl = "https://ig.me/m/colapia.eg" }: { igUrl?: string }) {
   return (
     <footer className="border-t border-white/10 py-16">
       <div className="container-x">
@@ -59,7 +58,7 @@ export function Footer() {
             </div>
           </div>
 
-          {COLUMNS.map((col) => (
+          {columns(igUrl).map((col) => (
             <div key={col.title}>
               <h4 className="mb-4 text-sm font-bold text-[#eaf0ff]">{col.title}</h4>
               <ul className="flex flex-col gap-3">

@@ -1,7 +1,7 @@
 "use client";
 
 // هيدر لاصق. جلسة-واعي بالكامل:
-// - guest  → "دخول لوحة متجرك" + "ابدأ بحساب Google"
+// - guest  → "دخول لوحة التحكم" + "ابدأ بحساب Google"
 // - merchant → زر واحد فقط "لوحة التحكم"
 // زر Google يستدعي Server Action مباشرة عبر GoogleAuthCta (لا رابط /api مكسور).
 import { useEffect, useState } from "react";
@@ -15,16 +15,16 @@ import type { SessionState } from "./types";
 
 const NAV = [
   { href: "#how", label: "كيف يعمل" },
-  { href: "#designs", label: "أمثلة" },
+  { href: "#dashboard", label: "لوحة التحكم" },
   { href: "#features", label: "المميزات" },
-    { href: "#pricing", label: "السعر" },
+  { href: "#pricing", label: "الباقات" },
   { href: "#faq", label: "الأسئلة" },
 ];
 
 const LOGIN_URL = "/login";
 const DASHBOARD_URL = "/dashboard";
 
-export function Header({ session }: { session: SessionState }) {
+export function Header({ session, igUrl }: { session: SessionState; igUrl: string }) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -86,11 +86,11 @@ export function Header({ session }: { session: SessionState }) {
                 href={LOGIN_URL}
                 className="text-sm font-semibold text-[#eaf0ff]/90 transition-colors hover:text-[#8fa8ff]"
               >
-                دخول لوحة متجرك
+                دخول لوحة التحكم
               </Link>
-              <Link href="/start" className={CTA_PRIMARY}>
-                طلب متجرك
-              </Link>
+              <a href={igUrl} target="_blank" rel="noopener noreferrer" className={CTA_PRIMARY}>
+                ابدأوا من إنستجرام
+              </a>
             </>
           )}
         </div>
@@ -156,11 +156,11 @@ export function Header({ session }: { session: SessionState }) {
                       className="text-center text-sm font-semibold text-[#eaf0ff]/90"
                       onClick={() => setOpen(false)}
                     >
-                      دخول لوحة متجرك
+                      دخول لوحة التحكم
                     </Link>
-                    <Link href="/start" className={`${CTA_PRIMARY} w-full`} onClick={() => setOpen(false)}>
-                      طلب متجرك
-                    </Link>
+                    <a href={igUrl} target="_blank" rel="noopener noreferrer" className={`${CTA_PRIMARY} w-full`} onClick={() => setOpen(false)}>
+                      ابدأوا من إنستجرام
+                    </a>
                   </>
                 )}
               </div>
