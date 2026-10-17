@@ -281,12 +281,29 @@ const checkDomains = () =>
     return domainAutoConfigured() ? { status: "ok", detail: "آلي عبر Vercel" } : { status: "warn", detail: "يدوي: تضيف كل نطاق بنفسك ثم تؤكد" };
   });
 
-const checkGithub = () =>
-  run("github", "GitHub (فروع المتاجر)", async () => {
-    if (!env.STORES_GITHUB_TOKEN || !env.STORES_GITHUB_REPO)
-      return { status: hostingName() === "cloudflare" ? "fail" : "warn", detail: "غير مضبوط: التجهيز يعطي ZIP بدل فرع", fix: "الدليل القسم 5 (توكن GitHub)" };
-    const r = await timed(`https://api.github.com/repos/${env.STORES_GITHUB_REPO}`, { headers: { Authorization: `Bearer ${env.STORES_GITHUB_TOKEN}`, "User-Agent": "colapia" } });
-    return r.ok ? { status: "ok", detail: `يصل إلى ${env.STORES_GITHUB_REPO}` } : { status: "fail", detail: `مرفوض (${r.status})`, fix: "التوكن منتهٍ أو بلا صلاحية Contents على المستودع" };
+/** المتجر التجريبي demo.<النطاق>: يجب أن يوجد في القاعدة ويفتح للزوار (الوكيل يرسل الناس إليه). */
+const checkDemo = () =>
+  run("demo", "المتجر التجريبي", async () => {
+    const { stores } = await import("@/db/schema");
+    const { demoUrl } = await import("@/agent/settings");
+    const url = await demoUrl();
+    const [row] = await db.select({ status: stores.status }).from(stores).where(eq(stores.subdomain, "demo")).limit(1);
+    if (!row) return { status: "warn", detail: `لا يوجد متجر بالنطاق الفرعي demo (الرابط الذي يعطيه الوكيل: ${url})`, fix: "شغّل سكربت زرع الديمو (scripts/demo/seed-demo.ts) ثم أعد الفحص" };
+    if (row.status !== "active" && row.status !== "trial") return { status: "warn", detail: `المتجر التجريبي بحالة ${row.status} فلن يفتح للزوار`, fix: "فعّله من /admin/stores" };
+    const r = await timed(url, { redirect: "follow" }).catch(() => null);
+    return r?.ok ? { status: "ok", detail: `يفتح على ${url}` } : { status: "warn", detail: `لم يفتح الرابط ${url}${r ? ` (${r.status})` : ""}`, fix: "تأكد من النطاق الفرعي demo ومن ربط النطاقات النجمية" };
+  });
+
+/** الدائرة الذهبية: تشغيلها ومقاعدها المستخدمة وسلامة الكود. */
+const checkGolden = () =>
+  run("golden", "الدائرة الذهبية", async () => {
+    const { goldenStatus } = await import("@/server/pricing");
+    const g = await goldenStatus();
+    const used = g.confirmed + g.underReview;
+    if (!g.enabled) return { status: "skip", detail: "متوقفة: لا يعرضها الوكيل ولا يقبل الدفع كودها" };
+    return g.available
+      ? { status: "ok", detail: `مفعّلة بالكود ${g.code}: ${used} من ${g.seats} مقاعد مستخدمة (${g.price} ج لـ ${g.months} أشهر)` }
+      : { status: "warn", detail: `اكتملت المقاعد (${used} من ${g.seats})`, fix: "زد المقاعد أو أوقف العرض من /admin/pricing" };
   });
 
 function configChecks(): Check[] {
@@ -296,22 +313,21 @@ function configChecks(): Check[] {
   return [
     c("google", "الدخول بـ Google", Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET), "مضبوط", "ناقص", `GOOGLE_CLIENT_ID/SECRET في ${where}`, "fail"),
     c("cron-secret", "سر المهام المجدولة", Boolean(env.CRON_SECRET), "مضبوط", "CRON_SECRET ناقص", `أضف نصاً عشوائياً طويلاً في ${where}`, hostingName() === "cloudflare" ? "fail" : "warn"),
-    c("preview-key", "مفتاح معاينة الفريق", (process.env.STORE_PREVIEW_KEY ?? "").length >= 16, "مضبوط", "STORE_PREVIEW_KEY ناقص أو قصير", `16 حرفاً فأكثر في ${where} (لمعاينة المتاجر قبل التسليم)`),
-    c("agency-whatsapp", "واتساب الوكالة للعملاء", Boolean(env.AGENCY_WHATSAPP), "مضبوط", "AGENCY_WHATSAPP ناقص: لا يظهر زر واتساب للعملاء في صفحات المتابعة", `رقمك بصيغة 01xxxxxxxxx في ${where}`),
     c("alerts", "بريد تنبيهاتك", Boolean(env.OWNER_ALERT_EMAILS), env.OWNER_ALERT_EMAILS, "OWNER_ALERT_EMAILS ناقص", undefined),
     c("payments", "أرقام التحويل", Boolean(env.VODAFONE_CASH_NUMBER && env.INSTAPAY_NUMBER), `فودافون كاش ${env.VODAFONE_CASH_NUMBER} · إنستاباي ${env.INSTAPAY_NUMBER}`, "ناقصة", undefined, "fail"),
   ];
 }
 
 export async function runLaunchChecks(): Promise<CheckGroup[]> {
-  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, gh, agent, setup] = await Promise.all([
-    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkGithub(), checkAgentState(), checkSetupStores(),
+  const [db1, mig, red, mail, q, cron, groq, gem, media, meta, metaTrace, dom, demo, agent, setup, golden] = await Promise.all([
+    checkDb(), checkMigrations(), checkRedis(), checkEmail(), checkQstash(), checkCrons(), checkGroq(), checkGemini(), checkMedia(), checkMeta(), checkTrace(), checkDomains(), checkDemo(), checkAgentState(), checkSetupStores(), checkGolden(),
   ]);
   return [
     { title: "الأساس", checks: [db1, mig, red, cron, q] },
-    { title: "البريد والرسائل", checks: [mail, meta, agent, setup, metaTrace] },
+    { title: "البريد والوكيل وإعداد المتاجر", checks: [mail, meta, agent, setup, metaTrace] },
+    { title: "العرض والمبيعات", checks: [demo, golden] },
     { title: "الذكاء الاصطناعي", checks: [groq, gem] },
-    { title: "الصور والنطاقات والكود", checks: [media, dom, gh] },
+    { title: "الصور والنطاقات", checks: [media, dom] },
     { title: "إعداداتك", checks: configChecks() },
   ];
 }

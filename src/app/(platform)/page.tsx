@@ -12,7 +12,10 @@ import { cached } from "@/lib/redis";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { platformReviews } from "../../db/schema/platform";
-import { Landing } from "../../components/landing/Landing";
+import { Landing, landingFaq } from "../../components/landing/Landing";
+import { planCards, instagramUrl } from "@/lib/landing-pricing";
+import { demoUrl } from "@/agent/settings";
+import { hostingGraceDays } from "@/server/hosting-grace";
 import type { LandingReview, SessionState } from "../../components/landing/types";
 
 const getApprovedReviews = () =>
@@ -44,9 +47,9 @@ const getApprovedReviews = () =>
   });
 
 const SITE = `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "colapia.com"}`;
-const TITLE = "Colapia | متجر إلكتروني لبراندك، يبنيه فريقنا ويستضيفه";
+const TITLE = "Colapia | متجر احترافي كامل لبراندكم يجهّزه فريقنا ويستضيفه";
 const DESCRIPTION =
-  "فريق Colapia يبني لبراندك متجراً إلكترونياً مخصصاً ويستضيفه: تجربة مجانية قبل الدفع، طلبات بالدفع عند الاستلام وفودافون كاش وإنستاباي، ولوحة تحكم بالعربي، وبلا عمولة على مبيعاتك.";
+  "فريق Colapia يجهّز لبراندكم متجراً إلكترونياً احترافياً مع لوحة تحكم بالعربية، ويستضيفه ويشغّله: تجربة مجانية قبل الدفع، وطلبات بالدفع عند الاستلام وفودافون كاش وإنستاباي، وبلا عمولة على مبيعاتكم.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -65,34 +68,35 @@ async function getSessionState(): Promise<SessionState> {
 }
 
 export default async function Page() {
-  const [reviews, session] = await Promise.all([
-    getApprovedReviews(),
-    getSessionState(),
-  ]);
+  const [reviews, session] = await Promise.all([getApprovedReviews(), getSessionState()]);
 
-  const [pricing, timings, changes] = await Promise.all([
+  const [pricing, timings, changes, demo, grace] = await Promise.all([
     currentPricing(),
     lifecycleTimings(),
     getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
+    demoUrl(),
+    hostingGraceDays().catch(() => 3),
   ]);
+  const plans = planCards(pricing);
+  const igUrl = instagramUrl(process.env.NEXT_PUBLIC_INSTAGRAM_URL);
+  const faq = landingFaq({ trialHours: timings.trialHours, graceDays: grace, plans });
 
-  // الهبوط الحالي يعرض باقة السنة (يُعاد تصميم قسم الأسعار في موجة الهبوط V2 ليعرض الباقات الثلاث).
-  const year = pricing.plans.find((p) => p.months === 12) ?? pricing.plans[pricing.plans.length - 1]!;
-  const price = year.price;
-  const renewal = year.renewal;
-
-  // بيانات منظمة صادقة: المنظمة والخدمة بسعرها الحالي الفعلي من سلّم الأسعار.
+  // بيانات منظمة صادقة: المنظمة والخدمة بباقاتها الفعلية الحالية، والأسئلة الشائعة.
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       { "@type": "Organization", "@id": `${SITE}/#org`, name: "Colapia", url: SITE, logo: `${SITE}/logo.png` },
       {
         "@type": "Service",
-        name: "متجر إلكتروني مخصص مع سنة استضافة",
+        name: "متجر إلكتروني مجهّز مع استضافة وتشغيل",
         provider: { "@id": `${SITE}/#org` },
         areaServed: { "@type": "Country", name: "Egypt" },
         description: DESCRIPTION,
-        offers: { "@type": "Offer", price, priceCurrency: "EGP", url: `${SITE}/start` },
+        offers: plans.map((p) => ({ "@type": "Offer", name: p.label, price: p.price, priceCurrency: "EGP", url: `${SITE}/#pricing` })),
+      },
+      {
+        "@type": "FAQPage",
+        mainEntity: faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
       },
     ],
   };
@@ -100,7 +104,16 @@ export default async function Page() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <Landing session={session} reviews={reviews} pricing={{ price, renewal }} trialHours={timings.trialHours} changesPerYear={perYearFrom(changes.config)} />
+      <Landing
+        session={session}
+        reviews={reviews}
+        plans={plans}
+        trialHours={timings.trialHours}
+        graceDays={grace}
+        changesPerYear={perYearFrom(changes.config)}
+        igUrl={igUrl}
+        demoHref={demo}
+      />
     </>
   );
 }

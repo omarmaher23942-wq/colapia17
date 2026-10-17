@@ -60,6 +60,13 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
     .where(eq(stores.status, "setup"))
     .catch(() => [{ open: 0, stale: 0 }]);
 
+  // اشتراكات تنتهي خلال 30 يوماً (المتاجر المفعّلة فقط).
+  const [renewals] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number) })
+    .from(stores)
+    .where(and(eq(stores.status, "active"), gte(stores.hostingExpiresAt, new Date()), sql`${stores.hostingExpiresAt} < now() + interval '30 days'`))
+    .catch(() => [{ n: 0 }]);
+
   const countFor = (st: string) => byStatus.find((x) => x.status === st)?.c ?? 0;
   const inPipeline = countFor("setup");
 
@@ -98,6 +105,14 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
         <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} قيد الإعداد`} tone="blue" icon={Store} />
         <KpiCard href="/admin/conversations" label="المحادثات والليدز" value={String(conv?.total ?? 0)} note={`${conv?.hot ?? 0} تاجر مهتم جداً`} noteIcon={Flame} tone="violet" icon={MessagesSquare} />
         <KpiCard label="GMV (مبيعات التجار)" value={formatEgp(gmv?.v ?? 0)} note={`${gmv?.n ?? 0} طلب تم تنفيذه`} tone="emerald" icon={TrendingUp} />
+      </div>
+
+      {/* مسار المتجر من المحادثة إلى الاشتراك */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard href="/admin/stores" label="قيد الإعداد" value={String(inPipeline)} note={setups && setups.stale > 0 ? `${setups.stale} تجاوزت 3 أيام` : "عند أصحابها"} tone="blue" icon={Store} />
+        <KpiCard href="/admin/stores" label="في التجربة" value={String(countFor("trial"))} note={`${countFor("frozen")} متوقفة بانتظار الدفع`} tone="violet" icon={Store} />
+        <KpiCard href="/admin/stores" label="تجديدات خلال 30 يوماً" value={String(renewals?.n ?? 0)} note="اشتراكات تنتهي قريباً" tone="emerald" icon={Wallet} />
+        <KpiCard href="/admin/pricing" label="مقاعد الدائرة الذهبية" value={`${golden.confirmed + golden.underReview}/${golden.seats}`} note={golden.enabled ? "العرض مفعّل" : "العرض متوقف"} tone="violet" icon={Flame} />
       </div>
 
       {/* Broadcast */}
