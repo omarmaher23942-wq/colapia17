@@ -97,7 +97,7 @@ export type ProfitEstimate = {
   itemsRevenue: number;
 };
 
-async function profitEstimate(storeId: string, from: Date): Promise<ProfitEstimate> {
+export async function profitEstimate(storeId: string, from: Date): Promise<ProfitEstimate> {
   const db = await getTenantDb(storeId);
   const [row] = await db
     .select({

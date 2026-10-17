@@ -28,8 +28,8 @@ export type TodayExtras = {
 
 export type TodayTask = AttentionItem & { urgent: boolean };
 
-const ORDER_KEYS = ["new", "receipts", "stuck", "shipped", "reviews", "restock", "out", "variants", "low", "carts"] as const;
-const URGENT = new Set(["new", "receipts", "stuck", "shipped", "reviews"]);
+const ORDER_KEYS = ["new", "receipts", "cancel", "stuck", "shipped", "returns", "questions", "reviews", "restock", "out", "variants", "low", "carts"] as const;
+const URGENT = new Set(["new", "receipts", "cancel", "stuck", "shipped", "returns", "reviews"]);
 
 const task = (key: string, icon: LucideIcon, tone: AttentionItem["tone"], title: string, chip: string, desc: string, href: string): AttentionItem => ({
   key,

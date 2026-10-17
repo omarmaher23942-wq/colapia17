@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { doneLine, growthTask, todayTasks, type TodayExtras } from "@/lib/today-tasks";
 import type { AttentionCounts } from "@/server/repos/attention";
 
-const zero: AttentionCounts = { newOrders: 0, ordersToHandle: 0, receipts: 0, pendingReviews: 0, outOfStock: 0, lowStock: 0, variantsOut: 0, abandoned: 0, restockReady: 0 };
+const zero: AttentionCounts = { newOrders: 0, ordersToHandle: 0, receipts: 0, pendingReviews: 0, outOfStock: 0, lowStock: 0, variantsOut: 0, abandoned: 0, restockReady: 0, cancelRequests: 0, returnsOpen: 0, questionsPending: 0 };
 const quiet: TodayExtras = { stuckPrep: 0, staleShipped: 0, done: { confirmed: 0, shipped: 0, delivered: 0, asked: 0 }, quietDays: 1, activeProducts: 5 };
 
 describe("todayTasks", () => {

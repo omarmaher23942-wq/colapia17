@@ -1,14 +1,15 @@
-// prep-room.ts — بيانات «غرفة التجهيز» (لوحة مخصصة لمتجر نور للملابس، store-extras.ts): الطلبات التي تنتظر
+// prep-room.ts — بيانات «غرفة التجهيز» لكل المتاجر: الطلبات التي تنتظر
 // التجهيز مجمّعة بالقطعة والمقاس، وبطاقات التعبئة لكل طلب، وطلب كل مقاس في الفترة ومن ينتظر توفره.
 // بيانات المتجر نفسه فقط عبر getTenantDb، وبلا الطلبات التجريبية.
 import "server-only";
 import { sql } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
+import { aggregatePick, type PickInput, type PickLine } from "@/lib/pick-list";
 
 export type PrepScope = "ready" | "all";
 export const PREP_STATUSES: Record<PrepScope, string[]> = { ready: ["confirmed", "preparing"], all: ["new", "confirmed", "preparing"] };
 
-export type PickLine = { key: string; productId: string | null; name: string; variant: string | null; image: string | null; qty: number; orders: { id: string; code: string }[] };
+export type { PickLine };
 export type PackOrder = {
   id: string;
   code: string;
@@ -91,18 +92,14 @@ export async function prepRoomData(storeId: string, scope: PrepScope, days: 30 |
     });
   }
 
-  const pick = new Map<string, PickLine>();
+  const pickInputs: PickInput[] = [];
   for (const r of rows(itemRows)) {
     const order = byOrder.get(String(r.order_id));
     if (!order) continue;
     const variant = str(r.variant_label) || null;
     const qty = num(r.quantity);
     order.items.push({ name: String(r.name), variant, qty });
-    const key = `${r.product_id ?? r.name}|${variant ?? ""}`;
-    const line = pick.get(key) ?? { key, productId: str(r.product_id), name: String(r.name), variant, image: str(r.image_url), qty: 0, orders: [] };
-    line.qty += qty;
-    if (!line.orders.some((o) => o.id === order.id)) line.orders.push({ id: order.id, code: order.code });
-    pick.set(key, line);
+    pickInputs.push({ orderId: order.id, orderCode: order.code, productId: str(r.product_id), name: String(r.name), variant, image: str(r.image_url), qty });
   }
 
   const demand = new Map<string, SizeDemand>();
@@ -138,7 +135,7 @@ export async function prepRoomData(storeId: string, scope: PrepScope, days: 30 |
   }
 
   return {
-    pick: [...pick.values()].sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name, "ar")),
+    pick: aggregatePick(pickInputs),
     pack: [...byOrder.values()],
     demand: [...demand.values()].sort((a, b) => b.sold + b.waiting - (a.sold + a.waiting)),
     days,

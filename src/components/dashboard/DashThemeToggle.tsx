@@ -19,6 +19,11 @@ export function DashThemeToggle({ initial }: { initial: "dark" | "light" }) {
     apply(document.querySelector(".dash")?.classList.contains("dark") ? "light" : "dark");
   }
 
+  // الوضع الفعلي قد يتبع النظام (سكربت قبل الرسم)، فنقرؤه من الصفحة بعد التحميل.
+  useEffect(() => {
+    setTheme(document.querySelector(".dash")?.classList.contains("dark") ? "dark" : "light");
+  }, []);
+
   // من لوحة الأوامر أو قائمة الحساب على الموبايل.
   useEffect(() => {
     const onToggle = () => apply(document.querySelector(".dash")?.classList.contains("dark") ? "light" : "dark");

@@ -30,6 +30,9 @@ export type InvoiceOrder = {
   paymentStatus: string;
   shipment: string | null;
   qr: string;
+  /** هدية: تُخفى الأسعار من الفاتورة مهما كان إعداد المتجر. */
+  hidePrices?: boolean;
+  giftMessage?: string | null;
 };
 
 type Brand = { name: string; logo: string | null; primary: string; contact: string };
@@ -209,8 +212,8 @@ export function InvoiceSheets({ orders, autoPrint, initial, brand }: { orders: I
               <tr>
                 <th>المنتج</th>
                 <th className="num">الكمية</th>
-                {v.showPrices ? <th className="num">السعر</th> : null}
-                {v.showPrices ? <th className="num">الإجمالي</th> : null}
+                {(v.showPrices && !o.hidePrices) ? <th className="num">السعر</th> : null}
+                {(v.showPrices && !o.hidePrices) ? <th className="num">الإجمالي</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -221,14 +224,14 @@ export function InvoiceSheets({ orders, autoPrint, initial, brand }: { orders: I
                     {l.variant ? <div style={{ color: "#6b7280", fontSize: ".9em" }}>{l.variant}</div> : null}
                   </td>
                   <td className="num">{l.qty}</td>
-                  {v.showPrices ? <td className="num">{formatEgp(l.unit)}</td> : null}
-                  {v.showPrices ? <td className="num">{formatEgp(l.unit * l.qty)}</td> : null}
+                  {(v.showPrices && !o.hidePrices) ? <td className="num">{formatEgp(l.unit)}</td> : null}
+                  {(v.showPrices && !o.hidePrices) ? <td className="num">{formatEgp(l.unit * l.qty)}</td> : null}
                 </tr>
               ))}
             </tbody>
           </table>
 
-          {v.showPrices ? (
+          {(v.showPrices && !o.hidePrices) ? (
             <section style={{ marginTop: 10, marginInlineStart: "auto", width: thermal ? "100%" : "60%", lineHeight: 2 }}>
               <Money label="المجموع" value={formatEgp(o.subtotal)} />
               <Money label="الشحن" value={o.shipping ? formatEgp(o.shipping) : "مجاني"} />

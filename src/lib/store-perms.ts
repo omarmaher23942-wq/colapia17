@@ -114,12 +114,15 @@ export const AREA_HREF: Record<StoreArea, string> = {
 /** مجال كل مسار في اللوحة (أطول بادئة تطابق). /dashboard نفسها = النظرة العامة (analytics). */
 const PATH_AREAS: [string, StoreArea][] = [
   ["/dashboard/orders", "orders"],
+  ["/dashboard/returns", "orders"],
+  ["/dashboard/questions", "products"],
+  ["/dashboard/studio", "content"],
+  ["/dashboard/usage", "settings"],
   ["/dashboard/products", "products"],
   ["/dashboard/categories", "products"],
   ["/dashboard/size-guide", "products"],
   ["/dashboard/customers", "customers"],
   ["/dashboard/discounts", "discounts"],
-  ["/dashboard/growth", "discounts"],
   ["/dashboard/marketing", "discounts"],
   ["/dashboard/shipping", "shipping"],
   ["/dashboard/content", "content"],

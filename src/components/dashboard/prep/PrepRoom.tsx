@@ -1,16 +1,16 @@
-// PrepRoom — «غرفة التجهيز» لمتجر نور للملابس (مكوّن خادم). ثلاث نوافذ على نفس الطلبات:
+// PrepRoom — «غرفة التجهيز» لكل المتاجر (مكوّن خادم). ثلاث نوافذ على نفس الطلبات:
 //   pick: كل قطعة بمقاسها وكميتها الإجمالية (ما تسحبه من المخزن أو تطلبه من المورد اليوم)،
 //   pack: بطاقة لكل طلب (العميل والعنوان والقطع والمبلغ المطلوب تحصيله) تُطبع وتُرفق بالشحنة،
 //   sizes: كم بيع من كل مقاس في الفترة ومن ينتظر توفره، لقرار الكميات من المورد.
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ClipboardList, PackageCheck, Ruler, BellRing } from "lucide-react";
+import { ArrowLeft, ClipboardList, PackageCheck, Ruler, BellRing, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEgp } from "@/lib/money";
 import { fmtNum, arCount, NOUN } from "@/lib/format";
 import { governorateName } from "@/lib/egypt";
 import { orderStatusLabel, orderStatusTone, paymentMethodLabel, TONE_CHIP } from "@/lib/order-status";
-import type { PrepData, PrepScope } from "@/server/repos/store-extras/prep-room";
+import type { PrepData, PrepScope } from "@/server/repos/prep-room";
 import { PrintButton } from "./PrintButton";
 
 export type PrepTab = "pick" | "pack" | "sizes";
@@ -27,7 +27,7 @@ const href = (tab: PrepTab, scope: PrepScope, days?: number) => {
   if (scope !== "ready") q.set("scope", scope);
   if (days && days !== 30) q.set("days", String(days));
   const s = q.toString();
-  return `/dashboard/prep${s ? `?${s}` : ""}`;
+  return `/dashboard/orders/prep${s ? `?${s}` : ""}`;
 };
 
 // الطباعة: منطقة الصفحة وحدها بلا القائمة والشريط العلوي.
@@ -74,7 +74,19 @@ export function PrepRoom({ data, tab, scope }: { data: PrepData; tab: PrepTab; s
           <h1 className="text-2xl font-black text-ink">غرفة التجهيز</h1>
           <p className="mt-1 text-[13px] leading-6 text-ink-2">كل ما تحتاجه لتجهيز طلبات اليوم بلا أخطاء في المقاس، وقرار الكميات من المورد.</p>
         </div>
-        {tab !== "sizes" && (data.pick.length || data.pack.length) ? <PrintButton label={tab === "pack" ? "طباعة البطاقات" : "طباعة القائمة"} /> : null}
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
+          {data.pack.length ? (
+            <Link
+              href={`/print/labels?ids=${data.pack.slice(0, 100).map((o) => o.id).join(",")}`}
+              target="_blank"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge/10 bg-edge/[0.04] px-4 text-[13px] font-bold text-ink transition-colors hover:bg-edge/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova"
+            >
+              <Tag className="size-4" aria-hidden="true" />
+              ملصقات الشحن
+            </Link>
+          ) : null}
+          {tab !== "sizes" && (data.pick.length || data.pack.length) ? <PrintButton label={tab === "pack" ? "طباعة البطاقات" : "طباعة القائمة"} /> : null}
+        </div>
       </header>
 
       <section aria-label="ملخص" className="grid grid-cols-3 gap-2 sm:gap-3">

@@ -41,7 +41,7 @@ export function StoreReadyEmail({
       </EmailParagraph>
 
       <EmailInfoBox tone="success">
-        <strong>بدأت تجربتك النشطة (180 دقيقة).</strong>
+        <strong>متجرك جاهز للتجربة.</strong>
         <br />
         جرّب متجرك كأنك عميل، أضف منتجاً للسلة، وأكمل عملية الطلب — لترى كيف
         تصلك تفاصيل الطلب وبوليصة الشحن بضغطة زر.
