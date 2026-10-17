@@ -160,3 +160,48 @@ export async function deliverStore(
   ).catch(() => {});
   return true;
 }
+
+/**
+ * بدء التجربة بعد إكمال التاجر «إعداد المتجر» (V2): المتجر من `setup` إلى `trial` فور التفعيل. لا رسالة تسليم
+ * (التاجر داخل الموقع أصلاً): الانتقال ذري، ثم جدولة تذكيرات التجربة والدفع. تفعيل مكرر لا يبدأ تجربتين.
+ */
+export async function startTrial(
+  storeId: string,
+  by: string,
+  opts: { timings?: LifecycleTimings } = {}
+): Promise<{ ok: true; trialEndsAt: Date } | { ok: false; reason: "not_found" | "not_allowed" | "stale" }> {
+  const [s] = await db.select().from(stores).where(eq(stores.id, storeId)).limit(1);
+  if (!s) return { ok: false, reason: "not_found" };
+
+  const now = new Date();
+  const timings = opts.timings ?? (await lifecycleTimings());
+  const plan = trialSchedule(now, timings);
+  const pricing = await currentPricing();
+  const price = (pricing.plans.find((p) => p.months === pricing.featured) ?? pricing.plans[0]!).price;
+
+  const r = await transition({
+    storeId,
+    to: "trial",
+    from: ["setup"],
+    actor: by,
+    set: {
+      setupCompletedAt: now,
+      deliveredAt: now,
+      demoStartedAt: now,
+      demoExpiresAt: plan.freeze,
+      trialEndsAt: plan.freeze,
+      purgeAt: plan.purge,
+      priceLockedEgp: s.priceLockedEgp ?? price,
+    },
+    reason: "setup_completed",
+  });
+  if (!r.ok) return { ok: false, reason: r.reason };
+
+  await safe("stage", storeId, () => db.update(conversations).set({ stage: "delivered", updatedAt: now }).where(eq(conversations.storeId, storeId)));
+  await safe("schedule", storeId, async () => {
+    await scheduleTrial(storeId, now, timings);
+    await schedulePaymentInvite(storeId, now);
+  });
+  await notifyAdmin(`أكمل التاجر إعداد متجر ${s.subdomain} وبدأت تجربته`, { storeId }).catch(() => {});
+  return { ok: true, trialEndsAt: plan.freeze };
+}

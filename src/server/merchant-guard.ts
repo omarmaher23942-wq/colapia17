@@ -33,6 +33,8 @@ export async function ownerStore(): Promise<MerchantStoreSession | null> {
 /** للصفحات: بلا صلاحية عرض للمجال ← أول صفحة يملكها العضو (أو تنبيه إن لم يملك شيئاً). */
 export async function requireStoreArea(area: StoreArea, level: Exclude<AccessLevel, "none"> = "view"): Promise<MerchantStoreSession> {
   const s = await requireMerchantStore();
+  // V2: متجر لم يكتمل إعداده لا تُفتح لوحته: صاحبه يكمل «إعداد المتجر»، والموظف يرى صفحة «قيد الإعداد».
+  if (s.store.status === "setup") redirect(isStoreOwner(s) ? "/onboarding" : "/dashboard/setup-pending");
   const perms = sessionPerms(s);
   if (allows(perms, area, level)) return s;
   const first = firstAllowedArea(perms);

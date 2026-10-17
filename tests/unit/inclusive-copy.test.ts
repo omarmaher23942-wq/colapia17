@@ -27,6 +27,22 @@ const ROOTS = [
   "src/lifecycle/templates.ts",
   "src/lifecycle/handlers.ts",
   "src/components/dashboard/billing",
+  "src/components/onboarding",
+  "src/components/dashboard/design",
+  "src/components/dashboard/products/ImportTool.tsx",
+  "src/app/(platform)/onboarding",
+  "src/app/(platform)/dashboard/design",
+  "src/app/(platform)/dashboard/setup-pending",
+  "src/app/(platform)/dashboard/products/import",
+  "src/lib/onboarding.ts",
+  "src/lib/design-tweak.ts",
+  "src/lib/import-candidates.ts",
+  "src/server/usage.ts",
+  "src/server/design-tweak.ts",
+  "src/server/import",
+  "src/server/actions/setup.ts",
+  "src/server/actions/setup-import.ts",
+  "src/server/actions/design.ts",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.

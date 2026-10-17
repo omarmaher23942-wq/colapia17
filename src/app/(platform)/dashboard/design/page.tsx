@@ -1,78 +1,38 @@
-// dashboard/design — تصميم المتجر: هويته الحالية وحركته، وطلب تعديل التصميم من الفريق، واستعادة أي تصميم سابق.
-import { redirect } from "next/navigation";
+// dashboard/design — «شكل المتجر»: الهوية (شعار وألوان وخطوط)، واجهة المتجر (فيديو/صورة)، شريط الإعلان، ترتيب أقسام الرئيسية،
+// حقل «اكتبوا ما تريدون تغييره»، وسجل نسخ التصميم للاستعادة. بجانبها معاينة حية للمتجر.
 import { requireStoreArea } from "@/server/merchant-guard";
-import { and, desc, eq, like } from "drizzle-orm";
-import { getMerchantSession } from "@/server/auth";
-import { db } from "@/db/client";
-import { storeBlueprints, storeSnapshots } from "@/db/schema";
-import { blueprintSchema } from "@/blueprint/schema";
-import { storeUrl } from "@/lib/utils";
-import { NO_STORE_HREF } from "@/lib/edition";
-import { DesignStudio } from "@/components/dashboard/design/DesignStudio";
+import { loadBlueprint } from "@/server/setup-data";
+import { designHistory } from "@/server/design-tweak";
+import { pairIdFor } from "@/lib/onboarding";
+import { SECTION_LABELS } from "@/lib/design-tweak";
+import { publicStoreUrl } from "@/lib/utils";
+import { allows } from "@/lib/store-perms";
+import { StoreLookPage } from "@/components/dashboard/design/StoreLookPage";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "تصميم المتجر" };
-
-const FONT_NAMES: Record<string, string> = {
-  cairo: "Cairo",
-  tajawal: "Tajawal",
-  ibm_plex_arabic: "IBM Plex Arabic",
-  almarai: "Almarai",
-  changa: "Changa",
-  el_messiri: "El Messiri",
-  readex_pro: "Readex Pro",
-  noto_kufi: "Noto Kufi",
-};
+export const metadata = { title: "شكل المتجر" };
 
 export default async function DesignPage() {
-  const session = await getMerchantSession();
-  if (!session) redirect("/login?redirect=/dashboard/design");
-  if (!session.store) redirect(NO_STORE_HREF);
-  await requireStoreArea("content");
+  const session = await requireStoreArea("content");
   const store = session.store;
+  const bp = await loadBlueprint(store.id);
+  if (!bp) return null;
+  const history = await designHistory(store.id, 12);
 
-  const [[row], previous] = await Promise.all([
-    db.select().from(storeBlueprints).where(eq(storeBlueprints.storeId, store.id)).limit(1),
-    db
-      .select({ id: storeSnapshots.id, version: storeSnapshots.version, createdAt: storeSnapshots.createdAt, data: storeSnapshots.data })
-      .from(storeSnapshots)
-      .where(and(eq(storeSnapshots.storeId, store.id), like(storeSnapshots.label, "قبل %")))
-      .orderBy(desc(storeSnapshots.version))
-      .limit(6),
-  ]);
-
-  const parsed = row ? blueprintSchema.safeParse(row.data) : null;
-  const bp = parsed?.success ? parsed.data : null;
-  const summarize = (data: unknown) => {
-    const p = blueprintSchema.safeParse(data);
-    if (!p.success) return null;
-    const t = p.data.theme;
-    return {
-      concept: p.data.design.concept || "التصميم الأول",
-      colors: [t.palette.primary, t.palette.accent, t.palette.background, t.palette.foreground],
-      fonts: `${FONT_NAMES[t.fonts.heading] ?? t.fonts.heading} / ${FONT_NAMES[t.fonts.body] ?? t.fonts.body}`,
-    };
-  };
+  const hero = bp.home.find((s) => s.type === "hero");
+  const ann = bp.home.find((s) => s.type === "announcement");
+  const url = publicStoreUrl(store);
 
   return (
-    <DesignStudio
-      storeUrl={storeUrl(store.subdomain)}
-      current={
-        bp
-          ? {
-              concept: bp.design.concept,
-              mood: bp.design.mood,
-              colors: [bp.theme.palette.primary, bp.theme.palette.accent, bp.theme.palette.background, bp.theme.palette.foreground],
-              fonts: `${FONT_NAMES[bp.theme.fonts.heading] ?? bp.theme.fonts.heading} / ${FONT_NAMES[bp.theme.fonts.body] ?? bp.theme.fonts.body}`,
-              card: bp.theme.productCardStyle,
-              hero: bp.home.find((s) => s.type === "hero")?.variant ?? null,
-              motion: bp.design.motion,
-            }
-          : null
-      }
-      previous={previous
-        .map((p) => ({ id: p.id, version: p.version, at: p.createdAt.toISOString(), summary: summarize(p.data) }))
-        .filter((p): p is { id: string; version: number; at: string; summary: NonNullable<ReturnType<typeof summarize>> } => Boolean(p.summary))}
+    <StoreLookPage
+      storeUrl={url}
+      canEdit={allows(session.perms, "content", "manage")}
+      identity={{ name: bp.brand.name, primary: bp.theme.palette.primary, fontPair: pairIdFor(bp.theme.fonts.heading, bp.theme.fonts.body), logoUrl: bp.brand.logo?.url ?? null }}
+      heroKind={hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto"}
+      announcement={{ text: ann && ann.type === "announcement" ? (ann.messages[0]?.text ?? "") : "", enabled: Boolean(ann && ann.enabled !== false) }}
+      sections={bp.home.filter((s) => s.type !== "hero" && s.type !== "announcement").map((s) => ({ id: s.id, label: SECTION_LABELS[s.type] ?? s.type, enabled: s.enabled !== false }))}
+      motion={bp.design.motion}
+      history={history}
     />
   );
 }
