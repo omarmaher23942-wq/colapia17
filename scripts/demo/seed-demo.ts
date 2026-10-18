@@ -333,7 +333,7 @@ async function main() {
   // ─── الـ Blueprint: الافتراضي V2 ثم تخصيص الديمو ───
   const base = defaultBlueprint({
     name: NAME, tagline: "متجر تجريبي من Colapia لعرض شكل المتجر ولوحة التحكم",
-    industry: "fashion", email: "demo@colapia.com", inspectionAllowed: true, storeId, colorPreference: "#1f2937",
+    industry: "fashion", email: "omarmaher23942@gmail.com", inspectionAllowed: true, storeId, colorPreference: "#1f2937",
     productCount: data.length, hasHeroImages: true, variationSeed: "demo-colapia-2026",
   });
   const cta = (label: string, target: StoreBlueprint["header"]["nav"][number]["target"], style: "primary" | "secondary" = "primary") => ({ label, target, style });
