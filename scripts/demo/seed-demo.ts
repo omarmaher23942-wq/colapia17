@@ -196,7 +196,7 @@ async function main() {
   const now = Date.now();
   const [m] = await db
     .insert(merchants)
-    .values({ displayName: "Colapia Demo", email: "samiraahmad1719@gmail.com", isActivated: true, createdAt: new Date(now - 90 * DAY) })
+    .values({ displayName: "Colapia Demo", email: "demo@colapia.com", isActivated: true, createdAt: new Date(now - 90 * DAY) })
     .returning();
   const [s] = await db
     .insert(stores)
@@ -333,7 +333,7 @@ async function main() {
   // ─── الـ Blueprint: الافتراضي V2 ثم تخصيص الديمو ───
   const base = defaultBlueprint({
     name: NAME, tagline: "متجر تجريبي من Colapia لعرض شكل المتجر ولوحة التحكم",
-    industry: "fashion", email: "samiraahmad1719@gmail.com", inspectionAllowed: true, storeId, colorPreference: "#1f2937",
+    industry: "fashion", email: "demo@colapia.com", inspectionAllowed: true, storeId, colorPreference: "#1f2937",
     productCount: data.length, hasHeroImages: true, variationSeed: "demo-colapia-2026",
   });
   const cta = (label: string, target: StoreBlueprint["header"]["nav"][number]["target"], style: "primary" | "secondary" = "primary") => ({ label, target, style });
