@@ -196,7 +196,7 @@ async function main() {
   const now = Date.now();
   const [m] = await db
     .insert(merchants)
-    .values({ displayName: "Colapia Demo", email: "demo@colapia.com", isActivated: true, createdAt: new Date(now - 90 * DAY) })
+    .values({ displayName: "Colapia Demo", email: "omarmaher23942@gmail.com", isActivated: true, createdAt: new Date(now - 90 * DAY) })
     .returning();
   const [s] = await db
     .insert(stores)
