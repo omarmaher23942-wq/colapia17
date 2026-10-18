@@ -161,7 +161,7 @@ export function ImageLightbox({
               <button type="button" onClick={() => go(1)} className="clp-lightbox-nav start-3" aria-label="التالي">
                 <ChevronLeft className="size-6" aria-hidden="true" />
               </button>
-              <p className="clp-lightbox-count" aria-live="polite">
+              <p className="clp-lightbox-count" dir="ltr" aria-live="polite">
                 {index + 1} / {total}
               </p>
             </>

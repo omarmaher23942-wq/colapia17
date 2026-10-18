@@ -67,8 +67,7 @@ export function ProductStickyBar() {
     <div
       className={cn("fixed inset-x-3 z-40 transition-all duration-300 md:hidden", shown ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0")}
       style={{ bottom: "calc(0.75rem + var(--clp-bottom-offset, 0px) + env(safe-area-inset-bottom, 0px))" }}
-      // @ts-expect-error inert متاح في المتصفحات الحديثة ولم تُضف React 19 أنواعه لكل بيئة
-      inert={shown ? undefined : ""}
+      inert={!shown}
     >
       <div className="flex items-center gap-2 rounded-2xl border p-2 shadow-2xl backdrop-blur-xl" style={{ background: "color-mix(in srgb, var(--background) 92%, transparent)", borderColor: "var(--border)" }}>
         <div className="min-w-0 flex-1 ps-1">

@@ -10,6 +10,9 @@ export const RESERVED_SUBDOMAINS = new Set([
   "media", "img", "images", "files", "uploads", "video", "videos", "stream",
 ]);
 
+/** متجر العرض التجريبي (demo.colapia.com): محجوز عن التجار لكن الوسيط يخدمه كمتجر عادي. */
+export const DEMO_SUBDOMAIN = "demo";
+
 export function isReservedSubdomain(sub: string): boolean {
   return RESERVED_SUBDOMAINS.has(sub.trim().toLowerCase());
 }

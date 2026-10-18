@@ -79,7 +79,7 @@ export async function sendMonthlyReports(now = new Date()): Promise<number> {
     .select({ store: stores, email: merchants.email })
     .from(stores)
     .innerJoin(merchants, eq(merchants.id, stores.merchantId))
-    .where(and(eq(stores.status, "active"), isNull(stores.deletedAt), isNull(stores.purgedAt), lt(stores.activatedAt, month.to)));
+    .where(and(eq(stores.status, "active"), isNull(stores.deletedAt), isNull(stores.purgedAt), lt(stores.activatedAt, month.to), sql`coalesce(${stores.prefs}->>'demo', '') <> 'true'`));
   let sent = 0;
   const t0 = Date.now();
   for (const { store, email } of rows) {

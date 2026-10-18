@@ -8,7 +8,7 @@
 //  4) x-store-subdomain و x-pathname و x-req-id و x-store-preview تُكتب من هنا فقط (ونحذف أي نسخة من العميل).
 //  5) معاينة الفريق (lib/store-preview.ts): ?store=<slug> على نشرات المعاينة، و?preview=<مفتاح> على نطاق المتجر.
 import { NextRequest, NextResponse } from "next/server";
-import { RESERVED_SUBDOMAINS } from "@/lib/subdomains";
+import { RESERVED_SUBDOMAINS, DEMO_SUBDOMAIN } from "@/lib/subdomains";
 import { REQ_ID_HEADER, newRequestId, isWellFormedRequestId } from "@/lib/correlation";
 import {
   PREVIEW_HEADER,
@@ -183,7 +183,7 @@ export async function middleware(req: NextRequest) {
   if (sub === "www") {
     return NextResponse.redirect(`${url.protocol}//${ROOT}${pathname}${url.search}`, 308);
   }
-  if (RESERVED_SUBDOMAINS.has(sub)) return notFound();
+  if (RESERVED_SUBDOMAINS.has(sub) && sub !== DEMO_SUBDOMAIN) return notFound();
 
   // نطاق المتجر قبل التسليم: ?preview=<STORE_PREVIEW_KEY> يحفظ كوكي يرى به الفريق المتجر خلف بوابة «قيد التجهيز».
   const key = process.env.STORE_PREVIEW_KEY;
@@ -235,6 +235,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // الأصول الثابتة المشتركة تُخدم مباشرة بدون middleware.
-    "/((?!_next/static|_next/image|icons/|brand/|sounds/|sw.js).*)",
+    "/((?!_next/static|_next/image|icons/|brand/|sounds/|demo/|sw.js).*)",
   ],
 };

@@ -215,7 +215,7 @@ export function ProductGallery({
               <button type="button" onClick={() => select(idx + 1)} disabled={idx === slides.length - 1} aria-label="التالي" className="absolute start-2 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 lg:grid">
                 <ChevronLeft className="size-5" aria-hidden="true" />
               </button>
-              <p className="pointer-events-none absolute bottom-3 end-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold tabular-nums text-white lg:hidden" aria-live="polite">
+              <p className="pointer-events-none absolute bottom-3 end-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold tabular-nums text-white lg:hidden" dir="ltr" aria-live="polite">
                 {idx + 1} / {slides.length}
               </p>
               <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5 lg:hidden" aria-hidden="true">

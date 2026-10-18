@@ -62,8 +62,11 @@ export type Theme = z.infer<typeof themeSchema>;
 export type Palette = z.infer<typeof paletteSchema>;
 export type AmbientBackdrop = z.infer<typeof ambientBackdropSchema>;
 
+/** صور متجر الديمو المضمنة في المنصة (public/demo): مسار نسبي مقبول كما في videoUrl. */
+const demoAssetPath = z.string().regex(/^\/demo\/(editorial|media|products)\/[\w.-]+\.(webp|jpe?g|png)$/);
+
 export const imageSchema = z.object({
-  url: z.string().url(),
+  url: z.union([z.string().url(), demoAssetPath]),
   alt: z.string().max(200).default(""),
   focalX: z.number().min(0).max(1).default(0.5),
   focalY: z.number().min(0).max(1).default(0.5),
