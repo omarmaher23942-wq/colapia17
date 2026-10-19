@@ -33,11 +33,13 @@ import {
 import { applyHeroMedia, type HeroMediaChoice } from "@/lib/design-tweak";
 import { applyTheme, isThemeId } from "@/blueprint/themes";
 import { isNiche } from "@/lib/niche-attributes";
+import { applyStarterTemplate, isTemplateId, STARTER_TEMPLATES } from "@/lib/store-templates";
 import { startTrial } from "@/ai/lifecycle/deliver";
 import { saveBlueprintAction } from "./blueprint";
 import { saveShippingSettingsAction } from "./shipping";
 import { saveStoreSettingsAction } from "./store-settings";
-import { loadBlueprint, readinessFor } from "@/server/setup-data";
+import { loadBlueprint, qualityFor, readinessFor } from "@/server/setup-data";
+import type { QualityTip } from "@/lib/store-quality";
 
 type Fail = { ok: false; error: string; field?: string };
 type Ok<T = object> = { ok: true } & T;
@@ -265,6 +267,45 @@ export async function saveReturnsStepAction(raw: unknown): Promise<Ok | Fail> {
   return r.ok ? { ok: true } : { ok: false, error: r.error };
 }
 
+// ─── خيارات إضافية: الأصل «لا»، ولا يُضاف شيء إلا بإجابة صريحة ───────────────────
+
+const extrasInput = z.object({
+  gift: z.object({ on: z.boolean(), feePounds: z.coerce.number().min(0).max(1000).default(0) }).optional(),
+  customerCancel: z.boolean().optional(),
+});
+
+export async function saveExtrasStepAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("settings");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const p = extrasInput.safeParse(raw);
+  if (!p.success) return { ok: false, error: "اختيار غير صالح" };
+  const bp = await loadBp(s.storeId);
+  if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const { gift, customerCancel } = p.data;
+  const next: StoreBlueprint = {
+    ...bp,
+    shipping: gift ? { ...bp.shipping, giftEnabled: gift.on, giftWrapPiasters: gift.on ? Math.round(gift.feePounds * 100) : undefined } : bp.shipping,
+    returns: customerCancel === undefined ? bp.returns : { ...bp.returns, allowCustomerCancel: customerCancel },
+  };
+  const r = await saveBlueprintAction(next, "خيارات إضافية");
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+/** قالب بدء جاهز: التصميم الكامل وتركيب الرئيسية لنشاط معين. يُحفظ اختياره لإعادة عرضه. */
+export async function saveTemplateAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("content");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const id = (raw as { template?: unknown } | null)?.template;
+  if (!isTemplateId(id)) return { ok: false, error: "قالب غير صالح" };
+  const bp = await loadBp(s.storeId);
+  if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const r = await saveBlueprintAction(applyStarterTemplate(bp, id), "قالب البدء");
+  if (!r.ok) return { ok: false, error: r.error };
+  await patchOnboarding(s.storeId, { templateId: id, themeId: STARTER_TEMPLATES[id].theme });
+  revalidatePath("/dashboard/design");
+  return { ok: true };
+}
+
 // ─── 6) التواصل ──────────────────────────────────────────────────────────────
 
 const contactInput = z.object({ whatsapp: z.string().max(40), instagram: z.string().max(200), facebook: z.string().max(300), tiktok: z.string().max(200) });
@@ -317,11 +358,13 @@ export async function saveHeroMediaAction(raw: unknown): Promise<Ok<{ summary: s
 
 // ─── 9) الجاهزية والتفعيل ────────────────────────────────────────────────────
 
-export async function readinessAction(): Promise<Ok<{ ready: boolean; items: ReadinessItem[]; inspection: boolean }> | Fail> {
+export async function readinessAction(): Promise<Ok<{ ready: boolean; items: ReadinessItem[]; inspection: boolean; tips: QualityTip[] }> | Fail> {
   const s = await ownerStore();
   if (!s) return { ok: false, error: SESSION_ERR };
   const [r, bp] = await Promise.all([readinessFor(s.storeId), loadBp(s.storeId)]);
-  return r ? { ok: true, ready: r.ok, items: r.items, inspection: Boolean(bp?.shipping.inspectionAllowed) } : { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  if (!r) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const tips = await qualityFor(s.store).catch(() => [] as QualityTip[]);
+  return { ok: true, ready: r.ok, items: r.items, inspection: Boolean(bp?.shipping.inspectionAllowed), tips };
 }
 
 /** ترتيب لمسات أخيرة قبل أن يراه الزوار: عناوين البحث والأوصاف، ترتيب الأقسام، وصور الواجهة من المنتجات. */

@@ -1,13 +1,14 @@
 import "server-only";
 // setup-data.ts — قراءات خادم مشتركة لمسار الإعداد (ليست نقاط استدعاء عامة، فتقبل معرّف المتجر من الخادم فقط).
-import { and, count, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNull, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { getTenantDb } from "@/db/tenant";
 import { categories, discounts, products, shippingZones, storeBlueprints, type stores } from "@/db/schema";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { pairIdFor, parseOnboarding, planFromZones, publishReadiness, templateFromReturns, type ReadinessItem, type SetupData } from "@/lib/onboarding";
 import { publicStoreUrl } from "@/lib/utils";
-import { resolveNiche } from "@/lib/niche-attributes";
+import { resolveNiche, usesSizeColor } from "@/lib/niche-attributes";
+import { qualityTips, type QualityTip } from "@/lib/store-quality";
 
 export async function loadBlueprint(storeId: string): Promise<StoreBlueprint | null> {
   const [row] = await db.select().from(storeBlueprints).where(eq(storeBlueprints.storeId, storeId)).limit(1);
@@ -32,6 +33,34 @@ export async function readinessFor(storeId: string): Promise<{ ok: boolean; item
     activeZones: Number(zones?.n ?? 0),
     whatsapp: bp.channels.whatsappNumber,
     storeName: bp.brand.name,
+  });
+}
+
+/** اقتراحات الجودة قبل النشر من بيانات المتجر الفعلية (غير مانعة). */
+export async function qualityFor(store: typeof stores.$inferSelect): Promise<QualityTip[]> {
+  const bp = await loadBlueprint(store.id);
+  if (!bp) return [];
+  const tdb = await getTenantDb(store.id);
+  const live = and(eq(products.storeId, store.id), isNull(products.deletedAt), eq(products.status, "active"));
+  const [[row], [cats]] = await Promise.all([
+    tdb
+      .select({
+        active: count(),
+        noImage: sql<number>`count(*) filter (where jsonb_array_length(coalesce(${products.images}, '[]'::jsonb)) = 0)`,
+        noDesc: sql<number>`count(*) filter (where coalesce(nullif(trim(${products.description}), ''), nullif(trim(${products.shortDescription}), '')) is null)`,
+      })
+      .from(products)
+      .where(live),
+    tdb.select({ n: count() }).from(categories).where(eq(categories.storeId, store.id)),
+  ]);
+  return qualityTips({
+    hasLogo: Boolean(bp.brand.logo?.url),
+    activeProducts: Number(row?.active ?? 0),
+    withoutImage: Number(row?.noImage ?? 0),
+    withoutDescription: Number(row?.noDesc ?? 0),
+    categories: Number(cats?.n ?? 0),
+    usesSizes: usesSizeColor(resolveNiche(store.onboarding, bp.brand.tagline, bp.brand.description, bp.brand.name)),
+    sizeGuideCharts: bp.sizeGuide.charts.length,
   });
 }
 
@@ -73,12 +102,14 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
       ? { ...restored, freeOver: bp.shipping.freeOverPiasters ? bp.shipping.freeOverPiasters / 100 : null, saved: true }
       : { plan: { kind: "cairo_giza", cairoFee: 50, restFee: 75 }, etaMin: 2, etaMax: 4, freeOver: null, saved: false },
     returns: templateFromReturns(bp.returns),
+    extras: { gift: bp.shipping.giftEnabled === true, giftFeePounds: (bp.shipping.giftWrapPiasters ?? 0) / 100, customerCancel: bp.returns.allowCustomerCancel === true },
     contact: { whatsapp: c.whatsappNumber ?? "", instagram: c.instagramUsername ?? "", facebook: c.facebookUrl ?? "", tiktok: c.tiktokUsername ?? "" },
     look: {
       heroKind: hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto",
       hasVideo: Boolean(hero && hero.type === "hero" && hero.videoUrl),
       videoUrl: hero && hero.type === "hero" ? (hero.videoUrl ?? null) : null,
       themeId: typeof (store.onboarding as { themeId?: unknown }).themeId === "string" ? ((store.onboarding as { themeId: string }).themeId) : null,
+      templateId: typeof (store.onboarding as { templateId?: unknown }).templateId === "string" ? ((store.onboarding as { templateId: string }).templateId) : null,
     },
     niche: resolveNiche(store.onboarding, bp.brand.tagline, bp.brand.description, bp.brand.name),
     discounts: Number(disc?.n ?? 0),

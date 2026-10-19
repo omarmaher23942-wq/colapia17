@@ -4,7 +4,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, CreditCard, Link2, Package, Truck } from "lucide-react";
+import { CheckCircle2, Package, Palette, Rocket, Store, Truck } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { NoStoreNotice } from "@/components/auth/NoStoreNotice";
 import { GoogleIcon } from "@/components/landing/shared";
@@ -23,10 +23,11 @@ export const metadata: Metadata = {
 };
 
 const STEPS = [
-  { icon: Package, title: "المنتجات", text: "اكتبوها أو ارفعوا صورها أو ملفاً جاهزاً." },
-  { icon: CreditCard, title: "وسائل الدفع", text: "اختاروا ما يناسب عملاءكم." },
-  { icon: Truck, title: "الشحن والسياسات", text: "المناطق والأسعار والاستبدال." },
-  { icon: Link2, title: "التواصل", text: "واتساب وحساباتكم على المنصات." },
+  { icon: Store, title: "اسم المتجر ونشاطكم", text: "اسم واحد ونوع النشاط، والباقي اختياري." },
+  { icon: Package, title: "المنتجات", text: "صوّروا منتجاتكم بالهاتف أو اختاروا صورها، وتكتبون السعر فقط." },
+  { icon: Palette, title: "شكل المتجر", text: "قالب جاهز لنشاطكم، وتصميم تختارونه وتشاهدونه مباشرة." },
+  { icon: Truck, title: "الدفع والشحن", text: "أسئلة قصيرة بنعم أو لا، سؤال في كل شاشة." },
+  { icon: Rocket, title: "النشر", text: "نراجع معكم الجاهزية ثم يبدأ المتجر العمل." },
 ];
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -99,7 +100,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
             متجر «{target.storeName}» جاهز للإعداد
           </h1>
           <p className="mx-auto mt-2 max-w-sm text-[14px] leading-7 text-[#c3cdf0]/75">
-            أربع خطوات قصيرة تستغرق نحو عشر دقائق، ويُحفظ تقدمكم بعد كل خطوة. بعدها تبدأ تجربة مجانية قبل أي دفع.
+            خمس خطوات قصيرة تستغرق نحو عشر دقائق، ويُحفظ تقدمكم تلقائياً فتكملون من حيث توقفتم. بعدها تبدأ تجربة مجانية قبل أي دفع.
           </p>
         </div>
 

@@ -6,7 +6,7 @@
 // شيء قبل «اعتماد المنتجات».
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, ImagePlus, MessageSquareText, PenLine, Sparkles, UploadCloud } from "lucide-react";
-import { importAnalyzeImagesAction, importAnalyzeTextAction, importCommitAction } from "@/server/actions/setup-import";
+import { categorizeProductsAction, importAnalyzeImagesAction, importAnalyzeTextAction, importCommitAction } from "@/server/actions/setup-import";
 import { saveNicheAction } from "@/server/actions/setup";
 import { rehostProductImagesAction } from "@/server/actions/product-import";
 import { chunk, IMPORT_MAX_CANDIDATES, IMPORT_TEXT_CHUNK, mergeCandidates, missingPrice, newId, splitProductText, summarize, unifyCategories, type Candidate } from "@/lib/import-candidates";
@@ -216,6 +216,23 @@ export function ProductImporter({
     }
   }
 
+  // تصنيف مجمّع واحد بعد كل دفعة رفع: أقسام قليلة (حتى 6) بدل قسم لكل منتج. يطبَّق على ما لم يعدّله التاجر في الأثناء.
+  const itemsRef = useRef<Candidate[]>([]);
+  itemsRef.current = items;
+  const categorizeNew = useCallback(
+    async (ids: string[]) => {
+      const sent = new Map<string, string>();
+      const batch = itemsRef.current.filter((c) => ids.includes(c.id));
+      if (batch.length < 2) return;
+      batch.forEach((c) => sent.set(c.id, c.category));
+      const r = await categorizeProductsAction({ items: batch.map((c) => ({ id: c.id, name: c.name, category: c.category })), niche, categories: existingCategories }).catch(() => null);
+      if (!r || !r.ok) return;
+      setItems((cur) => cur.map((c) => (sent.has(c.id) && c.category === sent.get(c.id) && r.assign[c.id] !== undefined ? { ...c, category: r.assign[c.id]! } : c)));
+      if (r.categories.length) setNotice(`جمعنا منتجاتكم في ${fmtNum(r.categories.length)} ${r.categories.length === 1 ? "قسم" : r.categories.length <= 10 ? "أقسام" : "قسماً"}: ${r.categories.join("، ")}. يمكنكم تغيير قسم أي منتج في المراجعة.`);
+    },
+    [niche, existingCategories]
+  );
+
   const committing = useRef(false);
   async function commit() {
     // نقرة ثانية قبل رد الخادم كانت تعتمد المنتجات مرتين فتتكرر في المتجر.
@@ -351,6 +368,7 @@ export function ProductImporter({
               categories={[...new Set([...existingCategories, ...items.map((i) => i.category).filter(Boolean)])]}
               cleanup={cleanup}
               onBusy={setPhotosBusy}
+              onRunDone={(ids) => void categorizeNew(ids)}
               onNotice={setNotice}
               onCandidate={(c) => setItems((cur) => [...cur, c].slice(0, IMPORT_MAX_CANDIDATES))}
               onAttach={(id, url) => setItems((cur) => cur.map((c) => (c.id === id ? { ...c, images: [...new Set([...c.images, url])].slice(0, 10) } : c)))}

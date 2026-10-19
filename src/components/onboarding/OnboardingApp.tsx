@@ -4,14 +4,15 @@
 // كل خطوة تحفظ فوراً في بيانات المتجر الحقيقية، والتقدم محفوظ فيستأنف التاجر من حيث توقف. بلا ذكر لأي تقنية.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertCircle, Check, CheckCircle2, Loader2 } from "lucide-react";
-import { saveProgressAction } from "@/server/actions/setup";
+import { saveNicheAction, saveProgressAction } from "@/server/actions/setup";
 import { nextStep, prevStep, progressPercent, STEPS, type SetupData, type StepId } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 import { IdentityForm } from "./IdentityForm";
 import { LookPanel } from "./LookPanel";
 import { PreviewPane, PreviewSheet } from "./PreviewPane";
-import { StepPayment, StepReturns, StepShipping } from "./StepsCommerce";
-import { StepContact, StepDiscount } from "./StepsMisc";
+import { CommerceWizard } from "./CommerceWizard";
+import { TemplatePicker } from "./TemplatePicker";
+import type { Niche } from "@/lib/niche-attributes";
 import { StepProducts } from "./StepProducts";
 import { StepPublish } from "./StepPublish";
 import { ThemeSection } from "./ThemeSection";
@@ -26,12 +27,31 @@ export function OnboardingApp({ data }: { data: SetupData }) {
   const [save, setSave] = useState<Save>("idle");
   const [products, setProducts] = useState(data.products);
   const [name, setName] = useState(data.identity.name);
+  const [niche, setNiche] = useState<Niche>(data.niche);
+  const [online, setOnline] = useState(true);
   const main = useRef<HTMLDivElement>(null);
   const first = useRef(true);
 
   const info = STEPS.find((s) => s.id === step)!;
   const index = STEPS.findIndex((s) => s.id === step) + 1;
   const pct = progressPercent(done);
+
+  // انقطاع الاتصال: نخبر التاجر بوضوح بدل فشل صامت (الحفظ يعاد تلقائياً عند العودة).
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  const pickNiche = useCallback((n: Niche) => {
+    setNiche(n);
+    void saveNicheAction({ niche: n });
+  }, []);
 
   const refreshPreview = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -91,7 +111,7 @@ export function OnboardingApp({ data }: { data: SetupData }) {
         <span className="text-[15px] font-black tracking-tight text-ink">Colapia</span>
         <span aria-hidden="true" className="h-4 w-px bg-edge/20" />
         <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-ink-2">{name || "متجركم"}</span>
-        <div className="hidden w-48 items-center gap-2 sm:flex" role="progressbar" aria-label="تقدم الإعداد" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+        <div className="hidden w-48 items-center gap-2 md:flex" role="progressbar" aria-label="تقدم الإعداد" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
           <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-edge/10">
             <div className="h-full rounded-full bg-nova transition-[width] duration-500" style={{ width: `${Math.max(4, pct)}%` }} />
           </div>
@@ -103,18 +123,27 @@ export function OnboardingApp({ data }: { data: SetupData }) {
         </span>
       </header>
 
-      {/* الخطوات على الجوال: شريط أفقي */}
-      <nav aria-label="خطوات الإعداد" className="flex shrink-0 gap-1.5 overflow-x-auto border-b border-edge/10 px-3 py-2 lg:hidden">
+      {!online ? (
+        <p role="alert" className="shrink-0 bg-warn/15 px-4 py-2 text-center text-[12.5px] font-bold text-warn">
+          لا يوجد اتصال بالإنترنت. ما كتبتموه محفوظ على هذه الصفحة، وسنكمل الحفظ عند عودة الاتصال.
+        </p>
+      ) : null}
+
+      {/* الخطوات على الجوال: خمس خانات متساوية بتقدم واضح */}
+      <nav aria-label="خطوات الإعداد" className="grid shrink-0 grid-cols-5 gap-1 border-b border-edge/10 px-3 py-2 lg:hidden">
         {STEPS.map((s, i) => (
           <button
             key={s.id}
             type="button"
             onClick={() => go(s.id)}
             aria-current={step === s.id ? "step" : undefined}
-            className={cn("inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-bold transition", step === s.id ? "bg-nova text-white dark:text-space" : done.includes(s.id) ? "bg-ok/12 text-ok" : "bg-edge/[0.06] text-ink-3")}
+            className="group flex min-h-11 flex-col items-stretch justify-center gap-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50"
           >
-            {done.includes(s.id) && step !== s.id ? <Check className="size-3.5" strokeWidth={3} aria-hidden="true" /> : <span className="tabular-nums">{i + 1}</span>}
-            {s.short}
+            <span className={cn("h-1.5 rounded-full transition", step === s.id ? "bg-nova" : done.includes(s.id) ? "bg-ok" : "bg-edge/15")} />
+            <span className={cn("truncate text-center text-[11px] font-bold", step === s.id ? "text-ink" : "text-ink-3")}>
+              {done.includes(s.id) && step !== s.id ? <Check className="me-0.5 inline size-3" strokeWidth={3} aria-hidden="true" /> : <span className="tabular-nums">{i + 1}. </span>}
+              {s.short}
+            </span>
           </button>
         ))}
       </nav>
@@ -151,7 +180,11 @@ export function OnboardingApp({ data }: { data: SetupData }) {
             <div key={step} className="motion-safe:animate-[step-in_.28s_ease-out]">
               {step === "identity" ? (
                 <IdentityForm
+                  simple
+                  niche={niche}
+                  onNiche={pickNiche}
                   initial={data.identity}
+                  submitLabel="التالي: المنتجات"
                   onLogoSaved={refreshPreview}
                   onChange={(v) => setName(v.name)}
                   onSaved={(v) => {
@@ -164,7 +197,7 @@ export function OnboardingApp({ data }: { data: SetupData }) {
               {step === "products" ? (
                 <StepProducts
                   data={products}
-                  niche={data.niche}
+                  niche={niche}
                   draftKey={`clp-import:${data.store.id}`}
                   dmImages={data.onboarding.dmImages}
                   onCommitted={(s) => {
@@ -176,21 +209,21 @@ export function OnboardingApp({ data }: { data: SetupData }) {
                 />
               ) : null}
 
-              {step === "payment" ? <StepPayment data={data.payments} onSaved={() => advance("payment")} onBack={() => back("payment")} /> : null}
-              {step === "shipping" ? <StepShipping data={data.shipping} onSaved={() => advance("shipping")} onBack={() => back("shipping")} /> : null}
-              {step === "returns" ? <StepReturns data={data.returns} onSaved={() => advance("returns")} onBack={() => back("returns")} /> : null}
-              {step === "contact" ? <StepContact data={data.contact} onSaved={() => advance("contact")} onBack={() => back("contact")} /> : null}
-              {step === "discount" ? <StepDiscount existing={data.discounts} onSaved={() => advance("discount")} onSkip={() => advance("discount")} onBack={() => back("discount")} /> : null}
-
               {step === "look" ? (
                 <div className="space-y-6">
-                  <ThemeSection initial={data.look.themeId} onChanged={refreshPreview} />
+                  <TemplatePicker niche={niche} initial={data.look.templateId} onApplied={refreshPreview} />
                   <div className="border-t border-edge/10 pt-6">
-                    <LookPanel initialHero={data.look.heroKind} heroVideoUrl={data.look.videoUrl} onChanged={refreshPreview} />
+                    <ThemeSection initial={data.look.themeId} onChanged={refreshPreview} />
                   </div>
+                  <details className="rounded-2xl border border-edge/12 p-3">
+                    <summary className="flex min-h-11 cursor-pointer items-center text-[13.5px] font-black text-ink">واجهة المتجر: فيديو أو صورة، أو اكتبوا ما تريدون تغييره (اختياري)</summary>
+                    <div className="pt-4">
+                      <LookPanel initialHero={data.look.heroKind} heroVideoUrl={data.look.videoUrl} onChanged={refreshPreview} />
+                    </div>
+                  </details>
                   <div className="flex flex-wrap gap-2 border-t border-edge/10 pt-5">
-                    <button type="button" className={btnPrimary} onClick={() => advance("look")}>
-                      متابعة
+                    <button type="button" className={cn(btnPrimary, "min-h-12 px-8 text-[15px]")} onClick={() => advance("look")}>
+                      التالي: الدفع والشحن
                     </button>
                     <button type="button" className={btnGhost} onClick={() => back("look")}>
                       رجوع
@@ -198,6 +231,8 @@ export function OnboardingApp({ data }: { data: SetupData }) {
                   </div>
                 </div>
               ) : null}
+
+              {step === "commerce" ? <CommerceWizard storeId={data.store.id} data={data} onDone={() => advance("commerce")} onBack={() => back("commerce")} /> : null}
 
               {step === "publish" ? <StepPublish initial={data.readiness.items} inspection={data.payments.inspection} onBack={() => back("publish")} onGoto={(s) => go(s)} onPublished={() => setDone((d) => [...new Set([...d, "publish" as StepId])])} /> : null}
             </div>

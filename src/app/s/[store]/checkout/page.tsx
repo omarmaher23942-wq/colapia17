@@ -77,7 +77,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
             generalEta: bp.shipping.generalEta,
             inspectionAllowed: inspectionOffered(bp),
             returnDays: bp.returns.allowExchange || bp.returns.allowRefund ? bp.returns.windowDays : 0,
-            giftEnabled: bp.shipping.giftEnabled ?? true,
+            giftEnabled: bp.shipping.giftEnabled ?? false,
             giftWrapPiasters: bp.shipping.giftWrapPiasters,
           }}
         />

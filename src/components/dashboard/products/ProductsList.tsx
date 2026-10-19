@@ -14,6 +14,7 @@ import { bulkUpdateProductsAction, deleteProductAction, duplicateProductAction, 
 import type { ProductRow } from "@/server/repos/products-list";
 import { requestPulse } from "../DashboardPulse";
 import { ConfirmDialog, DashDialog } from "../ui/DashDialog";
+import { AddImageTile } from "./AddImageTile";
 
 const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
   active: { label: "منشور", cls: "bg-ok/12 text-ok" },
@@ -56,10 +57,12 @@ function Thumb({ p, size = "size-12" }: { p: ProductRow; size?: string }) {
   return p.image && !broken ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={p.image} alt="" loading="lazy" onError={() => setBroken(true)} className={cn(size, "shrink-0 rounded-xl border border-edge/10 object-cover")} />
-  ) : (
-    <span className={cn(size, "grid shrink-0 place-items-center rounded-xl border border-dashed border-edge/15 text-ink-3")} title="بلا صورة">
+  ) : p.image ? (
+    <span className={cn(size, "grid shrink-0 place-items-center rounded-xl border border-dashed border-edge/15 text-ink-3")} title="تعذر تحميل الصورة">
       <Package className="size-5" strokeWidth={1.75} aria-hidden="true" />
     </span>
+  ) : (
+    <AddImageTile productId={p.id} name={p.name} className={size} />
   );
 }
 
@@ -223,8 +226,8 @@ export function ProductsList({
             <li key={p.id} className={cn("dash-card p-3", checked && "border-nova/40 bg-nova/[0.05]")}>
               <div className="flex items-start gap-3">
                 <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} aria-label={`تحديد ${p.name}`} className="mt-1 size-5 shrink-0 accent-[var(--dash-nova)]" />
+                <Thumb p={p} size="size-16" />
                 <Link href={`/dashboard/products/${p.id}`} className="flex min-w-0 flex-1 items-start gap-3">
-                  <Thumb p={p} size="size-16" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-black text-ink">{p.name}</span>
                     <span className="mt-0.5 block text-[13px] font-black tabular-nums text-ink">{formatEgp(p.pricePiasters)}</span>

@@ -518,6 +518,8 @@ export const returnsSchema = z.object({
   defectPolicy: z.enum(["replace_or_refund", "replace", "refund", "case_by_case", "none"]).default("replace_or_refund"),
   defectReportHours: z.number().int().min(12).max(720).default(48),
   defectShippingByStore: z.boolean().default(true),
+  // إلغاء الزبون لطلبه من صفحة الطلب: مغلق ما لم يفعّله التاجر صراحةً (لا خيار إلغاء يُضاف تلقائياً).
+  allowCustomerCancel: z.boolean().default(false),
 });
 
 export const policyPageSchema = z.object({
