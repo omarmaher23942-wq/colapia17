@@ -2,7 +2,7 @@
 // - تقرأ كوكي clp_m مباشرة (بدون استعلام DB) لضمان LCP سريع (مبدأ الأداء).
 // - تجلب المراجعات المعتمدة من ذاكرة Redis (5 دقائق) لتفادي ضرب الـ DB في كل طلب (لا ذاكرة Next: تعمل على أي استضافة).
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
-import { currentPricing } from "@/server/pricing";
+import { currentPricing, goldenStatus } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { getFlag } from "@/lib/flags";
 import { perYearFrom } from "@/lib/change-requests";
@@ -13,7 +13,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { platformReviews } from "../../db/schema/platform";
 import { Landing, landingFaq } from "../../components/landing/Landing";
-import { buildFeeText, planCards, instagramUrl } from "@/lib/landing-pricing";
+import { buildFeeText, planCards, instagramUrl, landingOffer } from "@/lib/landing-pricing";
 import { demoUrl } from "@/agent/settings";
 import { hostingGraceDays } from "@/server/hosting-grace";
 import type { LandingReview, SessionState } from "../../components/landing/types";
@@ -70,14 +70,16 @@ async function getSessionState(): Promise<SessionState> {
 export default async function Page() {
   const [reviews, session] = await Promise.all([getApprovedReviews(), getSessionState()]);
 
-  const [pricing, timings, changes, demo, grace] = await Promise.all([
+  const [pricing, gold, timings, changes, demo, grace] = await Promise.all([
     currentPricing(),
+    goldenStatus().catch(() => null),
     lifecycleTimings(),
     getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
     demoUrl(),
     hostingGraceDays().catch(() => 3),
   ]);
   const plans = planCards(pricing);
+  const offer = landingOffer(pricing, gold ? gold.confirmed + gold.underReview : pricing.golden.seats);
   const igUrl = instagramUrl(process.env.NEXT_PUBLIC_INSTAGRAM_URL);
   const faq = landingFaq({ trialHours: timings.trialHours, graceDays: grace, plans });
 
@@ -109,6 +111,7 @@ export default async function Page() {
         reviews={reviews}
         plans={plans}
         buildFee={buildFeeText(pricing)}
+        offer={offer}
         trialHours={timings.trialHours}
         graceDays={grace}
         changesPerYear={perYearFrom(changes.config)}

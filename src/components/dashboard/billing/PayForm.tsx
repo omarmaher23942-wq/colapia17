@@ -212,7 +212,7 @@ export function PayForm({
                 <p className="text-[13px] font-black text-ink">
                   الدائرة الذهبية: تجهيز المتجر بـ {fmtNum(applied.buildPrice)} ج.م بدلاً من {fmtNum(golden.regularBuildPrice)} ج.م
                 </p>
-                <p>العرض يخفّض رسوم التجهيز فقط، والاستضافة الشهرية بسعر الباقة المختارة.</p>
+                <p>{model.golden.firstMonthFree ? "ومعه الشهر الأول من الباقة الأساسية هدية، ويظهر خصمه في الملخص أدناه." : "العرض يخفّض رسوم التجهيز فقط، والاستضافة الشهرية بسعر الباقة المختارة."}</p>
               </div>
               <button type="button" onClick={() => setApplied(null)} className="min-h-9 text-[12px] font-bold text-ink-3 hover:text-ink">
                 إلغاء الكود

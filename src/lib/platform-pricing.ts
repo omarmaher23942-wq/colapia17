@@ -41,7 +41,8 @@ export type PlanLimits = {
 };
 
 export type HostingPlan = { id: PlanId; name: string; monthly: number; limits: PlanLimits };
-export type GoldenOffer = { enabled: boolean; code: string; buildPrice: number; seats: number };
+/** firstMonthFree: الشهر الأول من الباقة الأساسية (الأرخص) مجاني لمن يدفع بكود الدائرة الذهبية. */
+export type GoldenOffer = { enabled: boolean; code: string; buildPrice: number; seats: number; firstMonthFree: boolean };
 export type PricingModel = {
   v: 4;
   build: { price: number };
@@ -72,7 +73,7 @@ export const DEFAULT_PLANS: HostingPlan[] = [
     limits: { products: 10000, storageBytes: 50 * GB, videos: 60, videoMaxBytes: 40 * MB, aiPerMonth: 6000, visualSearchPerMonth: 5000, teamMembers: 15, customDomain: true },
   },
 ];
-export const DEFAULT_GOLDEN: GoldenOffer = { enabled: true, code: "GOLDEN999", buildPrice: 999, seats: 10 };
+export const DEFAULT_GOLDEN: GoldenOffer = { enabled: true, code: "GOLDEN999", buildPrice: 999, seats: 10, firstMonthFree: true };
 export const DEFAULT_BUILD_PRICE = 2999;
 export const DEFAULT_PRICING: PricingModel = {
   v: 4,
@@ -176,6 +177,7 @@ export function pricingFrom(raw: unknown): PricingModel {
       code: COUPON_RE.test(code) ? code : DEFAULT_GOLDEN.code,
       buildPrice: int(g.buildPrice, 0, MAX_PRICE_EGP) ?? DEFAULT_GOLDEN.buildPrice,
       seats: int(g.seats, 0, 1000) ?? DEFAULT_GOLDEN.seats,
+      firstMonthFree: typeof g.firstMonthFree === "boolean" ? g.firstMonthFree : DEFAULT_GOLDEN.firstMonthFree,
     },
     plans,
     months: monthsFrom(c.months),
@@ -221,6 +223,8 @@ export type Quote = {
   golden: boolean;
   build: number;
   hosting: number;
+  /** خصم الشهر الأول المجاني (الدائرة الذهبية)، 0 إن لم ينطبق. */
+  credit: number;
   total: number;
   lines: QuoteLine[];
 };
@@ -241,7 +245,10 @@ export function quote(model: PricingModel, input: { planId: unknown; months: unk
   const lines: QuoteLine[] = [];
   if (input.kind === "setup") lines.push({ label: golden ? "تجهيز المتجر (الدائرة الذهبية)" : "تجهيز المتجر (مرة واحدة)", amount: build });
   lines.push({ label: `باقة ${plan.name}: ${fmtEgp(plan.monthly)} ج × ${monthsLabel(months)}`, amount: hosting });
-  return { ok: true, kind: input.kind, planId: plan.id, planName: plan.name, months, monthly: plan.monthly, golden, build, hosting, total: build + hosting, lines };
+  // الدائرة الذهبية: الشهر الأول من الباقة الأساسية مجاني (يُخصم من الاستضافة، والمدة تبقى كاملة).
+  const credit = golden && model.golden.firstMonthFree ? Math.min(startingPrice(model), hosting) : 0;
+  if (credit > 0) lines.push({ label: "الشهر الأول من الباقة الأساسية (هدية الدائرة الذهبية)", amount: -credit });
+  return { ok: true, kind: input.kind, planId: plan.id, planName: plan.name, months, monthly: plan.monthly, golden, build, hosting, credit, total: build + hosting - credit, lines };
 }
 
 /** وصف الحدود بالعربية (للدفع والهبوط والوكيل). */
@@ -285,7 +292,7 @@ export function agentPricingFacts(model: PricingModel, goldenUsed: number): stri
   ];
   if (g.available) {
     lines.push(
-      `- عرض «الدائرة الذهبية» متاح الآن: التجهيز بـ ${fmtEgp(model.golden.buildPrice)} ج بدلاً من ${fmtEgp(model.build.price)} ج لعدد محدود، والمتبقي ${g.seatsLeft} من ${model.golden.seats} مقاعد. يُذكر بهدوء كعرض خاص لا كضغط، والاستضافة الشهرية كما هي.`
+      `- عرض «الدائرة الذهبية» متاح الآن: التجهيز بـ ${fmtEgp(model.golden.buildPrice)} ج بدلاً من ${fmtEgp(model.build.price)} ج لعدد محدود، والمتبقي ${g.seatsLeft} من ${model.golden.seats} مقاعد.${model.golden.firstMonthFree ? ` ومعه الشهر الأول من الباقة الأساسية (${fmtEgp(startingPrice(model))} ج) هدية، فالدفعة الأولى ${fmtEgp(model.golden.buildPrice)} ج فقط لمن يختار الأساسية لشهر.` : ""} يُذكر بهدوء كعرض خاص لا كضغط.`
     );
   }
   return lines.join("\n");
@@ -303,7 +310,7 @@ export function previewLines(model: PricingModel, goldenUsed: number): { billing
         `التجديد: ${model.plans.map((p) => `${p.name} ${fmtEgp(p.monthly)} ج شهرياً`).join("، ")}، لمدة ${model.months.map(monthsLabel).join(" أو ")}.`,
       ]
     : [];
-  if (g.available) billing.push(`مع كود ${model.golden.code}: التجهيز ${fmtEgp(model.golden.buildPrice)} ج بدلاً من ${fmtEgp(model.build.price)} ج · متبقٍ ${g.seatsLeft} من ${model.golden.seats}`);
+  if (g.available) billing.push(`مع كود ${model.golden.code}: التجهيز ${fmtEgp(model.golden.buildPrice)} ج بدلاً من ${fmtEgp(model.build.price)} ج${model.golden.firstMonthFree ? " + الشهر الأول من الأساسية هدية" : ""} · متبقٍ ${g.seatsLeft} من ${model.golden.seats}`);
   else billing.push(`الدائرة الذهبية: ${model.golden.enabled ? "اكتملت المقاعد، والكود يُرفض تلقائياً" : "متوقفة، والكود يُرفض"}`);
   const landing = model.plans.map((p) => `${p.name}: ${fmtEgp(p.monthly)} ج.م شهرياً${p.id === model.featured ? " · الأكثر اختياراً" : ""} — ${limitHighlights(p.limits).slice(0, 3).join("، ")}`);
   landing.unshift(`تجهيز المتجر: ${fmtEgp(model.build.price)} ج.م مرة واحدة`);
@@ -376,6 +383,6 @@ export function validatePricing(input: unknown): { ok: true; model: PricingModel
   if (!isPlanId(c.featured)) return { ok: false, error: "اختاروا الباقة المميَّزة." };
   return {
     ok: true,
-    model: { v: 4, build: { price: buildPrice }, golden: { enabled: g.enabled === true, code, buildPrice: goldenBuild, seats }, plans, months, featured: c.featured },
+    model: { v: 4, build: { price: buildPrice }, golden: { enabled: g.enabled === true, code, buildPrice: goldenBuild, seats, firstMonthFree: g.firstMonthFree !== false }, plans, months, featured: c.featured },
   };
 }
