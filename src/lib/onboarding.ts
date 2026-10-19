@@ -303,6 +303,17 @@ export function pairIdFor(heading: string, body: string): string {
   return (FONT_PAIRS.find((p) => p.heading === heading && p.body === body) ?? FONT_PAIRS.find((p) => p.heading === heading) ?? FONT_PAIRS[0]!).id;
 }
 
+/**
+ * خطوط المتجر بعد حفظ الهوية. الاختيار المعروض في النموذج مشتق من الخطوط الحالية (pairIdFor)، وخطوط التصميمات الثمانية أو
+ * ما كتبه التاجر بالوصف قد لا تطابق أي زوج في القائمة فيعرض النموذج أول زوج. لذلك لا نغيّر الخطوط إلا إن اختار التاجر
+ * زوجاً مختلفاً عما يظهر له، وإلا كان حفظ الاسم وحده يستبدل خطوط التصميم بالزوج الأول بصمت.
+ */
+export function fontsAfterIdentity<T extends string>(current: { heading: T; body: T }, submittedPairId: string): { heading: T; body: T } {
+  if (submittedPairId === pairIdFor(current.heading, current.body)) return { heading: current.heading, body: current.body };
+  const pair = FONT_PAIRS.find((f) => f.id === submittedPairId);
+  return pair ? { heading: pair.heading as T, body: pair.body as T } : { heading: current.heading, body: current.body };
+}
+
 /** تباين اللون الأساسي على الأبيض (لتحذير لطيف من لون باهت جداً). */
 export function brandContrast(primary: string): number {
   const p = normalizeHex(primary);

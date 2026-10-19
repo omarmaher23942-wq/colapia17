@@ -28,6 +28,7 @@ export default async function DesignPage() {
       canEdit={allows(session.perms, "content", "manage")}
       identity={{ name: bp.brand.name, primary: bp.theme.palette.primary, fontPair: pairIdFor(bp.theme.fonts.heading, bp.theme.fonts.body), logoUrl: bp.brand.logo?.url ?? null }}
       heroKind={hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto"}
+      heroVideoUrl={hero && hero.type === "hero" ? (hero.videoUrl ?? null) : null}
       announcement={announcementState(bp)}
       sections={bp.home.filter((s) => s.type !== "hero" && s.type !== "announcement").map((s) => ({ id: s.id, label: SECTION_LABELS[s.type] ?? s.type, enabled: s.enabled !== false }))}
       motion={bp.design.motion}

@@ -116,6 +116,27 @@ export function usesSizeColor(niche: Niche): boolean {
   return niche === "fashion" || niche === "shoes" || niche === "kids";
 }
 
+/** أسماء خيارات المنتج المقترحة في محرر التركيبات: الملابس مقاس ولون، وغيرها ما يختلف فعلاً في نشاطه (لا مقاس لعطر). */
+export function variantOptionSuggestions(niche: Niche): string[] {
+  switch (niche) {
+    case "fashion":
+    case "shoes":
+    case "kids":
+      return ["المقاس", "اللون", "الخامة"];
+    case "electronics":
+      return ["السعة", "اللون", "الموديل"];
+    case "perfume":
+    case "beauty":
+      return ["الحجم", "النوع", "اللون"];
+    case "food":
+      return ["الوزن", "النكهة", "العبوة"];
+    case "home":
+      return ["اللون", "الخامة", "الأبعاد"];
+    default:
+      return ["الخيار", "اللون", "الحجم"];
+  }
+}
+
 // ─── أدوات القيم ({label, value}[]) ──────────────────────────────────────────
 
 export type AttrPair = { label: string; value: string };

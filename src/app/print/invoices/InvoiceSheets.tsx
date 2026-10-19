@@ -35,7 +35,7 @@ export type InvoiceOrder = {
   giftMessage?: string | null;
 };
 
-type Brand = { name: string; logo: string | null; primary: string; contact: string };
+type Brand = { name: string; logo: string | null; primary: string; contact: string; /** المعاينة وفتح الشحنة قبل الدفع مسموحان في المتجر. */ inspection?: boolean };
 
 const PAYMENT: Record<string, string> = { cod: "الدفع عند الاستلام", vodafone_cash: "فودافون كاش", instapay: "إنستاباي" };
 const PAY_STATUS: Record<string, string> = { pending: "لم يُدفع بعد", under_review: "التحويل قيد المراجعة", confirmed: "مدفوع", rejected: "تحويل مرفوض", refunded: "مسترد" };
@@ -254,6 +254,11 @@ export function InvoiceSheets({ orders, autoPrint, initial, brand }: { orders: I
               {o.shipment ? (
                 <div>
                   <b>الشحنة:</b> {o.shipment}
+                </div>
+              ) : null}
+              {o.paymentMethod === "cod" && o.paymentStatus !== "confirmed" ? (
+                <div>
+                  <b>المعاينة:</b> {brand.inspection ? "يمكنكم فتح الشحنة ومعاينة المنتج مع المندوب قبل الدفع" : "الدفع عند الاستلام قبل فتح الشحنة"}
                 </div>
               ) : null}
               {v.footerNote ? <div style={{ marginTop: 6, color: "var(--accent)", fontWeight: 700 }}>{v.footerNote}</div> : null}

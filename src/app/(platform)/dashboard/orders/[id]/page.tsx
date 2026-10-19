@@ -116,6 +116,7 @@ export default async function OrderDetailPage({ params, searchParams }: { params
   };
   const collect = collectNote(o);
   const bp = await getBlueprintOrNull(store.id);
+  msgOrder.inspectionAllowed = bp?.shipping.inspectionAllowed;
   const chatSource = chatSourceLabel(o.source);
   const campaign = o.source.startsWith("campaign:") ? bp?.campaigns.find((c) => `campaign:${c.slug}` === o.source) ?? { name: o.source.slice(9) } : null;
   const timeline = [...o.statusHistory].reverse();

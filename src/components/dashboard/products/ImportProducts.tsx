@@ -50,8 +50,8 @@ export function ImportProducts() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 2_000_000) return void toast.error("الملف أكبر من 2 ميجابايت؛ قسّمه إلى ملفات أصغر");
-    if (/\.(xlsx?|numbers)$/i.test(file.name)) return void toast.error("احفظ الملف بصيغة CSV أولاً: من Excel اختر «حفظ باسم» ثم CSV UTF-8");
+    if (file.size > 2_000_000) return void toast.error("الملف أكبر من 2 ميجابايت؛ قسّموه إلى ملفات أصغر");
+    if (/\.(xlsx?|numbers)$/i.test(file.name)) return void toast.error("احفظوا الملف بصيغة CSV أولاً: من Excel اختاروا «حفظ باسم» ثم CSV UTF-8");
     const text = await file.text();
     setCsv(text);
     setFileName(file.name);
@@ -161,7 +161,7 @@ export function ImportProducts() {
           </div>
         ) : plan.missingColumns.length ? (
           <p className="rounded-xl bg-bad/10 p-3.5 text-[13px] font-bold leading-6 text-bad">
-            لم نجد عمود {plan.missingColumns.map((c) => (c === "name" ? "«اسم المنتج»" : "«السعر»")).join(" و")} في أول سطر بالملف. استخدم القالب الجاهز أو اكتب العناوين كما فيه.
+            لم نجد عمود {plan.missingColumns.map((c) => (c === "name" ? "«اسم المنتج»" : "«السعر»")).join(" و")} في أول سطر بالملف. استخدموا القالب الجاهز أو اكتبوا العناوين كما فيه.
           </p>
         ) : (
           <div className="space-y-3">
@@ -169,7 +169,7 @@ export function ImportProducts() {
               <Stat icon={CheckCircle2} tone="ok" value={good.length} label="صالح للاستيراد" />
               <Stat icon={AlertTriangle} tone={bad.length ? "bad" : "muted"} value={bad.length} label="به أخطاء ولن يُستورد" />
             </div>
-            {plan.tooMany ? <p className="rounded-xl bg-bad/10 p-3 text-[12.5px] font-bold text-bad">الملف أكثر من {fmtNum(IMPORT_MAX_ROWS)} صف؛ قسّمه إلى ملفات أصغر.</p> : null}
+            {plan.tooMany ? <p className="rounded-xl bg-bad/10 p-3 text-[12.5px] font-bold text-bad">الملف أكثر من {fmtNum(IMPORT_MAX_ROWS)} صف؛ قسّموه إلى ملفات أصغر.</p> : null}
 
             {bad.length ? (
               <details open className="rounded-xl border border-bad/20">

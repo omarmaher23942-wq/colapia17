@@ -22,7 +22,7 @@ import { ProductImages, type ProductImage } from "./ProductImages";
 import { ColorImages } from "./ColorImages";
 
 import { NicheAttributeField } from "@/components/onboarding/ReviewGrid";
-import { attributesFor, attrValue, NICHE_LABEL, setAttr, usesSizeColor, type Niche } from "@/lib/niche-attributes";
+import { attributesFor, attrValue, NICHE_LABEL, setAttr, usesSizeColor, variantOptionSuggestions, type Niche } from "@/lib/niche-attributes";
 import { FIELD_ORDER, LIMITS, toNumber, validateProduct as validate, type EditorProduct, type Errors, type ProductStats, type Status } from "./model";
 
 const STATUS: { key: Status; label: string; hint: string }[] = [
@@ -85,7 +85,10 @@ export function ProductEditor({
     el?.querySelector<HTMLElement>("input,textarea,select,button")?.focus({ preventScroll: true });
   };
 
+  const inFlight = useRef(false);
   const save = useCallback(() => {
+    // Ctrl+S ونقرة الزر معاً، أو نقرتان قبل أن يُرسم التحميل، كانتا تنشئان منتجين.
+    if (inFlight.current) return;
     const e = validate(f);
     if (Object.values(e).some(Boolean)) {
       setErrors(e);
@@ -97,7 +100,9 @@ export function ProductEditor({
       return;
     }
     const snapshot = JSON.stringify(f);
+    inFlight.current = true;
     startSave(async () => {
+      try {
       const r = await saveProductAction({
         id: f.id,
         name: f.name.trim(),
@@ -133,20 +138,23 @@ export function ProductEditor({
         toast.error(r.error);
         return;
       }
-      savedRef.current = snapshot;
-      setSavedJson(snapshot);
       requestPulse();
       if (!f.id) {
-        const next = { ...f, id: r.id, slug: r.slug };
-        const nextJson = JSON.stringify(next);
-        savedRef.current = nextJson;
-        setSavedJson(nextJson);
-        setF(next);
+        // ما كتبه التاجر أثناء الحفظ يبقى (كان setF(next) يعيد النسخة التي أُرسلت ويمحوه)، ويظل «غير محفوظ».
+        const saved = JSON.stringify({ ...(JSON.parse(snapshot) as EditorProduct), id: r.id, slug: r.slug });
+        savedRef.current = saved;
+        setSavedJson(saved);
+        setF((cur) => ({ ...cur, id: r.id, slug: r.slug }));
         toast.success(f.status === "active" ? "أُضيف المنتج وصار في المتجر" : "حُفظ المنتج");
         router.replace(`/dashboard/products/${r.id}`, { scroll: false });
       } else {
+        savedRef.current = snapshot;
+        setSavedJson(snapshot);
         toast.success("حُفظت التعديلات");
         router.refresh();
+      }
+      } finally {
+        inFlight.current = false;
       }
     });
   }, [f, router]);
@@ -344,6 +352,7 @@ export function ProductEditor({
               variants={f.variants}
               basePrice={price && !Number.isNaN(price) ? price : 0}
               trackStock={f.trackStock}
+              optionSuggestions={variantOptionSuggestions(niche)}
               onChange={(optionNames, variants) => setF((s) => ({ ...s, optionNames, variants }))}
             />
             <ColorImages optionNames={f.optionNames} variants={f.variants} images={f.images} onChange={(variants) => up("variants", variants)} />

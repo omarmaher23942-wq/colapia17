@@ -381,7 +381,7 @@ function PriceDialog({ open, onClose, count, onApply }: { open: boolean; onClose
           <span className="text-[13px] font-bold text-ink-2">%</span>
         </span>
       </label>
-      <p className="mt-2 text-[12px] text-ink-3">{valid ? `مثال: منتج بـ 100 ج يصبح بـ ${fmtNum(example!)} ج.` : "اكتب نسبة بين -90 و500 (مثل 10 أو -15)."}</p>
+      <p className="mt-2 text-[12px] text-ink-3">{valid ? `مثال: منتج بـ 100 ج يصبح بـ ${fmtNum(example!)} ج.` : "اكتبوا نسبة بين -90 و500 (مثل 10 أو -15)."}</p>
     </DashDialog>
   );
 }

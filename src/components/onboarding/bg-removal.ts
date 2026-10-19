@@ -130,8 +130,23 @@ export async function removeBackground(file: File, mode: BgMode): Promise<File> 
   if (!bgRemovalSupported()) throw new Error("unsupported");
   const w = ensureWorker();
   const id = ++seq;
+  // مهلة: تنزيل النموذج أول مرة قد يطول (5 دقائق)، وبعده دقيقة للصورة الواحدة. بلا مهلة كانت دفعة كاملة تعلق عند صورة واحدة.
+  const limit = readyDevice ? 60_000 : 300_000;
   const blob = await new Promise<Blob>((resolve, reject) => {
-    pending.set(id, { resolve, reject });
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error("timeout"));
+    }, limit);
+    pending.set(id, {
+      resolve: (b) => {
+        clearTimeout(timer);
+        resolve(b);
+      },
+      reject: (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    });
     w.postMessage({ id, blob: file, mode });
   });
   const base = file.name.replace(/\.\w+$/, "") || "product";

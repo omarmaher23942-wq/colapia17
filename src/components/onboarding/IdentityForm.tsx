@@ -35,8 +35,11 @@ export function IdentityForm({
   const [err, setErr] = useState<string | null>(null);
   const [nameErr, setNameErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // آخر قيمة دائماً: رفع الشعار غير متزامن، وإن كتب التاجر الاسم أثناءه كان `set` يبني على نسخة قديمة فيمسح ما كتبه.
+  const latest = useRef(v);
   const set = (p: Partial<IdentityValue>) => {
-    const next = { ...v, ...p };
+    const next = { ...latest.current, ...p };
+    latest.current = next;
     setV(next);
     onChange?.(next);
   };
@@ -74,14 +77,15 @@ export function IdentityForm({
   }
 
   async function save() {
+    if (busy || up) return;
     setErr(null);
     setNameErr(null);
     if (!v.name.trim()) return setNameErr("اكتبوا اسم المتجر");
     setBusy(true);
-    const r = await saveIdentityAction(v);
+    const r = await saveIdentityAction(latest.current);
     setBusy(false);
     if (!r.ok) return r.field === "name" ? setNameErr(r.error) : setErr(r.error);
-    onSaved(v);
+    onSaved(latest.current);
   }
 
   return (

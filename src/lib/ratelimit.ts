@@ -24,8 +24,8 @@ export const limits = {
   review: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "10 m"), prefix: "rl:review" }),
   /** إيصالات الدفع للمنصة: 5 كل ساعة لكل تاجر */
   platformPayment: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "1 h"), prefix: "rl:ppay" }),
-  /** إذن رفع ملفات إلى R2: 120 كل 10 دقائق لكل عنوان (الصلاحية والحدود الدقيقة في upload-policies). */
-  upload: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(120, "10 m"), prefix: "rl:upload" }),
+  /** رفع الملفات: 400 كل 10 دقائق لكل عنوان (الرفع المجمّع ملف لكل طلب، ودفعة من 60 صورة مع إعادة المحاولة تتجاوز 120) (الصلاحية والحدود الدقيقة في upload-policies). */
+  upload: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(400, "10 m"), prefix: "rl:upload" }),
   /** البحث: 60 كل دقيقة */
   search: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60, "1 m"), prefix: "rl:search" }),
   /** ربط النطاق الخاص وفحصه: 6 كل 10 دقائق لكل متجر. */

@@ -19,6 +19,8 @@ const OPTIONS: { id: HeroOpt; title: string; sub: string }[] = [
   { id: "side_image", title: "صورة جانبية", sub: "صورة واحدة بجانب العنوان، بتخطيط هادئ وسريع." },
 ];
 
+const isQuickTime = (f: File) => f.type === "video/quicktime" || /\.mov$/i.test(f.name);
+
 /** الاختيار الحالي من رابط الفيديو المحفوظ (الجاهزان معروفان بمساراتهما). */
 function initialOpt(kind: "video" | "image" | "auto", videoUrl?: string | null): HeroOpt | null {
   if (kind === "auto") return "auto";
@@ -38,7 +40,9 @@ export function LookPanel({ initialHero, heroVideoUrl, onChanged, showTweak = tr
   const videoRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
 
-  async function apply(choice: HeroMediaChoice, key: HeroOpt) {
+  async function apply(choice: HeroMediaChoice, key: HeroOpt, force = false) {
+    // نقرتان متتاليتان على خيارين كانتا تطلقان حفظين متداخلين وتبقى المعاينة على أولهما.
+    if (busy && !force) return;
     setBusy(key);
     setHeroMsg(null);
     const r = await saveHeroMediaAction(choice);
@@ -54,6 +58,7 @@ export function LookPanel({ initialHero, heroVideoUrl, onChanged, showTweak = tr
     setBusy("video_upload");
     setHeroMsg(null);
     try {
+      if (isQuickTime(f)) return setHeroMsg({ tone: "bad", text: "صيغة MOV (فيديو آيفون) لا تعمل في كثير من المتصفحات. صدّروا الفيديو بصيغة MP4 ثم ارفعوه." });
       if (f.size > 40 << 20) return setHeroMsg({ tone: "bad", text: "الفيديو أكبر من 40 ميجابايت. اختصروه أو اضغطوه ثم ارفعوه." });
       // 1) نتأكد أن المتصفح يشغّله، ونلتقط صورة الغلاف من لقطة مبكرة.
       setVideoStage("نتحقق من الفيديو ونلتقط صورة الغلاف…");
@@ -73,7 +78,7 @@ export function LookPanel({ initialHero, heroVideoUrl, onChanged, showTweak = tr
       const v = await uploadVideo(f, setVideoPct);
       if (!v.ok) return setHeroMsg({ tone: "bad", text: v.error });
       setVideoStage("نطبّق الفيديو على الواجهة…");
-      await apply({ kind: "video_upload", url: v.url, poster: posterUrl }, "video_upload");
+      await apply({ kind: "video_upload", url: v.url, poster: posterUrl }, "video_upload", true);
     } catch {
       setHeroMsg({ tone: "bad", text: "تعذر الاتصال. تأكدوا من الإنترنت وحاولوا مرة أخرى." });
     } finally {
@@ -88,13 +93,16 @@ export function LookPanel({ initialHero, heroVideoUrl, onChanged, showTweak = tr
     if (!f) return;
     setBusy("side_image");
     setHeroMsg(null);
-    const up = await uploadImages([f], { route: "brandAsset", keepAlpha: false });
-    if (!up.urls[0]) {
-      setBusy(null);
-      return setHeroMsg({ tone: "bad", text: up.error ?? "تعذر رفع الصورة" });
+    try {
+      const up = await uploadImages([f], { route: "brandAsset", keepAlpha: false });
+      if (!up.urls[0]) {
+        setBusy(null);
+        return setHeroMsg({ tone: "bad", text: up.error ?? "تعذر رفع الصورة. حاولوا مرة أخرى." });
+      }
+      await apply({ kind: "side_image", url: up.urls[0] }, "side_image", true);
+    } finally {
+      if (imageRef.current) imageRef.current.value = "";
     }
-    await apply({ kind: "side_image", url: up.urls[0] }, "side_image");
-    if (imageRef.current) imageRef.current.value = "";
   }
 
   return (

@@ -121,7 +121,7 @@ export function ProductImporter({
   }, []);
 
   const runImages = useCallback(
-    async (urls: string[]) => {
+    async (urls: string[]): Promise<boolean> => {
       const batches = chunk(urls, 4);
       let done = 0;
       for (const b of batches) {
@@ -130,18 +130,19 @@ export function ProductImporter({
         const r = await importAnalyzeImagesAction({ urls: b, mode: "grouped" });
         if (!r.ok) {
           setError(r.error);
-          break;
+          return false;
         }
         if (r.notice) setNotice(r.notice);
         addCandidates(r.candidates);
         done += b.length;
       }
+      return true;
     },
     [addCandidates]
   );
 
   const runEntries = useCallback(
-    async (entries: string[]) => {
+    async (entries: string[]): Promise<boolean> => {
       const batches = chunk(entries.slice(0, IMPORT_MAX_CANDIDATES * 2), IMPORT_TEXT_CHUNK);
       let done = 0;
       for (const b of batches) {
@@ -149,12 +150,13 @@ export function ProductImporter({
         const r = await importAnalyzeTextAction({ entries: b });
         if (!r.ok) {
           setError(r.error);
-          break;
+          return false;
         }
         if (r.notice) setNotice(r.notice);
         addCandidates(r.candidates);
         done += b.length;
       }
+      return true;
     },
     [addCandidates]
   );
@@ -164,12 +166,14 @@ export function ProductImporter({
     setNotice(null);
     const entries = splitProductText(text);
     if (!entries.length) return setError("اكتبوا منتجاً واحداً على الأقل، مثل: تيشيرت قطن أسود، مقاسات M L XL، 350 جنيه");
+    let ok = false;
     try {
-      await runEntries(entries);
+      ok = await runEntries(entries);
     } finally {
       setProgress(null);
     }
-    setText("");
+    // النص لا يُمسح عند الفشل: كان التاجر يفقد ما كتبه ويضطر لإعادة كتابته.
+    if (ok) setText("");
   }
 
   async function onFile(files: FileList | null) {
@@ -206,14 +210,16 @@ export function ProductImporter({
     setError(null);
     setNotice(null);
     try {
-      await runImages(picked);
-      setPicked([]);
+      if (await runImages(picked)) setPicked([]);
     } finally {
       setProgress(null);
     }
   }
 
+  const committing = useRef(false);
   async function commit() {
+    // نقرة ثانية قبل رد الخادم كانت تعتمد المنتجات مرتين فتتكرر في المتجر.
+    if (committing.current) return;
     setError(null);
     const missing = missingPrice(items);
     if (missing.length) {
@@ -224,14 +230,24 @@ export function ProductImporter({
       setTimeout(() => el?.querySelector<HTMLInputElement>("input[inputmode=decimal]")?.focus({ preventScroll: true }), 350);
       return;
     }
+    committing.current = true;
     setSaving(true);
-    const r = await importCommitAction({ candidates: items, niche });
+    let r: Awaited<ReturnType<typeof importCommitAction>>;
+    try {
+      r = await importCommitAction({ candidates: items, niche });
+    } catch {
+      committing.current = false;
+      setSaving(false);
+      return setError("انقطع الاتصال قبل أن نتأكد من الحفظ. افتحوا «المنتجات» في لوحة التحكم وتحققوا مما أُضيف قبل إعادة الاعتماد، حتى لا يتكرر منتج.");
+    }
     if (!r.ok) {
+      committing.current = false;
       setSaving(false);
       return setError(r.error);
     }
     // صور بروابط خارجية (من ملف مثلاً): تُنقل إلى مساحة المتجر ليعرضها المتجر.
     for (const p of r.rehost) await rehostProductImagesAction({ id: p.id }).catch(() => null);
+    committing.current = false;
     setSaving(false);
     setItems([]);
     setShowErrors(false);
