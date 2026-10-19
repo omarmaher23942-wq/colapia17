@@ -1,5 +1,6 @@
 "use server";
 // merchant-login.ts — دخول لوحة المتجر برمز على البريد (بديل Google). حدود معدل لكل بريد ولكل شبكة.
+import { safeInternalPath } from "@/lib/safe-redirect";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { limits, clientIp } from "@/lib/ratelimit";
@@ -9,7 +10,7 @@ import { signInMerchantByEmail } from "@/server/auth";
 type Result = { ok: true; redirect?: string } | { ok: false; error: string };
 const emailSchema = z.string().trim().toLowerCase().email().max(120);
 
-const safeRedirect = (to: unknown) => (typeof to === "string" && to.startsWith("/dashboard") && !to.startsWith("//") ? to : "/dashboard");
+const safeRedirect = (to: unknown) => safeInternalPath(to, "/dashboard", { prefix: "/dashboard" });
 
 export async function requestLoginCodeAction(rawEmail: string): Promise<Result> {
   const p = emailSchema.safeParse(rawEmail);

@@ -31,19 +31,23 @@ export async function storeLock(store: MerchantStoreSession["store"]): Promise<D
   return dashboardLock(store, hostingState(store, new Date(), grace));
 }
 
-/** للإجراءات: جلسة المتجر إن كان العضو يملك المستوى المطلوب في المجال، وإلا null. المتجر المقفل لا يُعدَّل إلا اشتراكه. */
+/** للإجراءات: جلسة المتجر إن كان العضو يملك المستوى المطلوب في المجال، وإلا null. المتجر المقفل لا يُقرأ ولا يُعدَّل إلا اشتراكه. */
 export async function storeFor(area: StoreArea, level: Exclude<AccessLevel, "none"> = "manage"): Promise<MerchantStoreSession | null> {
   const s = await getMerchantStoreOrNull();
   if (!s) return null;
   if (!allows(sessionPerms(s), area, level)) return null;
-  if (level === "manage" && area !== "billing" && (await storeLock(s.store))) return null;
+  // المتجر المقفل (مجمّد/متوقف) لا يُقرأ ولا يُعدَّل من اللوحة (ومنها التصدير) إلا الاشتراك.
+  if (area !== "billing" && (await storeLock(s.store))) return null;
   return s;
 }
 
 /** للإجراءات الخاصة بصاحب المتجر وحده (الحذف، الاشتراك، النقل، إدارة الفريق إن لم تُمنح). */
-export async function ownerStore(): Promise<MerchantStoreSession | null> {
+export async function ownerStore(opts: { allowLocked?: boolean } = {}): Promise<MerchantStoreSession | null> {
   const s = await getMerchantStoreOrNull();
-  return s && isStoreOwner(s) ? s : null;
+  if (!s || !isStoreOwner(s)) return null;
+  // القفل يسري على صاحب المتجر أيضاً (النطاق، الرابط، الإعداد…)؛ الاشتراك والحساب وحدهما يمرّان بـ allowLocked.
+  if (!opts.allowLocked && (await storeLock(s.store))) return null;
+  return s;
 }
 
 /** للصفحات: بلا صلاحية عرض للمجال ← أول صفحة يملكها العضو (أو تنبيه إن لم يملك شيئاً). */

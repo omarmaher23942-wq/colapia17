@@ -146,7 +146,7 @@ export async function rehostProductImagesAction(raw: unknown): Promise<RehostRes
   if (!external.length) return none;
 
   const api = await mediaApi();
-  if (!api) return { ok: false, code: "no_media", error: "أضف مفتاح UploadThing من «الربط والمفاتيح» لنقل الصور إلى متجرك" };
+  if (!api) return { ok: false, code: "no_media", error: "تعذر نقل الصور الآن. حاولوا بعد قليل، وإن استمر ذلك فراسلوا فريق Colapia" };
 
   const moved = new Map<string, { url: string; key: string }>();
   const removed: { url: string; reason: string }[] = [];

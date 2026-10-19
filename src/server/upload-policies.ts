@@ -46,7 +46,7 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
   },
   // إيصال تحويل التاجر للمنصة: لصاحب المتجر وحده، ويعمل والمتجر مجمّد.
   async platformReceipt() {
-    const s = await ownerStore();
+    const s = await ownerStore({ allowLocked: true });
     if (!s?.store) throw new UploadPolicyError("الدفع لصاحب المتجر فقط. ادخل بحسابه.");
     if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) throw new UploadPolicyError("محاولات كثيرة، حاول بعد دقائق");
     return { prefix: `stores/${s.store.id}/receipts`, meta: { storeId: s.store.id } };

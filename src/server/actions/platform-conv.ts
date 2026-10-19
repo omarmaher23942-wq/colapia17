@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { conversations, messages, stores, systemEvents } from "@/db/schema";
+import { conversations, convStageEnum, messages, stores, systemEvents } from "@/db/schema";
 import { requirePlatformCap } from "@/server/platform-guard";
 import { meta, replyMode } from "@/channels/meta";
 import { aiText } from "@/ai/providers";
@@ -103,8 +103,11 @@ export async function markSetupDeliveredAction(storeId: string) {
 }
 
 /** رد بشري يرسل عبر القناة (مع tag خارج النافذة) ويحفظ. لا يوقف المساعد (قرار المالك 2026-10-12): الإيقاف بزر «أوقف المساعد» فقط. */
-export async function humanReplyAction(id: string, text: string) {
-  const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return { error: "محادثة غير موجودة" };
+export async function humanReplyAction(id: string, raw: string) {
+  const u = await guard();
+  const text = String(raw ?? "").trim().slice(0, 1900);
+  if (!text) return { error: "اكتبوا نص الرد أولاً." };
+  const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return { error: "محادثة غير موجودة" };
   // رد بشري: عادي داخل 24 ساعة، وبوسم HUMAN_AGENT حتى 7 أيام (Meta)، وبعدها ممنوع.
   const mode = replyMode(c.lastUserMessageAt);
   if (mode.mode === "closed") return { error: "مرّ أكثر من 7 أيام على آخر رسالة من العميل، ولا تسمح Meta بالرد الآن. تواصل معه بوسيلة أخرى (بريد أو اتصال)." };
@@ -114,7 +117,20 @@ export async function humanReplyAction(id: string, text: string) {
   await db.update(conversations).set({ lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, id));
   revalidatePath("/admin/conversations"); return {};
 }
-export async function setStageAction(id: string, stage: string) { await guard(); await db.update(conversations).set({ stage: stage as any, botPaused: stage === "human", botPausedUntil: null, updatedAt: new Date() }).where(eq(conversations.id, id)); revalidatePath("/admin/conversations"); }
+export async function setStageAction(id: string, stage: string) {
+  await guard();
+  // المرحلة من قيم النظام فقط. «human» يوقف الوكيل، ومغادرتها تعيده، وأي مرحلة أخرى لا تمس حالة الإيقاف؛
+  // ولا يعيد تغيير المرحلة وكيلاً أغلق المحادثة بعد الموافقة (الاستئناف لذلك بزر الاستئناف وحده).
+  if (!(convStageEnum.enumValues as readonly string[]).includes(stage)) return { error: "مرحلة غير صالحة" };
+  const next = stage as (typeof convStageEnum.enumValues)[number];
+  const [c] = await db.select({ stage: conversations.stage, memory: conversations.memory }).from(conversations).where(eq(conversations.id, id)).limit(1);
+  if (!c) return { error: "محادثة غير موجودة" };
+  const closed = (c.memory as { closedBy?: string } | null)?.closedBy === "agent_done";
+  const pause = next === "human" ? { botPaused: true, botPausedUntil: null } : c.stage === "human" && !closed ? { botPaused: false, botPausedUntil: null } : {};
+  await db.update(conversations).set({ stage: next, ...pause, updatedAt: new Date() }).where(eq(conversations.id, id));
+  revalidatePath("/admin/conversations");
+  return {};
+}
 /** ملخص سريع بـ Groq (رخيص) */
 export async function summarizeLeadAction(id: string) {
   await guard(); const ms = (await db.select().from(messages).where(eq(messages.conversationId, id)).orderBy(desc(messages.createdAt)).limit(40)).reverse(); const [conv] = await db.select({ memory: conversations.memory }).from(conversations).where(eq(conversations.id, id)).limit(1);

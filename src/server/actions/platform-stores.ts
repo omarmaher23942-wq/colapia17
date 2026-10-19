@@ -5,7 +5,11 @@ import { db } from "@/db/client";
 import { stores, magicLinks, storeBlueprints, systemEvents, conversations } from "@/db/schema";
 import { requirePlatformCap } from "@/server/platform-guard";
 import { invalidateStoreCache } from "@/lib/tenant";
-import { RESERVED_SUBDOMAINS } from "@/middleware";
+import { clientEnv } from "@/lib/env";
+import { storeEntry } from "@/stores/resolve";
+import { validateSubdomain } from "@/lib/subdomain-change";
+import { isSubdomainHeld } from "@/server/subdomain-hold";
+import { renameStoreSubdomain } from "@/server/subdomain-apply";
 import { secureToken, sha256 } from "@/lib/ids";
 import { activationUrl } from "@/server/claims";
 import { transition } from "@/lifecycle/machine";
@@ -56,24 +60,20 @@ export async function setStoreStatusAction(storeId: string, status: "suspended" 
   reval(storeId);
 }
 
-export async function changeSubdomainAction(storeId: string, sub: string) {
+export async function changeSubdomainAction(storeId: string, raw: string) {
   const u = await own();
-  sub = sub.toLowerCase().trim();
-  if (!/^[a-z0-9-]{3,30}$/.test(sub) || RESERVED_SUBDOMAINS.has(sub))
-    return { error: "اسم غير صالح أو محجوز (3 إلى 30 حرفًا لاتينيًا أو رقمًا أو -)" };
-  const [dup] = await db
-    .select({ id: stores.id })
-    .from(stores)
-    .where(eq(stores.subdomain, sub));
-  if (dup && dup.id !== storeId) return { error: "الرابط مستخدم بالفعل" };
   const [s] = await db.select().from(stores).where(eq(stores.id, storeId));
   if (!s) return { error: "متجر غير موجود" };
-  await invalidateStoreCache(s);
-  await db
-    .update(stores)
-    .set({ subdomain: sub, updatedAt: new Date() })
-    .where(eq(stores.id, storeId));
-  await log(storeId, `تغيير الرابط ${s.subdomain} → ${sub}`, `platform:${u.id}`);
+  // نفس قواعد تغيير التاجر: صيغة وحجز وتفرد، والرابط القديم يحوّل للجديد 30 يوماً ولا يأخذه متجر آخر.
+  const v = validateSubdomain(String(raw ?? ""), s.subdomain, clientEnv.NEXT_PUBLIC_ROOT_DOMAIN);
+  if (!v.ok) return { error: v.error };
+  const [dup] = await db.select({ id: stores.id }).from(stores).where(eq(stores.subdomain, v.value));
+  if (dup && dup.id !== storeId) return { error: "الرابط مستخدم بالفعل" };
+  if (storeEntry(v.value)) return { error: "الرابط محجوز لتصميم مخصص" };
+  if (await isSubdomainHeld(v.value, storeId)) return { error: "الرابط محجوز مؤقتاً لمتجر غيّر رابطه" };
+  const done = await renameStoreSubdomain(s, v.value);
+  if (!done.ok) return { error: done.error };
+  await log(storeId, `تغيير الرابط ${s.subdomain} → ${v.value}`, `platform:${u.id}`);
   reval(storeId);
   return {};
 }
@@ -92,10 +92,10 @@ export async function resendMagicLinkAction(storeId: string) {
   });
   await notifyMerchant(
     storeId,
-    "ده رابط جديد لإنشاء حسابك في لوحة التحكم (صالح 48 ساعة) 👇",
+    "هذا رابط جديد للدخول إلى لوحة تحكم متجركم وربطه بحسابكم، وهو صالح 48 ساعة.",
     {
       buttons: [
-        { title: "إنشاء حسابي", url: activationUrl(token) },
+        { title: "الدخول إلى اللوحة", url: activationUrl(token) },
       ],
       tag: "ACCOUNT_UPDATE",
     }

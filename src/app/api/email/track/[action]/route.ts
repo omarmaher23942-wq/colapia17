@@ -1,16 +1,18 @@
 // app/api/email/track/route.ts — نقاط تتبع فتح/نقر الإيميل.
 //
-// المسارات:
+// المسارات (المجلد [action] ضروري: الملف السابق كان على /api/email/track وحده فكانت /open و/click تعيد 404،
+// وبذلك كانت كل روابط الرسائل المتتبَّعة مكسورة):
 //  GET /api/email/track/open?eid=X  → pixel 1×1 + تسجيل حدث الفتح.
 //  GET /api/email/track/click?eid=X&u=URL → تسجيل نقر + redirect.
 //
 // الأمان:
 //  - لا نكشف بيانات المُرسَل إليه.
-//  - روابط redirect محدودة بـ appUrl فقط (منع open redirect).
-//  - Rate limit خفيف.
+//  - redirect إلى النطاق الرئيسي ونطاقاته الفرعية فقط (منع open redirect).
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
+import { isOwnHost } from "@/lib/email-track";
+import { env, clientEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,16 +34,12 @@ const EMPTY_GIF = {
 };
 
 // ─── Open tracking ─────────────────────────────────────────────────────────
-export async function GET(req: Request) {
+export async function GET(req: Request, ctx: { params: Promise<{ action: string }> }) {
   const url = new URL(req.url);
-  const path = url.pathname;
+  const { action } = await ctx.params;
 
-  if (path.endsWith("/open")) {
-    return handleOpen(url);
-  }
-  if (path.endsWith("/click")) {
-    return handleClick(req, url);
-  }
+  if (action === "open") return handleOpen(url);
+  if (action === "click") return handleClick(req, url);
 
   return new NextResponse("Not found", { status: 404 });
 }
@@ -76,10 +74,11 @@ async function handleClick(req: Request, url: URL): Promise<NextResponse> {
     return new NextResponse("Invalid URL", { status: 400 });
   }
 
-  // نقبل فقط روابط http/https.
-  if (!["http:", "https:"].includes(targetUrl.protocol)) {
-    return new NextResponse("Forbidden protocol", { status: 400 });
+  // نقبل فقط روابط http/https إلى موقعنا (النطاق الرئيسي ونطاقاته الفرعية): غير ذلك open redirect.
+  if (!["http:", "https:"].includes(targetUrl.protocol) || !isOwnHost(targetUrl.hostname, env.ROOT_DOMAIN || clientEnv.NEXT_PUBLIC_ROOT_DOMAIN)) {
+    return new NextResponse("Forbidden target", { status: 400 });
   }
+  if (!/^[a-f0-9-]{36}$/i.test(eid)) return new NextResponse("Missing params", { status: 400 });
 
   // نسجّل النقر.
   void recordEvent("email_clicked", eid, {
@@ -117,5 +116,3 @@ async function recordEvent(
     // تجاهل — لا نكسر الـ pixel/redirect.
   }
 }
-
-export const POST = GET;

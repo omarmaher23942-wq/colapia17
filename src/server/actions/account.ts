@@ -43,7 +43,7 @@ const deleteInput = z.object({ confirm: z.string().trim().min(1).max(80) });
  * يتطلب كتابة اسم المتجر كما هو، ويُرفض إن كان عنده إيصال دفع قيد المراجعة.
  */
 export async function deleteStoreAction(raw: unknown): Promise<Result> {
-  const s = await ownerStore();
+  const s = await ownerStore({ allowLocked: true });
   if (!s) return { ok: false, error: "حذف المتجر لصاحبه فقط." };
   const p = deleteInput.safeParse(raw);
   if (!p.success || p.data.confirm !== s.store.name.trim()) return { ok: false, error: "اكتب اسم المتجر كما هو بالضبط للتأكيد" };

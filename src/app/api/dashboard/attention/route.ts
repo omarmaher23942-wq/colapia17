@@ -2,6 +2,7 @@
 // تسأله اللوحة دورياً من أي صفحة، فيعمل تنبيه الطلب الجديد وشارات القائمة بلا خدمة وقت فعلي.
 import { NextResponse } from "next/server";
 import { getMerchantSession } from "@/server/auth";
+import { storeLock } from "@/server/merchant-guard";
 import { attentionSnapshot } from "@/server/repos/attention";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ const MAX_SINCE_AGE_MS = 6 * 3600e3;
 export async function GET(req: Request) {
   const session = await getMerchantSession();
   if (!session?.storeId) return NextResponse.json({ error: "unauthorized" }, { status: 401, headers: NO_STORE });
+  // المتجر المقفل (مجمّد/متوقف) لا يُرسل له شيء من بياناته.
+  if (session.store && (await storeLock(session.store).catch(() => null))) return NextResponse.json({ error: "locked" }, { status: 423, headers: NO_STORE });
 
   const raw = new URL(req.url).searchParams.get("since");
   const parsed = raw ? new Date(raw) : null;

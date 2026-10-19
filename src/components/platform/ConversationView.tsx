@@ -225,7 +225,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             <GlassCard icon={ShieldCheck} title="تغيير المرحلة يدوياً">
               <select
                 value={conv.stageKey}
-                onChange={(e) => start(() => setStageAction(conv.id, e.target.value))}
+                onChange={(e) => start(async () => { await setStageAction(conv.id, e.target.value); })}
                 className="w-full rounded-xl border border-white/10 bg-[#07091a] p-3 text-xs text-white outline-none focus:border-[#8fa8ff]"
               >
                 {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
