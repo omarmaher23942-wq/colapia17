@@ -8,6 +8,7 @@ import "server-only";
 import type { ReactElement } from "react";
 import { env, clientEnv, cleanSecretValue } from "@/lib/env";
 import { resolveSender, type SenderKind } from "@/lib/email-sender";
+import { cleanReplyTo, cleanSubject } from "@/lib/email-safe";
 import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
 import { log } from "@/lib/logger";
@@ -159,10 +160,10 @@ async function sendViaResend(args: {
       body: JSON.stringify({
         from: args.from,
         to: args.to,
-        subject: args.subject.slice(0, 150),
+        subject: cleanSubject(args.subject),
         html: args.html,
         text: args.text,
-        reply_to: args.replyTo,
+        reply_to: cleanReplyTo(args.replyTo),
         tags: args.tags,
       }),
       signal: AbortSignal.timeout(15_000),

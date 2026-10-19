@@ -32,7 +32,7 @@ describe("كتلة حالة المحادثة", () => {
 
   it("تسرد المجموع والناقص بالترتيب وتطلب الأول فقط", () => {
     const s = stateBlock({ ...base, lead: { storeName: "نور" }, replies: 2 });
-    expect(s).toContain("اسم المتجر: نور");
+    expect(s).toContain("اسم المتجر: «نور»");
     expect(s.indexOf("نشاطه")).toBeLessThan(s.indexOf("بريد Google"));
     expect(s).toContain("الأول فقط");
     expect(s).toContain("لا ترحب");
