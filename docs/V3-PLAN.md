@@ -166,6 +166,6 @@
 
 ## 6) حالة التنفيذ
 - [x] الخطة (هذا الملف) ودليل Neon.
-- [ ] الموجة A–F.
+- [~] الموجة A–F: تعمل (فروع `v3/a-design-storefront`, `v3/b-onboarding`, `v3/c-design-ai`, `v3/d-pricing-billing`, `v3/e-agent-owner`, `v3/f-dashboard-landing`).
 - [ ] الديمو V3.
 - [ ] QA والتوثيق والرفع.
