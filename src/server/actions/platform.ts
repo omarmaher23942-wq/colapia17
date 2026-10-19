@@ -23,7 +23,7 @@ const PAYABLE = new Set(["trial", "frozen"]);
 
 /** يتحقق من كود «الدائرة الذهبية» قبل الدفع ويعيد رسوم التجهيز بعده (للعرض؛ الخادم يعيد التحقق عند الإرسال). */
 export async function checkCouponAction(raw: string): Promise<{ ok: true; code: string; buildPrice: number; regularBuildPrice: number } | { ok: false; error: string }> {
-  const session = await ownerStore();
+  const session = await ownerStore({ allowLocked: true });
   if (!session?.store) return { ok: false, error: "الدفع لصاحب المتجر فقط." };
   if (!PAYABLE.has(session.store.status)) return { ok: false, error: "الكود للدفعة الأولى فقط." };
   if (!(await allow("platformPayment", `coupon:${session.merchantId}`))) return { ok: false, error: "محاولات كثيرة، يمكن المحاولة بعد قليل." };
@@ -44,7 +44,7 @@ export async function submitPlatformPaymentAction(input: {
 }) {
   try {
     // الإيصال يُرفع من صاحب المتجر نفسه، وعلى متجره النشط في الجلسة (لا لعضو في فريقه).
-    const session = await ownerStore();
+    const session = await ownerStore({ allowLocked: true });
     const store = session?.store;
     if (!session || !store) {
       return { ok: false as const, error: "الدفع لصاحب المتجر فقط. يلزم الدخول بحسابه." };

@@ -3,9 +3,7 @@
 //  - جدول ← مرشّحون مباشرة (بلا حد ذكي)،  - نص (txt/docx) ← أسطر يفرزها المتصفح على دفعات بتقدم ظاهر،
 //  - PDF ← مرشّحون (قراءة بصرية)،  - صور ← تُرفع لمساحة المتجر وتعود روابطها لتفرز على دفعات.
 import { NextResponse } from "next/server";
-import { getMerchantStoreOrNull } from "@/server/auth";
-import { allows } from "@/lib/store-perms";
-import { sessionPerms } from "@/server/merchant-guard";
+import { storeFor } from "@/server/merchant-guard";
 import { allow } from "@/lib/ratelimit";
 import { clientIp } from "@/lib/client-ip";
 import { extractFile, IMPORT_FILE_MAX_BYTES } from "@/server/import/extract";
@@ -32,8 +30,8 @@ function sameOrigin(req: Request): boolean {
 export async function POST(req: Request) {
   if (!sameOrigin(req)) return fail("طلب غير مسموح", 403);
   if (Number(req.headers.get("content-length") ?? 0) > IMPORT_FILE_MAX_BYTES * MAX_IMAGES + (1 << 20)) return fail("الملفات كبيرة. الحد 12 ميجابايت لكل ملف.", 413);
-  const s = await getMerchantStoreOrNull();
-  if (!s || !allows(sessionPerms(s), "products", "manage")) return fail("انتهت جلستكم، سجّلوا الدخول من جديد", 401);
+  const s = await storeFor("products");
+  if (!s) return fail("انتهت جلستكم، سجّلوا الدخول من جديد", 401);
   if (!(await allow("upload", `imp:${clientIp(req.headers)}`))) return fail("ملفات كثيرة في وقت قصير. انتظروا دقيقة ثم تابعوا.", 429);
 
   const form = await req.formData().catch(() => null);

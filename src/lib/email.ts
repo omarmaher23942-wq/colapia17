@@ -266,9 +266,8 @@ export async function sendTemplatedEmail(opts: SendTemplatedOptions): Promise<Se
       html,
       text,
       replyTo: opts.replyTo,
-      idempotencyKey: opts.idempotencyKey
-        ? `${opts.idempotencyKey}:attempt-${attempt}`
-        : undefined,
+      // المفتاح نفسه في كل المحاولات: مهلة الشبكة بعد وصول الطلب لـ Resend لا تُرسل الرسالة مرتين.
+      idempotencyKey: opts.idempotencyKey,
       tags: opts.tags,
     });
 
@@ -281,7 +280,8 @@ export async function sendTemplatedEmail(opts: SendTemplatedOptions): Promise<Se
 
     lastError = result.error;
 
-    if (result.status && result.status >= 400 && result.status < 500) {
+    // أخطاء العميل نهائية (مفتاح، نطاق، عنوان)، عدا 429 (حد المعدل) فتُعاد.
+    if (result.status && result.status >= 400 && result.status < 500 && result.status !== 429) {
       break;
     }
   }

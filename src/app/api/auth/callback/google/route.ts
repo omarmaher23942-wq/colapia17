@@ -8,6 +8,7 @@
 //    يتم إنشاؤه أو تفعيله تلقائياً بصفة owner عند أول تسجيل دخول.
 //    الحل دائم — لا يحتاج SQL يدوي لأي مسؤول مستقبلي.
 // 5) لا دخول للمشترين: الدخول للتاجر وفريق المنصة فقط.
+import { safeInternalPath } from "@/lib/safe-redirect";
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
@@ -42,9 +43,7 @@ function failRedirect(req: Request, reason: string, opts: { provider?: "merchant
 }
 
 function safeRedirectAfter(input: string | undefined, fallback: string) {
-  if (!input) return fallback;
-  if (!input.startsWith("/") || input.startsWith("//")) return fallback;
-  return input;
+  return safeInternalPath(input, fallback);
 }
 
 // ─── Platform admin resolution (auto-provisioning) ────────────────────────

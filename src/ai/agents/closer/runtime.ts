@@ -67,7 +67,8 @@ async function interpolateVars(): Promise<{ vars: Record<string, string>; golden
   const legacy = () => [`${plansLine(pricing)}.`, `${renewalLine(pricing)}.`, available && golden ? goldenLine(pricing.golden, golden.seatsLeft) : ""].filter(Boolean).join(" ");
   let pricingFacts = "";
   try {
-    pricingFacts = agentPricingFacts(pricing, golden?.seatsUsed ?? 0);
+    // تعذر قراءة المقاعد: لا نعرض الدائرة الذهبية (أفضل من وعد بمقعد قد لا يوجد).
+    pricingFacts = agentPricingFacts(pricing, golden ? golden.seatsUsed : pricing.golden.seats);
   } catch {
     pricingFacts = legacy();
   }
@@ -302,13 +303,12 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
       const r = await createStoreFromConversation(conv.id);
       await trace("create", r.status);
       if (r.status === "created" || r.status === "exists") {
-        if (await sendIfStillActive(channel, senderId, conv, CREATE_ACK, "building")) {
-          await closeAfterAgreement(channel, conv, r.storeId, merged.lead, r.status === "created" ? "created" : "exists");
-        }
+        // يُغلق الوكيل نفسه في كل الأحوال (حتى لو أوقفه الفريق لحظة الإرسال): وإلا عاد بعد انتهاء إيقاف مؤقت يرد على عميل وافق.
+        await sendIfStillActive(channel, senderId, conv, CREATE_ACK, "building");
+        await closeAfterAgreement(channel, conv, r.storeId, merged.lead, r.status === "created" ? "created" : "exists");
       } else if (r.status === "setup_open") {
-        if (await sendIfStillActive(channel, senderId, conv, "عندنا بالفعل متجر قيد التجهيز مسجّل بنفس البريد، وسيتابع الفريق معكم هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.")) {
-          await closeAfterAgreement(channel, conv, r.storeId, merged.lead, "setup_open");
-        }
+        await sendIfStillActive(channel, senderId, conv, "عندنا بالفعل متجر قيد التجهيز مسجّل بنفس البريد، وسيتابع الفريق معكم هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.");
+        await closeAfterAgreement(channel, conv, r.storeId, merged.lead, "setup_open");
       } else if (r.status === "capped") {
         if (await sendIfStillActive(channel, senderId, conv, "الطلبات كثيرة اليوم، وسيتواصل معكم أحد الفريق قريباً لإكمال تجهيز متجركم.")) await handoffToHuman(channel, conv, "بلغ السقف اليومي لإنشاء المتاجر آلياً", cfg.handoffPauseHours);
       } else if (r.status === "busy") {

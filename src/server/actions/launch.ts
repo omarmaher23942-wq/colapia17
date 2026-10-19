@@ -7,7 +7,7 @@ import { sendTemplatedEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
 import { mediaApi } from "@/server/media-host";
 import { redis } from "@/lib/redis";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations } from "@/db/schema";
 
@@ -81,6 +81,12 @@ export async function resetModelsAction(tier: "visionFast" | "chat"): Promise<{ 
   return { ok: true };
 }
 
+const EMAIL_ERRORS: Record<string, string> = {
+  email_disabled: "مفتاح Resend غير مضبوط في متغيرات الخادم (RESEND_API_KEY)، فلا يخرج أي بريد.",
+  no_valid_recipients: "بريد حسابكم غير صالح للإرسال.",
+  render_failed: "تعذر تجهيز قالب الرسالة.",
+};
+
 export type TestEmailResult = { ok: boolean; to?: string; from?: string; status?: number; raw?: string; id?: string; error?: string };
 
 /** بريد تجربة لبريد المالك نفسه، ويعيد رد Resend الحقيقي كما هو (الحالة والنص) لتشخيص أي رفض. */
@@ -102,7 +108,7 @@ export async function sendTestEmailAction(): Promise<TestEmailResult> {
     status: "status" in r ? r.status : undefined,
     raw: "raw" in r ? r.raw : undefined,
     id: "resendId" in r ? r.resendId : undefined,
-    error: r.ok ? undefined : r.error,
+    error: r.ok ? undefined : EMAIL_ERRORS[r.error ?? ""] ?? r.error,
   };
 }
 
@@ -112,7 +118,8 @@ export async function resumeAllAgentAction(): Promise<{ ok: true; count: number 
   const rows = await db
     .update(conversations)
     .set({ botPaused: false, botPausedUntil: null, stage: "persuasion", updatedAt: new Date() })
-    .where(eq(conversations.botPaused, true))
+    // لا يشمل المحادثات التي أغلقها الوكيل بعد موافقة العميل (تسليمها بيد المالك): استئنافها بزرها هي.
+    .where(and(eq(conversations.botPaused, true), sql`coalesce(${conversations.memory}->>'closedBy', '') <> 'agent_done'`))
     .returning({ id: conversations.id });
   return { ok: true, count: rows.length };
 }

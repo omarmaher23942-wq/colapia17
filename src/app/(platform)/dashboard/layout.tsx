@@ -75,7 +75,7 @@ export default async function DashboardLayout({
 
   // أعداد «ما يحتاج انتباهك» من الخادم مع أول رسم، فلا تومض الشارات من صفر.
   const pulseAt = new Date().toISOString();
-  const pulse = session.storeId ? await attentionCounts(session.storeId).catch(() => null) : null;
+  const pulse = session.storeId && !lock ? await attentionCounts(session.storeId).catch(() => null) : null;
 
   // فحص tour الدخول الأول: نستخدم cookie لمنع التكرار المزعج.
   const jar = await cookies();

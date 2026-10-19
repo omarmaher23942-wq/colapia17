@@ -4,19 +4,17 @@
 // والقديم يحوّل 308 للجديد مدة 30 يوماً (ولا يأخذه متجر آخر خلالها)، بحد 3 تغييرات كل 30 يوماً، مع إبطال الذاكرة المؤقتة
 // ونقل خريطة النطاق الخاص إن كان مفعّلاً. متجر خصّصه فريقنا بمجلد باسم رابطه يُغيَّر رابطه عبر الفريق.
 import { revalidatePath } from "next/cache";
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeActivity, stores } from "@/db/schema";
 import { isStoreOwner, ownerStore, storeFor } from "@/server/merchant-guard";
-import { invalidateStoreCache } from "@/lib/tenant";
 import { hit } from "@/lib/rate-hit";
 import { clientEnv } from "@/lib/env";
 import { storeUrl } from "@/lib/utils";
-import { dbErrorInfo, PG_UNIQUE } from "@/lib/db-errors";
 import { storeEntry } from "@/stores/resolve";
-import { mapDomain, unmapDomain } from "@/server/domains";
-import { activePrevious, MAX_CHANGES_PER_30D, nextPrevious, REDIRECT_DAYS, validateSubdomain, type PreviousSubdomain } from "@/lib/subdomain-change";
-import { isSubdomainHeld, writeSubdomainRedirects } from "@/server/subdomain-hold";
+import { activePrevious, MAX_CHANGES_PER_30D, REDIRECT_DAYS, validateSubdomain, type PreviousSubdomain } from "@/lib/subdomain-change";
+import { isSubdomainHeld } from "@/server/subdomain-hold";
+import { renameStoreSubdomain } from "@/server/subdomain-apply";
 
 export type SubdomainInfo = {
   subdomain: string;
@@ -91,33 +89,8 @@ export async function changeSubdomainAction(raw: string): Promise<Result> {
     return { ok: false, error: `وصلتم للحد: ${MAX_CHANGES_PER_30D} تغييرات للرابط خلال 30 يوماً. الرابط يُنشر في البايو والإعلانات، وتغييره المتكرر يربك العملاء.` };
   }
 
-  const previous = nextPrevious(s.store.prefs, old, next);
-  try {
-    const updated = await db
-      .update(stores)
-      .set({
-        subdomain: next,
-        prefs: sql`coalesce(${stores.prefs}, '{}'::jsonb) || ${JSON.stringify({ previousSubdomains: previous })}::jsonb`,
-        updatedAt: new Date(),
-      })
-      // شرط القراءة نفسها: تغييران متزامنان لا يكتب أحدهما فوق الآخر.
-      .where(and(eq(stores.id, s.storeId), eq(stores.subdomain, old), isNull(stores.deletedAt)))
-      .returning({ id: stores.id });
-    if (!updated.length) return { ok: false, error: "تغيّر الرابط للتو من جلسة أخرى. حدّثوا الصفحة وحاولوا مجدداً." };
-  } catch (e) {
-    if (dbErrorInfo(e).code === PG_UNIQUE) return { ok: false, error: "هذا الرابط أُخذ للتو، جرّبوا اسماً آخر." };
-    console.error("[changeSubdomainAction]", e);
-    return { ok: false, error: "تعذر الحفظ، حاولوا مرة أخرى." };
-  }
-
-  // التحويل من كل رابط قديم ساري إلى الجديد، ثم الذاكرة المؤقتة للرابطين، ثم خريطة النطاق الخاص.
-  await writeSubdomainRedirects(next, previous);
-  await invalidateStoreCache({ id: s.storeId, subdomain: old });
-  await invalidateStoreCache({ id: s.storeId, subdomain: next });
-  if (s.store.customDomain && s.store.customDomainStatus === "active") {
-    await unmapDomain({ subdomain: old }, s.store.customDomain).catch(() => {});
-    await mapDomain({ subdomain: next }, s.store.customDomain).catch((e) => console.error("[subdomain] custom domain remap failed", e));
-  }
+  const done = await renameStoreSubdomain({ id: s.storeId, subdomain: old, prefs: s.store.prefs, customDomain: s.store.customDomain, customDomainStatus: s.store.customDomainStatus }, next);
+  if (!done.ok) return done;
   await db.insert(storeActivity).values({ storeId: s.storeId, merchantId: s.merchantId ?? null, action: "store.subdomain_changed", target: `${old} → ${next}` }).catch(() => {});
 
   revalidatePath("/dashboard", "layout");
