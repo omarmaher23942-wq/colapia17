@@ -85,19 +85,21 @@ type ProductLike = {
   ratingCount: number;
 };
 
-export function productMetadata(product: ProductLike): Metadata {
+export function productMetadata(product: ProductLike, site?: { name: string; image?: string | null }): Metadata {
   const title = product.seoTitle || product.name;
   const description = clip(
     product.seoDescription || product.shortDescription || product.description,
     160
   );
   const path = `/p/${encodeURIComponent(product.slug)}`;
-  const images = product.images.slice(0, 4).map((i) => ({ url: i.url, alt: i.alt || product.name }));
+  const own = product.images.slice(0, 4).map((i) => ({ url: i.url, alt: i.alt || product.name }));
+  // مجموعة openGraph في الصفحة تستبدل مجموعة التخطيط كاملة (لا تُدمج)، فنعيد اسم الموقع واللغة وصورة المتجر عند غياب صور المنتج.
+  const images = own.length ? own : site?.image ? [{ url: site.image, alt: site.name }] : [];
   return {
     title,
     description,
     alternates: { canonical: path },
-    openGraph: { type: "website", title, description, url: path, images },
+    openGraph: { type: "website", siteName: site?.name, locale: "ar_EG", title, description, url: path, images: images.length ? images : undefined },
     twitter: { card: images.length ? "summary_large_image" : "summary", title, description },
   };
 }

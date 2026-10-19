@@ -33,7 +33,7 @@ export function OrderConfirmCard({ subdomain, code, token, orderHref }: { subdom
         )}
         <p className="mt-3 text-lg font-bold">{done === "confirmed" ? "تم تأكيد طلبك، شكراً لك" : "تم إلغاء الطلب"}</p>
         <p className="mt-1 text-sm leading-7 text-muted-foreground">
-          {done === "confirmed" ? "يبدأ المتجر تجهيزه الآن، وتتابع حالته من صفحة الطلب." : "إن كان الإلغاء بالخطأ تواصل مع المتجر مباشرة."}
+          {done === "confirmed" ? "يبدأ المتجر تجهيزه الآن، وتتابع حالته من صفحة الطلب." : "إن كان الإلغاء بالخطأ فالتواصل مع المتجر مباشرة يعيد الطلب."}
         </p>
         <Link href={orderHref} className="btn-brand mt-5">
           صفحة الطلب
@@ -44,7 +44,7 @@ export function OrderConfirmCard({ subdomain, code, token, orderHref }: { subdom
   return (
     <div className="mt-6 space-y-3">
       {error ? (
-        <p role="alert" className="rounded-xl bg-red-500/10 p-3 text-sm font-bold text-red-600">
+        <p role="alert" className="rounded-xl p-3 text-sm font-bold text-danger" style={{ background: "color-mix(in srgb, var(--danger) 10%, transparent)" }}>
           {error}
         </p>
       ) : null}
@@ -65,7 +65,7 @@ export function OrderConfirmCard({ subdomain, code, token, orderHref }: { subdom
           </label>
           <textarea id="reason" value={reason} onChange={(e) => setReason(e.target.value.slice(0, 300))} rows={2} className="s-input mt-2 w-full rounded-xl border border-border bg-transparent p-3 text-sm" />
           <div className="mt-3 flex gap-2">
-            <button type="button" disabled={pending} onClick={() => decide("cancel")} className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white disabled:opacity-50">
+            <button type="button" disabled={pending} onClick={() => decide("cancel")} className="flex-1 rounded-xl py-3 text-sm font-bold disabled:opacity-50" style={{ background: "var(--danger)", color: "#fff" }}>
               {pending ? "..." : "نعم، ألغِ الطلب"}
             </button>
             <button type="button" disabled={pending} onClick={() => setCancelling(false)} className="flex-1 rounded-xl border border-border py-3 text-sm font-bold">
@@ -74,7 +74,7 @@ export function OrderConfirmCard({ subdomain, code, token, orderHref }: { subdom
           </div>
         </div>
       )}
-      <p className="text-center text-xs leading-6 text-muted-foreground">لتعديل العنوان أو المقاس رد على رسالة المتجر في واتساب قبل التأكيد.</p>
+      <p className="text-center text-xs leading-6 text-muted-foreground">لتعديل العنوان أو المقاس يكفي الرد على رسالة المتجر في واتساب قبل التأكيد.</p>
     </div>
   );
 }

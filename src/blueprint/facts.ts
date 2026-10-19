@@ -43,6 +43,11 @@ function maxDays(eta: string): number | null {
   return nums.length ? Math.max(...nums) : null;
 }
 
+/** المعاينة قبل الدفع تتحقق عند الاستلام فقط: لا تُعرض ولا تُوعد إلا إن سمح بها المتجر وكان الدفع عند الاستلام مفعّلاً. */
+export function inspectionOffered(bp: Pick<StoreBlueprint, "shipping" | "payments">): boolean {
+  return bp.shipping.inspectionAllowed === true && bp.payments.cod.enabled === true;
+}
+
 export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact[] {
   const out: StoreFact[] = [];
   const r = bp.returns;
@@ -50,7 +55,7 @@ export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact
   const p = bp.payments;
 
   if (p.cod.enabled) out.push({ key: "cod", icon: "banknote", title: "الدفع عند الاستلام", detail: "الدفع نقداً عند وصول طلبك" });
-  if (s.inspectionAllowed) out.push({ key: "inspection", icon: "eye", title: "معاينة قبل الدفع", detail: "فتح الشحنة وفحص المنتج مع المندوب قبل الدفع" });
+  if (inspectionOffered(bp)) out.push({ key: "inspection", icon: "eye", title: "معاينة قبل الدفع", detail: "فتح الشحنة وفحص المنتج مع المندوب قبل الدفع" });
 
   if (r.windowDays > 0 && (r.allowExchange || r.allowRefund)) {
     const what = r.allowExchange && r.allowRefund ? "استبدال واسترجاع" : r.allowExchange ? "استبدال" : "استرجاع";

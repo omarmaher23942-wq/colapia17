@@ -411,7 +411,7 @@ export function CheckoutForm({
             <h2 id="co-h-ship" className="flex items-center gap-2 font-heading text-base font-black">
               <UserRound className="size-4" strokeWidth={SW} style={{ color: "var(--primary)" }} aria-hidden="true" /> بيانات التوصيل
             </h2>
-            {policy?.inspectionAllowed ? (
+            {policy?.inspectionAllowed && f.paymentMethod === "cod" ? (
               <span className="s-chip inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold" style={{ background: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
                 <ShieldCheck className="size-3.5" strokeWidth={SW} aria-hidden="true" /> المعاينة متاحة قبل الدفع
               </span>

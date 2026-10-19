@@ -38,7 +38,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   const store = await getStoreBySubdomain(sub);
   if (!store) return {};
   const p = await loadProduct(store.id, slug);
-  return p ? productMetadata(p) : { title: "المنتج غير موجود", robots: { index: false } };
+  const bp = p ? await getBlueprint(store.id).catch(() => null) : null;
+  return p ? productMetadata(p, { name: bp?.brand.name ?? store.name, image: bp?.seo.ogImage ?? bp?.brand.logo?.url }) : { title: "المنتج غير موجود", robots: { index: false } };
 }
 
 export default async function ProductPage({ params }: P) {

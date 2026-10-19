@@ -6,7 +6,8 @@
 // - WhatsApp floating button ذكي: الرسالة تتضمن اسم الصفحة/المنتج.
 import { BrandIcon } from "./brand-icons";
 import { waLink } from "@/lib/whatsapp";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -166,7 +167,7 @@ export function ConversionWidgets() {
     const cfg = conversion.exitIntentOffer;
     if (!cfg.enabled || !cfg.couponCode) return;
 
-    const key = "clp-exit-shown-at";
+    const key = `clp-exit-shown-at:${storeId}`;
     const last = Number(
       (() => {
         try {
@@ -181,6 +182,8 @@ export function ConversionWidgets() {
     let fired = false;
     const fire = () => {
       if (fired) return;
+      // لا يقاطع الدفع ولا نافذة مفتوحة (السلة، البحث بالصورة، المعرض…).
+      if (window.location.pathname.startsWith("/checkout") || document.querySelector("dialog[open]")) return;
       fired = true;
       setExitOpen(true);
       try {
@@ -209,7 +212,7 @@ export function ConversionWidgets() {
     document.addEventListener("mouseleave", onLeave);
     window.addEventListener("scroll", onScroll, { passive: true });
     return cleanup;
-  }, [conversion.exitIntentOffer]);
+  }, [conversion.exitIntentOffer, storeId]);
 
   // ─── Smart WhatsApp message ─────────────────────────────────────────────
   const whatsappNum = conversion.whatsappButton === false ? null : channels.whatsappNumber || channels.phone;
@@ -217,10 +220,10 @@ export function ConversionWidgets() {
   const [pageUrl, setPageUrl] = useState("");
   useEffect(() => setPageUrl(window.location.href), [pathname]);
   const waMessage = useMemo(() => {
-    const base = "أهلاً، عندي استفسار عن";
-    if (pathname?.startsWith("/p/")) return pageUrl ? `${base} المنتج ده: ${pageUrl}` : `${base} منتج في متجركم.`;
+    const base = "أهلاً، لدي استفسار عن";
+    if (pathname?.startsWith("/p/")) return pageUrl ? `${base} هذا المنتج: ${pageUrl}` : `${base} منتج في متجركم.`;
     if (pathname?.startsWith("/checkout")) return `${base} إتمام طلب جديد.`;
-    if (pathname?.startsWith("/cart")) return `${base} منتجات في سلتي.`;
+    if (pathname?.startsWith("/cart")) return `${base} منتجات في السلة.`;
     return `${base} متجركم.`;
   }, [pathname, pageUrl]);
 
@@ -229,10 +232,14 @@ export function ConversionWidgets() {
   const onCopyCoupon = () => {
     const code = conversion.exitIntentOffer.couponCode;
     if (!code) return;
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    toast.success("تم نسخ الكود");
-    setTimeout(() => setCopied(false), 1800);
+    navigator.clipboard
+      ?.writeText(code)
+      .then(() => {
+        setCopied(true);
+        toast.success("تم نسخ الكود");
+        setTimeout(() => setCopied(false), 1800);
+      })
+      .catch(() => toast.error("تعذر النسخ، الكود: " + code));
   };
 
   return (
@@ -246,8 +253,9 @@ export function ConversionWidgets() {
             animate={{ y: 0, opacity: 1 }}
             exit={reduce ? undefined : { y: 60, opacity: 0 }}
             transition={{ duration: reduce ? 0 : 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed bottom-20 start-4 z-40 flex max-w-xs items-center gap-3 rounded-2xl border p-3 shadow-2xl backdrop-blur-xl"
+            className="fixed start-4 z-40 flex max-w-xs items-center gap-3 rounded-2xl border p-3 shadow-2xl backdrop-blur-xl"
             style={{
+              bottom: "calc(5rem + var(--clp-bottom-offset, 0px))",
               background: "color-mix(in srgb, var(--card) 96%, transparent)",
               borderColor: "var(--border)",
               color: "var(--card-foreground)",
@@ -316,104 +324,56 @@ export function ConversionWidgets() {
         </a>
       ) : null}
 
-      {/* ─── Exit-Intent Modal ────────────────────────────────────────── */}
-      <AnimatePresence>
-        {exitOpen ? (
-          <motion.div
-            key="exit"
-            className="fixed inset-0 z-[70] grid place-items-center bg-black/65 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: reduce ? 0 : 0.2 }}
-            onClick={() => setExitOpen(false)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="exit-offer-title"
-          >
-            <motion.div
-              initial={reduce ? false : { scale: 0.94, y: 12 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={reduce ? undefined : { scale: 0.96, y: 8 }}
-              transition={{ duration: reduce ? 0 : 0.24, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-sm overflow-hidden rounded-3xl border p-6 text-center shadow-2xl"
-              style={{
-                background: "var(--card)",
-                borderColor: "var(--border)",
-                color: "var(--card-foreground)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -top-24 start-1/2 size-56 -translate-x-1/2 rounded-full blur-3xl"
-                style={{
-                  background: "color-mix(in srgb, var(--primary) 25%, transparent)",
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={() => setExitOpen(false)}
-                aria-label="إغلاق"
-                className="absolute end-4 top-4 grid size-9 place-items-center rounded-lg opacity-60 transition-opacity hover:bg-[var(--muted)] hover:opacity-100"
-              >
-                <X className="size-4" strokeWidth={SW} aria-hidden="true" />
-              </button>
-
-              <div
-                className="relative mx-auto mb-3 grid size-14 place-items-center rounded-2xl"
-                style={{
-                  background: "color-mix(in srgb, var(--primary) 15%, transparent)",
-                  color: "var(--primary)",
-                }}
-              >
-                <Gift className="size-7" strokeWidth={1.75} aria-hidden="true" />
-              </div>
-
-              <h3
-                id="exit-offer-title"
-                className="relative font-heading text-lg font-black"
-              >
-                {conversion.exitIntentOffer.title || "انتظر لحظة"}
-              </h3>
-              <p className="relative mt-1 text-xs leading-relaxed opacity-75">
-                {conversion.exitIntentOffer.text ||
-                  "خصم فوري على أول طلب لك."}
-              </p>
-
-              {conversion.exitIntentOffer.couponCode ? (
-                <button
-                  type="button"
-                  onClick={onCopyCoupon}
-                  className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-3 font-mono text-base font-black tracking-widest transition-colors hover:bg-[var(--muted)]"
-                  style={{ borderColor: "var(--primary)", color: "var(--primary)" }}
-                >
-                  {copied ? (
-                    <Check className="size-4" strokeWidth={2.5} aria-hidden="true" />
-                  ) : (
-                    <Copy className="size-4" strokeWidth={SW} aria-hidden="true" />
-                  )}
-                  {conversion.exitIntentOffer.couponCode}
-                </button>
-              ) : null}
-
-              <Link
-                href="/checkout"
-                onClick={() => setExitOpen(false)}
-                className="relative mt-3 inline-flex h-12 w-full items-center justify-center rounded-xl text-sm font-black shadow-md transition-all active:scale-[0.98]"
-                style={{
-                  background: "var(--primary)",
-                  color: "var(--primary-foreground)",
-                }}
-              >
-                نسخ الكود واستخدامه
-              </Link>
-            </motion.div>
-          </motion.div>
+      {/* ─── Exit-Intent Modal (dialog أصلي في الطبقة العليا) ─────────── */}
+      <ExitOfferDialog open={exitOpen} onClose={() => setExitOpen(false)}>
+        <div aria-hidden className="pointer-events-none absolute -top-24 start-1/2 size-56 -translate-x-1/2 rounded-full blur-3xl" style={{ background: "color-mix(in srgb, var(--primary) 25%, transparent)" }} />
+        <button type="button" onClick={() => setExitOpen(false)} aria-label="إغلاق" className="absolute end-3 top-3 grid size-11 place-items-center rounded-lg opacity-70 transition-opacity hover:bg-[var(--muted)] hover:opacity-100 focus-visible:outline-none focus-visible:ring-2">
+          <X className="size-4" strokeWidth={SW} aria-hidden="true" />
+        </button>
+        <div className="relative mx-auto mb-3 grid size-14 place-items-center rounded-2xl" style={{ background: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+          <Gift className="size-7" strokeWidth={1.75} aria-hidden="true" />
+        </div>
+        <h3 id="exit-offer-title" className="relative font-heading text-lg font-black">
+          {conversion.exitIntentOffer.title || "قبل المغادرة"}
+        </h3>
+        <p className="relative mt-1 text-xs leading-relaxed opacity-75">{conversion.exitIntentOffer.text || "خصم فوري على الطلب الأول."}</p>
+        {conversion.exitIntentOffer.couponCode ? (
+          <button type="button" onClick={onCopyCoupon} className="relative mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed py-3 font-mono text-base font-black tracking-widest transition-colors hover:bg-[var(--muted)] focus-visible:outline-none focus-visible:ring-2" style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+            {copied ? <Check className="size-4" strokeWidth={2.5} aria-hidden="true" /> : <Copy className="size-4" strokeWidth={SW} aria-hidden="true" />}
+            {conversion.exitIntentOffer.couponCode}
+          </button>
         ) : null}
-      </AnimatePresence>
+        <Link
+          href={conversion.exitIntentOffer.couponCode ? `/checkout?promo=${encodeURIComponent(conversion.exitIntentOffer.couponCode)}` : "/checkout"}
+          onClick={() => setExitOpen(false)}
+          className="relative mt-3 inline-flex h-12 w-full items-center justify-center rounded-xl text-sm font-black shadow-md transition-all active:scale-[0.98]"
+          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
+        >
+          إتمام الطلب بالكود
+        </Link>
+      </ExitOfferDialog>
     </>
   );
 }
 
+/** نافذة العرض على <dialog> أصلي (طبقة عليا + محاصرة التركيز + Esc) محمولة داخل .storefront لترث ألوانه. */
+function ExitOfferDialog({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const [host, setHost] = useState<Element | null>(null);
+  useLayoutEffect(() => setHost(document.querySelector(".storefront") ?? document.body), []);
+  useEffect(() => {
+    const d = ref.current;
+    if (!d || !host) return;
+    if (open && !d.open) d.showModal();
+    if (!open && d.open) d.close();
+  }, [open, host]);
+  if (!host) return null;
+  return createPortal(
+    <dialog ref={ref} aria-labelledby="exit-offer-title" className="clp-modal" onClose={onClose} onCancel={(e) => (e.preventDefault(), onClose())} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="clp-modal-card relative overflow-hidden text-center" dir="rtl">
+        {open ? children : null}
+      </div>
+    </dialog>,
+    host
+  );
+}

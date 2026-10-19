@@ -24,7 +24,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
   const [sent, setSent] = useState<Set<string>>(new Set());
   const { startUpload } = useMediaUpload("customerReviewImage", {
     onUploadError: (e) => {
-      toast.error(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. حاول مرة أخرى");
+      toast.error(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. يمكن المحاولة مرة أخرى");
     },
   });
 
@@ -54,7 +54,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
       token,
       displayName: name,
       items: rated.map((i) => ({ productId: i.productId, rating: draft(i.productId).rating, body: draft(i.productId).body, imageUrls: draft(i.productId).images })),
-    }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، يمكن المحاولة مرة أخرى" }));
     setSending(false);
     if (!r.ok) return void toast.error(r.error);
     setSent((s) => new Set([...s, ...rated.map((i) => i.productId)]));
@@ -100,7 +100,7 @@ export function OrderReviewForm({ subdomain, code, token, defaultName, items }: 
                       onClick={() => patch(it.productId, { rating: n })}
                       className="grid size-11 place-items-center rounded-lg transition-transform active:scale-90"
                     >
-                      <Star strokeWidth={SW} className={cn("size-8", n <= d.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40")} aria-hidden="true" />
+                      <Star strokeWidth={SW} className={cn("size-8", n <= d.rating ? "fill-current text-[var(--star,#f59e0b)]" : "text-[var(--border)]")} aria-hidden="true" />
                     </button>
                   ))}
                   {d.rating ? <span className="ms-2 text-sm font-bold">{LABELS[d.rating]}</span> : null}

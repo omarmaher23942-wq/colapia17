@@ -86,7 +86,7 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
   const guard = () => {
     if (!needsVariant) return true;
     setMissing(true);
-    toast.error(`اختر ${p.optionNames.filter((_, i) => !sel[i]).join(" و")} أولاً`);
+    toast.error(`يلزم اختيار ${p.optionNames.filter((_, i) => !sel[i]).join(" و")} أولاً`);
     document.querySelector("[data-variant-picker]")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return false;
   };

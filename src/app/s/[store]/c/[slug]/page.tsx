@@ -35,7 +35,7 @@ export async function generateMetadata({ params, searchParams }: P): Promise<Met
     description: cat.description ?? undefined,
     alternates: { canonical: path },
     robots: filtered ? { index: false, follow: true } : undefined,
-    openGraph: { title: cat.name, url: path, images: cat.imageUrl ? [cat.imageUrl] : undefined },
+    openGraph: { type: "website", siteName: store?.name, locale: "ar_EG", title: cat.name, url: path, images: cat.imageUrl ? [cat.imageUrl] : undefined },
   };
 }
 
