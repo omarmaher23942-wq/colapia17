@@ -23,6 +23,7 @@ import { sendEmail } from "@/lib/email";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { alertAgentDegraded, alertAgentSilent } from "./alerts";
 import { parseCloserTurn, type CloserTurn } from "./turn";
+import { allowedPriceNumbers, capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView, replyProblem, type ReplyCtx } from "./guard";
 import { AI_MAX_REPEAT_WINDOW, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
 import { agentConfig, demoUrl } from "@/agent/settings";
 import { CREATE_ACK, START_QUICK_REPLY, decideCreate, groundLeadInput, isLeadComplete, mergeLead, type Lead, type LeadInvalid } from "@/agent/lead";
@@ -55,7 +56,7 @@ const HISTORY_LIMIT = 30;
 
 const memOf = (c: Conv): Mem => ((c.memory as Mem | null) ?? {}) as Mem;
 
-async function interpolateVars(): Promise<{ vars: Record<string, string>; goldenAvailable: boolean; goldenPrice: number; demoHost: string }> {
+async function interpolateVars(): Promise<{ vars: Record<string, string>; goldenAvailable: boolean; goldenPrice: number; demoHost: string; replyCtx: ReplyCtx }> {
   const [pricing, timings, golden, demo] = await Promise.all([currentPricing(), lifecycleTimings(), goldenStatus().catch(() => null), demoUrl()]);
   const available = Boolean(golden?.available);
   let host = demo;
@@ -72,15 +73,18 @@ async function interpolateVars(): Promise<{ vars: Record<string, string>; golden
   } catch {
     pricingFacts = legacy();
   }
+  const facts = pricingFacts || legacy();
   return {
     vars: {
       trialHours: String(timings.trialHours),
-      pricingFacts: pricingFacts || legacy(),
+      pricingFacts: facts,
       demoUrl: demo,
     },
     goldenAvailable: available,
     goldenPrice: pricing.golden.buildPrice,
     demoHost: host,
+    // ما يُسمح للرد بذكره: نطاقاتنا والرابط التجريبي فقط، وأسعار الحقائق ومجاميعها الطبيعية فقط.
+    replyCtx: { allowedHosts: [host, env.ROOT_DOMAIN, "colapia.com"], allowedPrices: allowedPriceNumbers(pricing, `${facts} ${timings.trialHours}`), facts },
   };
 }
 
@@ -90,14 +94,16 @@ type Row = { role: string; text: string | null; at: Date };
 function modelHistory(rows: Row[]): ModelMessage[] {
   const out: ModelMessage[] = [];
   for (const m of rows) {
-    const text = (m.text ?? "").trim();
-    if (!text) continue;
+    const raw = (m.text ?? "").trim();
+    if (!raw) continue;
     const role = m.role === "user" ? ("user" as const) : ("assistant" as const);
+    const text = modelView(role, raw);
     const prev = out[out.length - 1];
     if (prev && prev.role === role && prev.content === text) continue;
     out.push({ role, content: text });
   }
-  return out.length ? out : [{ role: "user", content: "مرحباً" }];
+  const capped = capHistory(out as { role: "user" | "assistant"; content: string }[]) as ModelMessage[];
+  return capped.length ? capped : [{ role: "user", content: "مرحباً" }];
 }
 
 /** دور واحد مع النموذج: JSON صارم. ناتج بلا reply صالح يُرفض فيُجرَّب النموذج التالي (لا يصل نص خام للعميل أبداً). */
@@ -124,6 +130,12 @@ async function ingestAttachments(conv: Conv, batch: Inbound[]): Promise<{ batch:
 
 export async function handleInbound(channel: Channel, senderId: string, batch0: Inbound[]) {
   const botOn = (await isOn("bot.enabled")) && (channel !== "instagram" || (await isOn("bot.instagram")));
+
+  // إعادة تسليم متأخرة (أقدم من نافذة الرد): لا رد، فقط أثر.
+  if (isStaleBatch(batch0.map((m) => m.timestamp))) {
+    await trace("skip", `stale: رسائل أقدم من ${Math.round(STALE_INBOUND_MS / 3600_000)} ساعة، لا يُرد عليها`);
+    return;
+  }
 
   const conv0 = await getOrCreateConversation(channel, senderId);
   if (!conv0) return;
@@ -152,16 +164,15 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   // سجل inbound messages.
   const userTexts: string[] = [];
   for (const m of batch) {
-    const text = (m.quickReply ?? m.text ?? "").trim();
+    const text = (m.quickReply ?? m.text ?? "").replace(/\u0000/g, "").trim().slice(0, MAX_STORED_TEXT);
     if (text) userTexts.push(text);
-    const hasImage = m.attachments.some((a) => a.type === "image");
     await db
       .insert(messages)
       .values({
         conversationId: conv.id,
         role: "user",
         externalMid: m.mid,
-        text: text || (hasImage ? "[صورة]" : "[مرفق]"),
+        text: text || describeInbound(undefined, m.attachments),
         attachments: m.attachments.filter((a): a is InboundAttachment & { url: string } => typeof a.url === "string").map((a) => ({ type: (["image", "audio", "video", "file"].includes(a.type) ? a.type : "file") as "image" | "audio" | "video" | "file", url: a.url })),
       })
       .onConflictDoNothing();
@@ -253,10 +264,20 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
       });
     const history = modelHistory(rows);
     ({ turn } = await converse(system, history, conv.id));
+    // حراسة المخرج: رابط غريب أو سعر/خصم خارج الحقائق أو تسريب تعليمات ← محاولة ثانية بتنبيه، فإن تكرر صمت وتنبيه للمالك.
+    const problem = replyProblem(turn.reply, cfgVars.replyCtx);
+    if (problem) {
+      await trace("reply-rejected", problem.slice(0, 120));
+      ({ turn } = await converse(system + `\n- تنبيه: ${problem}`, history, conv.id));
+      const again = replyProblem(turn.reply, cfgVars.replyCtx);
+      if (again) throw new Error(`reply rejected by guard: ${again}`);
+    }
     // نفس رد سبق حرفياً (نموذج متعثر): محاولة ثانية بتنبيه صريح، فإن تكرر لا نرسله.
     if (!turn.requestHuman && assistantTexts.slice(-AI_MAX_REPEAT_WINDOW).includes(norm(turn.reply))) {
       ({ turn } = await converse(system + `\n- تنبيه: ردك السابق كان بنفس هذا النص حرفياً. أجب بما هو جديد ومفيد، لا تكرر.`, history, conv.id));
       if (assistantTexts.slice(-AI_MAX_REPEAT_WINDOW).includes(norm(turn.reply))) throw new Error("repeated reply");
+      const afterRetry = replyProblem(turn.reply, cfgVars.replyCtx);
+      if (afterRetry) throw new Error(`reply rejected by guard: ${afterRetry}`);
     }
   } catch (err) {
     // لا ردود احتياطية جاهزة (قرار المالك): الصمت أفضل من رد غبي. المحادثة تبقى «غير مقروءة» للفريق ويصل المالك تنبيه بالسبب.
