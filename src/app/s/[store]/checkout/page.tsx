@@ -8,6 +8,7 @@ import { CheckoutForm } from "@/components/storefront/CheckoutForm";
 import { getMerchantSession } from "@/server/auth";
 import { isTeamPreview } from "@/server/store-preview";
 import { isDemoStore } from "@/lib/demo-store";
+import { inspectionOffered } from "@/blueprint/facts";
 
 const SW = 1.75;
 
@@ -74,7 +75,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
             flatPiasters: bp.shipping.flatRatePiasters,
             freeOverPiasters: bp.shipping.freeOverPiasters,
             generalEta: bp.shipping.generalEta,
-            inspectionAllowed: bp.shipping.inspectionAllowed,
+            inspectionAllowed: inspectionOffered(bp),
             returnDays: bp.returns.allowExchange || bp.returns.allowRefund ? bp.returns.windowDays : 0,
             giftEnabled: bp.shipping.giftEnabled ?? true,
             giftWrapPiasters: bp.shipping.giftWrapPiasters,

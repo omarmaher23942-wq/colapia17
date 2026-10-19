@@ -369,7 +369,7 @@ export const newsletterSection = z.object({
   title: z.string().max(70),
   subtitle: z.string().max(160).optional(),
   ctaLabel: z.string().max(30).default("اشترك الآن"),
-  placeholder: z.string().max(60).default("أدخل بريدك الإلكتروني"),
+  placeholder: z.string().max(60).default("البريد الإلكتروني"),
 });
 
 export const customBlocksSection = z.object({
@@ -437,7 +437,7 @@ export const conversionSchema = z.object({
   exitIntentOffer: z.object({
     enabled: z.boolean().default(false),
     title: z.string().max(60).default("خصم خاص لأول طلب"),
-    text: z.string().max(160).default("استخدم الكود ده قبل ما يخلص"),
+    text: z.string().max(160).default("استخدموا الكود قبل انتهائه"),
     couponCode: z.string().max(20).optional(),
     showOncePerDays: z.number().int().min(1).default(3),
   }).default({}),

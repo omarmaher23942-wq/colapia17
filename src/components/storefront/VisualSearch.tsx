@@ -4,15 +4,15 @@
 // الصورة في المتصفح وتُرسل لـ /api/storefront/visual-search، فتظهر القطعة نفسها بسعرها، أو «قريبة منها»، أو رسالة
 // صادقة بزر واتساب للمتجر. أي مكان آخر (صفحة البحث) يفتحها بحدث window «clp:visual-search».
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
-import { Camera, ImagePlus, Loader2, RefreshCw, Sparkles, X } from "lucide-react";
+import { Camera, ImagePlus, Loader2, RefreshCw } from "lucide-react";
 import { formatEgp } from "@/lib/money";
 import { waLink } from "@/lib/whatsapp";
 import { cn } from "@/lib/utils";
 import { BrandIcon } from "./brand-icons";
+import { SheetDialog } from "./SheetDialog";
 
 type Item = { id: string; slug: string; name: string; image: string; pricePiasters: number; compareAtPiasters: number | null };
 type Result = { status: "match" | "similar" | "none" | "not_product" | "limit"; match: Item | null; similar: Item[]; seen: string | null };
@@ -25,11 +25,6 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
   const [open, setOpen] = useState(false);
   const [state, setState] = useState<State>({ phase: "idle" });
   const fileRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  // النافذة تُرسم في جذر المتجر (لا داخل الرأس: الرأس بخلفية ضبابية يصبح مرجع position: fixed) فترث ألوانه.
-  const [host, setHost] = useState<Element | null>(null);
-  useEffect(() => setHost(btnRef.current?.closest(".storefront") ?? document.body), []);
 
   useEffect(() => {
     const onOpen = () => setOpen(true);
@@ -47,7 +42,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
 
   const search = useCallback(async (f: File | null | undefined) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) return setState({ phase: "error", message: "الملف المختار ليس صورة. اختيار صورة للقطعة (سكرين شوت مثلاً) مطلوب." });
+    if (!f.type.startsWith("image/")) return setState({ phase: "error", message: "الملف المختار ليس صورة. يلزم اختيار صورة للقطعة (لقطة شاشة مثلاً)." });
     const preview = URL.createObjectURL(f);
     setState({ phase: "searching", preview });
     let file: File = f;
@@ -62,11 +57,11 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
     try {
       const r = await fetch("/api/storefront/visual-search", { method: "POST", body });
       const j = (await r.json().catch(() => null)) as (Result & { error?: string }) | null;
-      if (!r.ok || !j) return setState({ phase: "error", preview, message: j?.error ?? "تعذر البحث الآن. حاول مرة أخرى بعد لحظات." });
+      if (!r.ok || !j) return setState({ phase: "error", preview, message: j?.error ?? "تعذر البحث الآن. يمكن المحاولة مرة أخرى بعد لحظات." });
       window.clpTrack?.("visual_search", { status: j.status });
       setState({ phase: "done", preview, result: j });
     } catch {
-      setState({ phase: "error", preview, message: "الاتصال بالإنترنت متقطع. حاول مرة أخرى." });
+      setState({ phase: "error", preview, message: "الاتصال بالإنترنت متقطع. يمكن المحاولة مرة أخرى." });
     }
   }, []);
 
@@ -80,22 +75,15 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
         void search(f);
       }
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
     window.addEventListener("paste", onPaste);
-    window.addEventListener("keydown", onKey);
-    dialogRef.current?.focus();
-    return () => {
-      window.removeEventListener("paste", onPaste);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open, search, close]);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [open, search]);
 
   const ask = waLink(whatsapp, `أهلاً ${storeName}، عندي صورة قطعة وأريد أن أعرف هل هي متوفرة عندكم؟ (سأرسل الصورة هنا)`);
 
   return (
     <>
       <button
-        ref={btnRef}
         type="button"
         onClick={() => setOpen(true)}
         className="grid size-10 place-items-center rounded-xl opacity-80 transition-opacity hover:opacity-100"
@@ -105,29 +93,8 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
         <Camera className="size-4.5" strokeWidth={SW} aria-hidden="true" />
       </button>
 
-      {open && host ? createPortal(
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={close}>
-          <div
-            ref={dialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="البحث بالصورة"
-            tabIndex={-1}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl p-5 outline-none sm:max-w-lg sm:rounded-3xl"
-            style={{ background: "var(--card)", color: "var(--foreground)" }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 font-heading text-lg font-black">
-                  <Sparkles className="size-5" style={{ color: "var(--primary)" }} strokeWidth={SW} aria-hidden="true" /> البحث بالصورة
-                </p>
-                <p className="mt-1 text-sm opacity-70">صورة أو سكرين شوت لأي قطعة من الريلز أو غيرها، ونفتح لك صفحتها في المتجر إن كانت عندنا.</p>
-              </div>
-              <button type="button" onClick={close} className="grid size-9 shrink-0 place-items-center rounded-xl opacity-60 hover:opacity-100" aria-label="إغلاق">
-                <X className="size-5" strokeWidth={SW} aria-hidden="true" />
-              </button>
-            </div>
+      <SheetDialog open={open} onClose={close} title="البحث بالصورة" side="bottom">
+        <p className="text-sm opacity-70">صورة أو لقطة شاشة لأي قطعة من الريلز أو غيرها، ونفتح صفحتها في المتجر إن كانت متوفرة.</p>
 
             <input ref={fileRef} type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={(e) => void search(e.target.files?.[0])} />
 
@@ -162,7 +129,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
 
             {state.phase === "error" ? (
               <div className="mt-4 space-y-3">
-                <p role="alert" className="text-sm font-bold text-rose-500">{state.message}</p>
+                <p role="alert" className="text-sm font-bold text-danger">{state.message}</p>
                 <Retry onClick={() => fileRef.current?.click()} />
               </div>
             ) : null}
@@ -205,10 +172,7 @@ export function VisualSearch({ whatsapp, storeName }: { whatsapp?: string; store
                 </div>
               </div>
             ) : null}
-          </div>
-        </div>,
-        host
-      ) : null}
+      </SheetDialog>
     </>
   );
 }

@@ -65,7 +65,7 @@ export function QuickView({ product: p, onClose }: { product: ProductCardProduct
   const hex = useMemo(() => (name: string, val: string) => swatchColor(name, val, p.optionMeta ?? []), [p.optionMeta]);
 
   const onAdd = () => {
-    if (needs) return void toast.error(`اختر ${names.filter((_, i) => !sel[i]).join(" و")} أولاً`);
+    if (needs) return void toast.error(`يلزم اختيار ${names.filter((_, i) => !sel[i]).join(" و")} أولاً`);
     if (unavailable) return;
     add(
       {

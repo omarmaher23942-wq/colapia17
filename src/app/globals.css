@@ -702,6 +702,14 @@ html[data-sticky-bar="1"] [data-wa-fab] { opacity: 0; pointer-events: none; tran
 @keyframes clp-drawer-in { from { transform: translateX(-1.5rem); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .clp-drawer[open] .clp-drawer-panel { animation: none !important; } }
 
+/* نافذة وسطى صغيرة (عرض المغادرة): dialog أصلي */
+.clp-modal { position: fixed; inset: 0; width: 100vw; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 1rem; border: 0; background: transparent; color: var(--card-foreground, var(--foreground)); overscroll-behavior: contain; }
+.clp-modal[open] { display: grid; place-items: center; }
+.clp-modal::backdrop { background: rgb(0 0 0 / 0.6); backdrop-filter: blur(3px); }
+.clp-modal-card { width: 100%; max-width: 24rem; border-radius: 1.5rem; border: 1px solid var(--border); background: var(--card); padding: 1.5rem; box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.35); }
+.clp-modal[open] .clp-modal-card { animation: clp-sheet-fade 0.2s ease-out; }
+@media (prefers-reduced-motion: reduce) { .clp-modal[open] .clp-modal-card { animation: none; } }
+
 @keyframes clp-ann { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 
 /* مساحة للشريط السفلي على الموبايل (القيمة 0 حين لا يوجد) */

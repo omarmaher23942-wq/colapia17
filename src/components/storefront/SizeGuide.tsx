@@ -2,11 +2,11 @@
 
 // SizeGuide.tsx — «دليل المقاسات» في صفحة المنتج: جدول التاجر كما كتبه، ومساعد يقترح المقاس من الطول والوزن (إن كان
 // الجدول يحمل مداهما)، وزر يختار المقاس المقترح مباشرة إن كان متاحاً. القياسات تُحفظ على جهاز العميل لهذا المتجر فقط.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Ruler, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Ruler } from "lucide-react";
 import { canRecommend, recommendSize, type Fit, type SizeChart } from "@/lib/size-guide";
 import { cn } from "@/lib/utils";
+import { SheetDialog } from "./SheetDialog";
 
 const FITS: { v: Fit; label: string }[] = [
   { v: "tight", label: "ضيق" },
@@ -25,29 +25,21 @@ const load = (key: string): Saved => {
 
 export function SizeGuideButton({ chart, storeId, isAvailable, onPick }: { chart: SizeChart; storeId: string; isAvailable: (size: string) => boolean; onPick: (size: string) => void }) {
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const [host, setHost] = useState<Element | null>(null);
-  useEffect(() => setHost(btnRef.current?.closest(".storefront") ?? document.body), []);
   return (
     <>
-      <button ref={btnRef} type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1 text-xs font-bold underline underline-offset-4 opacity-80 hover:opacity-100">
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-1 text-xs font-bold underline underline-offset-4 opacity-80 hover:opacity-100">
         <Ruler className="size-3.5" aria-hidden="true" /> دليل المقاسات
       </button>
-      {open && host ? createPortal(<Sheet chart={chart} storeKey={`clp:size:${storeId}`} isAvailable={isAvailable} onPick={(s) => (onPick(s), setOpen(false))} onClose={() => setOpen(false)} />, host) : null}
+      <SheetDialog open={open} onClose={() => setOpen(false)} title={chart.name || "دليل المقاسات"} side="bottom">
+        <Sheet chart={chart} storeKey={`clp:size:${storeId}`} isAvailable={isAvailable} onPick={(s) => (onPick(s), setOpen(false))} />
+      </SheetDialog>
     </>
   );
 }
 
-function Sheet({ chart, storeKey, isAvailable, onPick, onClose }: { chart: SizeChart; storeKey: string; isAvailable: (s: string) => boolean; onPick: (s: string) => void; onClose: () => void }) {
+function Sheet({ chart, storeKey, isAvailable, onPick }: { chart: SizeChart; storeKey: string; isAvailable: (s: string) => boolean; onPick: (s: string) => void }) {
   const [m, setM] = useState<Saved>({});
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    setM(load(storeKey));
-    ref.current?.focus();
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [storeKey, onClose]);
+  useEffect(() => setM(load(storeKey)), [storeKey]);
   const update = (patch: Saved) =>
     setM((cur) => {
       const next = { ...cur, ...patch };
@@ -61,30 +53,10 @@ function Sheet({ chart, storeKey, isAvailable, onPick, onClose }: { chart: SizeC
   const rec = useMemo(() => (helper ? recommendSize(chart, m) : null), [chart, m, helper]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={onClose}>
-      <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-label="دليل المقاسات"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl p-5 outline-none sm:max-w-lg sm:rounded-3xl"
-        style={{ background: "var(--card)", color: "var(--foreground)" }}
-        dir="rtl"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <p className="flex items-center gap-2 font-heading text-lg font-black">
-            <Ruler className="size-5" style={{ color: "var(--primary)" }} aria-hidden="true" /> {chart.name}
-          </p>
-          <button type="button" onClick={onClose} className="grid size-9 place-items-center rounded-xl opacity-60 hover:opacity-100" aria-label="إغلاق">
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        </div>
-
+    <div>
         {helper ? (
           <section className="mt-4 space-y-3 rounded-2xl border p-4" style={{ borderColor: "var(--border)" }} aria-label="اقتراح المقاس">
-            <p className="text-sm font-black">نقترح لك المقاس</p>
+            <p className="text-sm font-black">اقتراح المقاس المناسب</p>
             <div className="grid grid-cols-2 gap-3">
               <label className="space-y-1 text-xs font-bold">
                 الطول (سم)
@@ -106,7 +78,7 @@ function Sheet({ chart, storeKey, isAvailable, onPick, onClose }: { chart: SizeC
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--primary) 10%, transparent)" }} aria-live="polite">
                 <p className="text-sm">
                   المقاس المناسب: <b className="text-lg" style={{ color: "var(--primary)" }}>{rec.size}</b>
-                  {!rec.exact && rec.alternative ? <span className="block text-xs opacity-75">بين مقاسين؛ {rec.alternative} لو تفضّل لبساً {idx(rec.alternative) > idx(rec.size) ? "أوسع" : "أضيق"}.</span> : null}
+                  {!rec.exact && rec.alternative ? <span className="block text-xs opacity-75">بين مقاسين؛ {rec.alternative} عند تفضيل لبس {idx(rec.alternative) > idx(rec.size) ? "أوسع" : "أضيق"}.</span> : null}
                 </p>
                 {isAvailable(rec.size) ? (
                   <button type="button" onClick={() => onPick(rec.size)} className="s-btn h-10 px-4 text-sm">اختيار {rec.size}</button>
@@ -150,7 +122,6 @@ function Sheet({ chart, storeKey, isAvailable, onPick, onClose }: { chart: SizeC
           </table>
         </div>
         {chart.note ? <p className="mt-3 text-xs opacity-70">{chart.note}</p> : null}
-      </div>
     </div>
   );
 }

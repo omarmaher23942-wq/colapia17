@@ -58,7 +58,7 @@ export function ProductStickyBar() {
   });
   const guard = () => {
     if (!s.needsVariant) return true;
-    toast.error(`اختر ${s.optionNames.join(" و")} من الصفحة`);
+    toast.error(`يلزم اختيار ${s.optionNames.join(" و")} من الصفحة`);
     document.querySelector("[data-variant-picker]")?.scrollIntoView({ behavior: "smooth", block: "center" });
     return false;
   };
