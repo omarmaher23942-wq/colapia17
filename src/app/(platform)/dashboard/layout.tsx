@@ -123,6 +123,7 @@ export default async function DashboardLayout({
             }
             allStores={session.stores.map((s) => ({ id: s.id, name: s.name, subdomain: s.subdomain, status: s.status }))}
             perms={memberPerms(session)}
+            locked={Boolean(lock)}
           />
 
           <div className="flex min-w-0 flex-1 flex-col">
@@ -132,6 +133,7 @@ export default async function DashboardLayout({
               merchantAvatarUrl={session.merchant.avatarUrl}
               storeStatus={session.store?.status ?? null}
               acceptingOrders={session.store?.acceptingOrders ?? true}
+              locked={Boolean(lock)}
               theme={theme}
             />
 
@@ -146,7 +148,7 @@ export default async function DashboardLayout({
         </div>
 
         {/* Command Palette — متاح عالمياً بـ ⌘K */}
-        <CommandPalette storeHref={session.store ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store)} perms={memberPerms(session)} subdomain={session.store?.subdomain ?? null} />
+        <CommandPalette storeHref={session.store && !lock ? storeUrl(session.store.subdomain) : null} hasStore={Boolean(session.store) && !lock} locked={Boolean(lock)} perms={memberPerms(session)} subdomain={session.store?.subdomain ?? null} />
 
         {/* Onboarding Tour — للتاجر الجديد فقط */}
         <OnboardingTour autoOpen={showTour} />

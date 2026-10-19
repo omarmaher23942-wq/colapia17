@@ -78,6 +78,7 @@ export const ADMIN_PAGES = {
   "/admin": "stores.manage", // غير المديرين يُحوَّلون إلى المحادثات (لوحة القيادة فيها أرقام مالية)
   "/admin/changes": null, // طلبات تعديل التجار (المنفّذ يرى المسند إليه)
   "/admin/conversations": "conversations",
+  "/admin/conversations/delivery": "conversations",
   "/admin/payments": "payments.decide",
   "/admin/reviews": "stores.manage",
   "/admin/leads": "leads",

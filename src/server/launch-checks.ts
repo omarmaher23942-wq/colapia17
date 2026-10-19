@@ -253,27 +253,32 @@ const checkAgentState = () =>
       ? { status: !on || !ig ? "fail" : "warn", detail: problems.join(" · "), fix: "فعّل المفاتيح من /admin/flags، واضغط «استئناف الوكيل في كل المحادثات»، واجعل NEXT_PUBLIC_APP_URL = https://" + env.ROOT_DOMAIN + " ثم أعد النشر" }
       : { status: "ok", detail: `يعمل على ماسنجر وإنستجرام، ولا محادثات موقوفة · هذا الخادم: ${runtimeTag()}` };
   });
-/** إنشاء المتاجر من المحادثات: متاجر قيد الإعداد، ومتاجر لم يصلها رابط الإعداد في موعده (علامة توقف الجدولة). */
+/** المتاجر التي أنشأها الوكيل: التسليم يدوي، فالمنتظرون للتسليم عدد للمتابعة لا مشكلة. المشكلة الوحيدة: متجر تجاوز مهلة الإعداد ولم يُحذف. */
 const checkSetupStores = () =>
-  run("setup-stores", "المتاجر قيد الإعداد (من المحادثات)", async () => {
+  run("setup-stores", "المتاجر بانتظار التسليم (من المحادثات)", async () => {
     const { stores } = await import("@/db/schema");
     const { agentConfig } = await import("@/agent/settings");
     const cfg = await agentConfig();
     const [r] = await db
       .select({
         open: sql<number>`count(*)::int`,
-        noLink: sql<number>`count(*) filter (where ${stores.onboarding}->>'linkSentAt' is null and ${stores.setupStartedAt} < now() - make_interval(mins => ${cfg.setupDelayMinutes + 20}))::int`,
+        waiting: sql<number>`count(*) filter (where ${stores.onboarding}->>'linkSentAt' is null)::int`,
         stale: sql<number>`count(*) filter (where ${stores.setupStartedAt} < now() - make_interval(days => ${cfg.setupDays}))::int`,
       })
       .from(stores)
       .where(eq(stores.status, "setup"));
-    const problems = [
-      (r?.noLink ?? 0) > 0 && `${r!.noLink} متجر لم يصله رابط الإعداد رغم مرور المهلة (راجعوا المهام المجدولة، أو أرسلوه يدوياً من صفحة المحادثة)`,
-      (r?.stale ?? 0) > 0 && `${r!.stale} متجر تجاوز مهلة الإعداد (${cfg.setupDays} يوماً) ولم يُحذف بعد`,
-    ].filter(Boolean) as string[];
-    return problems.length
-      ? { status: "warn", detail: problems.join(" · "), fix: "تأكدوا من نجاح جداول QStash ومسار ops/sweep" }
-      : { status: "ok", detail: `${r?.open ?? 0} متجر قيد الإعداد · الرابط بعد ${cfg.setupDelayMinutes} دقيقة · الحذف بعد ${cfg.setupDays} يوماً` };
+    const waiting = r?.waiting ?? 0;
+    const open = r?.open ?? 0;
+    if ((r?.stale ?? 0) > 0)
+      return {
+        status: "warn",
+        detail: `${r!.stale} متجر تجاوز مهلة الإعداد (${cfg.setupDays} يوماً) ولم يُحذف بعد · ${waiting} بانتظار التسليم`,
+        fix: "تأكدوا من نجاح جداول QStash ومسار ops/sweep",
+      };
+    return {
+      status: "ok",
+      detail: waiting > 0 ? `${waiting} متجر بانتظار التسليم اليدوي من ${open} قيد الإعداد · افتحوا /admin/conversations/delivery وانسخوا رسالة الإعداد` : `لا متاجر بانتظار التسليم · ${open} قيد الإعداد · الحذف بعد ${cfg.setupDays} يوماً`,
+    };
   });
 
 const checkTrace = () =>

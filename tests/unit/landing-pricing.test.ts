@@ -30,9 +30,9 @@ describe("landing-pricing", () => {
   });
 
   it("رابط إنستجرام https فقط مع بديل افتراضي", () => {
-    expect(instagramUrl(undefined)).toBe("https://ig.me/m/colapia.eg");
-    expect(instagramUrl("javascript:alert(1)")).toBe("https://ig.me/m/colapia.eg");
-    expect(instagramUrl("http://x.com")).toBe("https://ig.me/m/colapia.eg");
+    expect(instagramUrl(undefined)).toBe("https://ig.me/m/colapia");
+    expect(instagramUrl("javascript:alert(1)")).toBe("https://ig.me/m/colapia");
+    expect(instagramUrl("http://x.com")).toBe("https://ig.me/m/colapia");
     expect(instagramUrl(" https://ig.me/m/brand ")).toBe("https://ig.me/m/brand");
   });
 });

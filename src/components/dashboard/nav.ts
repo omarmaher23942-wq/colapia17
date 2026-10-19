@@ -1,5 +1,5 @@
 // nav.ts — خريطة صفحات لوحة التاجر: مصدر واحد للقائمة الجانبية ولوحة الأوامر (Ctrl/⌘+K) والشريط السفلي.
-// البنية (V2): الرئيسية، الطلبات، المنتجات، العملاء، التسويق، المتجر، الإعدادات. كل رابط له مجال صلاحية في lib/store-perms.ts.
+// البنية (V3): اليوم، الطلبات، المنتجات، العملاء، التسويق، المتجر وشكله، الإعدادات والاشتراك. كل رابط له مجال صلاحية في lib/store-perms.ts.
 import {
   BarChart3,
   CircleHelp,
@@ -7,7 +7,6 @@ import {
   CreditCard,
   FileSpreadsheet,
   FolderTree,
-  Gauge,
   Globe,
   LayoutDashboard,
   Megaphone,
@@ -53,11 +52,11 @@ export type NavSection = { title: string; items: NavItem[] };
 
 const ALL: NavSection[] = [
   {
-    title: "الرئيسية",
+    title: "اليوم",
     items: [
-      { label: "نظرة عامة", href: "/dashboard", icon: LayoutDashboard, exact: true, hint: "مهام اليوم وأداء المتجر وهدف الشهر", keywords: ["home", "الرئيسية", "ملخص", "هدف"] },
+      { label: "اليوم", href: "/dashboard", icon: LayoutDashboard, exact: true, hint: "مهام اليوم وأداء المتجر وهدف الشهر", keywords: ["home", "الرئيسية", "نظرة عامة", "ملخص", "هدف", "اليوم"] },
       { label: "التحليلات", href: "/dashboard/analytics", icon: BarChart3, hint: "المبيعات والزيارات ومراحل الشراء", keywords: ["analytics", "احصائيات", "تقارير"] },
-      { label: "متجري", href: "/dashboard/store", icon: Store, hint: "رابط المتجر وحالته ورمز QR", keywords: ["store", "رابط", "qr"] },
+      { label: "رابط متجري", href: "/dashboard/store", icon: Store, hint: "رابط المتجر وحالته ورمز QR وخطوات وضعه في البايو ورسائل جاهزة للعملاء", keywords: ["store", "رابط", "qr", "بايو", "bio", "رسائل", "متجري"] },
     ],
   },
   {
@@ -95,7 +94,7 @@ const ALL: NavSection[] = [
     ],
   },
   {
-    title: "المتجر",
+    title: "المتجر وشكله",
     items: [
       { label: "شكل المتجر", href: "/dashboard/design", icon: Wand2, hint: "الألوان والخطوط والحركة وتعديل الشكل بالوصف", keywords: ["design", "ثيم", "الوان", "شكل"] },
       { label: "المحتوى والصفحات", href: "/dashboard/content", icon: Palette, hint: "نصوص وصور وأقسام الصفحة الرئيسية", keywords: ["content", "محتوى", "الصفحه الرئيسيه"] },
@@ -104,13 +103,12 @@ const ALL: NavSection[] = [
     ],
   },
   {
-    title: "الإعدادات",
+    title: "الإعدادات والاشتراك",
     items: [
-      { label: "الدفع والتواصل", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
+      { label: "إعدادات المتجر", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
       { label: "أسعار الشحن", href: "/dashboard/shipping", icon: Rocket, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "دعوة موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات"] },
-      { label: "الاشتراك", href: "/dashboard/billing", icon: CreditCard, hint: "الباقة والتجديد والمدفوعات", keywords: ["billing", "فوترة", "اشتراك", "دفع", "تجديد"] },
-      { label: "الاستخدام", href: "/dashboard/usage", icon: Gauge, hint: "حدود الاستخدام الشهرية والمتبقي منها", keywords: ["usage", "حدود", "استخدام", "حصة"] },
+      { label: "الاشتراك والاستخدام", href: "/dashboard/billing", icon: CreditCard, hint: "الباقة والتجديد والمدفوعات وحدود الاستخدام الشهرية", keywords: ["billing", "فوترة", "اشتراك", "دفع", "تجديد", "usage", "حدود", "استخدام", "حصة"] },
       { label: "طلب تعديل من الفريق", href: "/dashboard/requests", icon: MessageSquarePlus, hint: "اطلبوا من فريقنا تعديلاً في التصميم أو المحتوى", keywords: ["requests", "تعديل", "طلب"] },
     ],
   },
@@ -120,16 +118,23 @@ export const NAV_SECTIONS: NavSection[] = ALL;
 
 export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 
-/** القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر. */
-export function navSectionsFor(perms?: StorePerms | null, _subdomain?: string | null): NavSection[] {
-  if (!perms) return NAV_SECTIONS;
-  return NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => allows(perms, areaForPath(i.href) ?? "analytics", "view")) })).filter((s) => s.items.length > 0);
+/** الصفحات المفتوحة أثناء قفل اللوحة (مجمّد/متوقف): الاشتراك وحده (وملحقه الاستخدام). */
+export const LOCKED_OPEN_HREFS = ["/dashboard/billing"] as const;
+
+/**
+ * القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر.
+ * أثناء القفل لا يبقى إلا الاشتراك (تسجيل الخروج منفصل في القائمة).
+ */
+export function navSectionsFor(perms?: StorePerms | null, _subdomain?: string | null, locked?: boolean): NavSection[] {
+  const base = locked ? NAV_SECTIONS.map((s) => ({ ...s, items: s.items.filter((i) => (LOCKED_OPEN_HREFS as readonly string[]).includes(i.href)) })) : NAV_SECTIONS;
+  if (!perms) return base.filter((s) => s.items.length > 0);
+  return base.map((s) => ({ ...s, items: s.items.filter((i) => allows(perms, areaForPath(i.href) ?? "analytics", "view")) })).filter((s) => s.items.length > 0);
 }
 
-export const navItemsFor = (perms?: StorePerms | null, subdomain?: string | null): NavItem[] => navSectionsFor(perms, subdomain).flatMap((s) => s.items);
+export const navItemsFor = (perms?: StorePerms | null, subdomain?: string | null, locked?: boolean): NavItem[] => navSectionsFor(perms, subdomain, locked).flatMap((s) => s.items);
 
 /** الشريط السفلي على الموبايل: أكثر 4 صفحات استخداماً، والباقي في «المزيد». */
-export const MOBILE_NAV_HREFS = ["/dashboard", "/dashboard/orders", "/dashboard/products", "/dashboard/orders/ship"] as const;
+export const MOBILE_NAV_HREFS = ["/dashboard", "/dashboard/orders", "/dashboard/products", "/dashboard/customers"] as const;
 
 export function isNavActive(pathname: string, href: string, exact?: boolean): boolean {
   const path = href.split("?")[0]!;

@@ -31,6 +31,8 @@ type Props = {
   allStores: SwitcherStore[];
   /** صلاحيات عضو الفريق في المتجر النشط (بلا قيمة = صاحب المتجر). */
   perms?: StorePerms | null;
+  /** قفل اللوحة (تجربة منتهية/اشتراك منتهٍ): لا يبقى إلا الاشتراك وتسجيل الخروج. */
+  locked?: boolean;
 };
 
 const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
@@ -41,8 +43,9 @@ const BADGE_LABEL: Record<BadgeKey, (n: number) => string> = {
   questions: (n) => `${n} أسئلة بانتظار إجابتكم`,
 };
 
-const mobileNav = (perms?: StorePerms | null, subdomain?: string | null): NavItem[] => {
-  const items = navItemsFor(perms, subdomain);
+const mobileNav = (perms?: StorePerms | null, subdomain?: string | null, locked?: boolean): NavItem[] => {
+  const items = navItemsFor(perms, subdomain, locked);
+  if (locked) return items;
   return MOBILE_NAV_HREFS.map((href) => items.find((i) => i.href === href)).filter((i): i is NavItem => Boolean(i));
 };
 const MORE = { label: "المزيد", icon: Menu };
@@ -116,7 +119,7 @@ export function DashboardSidebar(props: Props) {
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
       >
         <ul className="flex items-stretch justify-around gap-1 px-1 py-1.5">
-          {mobileNav(props.perms, props.store?.subdomain).map((item) => {
+          {mobileNav(props.perms, props.store?.subdomain, props.locked).map((item) => {
             const Icon = item.icon;
             const active = isNavActive(pathname, item.href, item.exact);
             const badgeCount = badgeOf(item.badgeKey);
@@ -157,6 +160,17 @@ export function DashboardSidebar(props: Props) {
             );
           })}
           <li className="flex-1">
+            {props.locked ? (
+              <form action={merchantLogoutAction}>
+                <button
+                  type="submit"
+                  className="flex min-h-12 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10.5px] font-bold text-ink-3 transition-colors hover:bg-bad/10 hover:text-bad focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bad"
+                >
+                  <LogOut className="size-5" strokeWidth={SW} aria-hidden="true" />
+                  <span>خروج</span>
+                </button>
+              </form>
+            ) : (
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
@@ -172,12 +186,13 @@ export function DashboardSidebar(props: Props) {
               </span>
               <span>{MORE.label}</span>
             </button>
+            )}
           </li>
         </ul>
       </nav>
 
       {/* زر عائم للموبايل: تسجيل طلب جاء من محادثة، يظهر في الرئيسية والطلبات فقط وفوق الشريط السفلي. */}
-      {(pathname === "/dashboard" || pathname === "/dashboard/orders") && (!props.perms || allows(props.perms, "orders", "manage")) ? (
+      {!props.locked && (pathname === "/dashboard" || pathname === "/dashboard/orders") && (!props.perms || allows(props.perms, "orders", "manage")) ? (
         <Link
           href="/dashboard/orders/new"
           className="fixed bottom-[4.75rem] end-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-b from-nova to-nova-deep px-4 text-[13px] font-black text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 md:hidden"
@@ -219,7 +234,7 @@ export function DashboardSidebar(props: Props) {
                 type="button"
                 onClick={close}
                 aria-label="إغلاق القائمة"
-                className="absolute end-3 top-3 z-10 grid size-9 place-items-center rounded-lg text-ink-2/70 transition-colors hover:bg-edge/5 hover:text-ink"
+                className="absolute end-3 top-3 z-10 grid size-11 place-items-center rounded-lg text-ink-2/70 transition-colors hover:bg-edge/5 hover:text-ink"
               >
                 <X className="size-4" strokeWidth={2.25} aria-hidden="true" />
               </button>
@@ -243,6 +258,7 @@ function SidebarContent({
   store,
   allStores,
   perms,
+  locked,
   pathname,
   badgeOf,
   close,
@@ -287,7 +303,7 @@ function SidebarContent({
           </Link>
         )}
 
-        {store ? (
+        {store && !locked ? (
           <a
             href={storeUrl(store.subdomain)}
             target="_blank"
@@ -304,7 +320,7 @@ function SidebarContent({
         aria-label="القائمة الرئيسية"
         className="hide-scrollbar flex-1 space-y-5 overflow-y-auto p-3"
       >
-        {navSectionsFor(perms, store?.subdomain).map((section) => (
+        {navSectionsFor(perms, store?.subdomain, locked).map((section) => (
           <div key={section.title}>
             <p className="mb-1.5 px-2.5 text-[10px] font-black uppercase tracking-wider text-ink-3/70">
               {section.title}
@@ -322,7 +338,7 @@ function SidebarContent({
                       onClick={close}
                       aria-current={active ? "page" : undefined}
                       className={cn(
-                        "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12.5px] font-bold transition-colors",
+                        "group relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-[12.5px] font-bold transition-colors",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova",
                         active ? "text-ink" : "text-ink-2/75 hover:bg-edge/[0.04] hover:text-ink"
                       )}

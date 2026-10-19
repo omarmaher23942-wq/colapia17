@@ -1,5 +1,5 @@
-// dashboard/page.tsx — «نظرة عامة»: ما ينتظر التاجر الآن، ثم أداء الفترة المختارة (7/30/90 يوماً) مقارنةً
-// بالفترة المساوية قبلها، والأرباح، وأحدث الطلبات، وجاهزية المتجر، والسلات المتروكة، وملاحظات من أرقامه.
+// dashboard/page.tsx — «اليوم» (D5): ما ينتظر التاجر الآن أولاً، ثم أربعة أرقام للفترة (7/30/90 يوماً) مقارنةً بالفترة المساوية،
+// وأحدث الطلبات وجاهزية المتجر والسلات المتروكة. الأرباح والملاحظات والهدف في «تفاصيل أكثر» مطوية لتبقى الصفحة مختصرة.
 import { Suspense } from "react";
 import { requireStoreArea } from "@/server/merchant-guard";
 import Link from "next/link";
@@ -41,7 +41,7 @@ import { formatEgp } from "@/lib/money";
 import { fmtDec, fmtNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "نظرة عامة" };
+export const metadata = { title: "اليوم" };
 
 type SearchParams = { onboarding?: string; reason?: string; range?: string };
 
@@ -62,8 +62,8 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
 
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-ink">نظرة عامة</h1>
-          <p className="mt-1 text-[12.5px] text-ink-3">أداء {store.name} مقارنةً بالفترة المساوية التي قبلها.</p>
+          <h1 className="text-2xl font-black tracking-tight text-ink">اليوم</h1>
+          <p className="mt-1 text-[12.5px] text-ink-3">ما ينتظركم في {store.name} وأداؤه مقارنةً بالفترة المساوية قبلها.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <RangeTabs active={range} />
@@ -100,8 +100,18 @@ async function GrowthSection({ storeId, prefs, storeUrlValue, storeName }: { sto
   const qr = shareDone ? "" : await QRCode.toDataURL(storeUrlValue, { width: 280, margin: 1 }).catch(() => "");
   return (
     <>
-      {g ? <GoalCard g={g} /> : null}
       {shareDone ? null : <ShareStoreCard url={storeUrlValue} storeName={storeName} qr={qr} />}
+      {g ? (
+        <details className="group rounded-2xl">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-edge/10 px-4 text-[13px] font-black text-ink hover:bg-edge/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova [&::-webkit-details-marker]:hidden">
+            هدف الشهر
+            <span aria-hidden="true" className="text-ink-3 transition-transform group-open:rotate-180">⌄</span>
+          </summary>
+          <div className="mt-3">
+            <GoalCard g={g} />
+          </div>
+        </details>
+      ) : null}
     </>
   );
 }
@@ -215,10 +225,6 @@ async function OverviewBody({ storeId, subdomain, storeName, range, customDomain
         />
       </section>
 
-      <EarningsCard data={data} />
-
-      <NotesCard notes={notes} />
-
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-6">
         <RecentOrdersCard rows={data.recentOrders} />
         {readyDone ? <TopProductsCard rows={data.topProducts} days={range} /> : <ReadinessCard steps={ready} />}
@@ -242,6 +248,17 @@ async function OverviewBody({ storeId, subdomain, storeName, range, customDomain
       />
 
       {!readyDone && data.topProducts.length > 0 ? <TopProductsCard rows={data.topProducts} days={range} /> : null}
+
+      <details className="group rounded-2xl">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-xl border border-edge/10 px-4 text-[13px] font-black text-ink hover:bg-edge/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova [&::-webkit-details-marker]:hidden">
+          تفاصيل أكثر: الأرباح وملاحظات من أرقامكم
+          <span aria-hidden="true" className="text-ink-3 transition-transform group-open:rotate-180">⌄</span>
+        </summary>
+        <div className="mt-3 space-y-5">
+          <EarningsCard data={data} />
+          <NotesCard notes={notes} />
+        </div>
+      </details>
     </>
   );
 }

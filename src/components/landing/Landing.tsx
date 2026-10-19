@@ -31,6 +31,7 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { TestimonialsSection } from "./TestimonialsSection";
 import { StoreMorph } from "./StoreMorph";
+import { ThemesShowcase } from "./ThemesShowcase";
 import { MINI_STORES, StoreMini } from "./StoreMini";
 import { CTA_GHOST, CTA_PRIMARY, Eyebrow } from "./shared";
 import { changesLabel, fmtPrice, type PlanCard } from "@/lib/landing-pricing";
@@ -85,7 +86,7 @@ export function Landing({ session, reviews, plans, buildFee, trialHours, graceDa
         {/* ─── الواجهة ─── */}
         <section className="container-x grid items-center gap-10 pb-16 pt-6 sm:pt-12 lg:grid-cols-[1.1fr_1fr] lg:gap-8 lg:pb-24">
           <div className="land-rise flex flex-col items-start gap-6">
-            <Eyebrow>للبراندات التي تبيع عبر السوشيال ميديا</Eyebrow>
+            <Eyebrow>للبراندات التي تبيع عبر إنستجرام</Eyebrow>
             <h1 className="text-[2.35rem] font-black leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.7rem]">
               متجر احترافي كامل لبراندكم
               <br />
@@ -173,6 +174,12 @@ export function Landing({ session, reviews, plans, buildFee, trialHours, graceDa
             </div>
             <p className="mt-6 text-center text-[12px] text-[#8d97c4]">نماذج توضيحية لاتجاهات مختلفة.</p>
           </div>
+        </section>
+
+        {/* ─── التصميمات الثمانية ─── */}
+        <section id="themes" className="container-x scroll-mt-24 pb-24 sm:pb-32">
+          <Heading eyebrow="ثمانية تصميمات كاملة" title="اختاروا هوية متجركم، وعدّلوا فيها ما تشاؤون" subtitle="كل تصميم له ألوانه وخطوطه وبطاقاته ووضعاه الفاتح والداكن، وتبدّلونه بضغطة وتكتبون ما تريدون تغييره بكلماتكم." />
+          <ThemesShowcase />
         </section>
 
         {/* ─── لوحة التحكم ─── */}
