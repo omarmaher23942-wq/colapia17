@@ -4,7 +4,8 @@ import { aggregatePick } from "@/lib/pick-list";
 import { reconcileCod, SETTLED_TAG } from "@/lib/cod-reconcile";
 import { planBulkEdit, type BulkRow } from "@/lib/bulk-edit";
 import { goalPace, monthKey, netProfit, readGoalPrefs, roas, weeklyRecommendations, withAdSpend, withGoal } from "@/lib/sales-goal";
-import { limitsFor, meter, nextResetLabel, PAID_LIMITS, TRIAL_LIMITS } from "@/lib/usage-limits";
+import { meter, nextResetLabel, storePlanId, upgradeFor, upgradeHint } from "@/lib/usage-limits";
+import { DEFAULT_PRICING } from "@/lib/platform-pricing";
 
 const order = (over: Partial<ShipOrder> = {}): ShipOrder => ({
   code: "CLP-1",
@@ -131,10 +132,19 @@ describe("هدف المبيعات وصافي الربح", () => {
 });
 
 describe("حدود الاستخدام", () => {
-  it("الخطة تحدد الافتراضي وإعداد المالك يتجاوز", () => {
-    expect(limitsFor(true, null).aiPerMonth).toBe(TRIAL_LIMITS.aiPerMonth);
-    expect(limitsFor(false, null)).toEqual(PAID_LIMITS);
-    expect(limitsFor(false, { paid: { aiPerMonth: 1000, videosPerMonth: -5 } })).toMatchObject({ aiPerMonth: 1000, videosPerMonth: PAID_LIMITS.videosPerMonth });
+  it("باقة المتجر: المدفوع بباقته، والقديم بلا باقة معروفة = النمو، وغير المدفوع بحدود التجربة (النمو)", () => {
+    expect(storePlanId({ status: "active", plan: "pro" })).toEqual({ planId: "pro", isTrial: false });
+    expect(storePlanId({ status: "active", plan: "golden" })).toEqual({ planId: "growth", isTrial: false });
+    expect(storePlanId({ status: "active", plan: "launch", prefs: { planId: "basic" } })).toEqual({ planId: "basic", isTrial: false });
+    expect(storePlanId({ status: "trial", plan: "basic" })).toEqual({ planId: "growth", isTrial: true });
+    expect(storePlanId({ status: "frozen" }).isTrial).toBe(true);
+  });
+  it("تلميح الترقية: أول باقة أعلى تتيح أكثر، ولا تلميح في الأعلى", () => {
+    expect(upgradeFor(DEFAULT_PRICING, "basic", "products")?.id).toBe("growth");
+    expect(upgradeFor(DEFAULT_PRICING, "basic", "customDomain")?.id).toBe("growth");
+    expect(upgradeFor(DEFAULT_PRICING, "pro", "products")).toBeNull();
+    expect(upgradeHint(DEFAULT_PRICING, "basic", "products")).toContain("2,000");
+    expect(upgradeHint(DEFAULT_PRICING, "pro", "aiPerMonth")).toBe("");
   });
   it("العدّاد ودرجة اللون", () => {
     expect(meter(50, 100).tone).toBe("ok");

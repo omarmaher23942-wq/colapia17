@@ -79,16 +79,33 @@ const checkRedis = () =>
 
 const checkEmail = () =>
   run("email", "البريد (Resend)", async () => {
-    const from = /@([^>\s]+)/.exec(env.EMAIL_FROM)?.[1]?.toLowerCase() ?? env.ROOT_DOMAIN;
-    const r = await timed("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${env.RESEND_API_KEY}` } });
-    if (r.status === 401 || r.status === 403) return { status: "fail", detail: "المفتاح مرفوض", fix: `أنشئ مفتاحاً من resend.com/api-keys وضعه في RESEND_API_KEY (${varsWhere()})` };
-    if (!r.ok) return { status: "warn", detail: `تعذر السؤال (${r.status})` };
-    const body = (await r.json()) as { data?: { name: string; status: string }[] };
-    const d = body.data?.find((x) => x.name.toLowerCase() === from);
-    if (!d) return { status: "fail", detail: `النطاق ${from} غير مضاف في Resend`, fix: "resend.com/domains ← Add Domain ← أضف سجلاته في DNS" };
+    const { resendKey, resolveFrom } = await import("@/lib/email");
+    const { senderDomain } = await import("@/lib/email-sender");
+    const key = resendKey();
+    if (!key) return { status: "fail", detail: "RESEND_API_KEY غير مضبوط: لا يُرسل أي بريد", fix: `أنشئ مفتاحاً من resend.com/api-keys وضعه في RESEND_API_KEY (${varsWhere()})` };
+    const pasted = (env.RESEND_API_KEY ?? "") !== key;
+    const domain = senderDomain(env.ROOT_DOMAIN, env.EMAIL_FROM);
+    const from = resolveFrom("hello");
+    const r = await timed("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${key}` } });
+    const text = await r.text().catch(() => "");
+    // مفتاح «إرسال فقط» لا يقرأ النطاقات (401 restricted_api_key) لكنه يرسل: الفحص الحقيقي هو زر «بريد تجربة».
+    if (r.status === 401 && /restricted/i.test(text)) {
+      return { status: "ok", detail: `مفتاح إرسال فقط (لا يقرأ النطاقات). الإرسال من ${from}؛ جرّب «بريد تجربة» لرؤية رد Resend الحقيقي${pasted ? ". نُظّف المفتاح من مسافات أو تنصيص زائد" : ""}` };
+    }
+    if (r.status === 401 || r.status === 403) return { status: "fail", detail: `المفتاح مرفوض: ${text.slice(0, 160)}`, fix: `أنشئ مفتاحاً من resend.com/api-keys وضعه في RESEND_API_KEY كما هو (${varsWhere()})` };
+    if (!r.ok) return { status: "warn", detail: `تعذر السؤال (${r.status}): ${text.slice(0, 120)}` };
+    let list: { name: string; status: string }[] = [];
+    try {
+      list = (JSON.parse(text) as { data?: { name: string; status: string }[] }).data ?? [];
+    } catch {
+      /* رد غير متوقع */
+    }
+    const d = list.find((x) => x.name.toLowerCase() === domain);
+    const names = list.map((x) => `${x.name} (${x.status})`).join("، ") || "لا شيء";
+    if (!d) return { status: "fail", detail: `الإرسال من ${from} لكن النطاق ${domain} غير مضاف في Resend. المضاف: ${names}`, fix: "resend.com/domains ← Add Domain بنفس النطاق الرئيسي ← أضف سجلاته في DNS، أو اضبط EMAIL_FROM على نطاق فرعي موثّق منه" };
     return d.status === "verified"
-      ? { status: "ok", detail: `${from} موثّق` }
-      : { status: "fail", detail: `${from} حالته ${d.status}`, fix: "resend.com/domains ← افتح النطاق ← أضف السجلات الناقصة في DNS (كـ DNS only) ثم Verify" };
+      ? { status: "ok", detail: `الإرسال من ${from}، والنطاق ${domain} موثّق${pasted ? ". نُظّف المفتاح من مسافات أو تنصيص زائد" : ""}` }
+      : { status: "fail", detail: `${domain} حالته ${d.status}`, fix: "resend.com/domains ← افتح النطاق ← أضف السجلات الناقصة في DNS (كـ DNS only) ثم Verify" };
   });
 
 const checkQstash = () =>
@@ -302,7 +319,7 @@ const checkGolden = () =>
     const used = g.confirmed + g.underReview;
     if (!g.enabled) return { status: "skip", detail: "متوقفة: لا يعرضها الوكيل ولا يقبل الدفع كودها" };
     return g.available
-      ? { status: "ok", detail: `مفعّلة بالكود ${g.code}: ${used} من ${g.seats} مقاعد مستخدمة (${g.price} ج لـ ${g.months} أشهر)` }
+      ? { status: "ok", detail: `مفعّلة بالكود ${g.code}: ${used} من ${g.seats} مقاعد مستخدمة (تجهيز ${g.buildPrice} ج بدلاً من ${g.regularBuildPrice} ج)` }
       : { status: "warn", detail: `اكتملت المقاعد (${used} من ${g.seats})`, fix: "زد المقاعد أو أوقف العرض من /admin/pricing" };
   });
 

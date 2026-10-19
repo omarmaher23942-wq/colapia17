@@ -1,14 +1,14 @@
 import { Markdown } from "@/components/storefront/Markdown";
 import { currentPricing } from "@/server/pricing";
 import { hostingGraceDays } from "@/server/hosting-grace";
-import { monthsLabel, type PricingModel } from "@/lib/platform-pricing";
+import { fmtStorage, monthsLabel, type PricingModel } from "@/lib/platform-pricing";
 import { fmtNum } from "@/lib/format";
 
 export const metadata = { title: "الشروط والأحكام" };
 export const dynamic = "force-dynamic";
 
 const body = (p: PricingModel, grace: number) => `## Terms of Service (English summary)
-Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Starting a conversation with us is free and creates no obligation to pay; a free trial runs before any payment. Packages cover building the store plus hosting for 3, 6 or 12 months at the prices shown on the payment page; renewal is priced per duration and can be chosen freely at each renewal. Invited "Golden Circle" brands receive a limited-seat offer: hosting for a short fixed term at a symbolic price with the build free, in exchange for a collab Instagram post or a shareable testimonial; afterwards the store renews like any other. Hosting is always provided by Colapia and the platform source code is not handed over; your data can be exported on request. Shoppers do not create accounts on stores. AI-assisted and media features have fair-use monthly limits. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
+Colapia designs, builds, hosts and operates online stores for independent merchants in Egypt. Starting a conversation with us is free and creates no obligation to pay; a free trial runs before any payment. The first payment is a one-time store setup fee plus a monthly hosting plan (three plans with published limits) paid for the number of months you choose; renewal covers the hosting plan only. A limited-seat "Golden Circle" code reduces the setup fee for a small number of brands. Hosting is always provided by Colapia and the platform source code is not handed over; your data can be exported on request. Shoppers do not create accounts on stores. Each plan has published limits for products, storage, videos, automation and visual search; orders and visitors are unlimited. We take no commission on your sales. If a subscription is not renewed the store is paused, never deleted. Merchants are solely responsible for their catalog, prices, fulfillment and customer service, and stores selling prohibited or illegal goods may be suspended.
 
 ## 1. الخدمة
 Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه ويراجعه، ثم يستضيفه ويشغّله لك، مع لوحة تحكم لإدارة المنتجات والطلبات والعملاء. المتجر مخصص للأعمال التجارية القانونية في جمهورية مصر العربية.
@@ -22,21 +22,21 @@ Colapia فريق مصري يصمم متجرك الإلكتروني ويبنيه 
 تجربة مجانية بلا بطاقة بنكية تبدأ عند تفعيل متجركم بعد إكمال الإعداد، ومدتها معلنة لكم عند البدء. خلالها يعمل متجرك ولوحة تحكمه بالكامل. إن لم تفعّل متجرك بعدها يُجمَّد ثم يُحذف بعد مهلة نعلنها لك قبل الحذف، بالبريد أو واتساب حسب وسيلة التواصل التي كتبتها.
 
 ## 3. الباقات والأسعار
-- الباقات: ${p.plans.map((x) => `**${monthsLabel(x.months)}** بـ ${fmtNum(x.price)} ج.م`).join("، ")}. يشمل السعر بناء متجرك واستضافته وتشغيله طوال المدة المختارة (الخادم، قاعدة البيانات، تخزين الصور، التحديثات، والدعم الفني).
-- التجديد: سعر كل مدة عند التجديد معلن في صفحة الاشتراك (${p.plans.map((x) => `${monthsLabel(x.months)}: ${fmtNum(x.renewal)} ج.م`).join("، ")})، وتختارون أي مدة عند كل تجديد، وتُضاف المدة الجديدة إلى نهاية اشتراككم الحالي.
+- رسوم تجهيز المتجر: ${fmtNum(p.build.price)} ج.م تُدفع مرة واحدة مع أول دفعة.
+- الاستضافة الشهرية: ${p.plans.map((x) => `**${x.name}** بـ ${fmtNum(x.monthly)} ج.م شهرياً`).join("، ")}، وتُدفع لمدة ${p.months.map(monthsLabel).join(" أو ")}. تشمل الاستضافة والتشغيل (الخادم، قاعدة البيانات، تخزين الصور، التحديثات، والدعم الفني) بحدود الباقة المعلنة في البند 3.2.
+- الدفعة الأولى = رسوم التجهيز + الباقة × عدد الأشهر. التجديد = الباقة × عدد الأشهر فقط، وتُضاف المدة الجديدة إلى نهاية اشتراككم الحالي، ويمكن تغيير الباقة عند التجديد.
 - لا عمولة على مبيعاتك ولا رسوم خفية. السعر الذي تدفعه هو المعلن في صفحة الدفع لحظة دفعك.
 - يشمل اشتراكك طلبي تعديل خلال سنة الاشتراك ينفذهما فريقنا (يظهر رصيدك في صفحة «طلبات التعديل» بلوحتك)، وما زاد عليهما نتفق عليه معك قبل تنفيذه، أما كل ما يمكنك تعديله من لوحتك فمفتوح دائماً بلا حد.
 - يجوز أن نغيّر الأسعار للمشتركين الجدد في أي وقت، ولا يسري تغيير على اشتراك قائم قبل تجديده التالي، ونعلنك به مسبقاً.
 
 ## 3.1 عرض «الدائرة الذهبية»
-- عرض بدعوة منا لعدد محدود جداً من الأنشطة التجارية، تحدَّد مقاعده في صفحة الاشتراك (${p.golden.seats} مقاعد حالياً)، ويُفعَّل بكود عرض في صفحة الدفع للباقة الأولى، ويتوقف الكود تلقائياً عند اكتمال العدد أو إيقاف العرض.
-- يُدفع ${fmtNum(p.golden.price)} ج.م عن ${monthsLabel(p.golden.months)} استضافة وتشغيل ودعماً فنياً فقط، أما تجهيز المتجر فبلا مقابل. القيمة المعلنة ليست سعر المتجر، بل تكلفة التشغيل لهذه المدة.
-- مقابل العرض يلتزم صاحب النشاط بمنشور مشترك (Collab) على إنستجرام عن تجربته مع متجره ننتج مونتاجه نحن بلا مقابل ونراجعه معه قبل النشر، وإن اعتذر عن المنشور فيكفي رأي مكتوب يسمح لنا بمشاركته بعد موافقته على صياغته.
-- بعد انتهاء المدة يجدد المتجر بأي باقة عادية بسعر التجديد المعلن، ولا يوجد أي التزام بالتجديد. ويسري على العرض كل ما يسري على المتاجر من هذه الشروط، ومنه حدود الاستخدام العادل في البند 3.2.
+- عرض لعدد محدود من الأنشطة التجارية (${p.golden.seats} مقاعد حالياً)، يُفعَّل بكود عرض في صفحة الدفع للدفعة الأولى، ويتوقف الكود تلقائياً عند اكتمال العدد أو إيقاف العرض.
+- يخفّض العرض رسوم تجهيز المتجر إلى ${fmtNum(p.golden.buildPrice)} ج.م بدلاً من ${fmtNum(p.build.price)} ج.م، أما الاستضافة الشهرية فبسعر الباقة المختارة كما هو.
+- لا يوجد أي التزام بالتجديد، ويسري على العرض كل ما يسري على المتاجر من هذه الشروط، ومنه حدود الباقات في البند 3.2.
 
 ## 3.2 الاستخدام العادل
-- بعض ميزات المتجر واللوحة تعمل بحدود شهرية لكل متجر حتى تبقى الخدمة سريعة ومتاحة للجميع، ومنها «البحث بالصورة» والأدوات المساعدة في اللوحة (كاستوديو المحتوى واستيراد المنتجات وتعديل الشكل بالوصف)، وكذلك عدد الصور والفيديوهات المرفوعة وأحجامها.
-- تظهر لكم الأرقام وما تبقى منها في لوحتكم، وعند بلوغ حد ميزة تتوقف هذه الميزة وحدها ويعمل باقي المتجر كالمعتاد، وتعود مع بداية الشهر التالي أو بزيادة الحد باتفاق معنا.
+- لكل باقة حدود معلنة: ${p.plans.map((x) => `**${x.name}**: حتى ${fmtNum(x.limits.products)} منتج، و${fmtStorage(x.limits.storageBytes)} للصور والفيديو، و${fmtNum(x.limits.videos)} فيديو (حتى ${fmtStorage(x.limits.videoMaxBytes)} للفيديو)، و${fmtNum(x.limits.aiPerMonth)} عملية تلقائية شهرياً، و${fmtNum(x.limits.visualSearchPerMonth)} بحث بالصورة شهرياً، و${fmtNum(x.limits.teamMembers)} أعضاء فريق${x.limits.customDomain ? "، ونطاق خاص" : ""}`).join("؛ ")}. الطلبات والزوار بلا حد في كل الباقات (استخدام عادل)، والتجربة المجانية بحدود باقة «${p.plans.find((x) => x.id === "growth")?.name ?? "النمو"}».
+- تظهر لكم الأرقام وما تبقى منها في صفحة الاشتراك، وعند بلوغ حد تتوقف الإضافة في هذه الميزة وحدها ويعمل باقي المتجر كالمعتاد، وتعود الحدود الشهرية مع بداية الشهر التالي، ويمكن الترقية لباقة أعلى في أي وقت.
 - نراجع الحدود دورياً ونعلنكم قبل أي تخفيض لها.
 
 ## 4. الدفع والتفعيل

@@ -8,6 +8,7 @@ import { categories, products } from "@/db/schema";
 import { aiObject } from "@/ai/providers";
 import { getFlag } from "@/lib/flags";
 import { redis } from "@/lib/redis";
+import { visualSearchLimit } from "@/server/usage";
 import { cairoDate } from "@/lib/cairo-time";
 import { logVisualMiss } from "@/server/visual-search-misses";
 import { decide, pickCandidates, readSchema, verdictSchema, type CatalogItem, type VisionRead } from "@/lib/visual-search";
@@ -28,16 +29,16 @@ const monthKey = (storeId: string) => {
   return `vs:count:${storeId}:${d.y}-${String(d.m).padStart(2, "0")}`;
 };
 
-async function monthlyLimit(): Promise<number> {
+/** الحد الشهري من باقة المتجر (V3: server/usage.ts)، والإعداد «visual_search» مفتاح إيقاف عام للمالك. */
+async function monthlyLimit(storeId: string): Promise<number> {
   const f = await getFlag<{ perMonth?: number }>(VISUAL_SEARCH_FLAG).catch(() => ({ enabled: true, config: null }));
   if (!f.enabled) return 0;
-  const n = Number(f.config?.perMonth);
-  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_MONTHLY;
+  return visualSearchLimit(storeId).catch(() => DEFAULT_MONTHLY);
 }
 
 /** هل بقي من حد الشهر؟ يحجز بحثاً واحداً (يُعاد إن فشل قبل أي استدعاء للنموذج). */
 async function reserve(storeId: string): Promise<boolean> {
-  const limit = await monthlyLimit();
+  const limit = await monthlyLimit(storeId);
   if (limit <= 0) return false;
   const key = monthKey(storeId);
   const n = await redis.incr(key).catch(() => 0);

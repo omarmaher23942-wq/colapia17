@@ -3,7 +3,7 @@
 import { requirePlatformCap } from "@/server/platform-guard";
 import { probeAgent } from "@/ai/agents/closer/runtime";
 import { probeTier, resetBreakers, type ProbeResult } from "@/ai/providers";
-import { sendEmail } from "@/lib/email";
+import { sendTemplatedEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
 import { mediaApi } from "@/server/media-host";
 import { redis } from "@/lib/redis";
@@ -81,16 +81,29 @@ export async function resetModelsAction(tier: "visionFast" | "chat"): Promise<{ 
   return { ok: true };
 }
 
-export async function sendTestEmailAction(): Promise<{ ok: boolean; to?: string; error?: string }> {
+export type TestEmailResult = { ok: boolean; to?: string; from?: string; status?: number; raw?: string; id?: string; error?: string };
+
+/** بريد تجربة لبريد المالك نفسه، ويعيد رد Resend الحقيقي كما هو (الحالة والنص) لتشخيص أي رفض. */
+export async function sendTestEmailAction(): Promise<TestEmailResult> {
   const u = await requirePlatformCap("settings");
   if (!u.email) return { ok: false, error: "لا بريد لحسابك" };
-  const ok = await sendEmail({
+  const { GenericEmail } = await import("@/lib/email-templates/GenericEmail");
+  const r = await sendTemplatedEmail({
     to: u.email,
     subject: "بريد تجربة من Colapia",
-    headline: "البريد يعمل",
-    paragraphs: ["وصلتك هذه الرسالة من مركز جاهزية الإطلاق، فإرسال البريد من المنصة سليم."],
-  }).catch(() => false);
-  return ok ? { ok: true, to: u.email } : { ok: false, error: "تعذر الإرسال: راجع فحص البريد (Resend) في الصفحة" };
+    element: GenericEmail({ storeName: "Colapia", headline: "البريد يعمل", paragraphs: ["وصلتك هذه الرسالة من مركز جاهزية الإطلاق، فإرسال البريد من المنصة سليم."] }),
+    senderKind: "hello",
+    tracking: false,
+  }).catch((e: unknown) => ({ ok: false as const, error: String((e as Error)?.message ?? e).slice(0, 300) }));
+  return {
+    ok: r.ok,
+    to: u.email,
+    from: "from" in r ? r.from : undefined,
+    status: "status" in r ? r.status : undefined,
+    raw: "raw" in r ? r.raw : undefined,
+    id: "resendId" in r ? r.resendId : undefined,
+    error: r.ok ? undefined : r.error,
+  };
 }
 
 /** يعيد الوكيل للعمل في كل المحادثات الموقوفة على «تدخل بشري» (يدوياً أو بتحويل الوكيل). */

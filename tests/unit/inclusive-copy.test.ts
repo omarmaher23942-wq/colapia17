@@ -103,6 +103,14 @@ const ROOTS = [
   "src/blueprint/themes.ts",
   "src/components/design",
   "src/components/dashboard/design",
+  "src/app/(platform)/dashboard/billing",
+  "src/components/dashboard/HostingBanner.tsx",
+  "src/components/dashboard/TrialCard.tsx",
+  "src/lib/platform-pricing.ts",
+  "src/lib/trial-countdown.ts",
+  "src/lib/store-visibility.ts",
+  "src/server/actions/platform.ts",
+  "src/agent/offers.ts",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.

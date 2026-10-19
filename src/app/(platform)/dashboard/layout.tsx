@@ -7,7 +7,7 @@ import { getMerchantSession } from "@/server/auth";
 import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { attentionCounts } from "@/server/repos/attention";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
-import { memberPerms } from "@/server/merchant-guard";
+import { memberPerms, storeLock } from "@/server/merchant-guard";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
@@ -19,6 +19,9 @@ import { storeUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
 import { PathBanners } from "@/components/dashboard/PathBanners";
 import { hostingGraceDays } from "@/server/hosting-grace";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { platformPayments } from "@/db/schema";
 
 export const metadata: Metadata = {
   title: { default: "لوحة التحكم", template: DASHBOARD_TITLE_TEMPLATE },
@@ -48,8 +51,27 @@ export default async function DashboardLayout({
     redirect(`/login?redirect=${encodeURIComponent(back.startsWith("/dashboard") ? back : "/dashboard")}&reason=no_session`);
   }
 
-  // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح والإيقاف. لا تُقفل اللوحة أبداً: البيانات بيانات التاجر.
+  // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح. عند التجميد أو الإيقاف تُقفل اللوحة إلا الاشتراك
+  // (requireStoreArea يفرض ذلك في كل صفحة، وهنا اللافتة فقط)، والتجربة الجارية لها عدّاد تنازلي حي (V3: D3، D4).
   const hosting = session.store ? hostingState(session.store, new Date(), await hostingGraceDays().catch(() => undefined)) : ({ phase: "none" } as const);
+  const lock = session.store ? await storeLock(session.store).catch(() => null) : null;
+  const trialEnd = session.store?.status === "trial" ? (session.store.trialEndsAt ?? session.store.demoExpiresAt ?? null) : null;
+  const trial =
+    session.store && trialEnd
+      ? {
+          endsAt: trialEnd.toISOString(),
+          reviewPending: Boolean(
+            (
+              await db
+                .select({ id: platformPayments.id })
+                .from(platformPayments)
+                .where(and(eq(platformPayments.storeId, session.store.id), eq(platformPayments.status, "under_review")))
+                .limit(1)
+                .catch(() => [])
+            ).length
+          ),
+        }
+      : null;
 
   // أعداد «ما يحتاج انتباهك» من الخادم مع أول رسم، فلا تومض الشارات من صفر.
   const pulseAt = new Date().toISOString();
@@ -117,7 +139,7 @@ export default async function DashboardLayout({
               id="dashboard-main"
               className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
             >
-              <PathBanners hosting={hosting} perms={memberPerms(session)} />
+              <PathBanners hosting={hosting} perms={memberPerms(session)} trial={trial} lock={lock} />
               {children}
             </main>
           </div>

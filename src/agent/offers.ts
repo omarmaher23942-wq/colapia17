@@ -1,40 +1,33 @@
 // offers.ts — الأسطر التي يتغذى بها برومبت الوكيل من الأسعار الحقيقية (خالص ومختبَر). لا رقم يُكتب في البرومبت يدوياً.
-import { monthsLabel, perMonth, type GoldenOffer, type PricingModel } from "@/lib/platform-pricing";
+// نموذج v4 (V3-PLAN 1): رسوم تجهيز مرة واحدة + اشتراك شهري بثلاث باقات، والحقائق الكاملة في agentPricingFacts.
+import { fmtEgp, monthsLabel, startingPrice, type GoldenOffer, type PricingModel } from "@/lib/platform-pricing";
 
-const fmt = (n: number) => n.toLocaleString("en-US");
-
-/** الباقات بأسعارها الحالية، مثال: «3 أشهر 1,999 ج، 6 أشهر 2,499 ج، سنة 3,499 ج». */
-export function plansLine(model: Pick<PricingModel, "plans">): string {
-  return [...model.plans]
-    .sort((a, b) => a.months - b.months)
-    .map((p) => `${monthsLabel(p.months)} ${fmt(p.price)} ج`)
-    .join("، ");
+/** التجهيز والباقات بأسعارها الحالية: «التجهيز 2,999 ج مرة واحدة، والاستضافة: الأساسية 199 ج شهرياً، …». */
+export function plansLine(model: Pick<PricingModel, "plans" | "build">): string {
+  return `التجهيز ${fmtEgp(model.build.price)} ج مرة واحدة، والاستضافة: ${model.plans.map((p) => `${p.name} ${fmtEgp(p.monthly)} ج شهرياً`).join("، ")}`;
 }
 
-/** تجديد كل باقة، مثال: «التجديد: 3 أشهر 999 ج، …». */
-export function renewalLine(model: Pick<PricingModel, "plans">): string {
-  return `التجديد: ${[...model.plans]
-    .sort((a, b) => a.months - b.months)
-    .map((p) => `${monthsLabel(p.months)} ${fmt(p.renewal)} ج`)
-    .join("، ")}`;
+/** التجديد = الباقة الشهرية فقط، للمدد المتاحة. */
+export function renewalLine(model: Pick<PricingModel, "months">): string {
+  return `التجديد: الباقة الشهرية فقط بلا رسوم تجهيز، لمدة ${model.months.map(monthsLabel).join(" أو ")}`;
 }
 
-/** السعر الشهري التقريبي لأطول باقة (للمقارنة الصادقة). */
+/** أرخص اشتراك شهري (للمقارنة الصادقة). */
 export function monthlyHint(model: Pick<PricingModel, "plans">): string {
-  const longest = [...model.plans].sort((a, b) => b.months - a.months)[0];
-  return longest ? `تقريباً ${fmt(perMonth(longest.price, longest.months))} ج في الشهر للباقة الأطول` : "";
+  return model.plans.length ? `الاستضافة تبدأ من ${fmtEgp(startingPrice(model as PricingModel))} ج في الشهر` : "";
 }
 
 /**
  * سطر الدائرة الذهبية للبرومبت. فارغ تماماً إن كان العرض متوقفاً أو اكتملت مقاعده، فلا يذكره الوكيل.
- * القيمة المعتادة للمتجر (5–10 آلاف) معلومة تسويقية ثابتة يقرها المالك، تُذكر لتوضيح أن السعر ليس قيمته.
+ * regularBuild: رسوم التجهيز العادية للمقارنة الصادقة («بدلاً من …»).
  */
-export function goldenLine(g: GoldenOffer, seatsLeft: number): string {
+export function goldenLine(g: GoldenOffer, seatsLeft: number, regularBuild?: number): string {
   if (!g.enabled || seatsLeft <= 0) return "";
+  const instead = regularBuild && regularBuild > g.buildPrice ? ` بدلاً من ${fmtEgp(regularBuild)} ج` : "";
   return [
     `عرض خاص «الدائرة الذهبية» متاح الآن، متبقٍ ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : seatsLeft === 2 ? "مقعدان" : "مقاعد"} فقط:`,
-    `${fmt(g.price)} جنيه لمدة ${monthsLabel(g.months)} تغطي الاستضافة والتشغيل فقط، وبناء المتجر مجاناً، مقابل منشور Collab على إنستجرام (ولو لم يرغب في البوست يكفي رأيه في رسالة نشاركها)، والمونتاج علينا مجاناً.`,
-    `اذكره بهدوء كعرض خاص لا كضغط، ووضّح أن ${fmt(g.price)} ليست قيمة المتجر نفسه، فقيمته المعتادة بين 5 و10 آلاف جنيه. بعد الأشهر ${g.months === 3 ? "الثلاثة" : monthsLabel(g.months)} يجدد بأي باقة عادية.`,
+    `تجهيز المتجر بـ ${fmtEgp(g.buildPrice)} ج${instead}، والاستضافة الشهرية كما هي بالباقة التي يختارها.`,
+    "اذكره بهدوء كعرض خاص لا كضغط، ولا تخترع مدة أو شروطاً غير ما هنا.",
   ].join(" ");
 }
 
@@ -45,6 +38,6 @@ export function detectMentions(assistantTexts: string[], opts: { demoHost: strin
   const all = assistantTexts.join("\n").toLowerCase();
   return {
     demo: all.includes(opts.demoHost.toLowerCase()),
-    golden: all.includes("الدائرة الذهبية") || all.includes(fmt(opts.goldenPrice)) || all.includes(String(opts.goldenPrice)),
+    golden: all.includes("الدائرة الذهبية") || all.includes(fmtEgp(opts.goldenPrice)) || all.includes(String(opts.goldenPrice)),
   };
 }

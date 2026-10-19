@@ -1,4 +1,5 @@
-import { monthsLabel } from "@/lib/platform-pricing";
+import { DEFAULT_PLANS, monthsLabel } from "@/lib/platform-pricing";
+
 import Link from "next/link";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { CheckCircle2, XCircle, Wallet, ExternalLink, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
@@ -10,6 +11,8 @@ import { RevokePayment } from "@/components/platform/RevokePayment";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { cn } from "@/lib/utils";
 import { requirePlatformPage } from "@/server/platform-guard";
+
+const TIER_NAME: Record<string, string> = Object.fromEntries(DEFAULT_PLANS.map((p) => [p.id, `باقة ${p.name}`]));
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
       pCoupon: platformPayments.coupon,
       pPlan: platformPayments.plan,
       pMonths: platformPayments.months,
+      pTier: platformPayments.tier,
       pMethod: platformPayments.method,
       pSenderPhone: platformPayments.senderPhone,
       pScreenshotUrl: platformPayments.screenshotUrl,
@@ -118,7 +122,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                       <p className="text-xs text-[#8d97c4] font-mono mt-0.5" dir="ltr">{r.sSubdomain ? `${r.sSubdomain}.colapia.com` : "—"}</p>
                     </div>
                     <span className="rounded-xl bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-sm font-black font-mono border border-emerald-500/30 shadow-sm">
-                      {r.pKind === "renewal" ? "تجديد · " : r.pPlan === "golden" ? `الدائرة الذهبية${r.pCoupon ? ` (${r.pCoupon})` : ""} · ` : "باقة · "}{r.pMonths ? `${monthsLabel(r.pMonths)} · ` : ""}
+                      {r.pKind === "renewal" ? "تجديد · " : r.pPlan === "golden" ? `دفعة أولى بالدائرة الذهبية${r.pCoupon ? ` (${r.pCoupon})` : ""} · ` : "دفعة أولى · "}{r.pTier ? `${TIER_NAME[r.pTier] ?? r.pTier} · ` : ""}{r.pMonths ? `${monthsLabel(r.pMonths)} · ` : ""}
                       {formatEgp(r.pAmount)}
                     </span>
                   </div>

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories, productVariants, products } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
+import { checkProductsQuota } from "@/server/usage";
 import { analyzeImages, analyzeText } from "@/server/import/analyze";
 import { fallbackName, IMPORT_MAX_CANDIDATES, normalizeCandidate, type Candidate } from "@/lib/import-candidates";
 import { readProductPhoto, type PhotoRead } from "@/server/import/vision-read";
@@ -88,6 +89,9 @@ export async function importCommitAction(raw: unknown): Promise<CommitResult> {
     .filter((c): c is Candidate => Boolean(c))
     .map((c) => foldForNiche(c, niche));
   if (!cands.length) return { ok: false, error: "لا يوجد منتج بمواصفات صالحة" };
+  // حد المنتجات في باقة المتجر (V3).
+  const quota = await checkProductsQuota(s.storeId, cands.length);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const db = await getTenantDb(s.storeId);
   const tracking = (await getBlueprintOrNull(s.storeId))?.inventory.tracking ?? true;

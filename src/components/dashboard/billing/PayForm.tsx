@@ -1,17 +1,18 @@
 "use client";
 
-// PayForm — دفع Colapia بتحويل يدوي: اختيار الباقة (3 أو 6 أو 12 شهراً، أو كود الدائرة الذهبية للباقة الأولى)، ثم حوّل المبلغ (الرقم والمبلغ بزر نسخ)، ثم الرقم الذي حوّلت منه،
-// ثم صورة الإيصال (تُضغط في المتصفح وتُرفع لمسار platformReceipt الخاص بصاحب المتجر). بعد الإرسال تتحول الصفحة
-// نفسها لحالة «قيد المراجعة» من الخادم (router.refresh)، فلا حالة نجاح محلية قد تخالف الواقع.
-import { useRef, useState } from "react";
+// PayForm — الدفع لـ Colapia بتحويل يدوي (V3): اختيار الباقة الشهرية والمدة، وكود «الدائرة الذهبية» للدفعة الأولى، وتفصيل
+// المبلغ (التجهيز + الباقة × الأشهر، أو الباقة × الأشهر للتجديد)، ثم التحويل والرقم المحوَّل منه وصورة الإيصال (تُضغط في
+// المتصفح وتُرفع لمسار platformReceipt الخاص بصاحب المتجر). المبلغ يُعاد حسابه على الخادم وحده. بعد الإرسال تتحول الصفحة
+// لحالة «قيد المراجعة» من الخادم (router.refresh)، فلا حالة نجاح محلية قد تخالف الواقع.
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
-import { Check, Copy, ImagePlus, Loader2, RefreshCw, Send, Smartphone, Trash2, Wallet } from "lucide-react";
+import { Check, Copy, Crown, ImagePlus, Loader2, RefreshCw, Send, Smartphone, Trash2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { fmtNum } from "@/lib/format";
 import { normalizeEgyptianPhone, prettyPhone } from "@/lib/phone";
-import { monthsLabel, perMonth, type PlanMonths, type PlanOption } from "@/lib/platform-pricing";
+import { monthsLabel, quote, type PlanId, type PricingModel } from "@/lib/platform-pricing";
 import { useMediaUpload } from "@/lib/media-upload";
 import { checkCouponAction, submitPlatformPaymentAction } from "@/server/actions/platform";
 import { requestPulse } from "../DashboardPulse";
@@ -20,55 +21,54 @@ import { inputCls } from "../product/parts";
 type Method = "vodafone_cash" | "instapay";
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
 
-export type PayGolden = { code: string; price: number; months: number; seatsLeft: number };
+export type PayGolden = { code: string; buildPrice: number; regularBuildPrice: number; seatsLeft: number };
+export type PayPlan = { id: PlanId; name: string; monthly: number; highlights: string[] };
 
 /**
- * kind="setup": الباقة الأولى (سعر أول مرة، وكود الدائرة الذهبية إن كانت متاحة).
- * kind="renewal": تجديد بأي مدة بسعر تجديدها.
+ * kind="setup": الدفعة الأولى (التجهيز + الباقة × الأشهر، وكود الدائرة الذهبية إن كان متاحاً).
+ * kind="renewal": تجديد بالباقة × الأشهر فقط، ويمكن تغيير الباقة.
  */
 export function PayForm({
+  model,
   plans,
-  featured,
   kind,
   vodafone,
   instapay,
   golden,
   suggestCoupon,
-  currentMonths,
+  currentPlan,
 }: {
-  plans: PlanOption[];
-  featured: PlanMonths;
+  /** نموذج الأسعار (لحساب التفصيل في المتصفح بنفس دالة الخادم). */
+  model: PricingModel;
+  /** الباقات بأبرز حدودها للعرض. */
+  plans: PayPlan[];
   kind: "setup" | "renewal";
   vodafone: string;
   instapay: string;
-  /** عرض الدائرة الذهبية متى كان مفعّلاً وفيه مقاعد (للباقة الأولى فقط). */
   golden?: PayGolden | null;
-  /** كود الدائرة الذهبية لتاجر جاء من دعوتها: الخانة مفتوحة ومملوءة. */
   suggestCoupon?: string;
-  /** مدة الباقة الحالية، لتُحدَّد مسبقاً عند التجديد. */
-  currentMonths?: number | null;
+  /** الباقة الحالية لتُحدَّد مسبقاً عند التجديد. */
+  currentPlan?: PlanId | null;
 }) {
   const router = useRouter();
-  const [months, setMonths] = useState<PlanMonths>(() => {
-    const cur = plans.find((p) => p.months === currentMonths);
-    return (kind === "renewal" && cur ? cur.months : featured) as PlanMonths;
-  });
+  const [planId, setPlanId] = useState<PlanId>(() => (kind === "renewal" && currentPlan ? currentPlan : model.featured));
+  const [months, setMonths] = useState<number>(() => (model.months.includes(3) ? 3 : model.months[0] ?? 1));
   const [couponOpen, setCouponOpen] = useState(Boolean(suggestCoupon));
   const [couponInput, setCouponInput] = useState(suggestCoupon ?? "");
   const [couponError, setCouponError] = useState("");
   const [checking, setChecking] = useState(false);
-  const [applied, setApplied] = useState<{ code: string; price: number; months: number } | null>(null);
-  const chosen = plans.find((p) => p.months === months) ?? plans[0]!;
-  const price = applied ? applied.price : kind === "renewal" ? chosen.renewal : chosen.price;
+  const [applied, setApplied] = useState<{ code: string; buildPrice: number } | null>(null);
+  const q = useMemo(() => quote(model, { planId, months, golden: Boolean(applied), kind }), [model, planId, months, applied, kind]);
+  const total = q.ok ? q.total : 0;
 
   async function applyCoupon() {
     setChecking(true);
     setCouponError("");
-    const r = await checkCouponAction(couponInput).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاولوا مرة أخرى" }));
+    const r = await checkCouponAction(couponInput).catch(() => ({ ok: false as const, error: "انقطع الاتصال، يمكن المحاولة مرة أخرى." }));
     setChecking(false);
     if (!r.ok) return setCouponError(r.error);
-    setApplied({ code: r.code, price: r.price, months: r.months });
-    toast.success("تم تطبيق الكود");
+    setApplied({ code: r.code, buildPrice: r.buildPrice });
+    toast.success("طُبّق كود الدائرة الذهبية");
   }
   const [method, setMethod] = useState<Method>("vodafone_cash");
   const [phone, setPhone] = useState("");
@@ -81,13 +81,13 @@ export function PayForm({
   const target = method === "vodafone_cash" ? vodafone : instapay;
 
   const { startUpload } = useMediaUpload("platformReceipt", {
-    onUploadError: (e) => setReceiptError(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى"),
+    onUploadError: (e) => setReceiptError(/[؀-ۿ]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. يُرجى التأكد من الاتصال والمحاولة مرة أخرى."),
   });
 
   async function pick(files: FileList | File[] | null) {
     const f = files ? Array.from(files)[0] : undefined;
     if (!f) return;
-    if (!IMAGE_TYPES.includes(f.type) && !f.type.startsWith("image/")) return setReceiptError("المطلوب صورة (لقطة شاشة للإيصال)، لا ملف آخر");
+    if (!IMAGE_TYPES.includes(f.type) && !f.type.startsWith("image/")) return setReceiptError("المطلوب صورة (لقطة شاشة للإيصال)، لا ملف آخر.");
     setReceiptError("");
     setUploading(true);
     const preview = URL.createObjectURL(f);
@@ -104,7 +104,7 @@ export function PayForm({
     const url = res?.[0]?.ufsUrl;
     if (!url) {
       URL.revokeObjectURL(preview);
-      return setReceiptError((e) => e || "تعذر رفع الصورة. حاول مرة أخرى");
+      return setReceiptError((e) => e || "تعذر رفع الصورة. يمكن المحاولة مرة أخرى.");
     }
     if (receipt) URL.revokeObjectURL(receipt.preview);
     setReceipt({ url, preview });
@@ -113,7 +113,7 @@ export function PayForm({
   function checkPhone(): string | null {
     const n = normalizeEgyptianPhone(phone);
     if (!n) {
-      setPhoneError(phone.trim() ? "رقم غير صحيح: 11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015" : "رقم المحفظة أو الحساب الذي تم التحويل منه مطلوب");
+      setPhoneError(phone.trim() ? "رقم غير صحيح: 11 رقماً يبدأ بـ 010 أو 011 أو 012 أو 015." : "رقم المحفظة أو الحساب الذي تم التحويل منه مطلوب.");
       return null;
     }
     setPhoneError("");
@@ -122,20 +122,24 @@ export function PayForm({
   }
 
   async function submit() {
+    if (!q.ok) return void toast.error(q.error);
     const n = checkPhone();
-    if (!receipt) setReceiptError("صورة الإيصال مطلوبة");
+    if (!receipt) setReceiptError("صورة الإيصال مطلوبة.");
     if (!n) return void document.getElementById("pay-phone")?.focus();
     if (!receipt) return void fileRef.current?.closest("section")?.scrollIntoView({ block: "center", behavior: "smooth" });
     setSending(true);
-    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url, months: applied ? undefined : months, coupon: applied?.code }).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    const r = await submitPlatformPaymentAction({ method, senderPhone: n, screenshotUrl: receipt.url, planId, months, coupon: applied?.code }).catch(() => ({
+      ok: false as const,
+      error: "انقطع الاتصال، يمكن المحاولة مرة أخرى.",
+    }));
     setSending(false);
     if (!r.ok) {
       toast.error(r.error);
-      // إيصال سابق قيد المراجعة أو تغيّرت حالة المتجر: الصفحة تعرض الواقع.
+      // إيصال سابق قيد المراجعة أو تغيّرت حالة المتجر أو الأسعار: الصفحة تعرض الواقع.
       router.refresh();
       return;
     }
-    toast.success("وصل إيصالك، وسنراجعه بأنفسنا");
+    toast.success("وصل الإيصال، وسنراجعه بأنفسنا");
     requestPulse();
     router.refresh();
   }
@@ -143,60 +147,83 @@ export function PayForm({
   return (
     <div className="space-y-4">
       {/* 1) الباقة */}
-      <Step n={1} title={kind === "renewal" ? "مدة التجديد" : "اختيار الباقة"}>
-        {applied ? (
-          <div className="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-3.5 text-[12.5px] leading-6 text-ink-2">
-            <p className="text-[13.5px] font-black text-ink">
-              الدائرة الذهبية: {fmtNum(applied.price)} ج.م لـ{monthsLabel(applied.months)}
-            </p>
-            <p className="mt-1">
-              هذا المبلغ هو تكلفة الاستضافة والتشغيل فقط، أما بناء المتجر فبلا مقابل. وهو ليس قيمة المتجر الفعلية. في المقابل يُنشر بوست Collab على إنستجرام عن تجربتكم
-              مع متجركم (ونتولى المونتاج مجاناً)، أو رأي مكتوب نشاركه إن فضّلتم ذلك. بعد المدة تجدّدون بأي باقة عادية.
-            </p>
-            <button type="button" onClick={() => setApplied(null)} className="mt-2 text-[12px] font-bold text-ink-3 hover:text-ink">
-              إلغاء الكود واختيار باقة عادية
-            </button>
-          </div>
-        ) : (
-          <div role="radiogroup" aria-label="مدة الباقة" className="grid gap-2.5 sm:grid-cols-3">
-            {plans.map((p) => {
-              const on = months === p.months;
-              const amount = kind === "renewal" ? p.renewal : p.price;
-              return (
-                <button
-                  key={p.months}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setMonths(p.months)}
-                  className={cn(
-                    "relative flex min-h-28 flex-col items-start gap-1 rounded-xl border p-3.5 text-start transition-colors",
-                    on ? "border-nova/60 bg-nova/10" : "border-edge/10 hover:border-edge/20 hover:bg-edge/[0.03]"
-                  )}
-                >
-                  {p.months === featured ? (
-                    <span className="absolute -top-2.5 end-3 rounded-full bg-nova px-2 py-0.5 text-[10.5px] font-black text-white">الأكثر اختياراً</span>
-                  ) : null}
-                  <span className="text-[13px] font-black text-ink">{monthsLabel(p.months)}</span>
-                  <span className="text-[22px] font-black leading-none tabular-nums text-ink">
-                    {fmtNum(amount)} <span className="text-[12px] font-bold text-ink-2">ج.م</span>
-                  </span>
-                  <span className="text-[11.5px] text-ink-3">يعادل نحو {fmtNum(perMonth(amount, p.months))} ج.م شهرياً</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        <p className="mt-2 text-[11.5px] leading-5 text-ink-3">
-          {kind === "renewal"
-            ? "تُضاف المدة الجديدة لنهاية اشتراككم الحالي فلا يضيع أي يوم، وتختارون أي مدة تناسبكم في كل تجديد."
-            : "السعر يشمل بناء المتجر والاستضافة والتشغيل والدعم طوال المدة، وبلا أي عمولة على مبيعاتكم."}
-        </p>
-        {kind === "setup" && golden && !applied ? (
-          couponOpen ? (
-            <div className="mt-3">
+      <Step n={1} title={kind === "renewal" ? "باقة التجديد" : "اختيار الباقة"} id="plans">
+        <div role="radiogroup" aria-label="الباقة الشهرية" className="grid gap-2.5 md:grid-cols-3">
+          {plans.map((p) => {
+            const on = planId === p.id;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setPlanId(p.id)}
+                className={cn(
+                  "relative flex min-h-32 flex-col items-start gap-1 rounded-xl border p-3.5 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50",
+                  on ? "border-nova/60 bg-nova/10" : "border-edge/10 hover:border-edge/20 hover:bg-edge/[0.03]"
+                )}
+              >
+                {p.id === model.featured ? <span className="absolute -top-2.5 end-3 rounded-full bg-nova px-2 py-0.5 text-[10.5px] font-black text-white">الأكثر اختياراً</span> : null}
+                {kind === "renewal" && currentPlan === p.id ? <span className="text-[10.5px] font-black text-ok">باقتكم الحالية</span> : null}
+                <span className="text-[13px] font-black text-ink">{p.name}</span>
+                <span className="text-[22px] font-black leading-none tabular-nums text-ink">
+                  {fmtNum(p.monthly)} <span className="text-[12px] font-bold text-ink-2">ج.م شهرياً</span>
+                </span>
+                <ul className="mt-1.5 space-y-0.5 text-[11.5px] leading-5 text-ink-3">
+                  {p.highlights.slice(0, 4).map((h) => (
+                    <li key={h} className="flex gap-1">
+                      <Check className="mt-1 size-3 shrink-0 text-ok" aria-hidden="true" />
+                      <span>{h}</span>
+                    </li>
+                  ))}
+                </ul>
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="mb-2 mt-4 text-[12.5px] font-black text-ink">المدة</p>
+        <div role="radiogroup" aria-label="مدة الاشتراك" className="flex flex-wrap gap-2">
+          {model.months.map((m) => {
+            const on = months === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => setMonths(m)}
+                className={cn(
+                  "min-h-11 rounded-xl border px-4 text-[13px] font-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50",
+                  on ? "border-nova/60 bg-nova/10 text-ink" : "border-edge/10 text-ink-2 hover:border-edge/20"
+                )}
+              >
+                {monthsLabel(m)}
+              </button>
+            );
+          })}
+        </div>
+
+        {kind === "setup" && golden ? (
+          applied ? (
+            <div className="mt-4 flex flex-wrap items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-400/[0.07] p-3.5 text-[12.5px] leading-6 text-ink-2">
+              <Crown className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-black text-ink">
+                  الدائرة الذهبية: تجهيز المتجر بـ {fmtNum(applied.buildPrice)} ج.م بدلاً من {fmtNum(golden.regularBuildPrice)} ج.م
+                </p>
+                <p>العرض يخفّض رسوم التجهيز فقط، والاستضافة الشهرية بسعر الباقة المختارة.</p>
+              </div>
+              <button type="button" onClick={() => setApplied(null)} className="min-h-9 text-[12px] font-bold text-ink-3 hover:text-ink">
+                إلغاء الكود
+              </button>
+            </div>
+          ) : couponOpen ? (
+            <div className="mt-4">
+              <label htmlFor="pay-coupon" className="mb-1.5 block text-[12.5px] font-bold text-ink-2">
+                كود الدائرة الذهبية
+              </label>
               <div className="flex gap-2">
-                <label htmlFor="pay-coupon" className="sr-only">كود العرض</label>
                 <input
                   id="pay-coupon"
                   value={couponInput}
@@ -204,20 +231,55 @@ export function PayForm({
                   onKeyDown={(e) => e.key === "Enter" && couponInput.trim() && applyCoupon()}
                   dir="ltr"
                   autoCapitalize="characters"
-                  placeholder="الكود"
+                  aria-invalid={Boolean(couponError)}
+                  aria-describedby={couponError ? "pay-coupon-err" : undefined}
                   className={cn(inputCls, "font-mono uppercase")}
                 />
-                <button type="button" disabled={checking || !couponInput.trim()} onClick={applyCoupon} className="shrink-0 rounded-xl bg-nova px-4 text-[13px] font-black text-white disabled:opacity-50">
-                  {checking ? <Loader2 className="size-4 animate-spin" /> : "طبّقوا"}
+                <button
+                  type="button"
+                  disabled={checking || !couponInput.trim()}
+                  onClick={applyCoupon}
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-xl bg-nova px-4 text-[13px] font-black text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50 focus-visible:ring-offset-2 disabled:opacity-50"
+                >
+                  {checking ? <Loader2 className="size-4 animate-spin" aria-label="جارٍ التحقق" /> : "تطبيق"}
                 </button>
               </div>
-              {couponError ? <p role="alert" className="mt-1.5 text-[12px] font-bold text-bad">{couponError}</p> : null}
+              {couponError ? (
+                <p id="pay-coupon-err" role="alert" className="mt-1.5 text-[12px] font-bold text-bad">
+                  {couponError}
+                </p>
+              ) : null}
             </div>
           ) : (
-            <button type="button" onClick={() => setCouponOpen(true)} className="mt-3 text-[12px] font-bold text-nova-2 underline-offset-4 hover:underline">
+            <button type="button" onClick={() => setCouponOpen(true)} className="mt-4 min-h-9 text-[12.5px] font-bold text-nova-2 underline-offset-4 hover:underline">
               لديكم كود عرض؟
             </button>
           )
+        ) : null}
+
+        {/* تفصيل المبلغ */}
+        {q.ok ? (
+          <div className="mt-4 rounded-xl border border-edge/10 bg-edge/[0.02] p-3.5" aria-live="polite">
+            <ul className="space-y-1.5 text-[12.5px] text-ink-2">
+              {q.lines.map((l) => (
+                <li key={l.label} className="flex items-baseline justify-between gap-3">
+                  <span className="min-w-0">{l.label}</span>
+                  <span className="shrink-0 font-bold tabular-nums text-ink">{fmtNum(l.amount)} ج.م</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-2.5 flex items-baseline justify-between gap-3 border-t border-edge/10 pt-2.5">
+              <span className="text-[13px] font-black text-ink">الإجمالي</span>
+              <span className="text-[22px] font-black tabular-nums text-ink">
+                {fmtNum(q.total)} <span className="text-[12px] font-bold text-ink-2">ج.م</span>
+              </span>
+            </div>
+            <p className="mt-1.5 text-[11.5px] leading-5 text-ink-3">
+              {kind === "renewal"
+                ? "تُضاف المدة لنهاية اشتراككم الحالي فلا يضيع يوم، والباقة الجديدة تسري فور قبول الإيصال."
+                : "رسوم التجهيز مرة واحدة فقط، والتجديد لاحقاً للباقة وحدها. بلا عمولة على مبيعاتكم."}
+            </p>
+          </div>
         ) : null}
       </Step>
 
@@ -239,7 +301,7 @@ export function PayForm({
                 aria-checked={on}
                 onClick={() => setMethod(m.key)}
                 className={cn(
-                  "flex min-h-16 items-center gap-3 rounded-xl border p-3 text-start transition-colors",
+                  "flex min-h-16 items-center gap-3 rounded-xl border p-3 text-start transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50",
                   on ? "border-nova/50 bg-nova/10" : "border-edge/10 hover:border-edge/20 hover:bg-edge/[0.03]"
                 )}
               >
@@ -257,7 +319,7 @@ export function PayForm({
 
         <div className="mt-3 divide-y divide-edge/10 rounded-xl border border-edge/10 bg-edge/[0.02]">
           <CopyRow label={method === "vodafone_cash" ? "التحويل إلى رقم المحفظة" : "التحويل إلى الرقم المربوط بإنستاباي"} display={prettyPhone(target)} value={target} />
-          <CopyRow label="المبلغ بالضبط" display={`${fmtNum(price)} ج.م`} value={String(price)} />
+          <CopyRow label="المبلغ بالضبط" display={`${fmtNum(total)} ج.م`} value={String(total)} />
         </div>
         <p className="mt-2 text-[11.5px] leading-5 text-ink-3">المبلغ كاملاً في تحويل واحد، ثم لقطة شاشة لنجاح التحويل.</p>
       </Step>
@@ -285,7 +347,7 @@ export function PayForm({
           className={cn(inputCls, "text-end font-mono tabular-nums", phoneError && "border-bad/60")}
         />
         <p id="pay-phone-hint" className={cn("mt-1.5 text-[11.5px]", phoneError ? "font-bold text-bad" : "text-ink-3")}>
-          {phoneError || "نطابقه مع الإيصال لنتأكد أن التحويل منك."}
+          {phoneError || "نطابقه مع الإيصال للتأكد من التحويل."}
         </p>
       </Step>
 
@@ -300,10 +362,15 @@ export function PayForm({
               <p className="flex items-center gap-1.5 text-[12.5px] font-bold text-ok">
                 <Check className="size-4" aria-hidden="true" /> رُفعت الصورة
               </p>
-              <p className="mt-0.5 text-[11.5px] text-ink-3">تأكد أن المبلغ والتاريخ ظاهران فيها.</p>
+              <p className="mt-0.5 text-[11.5px] text-ink-3">يُرجى التأكد أن المبلغ والتاريخ ظاهران فيها.</p>
               <div className="mt-2 flex gap-1.5">
-                <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-edge/10 px-2.5 text-[12px] font-bold text-ink-2 hover:bg-edge/5">
-                  {uploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-3.5" aria-hidden="true" />} غيّرها
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-edge/10 px-2.5 text-[12px] font-bold text-ink-2 hover:bg-edge/5"
+                >
+                  {uploading ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <RefreshCw className="size-3.5" aria-hidden="true" />} تغيير
                 </button>
                 <button
                   type="button"
@@ -313,7 +380,7 @@ export function PayForm({
                   }}
                   className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-bold text-ink-3 hover:bg-bad/10 hover:text-bad"
                 >
-                  <Trash2 className="size-3.5" aria-hidden="true" /> احذفها
+                  <Trash2 className="size-3.5" aria-hidden="true" /> حذف
                 </button>
               </div>
             </div>
@@ -330,12 +397,12 @@ export function PayForm({
             disabled={uploading}
             aria-describedby="pay-receipt-hint"
             className={cn(
-              "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-colors",
+              "flex min-h-32 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-4 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50",
               receiptError ? "border-bad/50 bg-bad/[0.04]" : "border-edge/15 hover:border-nova/40 hover:bg-nova/[0.04]"
             )}
           >
             {uploading ? <Loader2 className="size-6 animate-spin text-nova-2" aria-hidden="true" /> : <ImagePlus className="size-6 text-ink-3" aria-hidden="true" />}
-            <span className="text-[13px] font-black text-ink">{uploading ? "نرفع الصورة…" : "اختيار صورة الإيصال"}</span>
+            <span className="text-[13px] font-black text-ink">{uploading ? "جارٍ رفع الصورة…" : "اختيار صورة الإيصال"}</span>
             <span className="text-[11.5px] text-ink-3">لقطة شاشة من المحفظة أو التطبيق، حتى 8 ميجابايت</span>
           </button>
         )}
@@ -347,22 +414,24 @@ export function PayForm({
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={sending || uploading}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[14px] font-black text-white shadow-lg shadow-nova/20 transition hover:shadow-xl disabled:opacity-60"
+        disabled={sending || uploading || !q.ok}
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-5 text-[14px] font-black text-white shadow-lg shadow-nova/20 transition hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/60 focus-visible:ring-offset-2 disabled:opacity-60"
       >
         {sending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Send className="size-4" aria-hidden="true" />}
-        {sending ? "نرسل الإيصال…" : "إرسال الإيصال للمراجعة"}
+        {sending ? "جارٍ إرسال الإيصال…" : `إرسال إيصال ${fmtNum(total)} ج.م للمراجعة`}
       </button>
-      <p className="text-center text-[11.5px] leading-5 text-ink-3">نراجع كل إيصال بأنفسنا. عند القبول يُفعَّل متجرك ويصلك بريد، ولا يُجمَّد متجرك ولا يُحذف أثناء المراجعة.</p>
+      <p className="text-center text-[11.5px] leading-5 text-ink-3">
+        نراجع كل إيصال بأنفسنا. عند القبول يُفعَّل المتجر ويصلكم بريد، ولا يتجمد المتجر ولا يُحذف أثناء المراجعة.
+      </p>
     </div>
   );
 }
 
-function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
+function Step({ n, title, id, children }: { n: number; title: string; id?: string; children: React.ReactNode }) {
   return (
-    <section aria-labelledby={`pay-step-${n}`} className="dash-card p-4 sm:p-5">
+    <section id={id} aria-labelledby={`pay-step-${n}`} className="dash-card scroll-mt-24 p-4 sm:p-5">
       <h3 id={`pay-step-${n}`} className="mb-3 flex items-center gap-2 text-[14px] font-black text-ink">
-        <span className="grid size-6 place-items-center rounded-full bg-nova/15 text-[12px] font-black text-nova-2 tabular-nums">{n}</span>
+        <span className="grid size-6 place-items-center rounded-full bg-nova/15 text-[12px] font-black tabular-nums text-nova-2">{n}</span>
         {title}
       </h3>
       {children}
@@ -388,11 +457,11 @@ function CopyRow({ label, display, value }: { label: string; display: string; va
               setDone(true);
               setTimeout(() => setDone(false), 1800);
             },
-            () => toast.error("تعذر النسخ، انسخه يدوياً")
+            () => toast.error("تعذر النسخ، يمكن النسخ يدوياً.")
           );
         }}
-        aria-label={`انسخ ${label}`}
-        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/5"
+        aria-label={`نسخ ${label}`}
+        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50"
       >
         {done ? <Check className="size-4 text-ok" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
         {done ? "نُسخ" : "نسخ"}

@@ -13,7 +13,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { platformReviews } from "../../db/schema/platform";
 import { Landing, landingFaq } from "../../components/landing/Landing";
-import { planCards, instagramUrl } from "@/lib/landing-pricing";
+import { buildFeeText, planCards, instagramUrl } from "@/lib/landing-pricing";
 import { demoUrl } from "@/agent/settings";
 import { hostingGraceDays } from "@/server/hosting-grace";
 import type { LandingReview, SessionState } from "../../components/landing/types";
@@ -108,6 +108,7 @@ export default async function Page() {
         session={session}
         reviews={reviews}
         plans={plans}
+        buildFee={buildFeeText(pricing)}
         trialHours={timings.trialHours}
         graceDays={grace}
         changesPerYear={perYearFrom(changes.config)}

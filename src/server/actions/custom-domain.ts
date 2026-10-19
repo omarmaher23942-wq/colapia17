@@ -10,6 +10,7 @@ import { normalizeDomain } from "@/lib/custom-domain";
 import { addDomainHostnames, checkStoreDomain, removeDomainHostnames, unmapDomain } from "@/server/domains";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { allow } from "@/lib/ratelimit";
+import { checkCustomDomain } from "@/server/usage";
 
 type Result = { ok: true; status?: string } | { ok: false; error: string };
 
@@ -19,6 +20,9 @@ export async function setCustomDomainAction(raw: string): Promise<Result> {
   const s = await ownerStore();
   if (!s) return { ok: false, error: "ربط النطاق لصاحب المتجر." };
   if (!["trial", "active"].includes(s.store.status)) return { ok: false, error: "يُربط النطاق بعد تسليم المتجر." };
+  // النطاق الخاص متاح في باقتي «النمو» و«الاحترافية» (V3).
+  const allowed = await checkCustomDomain(s.storeId);
+  if (!allowed.ok) return { ok: false, error: allowed.message };
   if (!(await allow("domain", `domain:${s.storeId}`))) return { ok: false, error: "محاولات كثيرة، انتظر دقائق." };
   const domain = normalizeDomain(raw, process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "colapia.com");
   if (!domain) return { ok: false, error: "اكتب النطاق فقط مثل mystore.com أو shop.mystore.com." };

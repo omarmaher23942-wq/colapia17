@@ -7,15 +7,30 @@ import { usePathname } from "next/navigation";
 import { areaForPath, type StorePerms } from "@/lib/store-perms";
 import type { HostingState } from "@/lib/hosting";
 import { HostingBanner } from "./HostingBanner";
+import { LockBanner, TrialBanner } from "./billing/TrialBanner";
 
-export function PathBanners({ hosting, perms }: { hosting: HostingState; perms: StorePerms | null }) {
+export function PathBanners({
+  hosting,
+  perms,
+  trial,
+  lock,
+}: {
+  hosting: HostingState;
+  perms: StorePerms | null;
+  /** التجربة الجارية: موعد انتهائها (ISO) وهل يوجد إيصال قيد المراجعة. */
+  trial?: { endsAt: string; reviewPending: boolean } | null;
+  /** قفل اللوحة (مجمّد/متوقف). */
+  lock?: "frozen" | "paused" | null;
+}) {
   const path = usePathname() ?? "";
   const onBilling = path.startsWith("/dashboard/billing");
   const area = areaForPath(path);
   const viewOnly = Boolean(perms && area && perms[area] === "view");
   return (
     <>
-      {!onBilling && (hosting.phase === "renew_soon" || hosting.phase === "grace" || hosting.phase === "paused") ? <HostingBanner state={hosting} /> : null}
+      {lock && !onBilling ? <LockBanner lock={lock} /> : null}
+      {!lock && trial && !onBilling ? <TrialBanner endsAt={trial.endsAt} reviewPending={trial.reviewPending} /> : null}
+      {!lock && !onBilling && (hosting.phase === "renew_soon" || hosting.phase === "grace") ? <HostingBanner state={hosting} /> : null}
       {viewOnly ? (
         <p role="note" className="mb-4 rounded-xl border border-warn/30 bg-warn/[0.06] px-4 py-2.5 text-[13px] font-bold text-warn">
           صلاحيتكم هنا «عرض فقط». أي تعديل يحتاج صلاحية من صاحب المتجر.

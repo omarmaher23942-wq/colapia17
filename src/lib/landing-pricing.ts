@@ -1,17 +1,15 @@
-// landing-pricing.ts — تحويل نموذج الأسعار v3 إلى بطاقات للهبوط (خالص ومختبَر).
-// الباقات الثلاث بسعرها الأول وسعر التجديد والتكلفة الشهرية، بلا ذكر للدائرة الذهبية ما لم يجعلها المالك علنية.
-import { monthsLabel, perMonth, type PricingModel } from "@/lib/platform-pricing";
+// landing-pricing.ts — تحويل نموذج الأسعار v4 إلى بطاقات للهبوط (خالص ومختبَر).
+// الباقات الثلاث بسعرها الشهري وأهم حدودها الحقيقية، ورسوم التجهيز مرة واحدة. لا ذكر للدائرة الذهبية (بدعوة فقط).
+import { limitHighlights, monthsLabel, startingPrice, type PlanId, type PricingModel } from "@/lib/platform-pricing";
 
 export type PlanCard = {
-  months: number;
+  id: PlanId;
   label: string;
+  /** السعر الشهري بالجنيه. */
   price: number;
-  renewal: number;
-  perMonth: number;
   featured: boolean;
   priceText: string;
-  renewalText: string;
-  perMonthText: string;
+  highlights: string[];
 };
 
 /** أرقام بالصيغة العربية مع فواصل الآلاف؛ تُستخدم في كل نصوص الهبوط. */
@@ -20,28 +18,24 @@ export function fmtPrice(n: number): string {
 }
 
 export function planCards(model: PricingModel): PlanCard[] {
-  return [...model.plans]
-    .sort((a, b) => a.months - b.months)
-    .map((p) => {
-      const pm = perMonth(p.price, p.months);
-      return {
-        months: p.months,
-        label: monthsLabel(p.months),
-        price: p.price,
-        renewal: p.renewal,
-        perMonth: pm,
-        featured: p.months === model.featured,
-        priceText: fmtPrice(p.price),
-        renewalText: fmtPrice(p.renewal),
-        perMonthText: fmtPrice(pm),
-      };
-    });
+  return model.plans.map((p) => ({
+    id: p.id,
+    label: p.name,
+    price: p.monthly,
+    featured: p.id === model.featured,
+    priceText: fmtPrice(p.monthly),
+    highlights: limitHighlights(p.limits),
+  }));
 }
 
-/** سطر قصير للوصف: «تبدأ من ١٬٩٩٩ ج.م». */
+/** سطر رسوم التجهيز والمدد: «تجهيز المتجر ٢٬٩٩٩ ج.م مرة واحدة، والدفع لشهر أو ٣ أشهر أو …». */
+export function buildFeeText(model: PricingModel): string {
+  return `تجهيز المتجر ${fmtPrice(model.build.price)} ج.م مرة واحدة مع أول دفعة، ثم الاستضافة الشهرية بالباقة المختارة لمدة ${model.months.map(monthsLabel).join(" أو ")}.`;
+}
+
+/** سطر قصير للوصف: «الاستضافة من ١٩٩ ج.م شهرياً». */
 export function startingText(model: PricingModel): string {
-  const min = Math.min(...model.plans.map((p) => p.price));
-  return `تبدأ من ${fmtPrice(min)} ج.م`;
+  return `الاستضافة من ${fmtPrice(startingPrice(model))} ج.م شهرياً`;
 }
 
 /** «طلب تعديل واحد» / «طلبا تعديل» / «٣ طلبات تعديل» / «١١ طلب تعديل». */

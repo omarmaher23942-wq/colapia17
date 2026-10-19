@@ -10,6 +10,7 @@ import { storeFor } from "@/server/merchant-guard";
 import { STORE_AREAS, STORE_ROLES, STORE_ROLE_LABEL, permsFor } from "@/lib/store-perms";
 import { sendEmail } from "@/lib/email";
 import { clientEnv } from "@/lib/env";
+import { checkTeamQuota } from "@/server/usage";
 
 type Result = { ok: true; emailed?: boolean } | { ok: false; error: string };
 
@@ -39,6 +40,9 @@ export async function inviteMemberAction(raw: z.input<typeof inviteSchema>): Pro
 
   const [existing] = await db.select().from(storeMembers).where(and(eq(storeMembers.storeId, s.storeId), eq(storeMembers.email, d.email))).limit(1);
   if (existing?.status === "active") return { ok: false, error: "هذا البريد في فريقك بالفعل." };
+  // حد أعضاء الفريق في باقة المتجر (V3).
+  const quota = await checkTeamQuota(s.storeId, 1);
+  if (!quota.ok) return { ok: false, error: quota.message };
   const [known] = await db.select({ id: merchants.id }).from(merchants).where(eq(merchants.email, d.email)).limit(1);
   const values = { role: d.role, perms: custom, name: d.name || null, status: "active" as const, invitedBy: s.merchantId, merchantId: known?.id ?? null, updatedAt: new Date() };
   if (existing) await db.update(storeMembers).set(values).where(eq(storeMembers.id, existing.id));

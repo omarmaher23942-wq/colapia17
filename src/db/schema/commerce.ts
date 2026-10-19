@@ -215,6 +215,8 @@ export const platformPayments = pgTable(
     plan: text("plan").$type<"standard" | "golden">().notNull().default("standard"),
     /** مدة الاستضافة التي تغطيها الدفعة بالأشهر (null في الدفعات القديمة = 12). */
     months: integer("months"),
+    /** باقة الاستضافة الشهرية التي دُفعت (basic|growth|pro؛ null في الدفعات القديمة = growth). */
+    tier: text("tier").$type<"basic" | "growth" | "pro">(),
     // نهاية الاستضافة التي غطتها هذه الدفعة بعد قبولها (سجل للتاجر وللمالك).
     coversUntil: timestamp("covers_until", { withTimezone: true }),
     // كود عرض طُبّق على الدفعة (مثل GOLDEN599 للدائرة الذهبية): يحدد المبلغ ويُعدّ به عدد المقاعد المستخدمة.

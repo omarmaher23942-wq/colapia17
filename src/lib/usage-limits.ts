@@ -1,31 +1,52 @@
-// usage-limits.ts — حدود الاستخدام الشهرية لكل متجر: القيم الافتراضية حسب الخطة، ودمج إعداد المالك، والعدّادات (منطق خالص مختبَر).
-export type UsageLimits = {
-  /** عمليات الذكاء الاصطناعي في الشهر (كل الأنواع معاً). */
-  aiPerMonth: number;
-  imagesPerMonth: number;
-  imageBytesPerMonth: number;
-  videosPerMonth: number;
-  videoMaxBytes: number;
+// usage-limits.ts — حدود الاستخدام حسب باقة المتجر (V3-PLAN 3): أي باقة تنطبق، والعدّادات، ورسائل الحد بتلميح ترقية.
+// منطق خالص مختبَر. الحدود نفسها من نموذج الأسعار (lib/platform-pricing.ts) ويعدّلها المالك من /admin/pricing.
+import { fmtEgp, fmtStorage, planIdFrom, TRIAL_PLAN, type HostingPlan, type PlanId, type PlanLimits, type PricingModel } from "@/lib/platform-pricing";
+
+export type PlanStore = { status: string; plan?: string | null; prefs?: Record<string, unknown> | null };
+
+/**
+ * باقة المتجر الفعلية: المتجر المدفوع بباقته المسجّلة (stores.plan، أو prefs.planId احتياطاً)، والمدفوع قديماً بلا باقة
+ * معروفة = «النمو». كل ما سوى ذلك (تجربة، تجميد، إعداد) يستخدم حدود «النمو» كتجربة.
+ */
+export function storePlanId(store: PlanStore): { planId: PlanId; isTrial: boolean } {
+  if (store.status !== "active") return { planId: TRIAL_PLAN, isTrial: true };
+  const id = planIdFrom(store.plan) ?? planIdFrom((store.prefs ?? {}).planId) ?? "growth";
+  return { planId: id, isTrial: false };
+}
+
+export function planFor(model: PricingModel, planId: PlanId): HostingPlan {
+  return model.plans.find((p) => p.id === planId) ?? model.plans[1] ?? model.plans[0]!;
+}
+
+type NumericLimit = Exclude<keyof PlanLimits, "customDomain">;
+
+/** أول باقة أعلى تتيح أكثر في هذا الحد (أو تتيح النطاق الخاص)، أو null إن كانت الحالية الأعلى. */
+export function upgradeFor(model: PricingModel, planId: PlanId, key: keyof PlanLimits): HostingPlan | null {
+  const order = model.plans.map((p) => p.id);
+  const cur = planFor(model, planId);
+  const idx = order.indexOf(cur.id);
+  for (const p of model.plans.slice(idx + 1)) {
+    if (key === "customDomain" ? p.limits.customDomain : p.limits[key as NumericLimit] > cur.limits[key as NumericLimit]) return p;
+  }
+  return null;
+}
+
+const DESCRIBE: Record<NumericLimit, (n: number) => string> = {
+  products: (n) => `حتى ${fmtEgp(n)} منتج`,
+  storageBytes: (n) => `${fmtStorage(n)} للصور والفيديو`,
+  videos: (n) => `${fmtEgp(n)} فيديو`,
+  videoMaxBytes: (n) => `فيديو حتى ${fmtStorage(n)}`,
+  aiPerMonth: (n) => `${fmtEgp(n)} عملية تلقائية شهرياً`,
+  visualSearchPerMonth: (n) => `${fmtEgp(n)} بحث بالصورة شهرياً`,
+  teamMembers: (n) => `${fmtEgp(n)} أعضاء في الفريق`,
 };
 
-const MB = 1024 * 1024;
-export const PAID_LIMITS: UsageLimits = { aiPerMonth: 300, imagesPerMonth: 1500, imageBytesPerMonth: 2048 * MB, videosPerMonth: 10, videoMaxBytes: 50 * MB };
-export const TRIAL_LIMITS: UsageLimits = { aiPerMonth: 40, imagesPerMonth: 300, imageBytesPerMonth: 512 * MB, videosPerMonth: 2, videoMaxBytes: 50 * MB };
-
-const pos = (v: unknown, fallback: number, max: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.min(Math.floor(v), max) : fallback);
-
-/** الحدود الفعلية: افتراضي الخطة، وإعداد المالك (flag «usage») يتجاوز حسب الخطة { paid:{…}, trial:{…} }. */
-export function limitsFor(isTrial: boolean, config: unknown): UsageLimits {
-  const base = isTrial ? TRIAL_LIMITS : PAID_LIMITS;
-  const c = (config && typeof config === "object" ? (config as Record<string, unknown>)[isTrial ? "trial" : "paid"] : null) as Record<string, unknown> | null;
-  if (!c || typeof c !== "object") return base;
-  return {
-    aiPerMonth: pos(c.aiPerMonth, base.aiPerMonth, 100_000),
-    imagesPerMonth: pos(c.imagesPerMonth, base.imagesPerMonth, 1_000_000),
-    imageBytesPerMonth: pos(c.imageBytesPerMonth, base.imageBytesPerMonth, 1024 ** 4),
-    videosPerMonth: pos(c.videosPerMonth, base.videosPerMonth, 100_000),
-    videoMaxBytes: pos(c.videoMaxBytes, base.videoMaxBytes, 2 * 1024 ** 3),
-  };
+/** «باقة «النمو» تتيح حتى 2,000 منتج، ويمكن الترقية من صفحة الاشتراك.» — أو فارغ إن لم توجد باقة أعلى. */
+export function upgradeHint(model: PricingModel, planId: PlanId, key: keyof PlanLimits): string {
+  const up = upgradeFor(model, planId, key);
+  if (!up) return "";
+  if (key === "customDomain") return `النطاق الخاص متاح في باقة «${up.name}»، ويمكن الترقية من صفحة الاشتراك.`;
+  return `باقة «${up.name}» تتيح ${DESCRIBE[key as NumericLimit](up.limits[key as NumericLimit])}، ويمكن الترقية من صفحة الاشتراك.`;
 }
 
 export type MeterTone = "ok" | "warn" | "bad";
@@ -51,8 +72,14 @@ export function nextResetLabel(now = new Date()): string {
   return `1 ${MONTHS[m % 12]}`;
 }
 
-export function limitMessage(what: string, limit: number, now = new Date()): string {
-  return `وصلتم إلى حد ${what} هذا الشهر (${limit.toLocaleString("en-US")}). يتجدد الحد في ${nextResetLabel(now)}، ويمكنكم متابعة العمل يدوياً في الأثناء.`;
+/** رسالة حد شهري (يتجدد مطلع الشهر) مع تلميح الترقية إن وُجد. */
+export function monthlyLimitMessage(what: string, limit: number, hint = "", now = new Date()): string {
+  return `وصلتم إلى حد ${what} هذا الشهر (${fmtEgp(limit)}). يتجدد الحد في ${nextResetLabel(now)}.${hint ? ` ${hint}` : ""}`;
 }
 
-export const fmtBytes = (b: number): string => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} غيغابايت` : `${Math.round(b / MB)} ميغابايت`);
+/** رسالة حد إجمالي (لا يتجدد شهرياً) مع تلميح الترقية إن وُجد. */
+export function totalLimitMessage(what: string, limitText: string, hint = ""): string {
+  return `وصلتم إلى حد ${what} في باقتكم (${limitText}).${hint ? ` ${hint}` : " يمكن حذف ما لا تحتاجونه لإفساح المجال."}`;
+}
+
+export const fmtBytes = fmtStorage;

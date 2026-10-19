@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
+import { checkProductsQuota } from "@/server/usage";
 import { buildSearchText, normalizeArabic, slugify } from "@/lib/arabic";
 import { getBlueprintOrNull, invalidateStoreCache } from "@/lib/tenant";
 import { parseCsv } from "@/lib/csv-parse";
@@ -44,6 +45,9 @@ export async function importProductsAction(raw: unknown): Promise<ImportResult> 
   if (plan.tooMany) return { ok: false, error: `الحد ${IMPORT_MAX_ROWS} منتج في الملف الواحد؛ قسّمه إلى ملفات أصغر` };
   const good = plan.rows.filter((r) => r.errors.length === 0);
   if (!good.length) return { ok: false, error: "لا يوجد صف صالح للاستيراد" };
+  // حد المنتجات في باقة المتجر (V3).
+  const quota = await checkProductsQuota(s.storeId, good.length);
+  if (!quota.ok) return { ok: false, error: quota.message };
 
   const db = await getTenantDb(s.storeId);
   // «كل المنتجات متاحة دائماً» في المتجر: الكميات في الملف تُحفظ بلا تتبع (تعود إن شُغّل التتبع).

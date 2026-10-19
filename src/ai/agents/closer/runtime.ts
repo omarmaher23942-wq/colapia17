@@ -3,6 +3,7 @@ import "server-only";
 // المتجر (agent/create-store). النموذج يقترح (lead, confirmCreate)، والكود يقرر. لا ردود جاهزة عند تعذر الذكاء الاصطناعي:
 // صمت + تنبيه للمالك. التحويل لموظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
 import { currentPricing, goldenStatus } from "@/server/pricing";
+import { agentPricingFacts } from "@/lib/platform-pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
@@ -66,10 +67,11 @@ async function interpolateVars(): Promise<{ vars: Record<string, string>; golden
       plansLine: plansLine(pricing),
       renewalLine: renewalLine(pricing),
       demoUrl: demo,
-      goldenLine: available && golden ? goldenLine(pricing.golden, golden.seatsLeft) : "",
+      goldenLine: available && golden ? goldenLine(pricing.golden, golden.seatsLeft, pricing.build.price) : "",
+      pricingFacts: agentPricingFacts(pricing, golden ? golden.seatsUsed : 0),
     },
     goldenAvailable: available,
-    goldenPrice: pricing.golden.price,
+    goldenPrice: pricing.golden.buildPrice,
     demoHost: host,
   };
 }
