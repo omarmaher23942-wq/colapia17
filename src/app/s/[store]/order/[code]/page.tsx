@@ -20,6 +20,7 @@ import { waLink } from "@/lib/whatsapp";
 import { customerOrderWhatsApp } from "@/lib/order-messages";
 import { canRequestCancel, returnKindsAllowed, returnWindow } from "@/lib/order-requests";
 import { publicStoreUrl } from "@/lib/utils";
+import { isDemoStore } from "@/lib/demo-store";
 
 const SW = 1.75;
 /** يقبل رقم الطلب بالبادئة الحالية (#1042) والأكواد القديمة (CLP-XXXXX). */
@@ -73,6 +74,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
     .where(and(eq(returnRequests.storeId, store.id), eq(returnRequests.orderId, o.id), inArray(returnRequests.status, ["new", "approved", "received"])))
     .limit(1);
 
+  const demo = isDemoStore(store);
   const transfer = o.paymentMethod !== "cod";
   const closed = o.status === "cancelled" || o.status === "returned";
   // رابط طلباتي الموقّع: يفتح الطلب على أي جهاز ويربطه به.
@@ -92,10 +94,14 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <h1 className="mt-4 text-2xl sm:text-3xl">{closed ? "تفاصيل الطلب" : "تم استلام الطلب"}</h1>
       <p className="mt-2 text-muted-foreground">رقم الطلب</p>
       <p className="text-3xl font-black tracking-widest text-primary" dir="ltr">{o.code}</p>
-      {o.isTest ? <p className="mx-auto mt-2 w-fit rounded-full bg-muted px-3 py-1 text-xs font-bold">طلب تجريبي من معاينة المالك</p> : null}
-      <p className="mt-2 text-sm text-muted-foreground">
-        الطلب محفوظ في «طلباتي» على هذا الجهاز. سنتواصل على <span dir="ltr">{prettyPhone(o.customerPhone)}</span> للتأكيد.
-      </p>
+      {o.isTest ? <p className="mx-auto mt-2 w-fit rounded-full bg-muted px-3 py-1 text-xs font-bold">{demo ? "طلب تجريبي في متجر العرض" : "طلب تجريبي من معاينة المالك"}</p> : null}
+      {demo ? (
+        <p className="mt-2 text-sm text-muted-foreground">الطلب محفوظ في «طلباتي» على هذا الجهاز. هذا متجر عرض، فلن يُشحن الطلب ولن يتواصل أحد بشأنه.</p>
+      ) : (
+        <p className="mt-2 text-sm text-muted-foreground">
+          الطلب محفوظ في «طلباتي» على هذا الجهاز. سنتواصل على <span dir="ltr">{prettyPhone(o.customerPhone)}</span> للتأكيد.
+        </p>
+      )}
 
       {waHref ? (
         <div className="surface mt-6 p-5">

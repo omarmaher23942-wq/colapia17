@@ -7,6 +7,7 @@ import { shippingZones } from "@/db/schema";
 import { CheckoutForm } from "@/components/storefront/CheckoutForm";
 import { getMerchantSession } from "@/server/auth";
 import { isTeamPreview } from "@/server/store-preview";
+import { isDemoStore } from "@/lib/demo-store";
 
 const SW = 1.75;
 
@@ -29,8 +30,10 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
   const bp = await getBlueprint(store.id);
   const anyPayment = bp.payments.cod.enabled || bp.payments.vodafoneCash.enabled || bp.payments.instapay.enabled;
   const db = await getTenantDb(store.id);
+  // متجر العرض: كل طلب فيه تجريبي، ونقول ذلك للزائر قبل أن يكتب بياناته.
+  const demo = isDemoStore(store);
   // صاحب المتجر يجرّب الشراء: طلبه يُسجَّل تجريبياً (لا يخصم المخزون ولا يدخل المبيعات)، ونقول له ذلك صراحة.
-  const isOwner = (await isTeamPreview()) || Boolean((await getMerchantSession().catch(() => null))?.stores.some((x) => x.id === store.id));
+  const isOwner = !demo && ((await isTeamPreview()) || Boolean((await getMerchantSession().catch(() => null))?.stores.some((x) => x.id === store.id)));
   const zones = await db
     .select({ code: shippingZones.governorate, fee: shippingZones.feePiasters, etaMin: shippingZones.etaMinDays, etaMax: shippingZones.etaMaxDays, cod: shippingZones.codExtraPiasters })
     .from(shippingZones)
@@ -39,6 +42,15 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
   return (
     <div className="container-x max-w-5xl py-8">
       <h1 className="mb-6 text-2xl sm:text-3xl">إتمام الطلب</h1>
+      {demo ? (
+        <p role="note" className="surface mb-6 flex items-start gap-3 p-4 text-sm leading-6">
+          <FlaskConical strokeWidth={SW} className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+          <span>
+            <b>متجر عرض:</b> يمكن تجربة الطلب كاملاً، ويكفي إدخال بيانات تجريبية. الطلب يُسجَّل تجريبياً، فلا يُشحن ولا يُطلب
+            عنه أي مبلغ.
+          </span>
+        </p>
+      ) : null}
       {isOwner ? (
         <p role="note" className="surface mb-6 flex items-start gap-3 p-4 text-sm leading-6">
           <FlaskConical strokeWidth={SW} className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
@@ -51,7 +63,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ store
       {!store.acceptingOrders ? (
         <Notice icon={Moon} text={store.vacationMessage ?? "المتجر في إجازة قصيرة وسنعود قريبًا"} />
       ) : !anyPayment ? (
-        <Notice icon={CreditCard} text="استقبال الطلبات متوقف مؤقتًا، تواصل معنا من صفحتنا لإتمام طلبك" />
+        <Notice icon={CreditCard} text="استقبال الطلبات متوقف مؤقتاً، ويمكن التواصل معنا من صفحتنا لإتمام الطلب" />
       ) : (
         <CheckoutForm
           subdomain={store.subdomain}

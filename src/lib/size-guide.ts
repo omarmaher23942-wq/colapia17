@@ -37,10 +37,17 @@ export type Fit = "tight" | "regular" | "loose";
 /** هل الخيار خيار مقاس؟ (مقاس، المقاس، Size، قياس…) */
 export const isSizeOption = (name: string) => /مقاس|قياس|size/i.test(name);
 
-/** الجدول المناسب لمنتج: جدول قسمه أولاً ثم جدول «كل المنتجات». لا جدول لمنتج بلا خيار مقاس. */
-export function chartFor(guide: SizeGuide | undefined, categoryId: string | null | undefined, optionNames: string[]): SizeChart | null {
+const sizeKey = (s: string) => s.trim().toUpperCase();
+
+/**
+ * الجدول المناسب لمنتج: جدول قسمه أولاً ثم جدول «كل المنتجات». لا جدول لمنتج بلا خيار مقاس.
+ * مع مقاسات المنتج (sizeValues): الجدول الذي لا يشترك معها في أي مقاس لا يُعرض (حذاء 36–41 أمام جدول 42–46، أو جاكيت
+ * بمقاسات 46–54 أمام جدول S–XXL)، فيُجرَّب الجدول التالي، وإلا لا جدول بدل جدول ومقاس مقترح لا يملكه المنتج.
+ */
+export function chartFor(guide: SizeGuide | undefined, categoryId: string | null | undefined, optionNames: string[], sizeValues?: readonly string[]): SizeChart | null {
   if (!guide?.charts.length || !optionNames.some(isSizeOption)) return null;
-  const usable = guide.charts.filter((c) => c.rows.length);
+  const sizes = new Set((sizeValues ?? []).map(sizeKey).filter(Boolean));
+  const usable = guide.charts.filter((c) => c.rows.length && (!sizes.size || c.rows.some((r) => sizes.has(sizeKey(r.size)))));
   return (
     (categoryId ? usable.find((c) => Array.isArray(c.appliesTo) && c.appliesTo.includes(categoryId)) : undefined) ??
     usable.find((c) => c.appliesTo === "all") ??

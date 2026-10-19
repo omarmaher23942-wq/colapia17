@@ -118,6 +118,8 @@ const ROOTS = [
   "src/lib/store-visibility.ts",
   "src/server/actions/platform.ts",
   "src/agent/offers.ts",
+  "src/lib/demo-store.ts",
+  "scripts/demo",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.
