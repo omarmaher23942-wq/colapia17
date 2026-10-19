@@ -34,7 +34,18 @@ export function StepPublish({ initial, inspection: initialInspection, onBack, on
     };
   }, []);
 
+  const busy = useRef(false);
   async function publish() {
+    // نقرة ثانية قبل أن تنتقل الشاشة كانت تطلق تفعيلاً آخر.
+    if (busy.current) return;
+    busy.current = true;
+    try {
+      await runPublish();
+    } finally {
+      busy.current = false;
+    }
+  }
+  async function runPublish() {
     setErr(null);
     const fresh = await readinessAction();
     if (fresh.ok) {

@@ -10,8 +10,18 @@ type UploadError = { message: string };
 const TIMEOUT_MS = 120_000;
 const PARALLEL = 3;
 
-/** يرفع ملفاً واحداً. يرمي Error برسالة عربية مفهومة عند أي فشل. */
-async function uploadOne(route: MediaRoute, file: File, input?: unknown): Promise<UploadedFile> {
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** أخطاء عابرة تستحق محاولة ثانية: انقطاع الشبكة، أو 502/503/504، أو مهلة. غيرها (حجم، نوع، صلاحية، حد) نهائي. */
+export function isTransientUploadFailure(status: number | null, aborted: boolean): boolean {
+  return status === null || aborted || status === 502 || status === 503 || status === 504;
+}
+
+const NETWORK_ERR = "تعذر الاتصال. تأكدوا من الإنترنت وحاولوا مرة أخرى.";
+const TIMEOUT_ERR = "الرفع أخذ وقتاً طويلاً. تأكدوا من الاتصال وحاولوا مرة أخرى.";
+
+/** محاولة واحدة. تعيد ملفاً أو خطأً مع علامة «عابر». */
+async function attempt(route: MediaRoute, file: File, input?: unknown): Promise<{ ok: true; file: UploadedFile } | { ok: false; error: string; transient: boolean }> {
   const fd = new FormData();
   fd.set("route", route);
   if (input !== undefined) fd.set("input", JSON.stringify(input));
@@ -22,14 +32,28 @@ async function uploadOne(route: MediaRoute, file: File, input?: unknown): Promis
   try {
     r = await fetch("/api/upload", { method: "POST", body: fd, signal: ctrl.signal, credentials: "same-origin" });
   } catch (e) {
-    throw new Error((e as Error)?.name === "AbortError" ? "الرفع أخذ وقتاً طويلاً. تأكد من الاتصال وحاول مرة أخرى." : "تعذر الاتصال. تأكد من الإنترنت وحاول مرة أخرى.");
+    const aborted = (e as Error)?.name === "AbortError";
+    return { ok: false, error: aborted ? TIMEOUT_ERR : NETWORK_ERR, transient: isTransientUploadFailure(null, aborted) };
   } finally {
     clearTimeout(timer);
   }
   const j = (await r.json().catch(() => null)) as { error?: string; files?: { key: string; url: string; type?: string; size?: number }[] } | null;
   const f = j?.files?.[0];
-  if (!r.ok || !f) throw new Error(j?.error || (r.status === 413 ? "الصورة كبيرة. الحد الأقصى 8 ميجا." : "تعذر رفع الصورة. حاول مرة أخرى."));
-  return { key: f.key, url: f.url, ufsUrl: f.url, name: file.name, size: f.size ?? file.size, type: f.type ?? file.type };
+  if (!r.ok || !f) {
+    return { ok: false, error: j?.error || (r.status === 413 ? "الصورة كبيرة. الحد الأقصى 8 ميجا." : "تعذر رفع الصورة. حاولوا مرة أخرى."), transient: isTransientUploadFailure(r.status, false) };
+  }
+  return { ok: true, file: { key: f.key, url: f.url, ufsUrl: f.url, name: file.name, size: f.size ?? file.size, type: f.type ?? file.type } };
+}
+
+/** يرفع ملفاً واحداً بمحاولتين للأعطال العابرة. يرمي Error برسالة عربية مفهومة عند الفشل. */
+async function uploadOne(route: MediaRoute, file: File, input?: unknown): Promise<UploadedFile> {
+  let last = await attempt(route, file, input);
+  for (let i = 0; !last.ok && last.transient && i < 2; i++) {
+    await wait(900 * (i + 1));
+    last = await attempt(route, file, input);
+  }
+  if (!last.ok) throw new Error(last.error);
+  return last.file;
 }
 
 /** رفع عدة ملفات (ثلاثة متوازية) مع حفظ الترتيب. يعيد ما نجح، وأول رسالة خطأ إن فشل بعضها. */
@@ -43,7 +67,7 @@ export async function uploadMany(route: MediaRoute, files: File[], input?: unkno
       try {
         results[i] = await uploadOne(route, files[i]!, input);
       } catch (e) {
-        error ??= e instanceof Error ? e.message : "تعذر رفع الصورة. حاول مرة أخرى.";
+        error ??= e instanceof Error ? e.message : "تعذر رفع الصورة. حاولوا مرة أخرى.";
       }
     }
   };

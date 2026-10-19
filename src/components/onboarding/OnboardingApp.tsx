@@ -3,7 +3,7 @@
 // OnboardingApp — «إعداد المتجر» بملء الشاشة: خطوات بجانب، المحتوى في الوسط، ومعاينة حية لمتجر التاجر عند الحافة (ورقة على الجوال).
 // كل خطوة تحفظ فوراً في بيانات المتجر الحقيقية، والتقدم محفوظ فيستأنف التاجر من حيث توقف. بلا ذكر لأي تقنية.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, CheckCircle2, Loader2 } from "lucide-react";
+import { AlertCircle, Check, CheckCircle2, Loader2 } from "lucide-react";
 import { saveProgressAction } from "@/server/actions/setup";
 import { nextStep, prevStep, progressPercent, STEPS, type SetupData, type StepId } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ import { StepPublish } from "./StepPublish";
 import { ThemeSection } from "./ThemeSection";
 import { btnGhost, btnPrimary, StepHeader } from "./ui";
 
-type Save = "idle" | "saving" | "saved";
+type Save = "idle" | "saving" | "saved" | "failed";
 
 export function OnboardingApp({ data }: { data: SetupData }) {
   const [step, setStep] = useState<StepId>(data.onboarding.step);
@@ -45,17 +45,29 @@ export function OnboardingApp({ data }: { data: SetupData }) {
     main.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [step]);
 
-  const persist = useCallback(async (to: StepId, markDone?: StepId) => {
+  // حفظ التقدم على التوالي: نقرات سريعة متتالية كانت تصل للخادم بترتيب غير مضمون فيُحفظ آخر ما وصل لا آخر ما اختير.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const pending = useRef(0);
+  const persist = useCallback((to: StepId, markDone?: StepId) => {
+    pending.current += 1;
     setSave("saving");
-    const r = await saveProgressAction({ step: to, markDone });
-    setSave(r.ok ? "saved" : "idle");
+    queue.current = queue.current.then(async () => {
+      let ok = false;
+      try {
+        ok = (await saveProgressAction({ step: to, markDone })).ok;
+      } catch {
+        ok = false;
+      }
+      pending.current -= 1;
+      if (pending.current === 0) setSave(ok ? "saved" : "failed");
+    });
   }, []);
 
   const go = useCallback(
     (to: StepId, markDone?: StepId) => {
       setStep(to);
       if (markDone) setDone((d) => (d.includes(markDone) ? d : [...d, markDone]));
-      void persist(to, markDone);
+      persist(to, markDone);
     },
     [persist]
   );
@@ -86,8 +98,8 @@ export function OnboardingApp({ data }: { data: SetupData }) {
           <span className="w-9 text-[12px] font-black tabular-nums text-ink-2">{pct}%</span>
         </div>
         <span className="flex items-center gap-1.5 text-[12px] font-bold text-ink-3" role="status" aria-live="polite">
-          {save === "saving" ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <CheckCircle2 className="size-4 text-ok" aria-hidden="true" />}
-          <span className="hidden sm:inline">{save === "saving" ? "جارٍ الحفظ…" : "حفظ تلقائي"}</span>
+          {save === "saving" ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : save === "failed" ? <AlertCircle className="size-4 text-warn" aria-hidden="true" /> : <CheckCircle2 className="size-4 text-ok" aria-hidden="true" />}
+          <span className={cn(save === "failed" ? "text-warn" : "hidden sm:inline")}>{save === "saving" ? "جارٍ الحفظ…" : save === "failed" ? "تعذر حفظ التقدم" : "حفظ تلقائي"}</span>
         </span>
       </header>
 

@@ -75,15 +75,15 @@ export type Errors = Partial<Record<"name" | "price" | "compareAt" | "cost" | "s
 
 export function validateProduct(f: EditorProduct): Errors {
   const e: Errors = {};
-  if (!f.name.trim()) e.name = "اكتب اسم المنتج";
+  if (!f.name.trim()) e.name = "اكتبوا اسم المنتج";
   else if (f.name.trim().length > LIMITS.name) e.name = `الاسم أطول من ${LIMITS.name} حرفاً`;
   const price = toNumber(f.price);
-  if (price === null || Number.isNaN(price) || price <= 0) e.price = "اكتب سعر البيع بالجنيه";
+  if (price === null || Number.isNaN(price) || price <= 0) e.price = "اكتبوا سعر البيع بالجنيه";
   const compareAt = toNumber(f.compareAt);
-  if (compareAt !== null && (Number.isNaN(compareAt) || compareAt < 0)) e.compareAt = "اكتب رقماً صحيحاً أو اتركه فارغاً";
+  if (compareAt !== null && (Number.isNaN(compareAt) || compareAt < 0)) e.compareAt = "اكتبوا رقماً صحيحاً أو اتركوه فارغاً";
   else if (compareAt !== null && price && compareAt <= price) e.compareAt = "يجب أن يكون أعلى من سعر البيع ليظهر كخصم، أو اتركه فارغاً";
   const cost = toNumber(f.cost);
-  if (cost !== null && (Number.isNaN(cost) || cost < 0)) e.cost = "اكتب رقماً صحيحاً أو اتركه فارغاً";
+  if (cost !== null && (Number.isNaN(cost) || cost < 0)) e.cost = "اكتبوا رقماً صحيحاً أو اتركوه فارغاً";
   if (f.trackStock && !f.variants.length) {
     const stock = toNumber(f.stock);
     if (stock === null) e.stock = "اكتب الكمية المتاحة، أو أوقف «تتبع المخزون»";

@@ -112,20 +112,6 @@ export async function applyDesignEdit(storeId: string, ops: DesignOp[], text: st
   return { ok: true, summary: r.changes.join("، ") + ".", changes: r.changes, undoVersion: v > 1 ? v - 1 : null };
 }
 
-export type TweakOutcome =
-  | { ok: true; applied: boolean; summary: string; undoVersion: number | null; changes: string[] }
-  | { ok: false; error: string };
-
-/** اقتراح ثم تطبيق مباشر (للمسارات القديمة التي تطبّق دون معاينة). */
-export async function tweakDesign(storeId: string, text: string): Promise<TweakOutcome> {
-  const p = await proposeDesignEdit(storeId, text);
-  if (!p.ok) return p;
-  if (!p.ops.length) return { ok: true, applied: false, summary: p.summary, undoVersion: null, changes: [] };
-  const a = await applyDesignEdit(storeId, p.ops, text);
-  if (!a.ok) return a;
-  return { ok: true, applied: true, summary: p.summary, undoVersion: a.undoVersion, changes: a.changes };
-}
-
 /** يعيد المتجر إلى النسخة المحفوظة قبل تعديل (حسب رقمها)، والحالة الحالية تُحفظ أيضاً فيمكن «التراجع عن التراجع». */
 export async function undoToVersion(storeId: string, version: number): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!Number.isInteger(version) || version < 1) return { ok: false, error: "نسخة غير صالحة" };

@@ -185,6 +185,78 @@ export function NicheAttributeField({ attr, value, onChange, idPrefix }: { attr:
   );
 }
 
+/** سمات حرة بالاسم والقيمة (الخامة، بلد الصنع…): لأي نشاط، وهي الوحيدة لمن لا سمات جاهزة لنشاطه. تظهر في صفحة المنتج جدولاً. */
+function FreeAttributes({ idPrefix, known, attributes, onChange, title }: { idPrefix: string; known: string[]; attributes: Candidate["attributes"]; onChange: (a: Candidate["attributes"]) => void; title: string }) {
+  const [open, setOpen] = useState(false);
+  const free = attributes.filter((a) => !known.includes(a.label));
+  const [label, setLabel] = useState("");
+  const [value, setValue] = useState("");
+  const add = () => {
+    const l = label.trim().slice(0, 40);
+    const v = value.trim().slice(0, 120);
+    if (!l || !v || known.includes(l)) return;
+    onChange(setAttr(attributes, l, v));
+    setLabel("");
+    setValue("");
+  };
+  if (!open && !free.length)
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-dashed border-edge/25 px-3.5 text-[13px] font-bold text-ink-2 hover:border-nova/60 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
+        <Plus className="size-4" aria-hidden="true" />
+        إضافة مواصفة (مثل الخامة أو بلد الصنع)
+      </button>
+    );
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-edge/10 bg-edge/[0.02] p-3.5">
+      <legend className="px-1 text-[13px] font-black text-ink">
+        {title} <span className="text-[12px] font-normal text-ink-3">(اختياري)</span>
+      </legend>
+      {free.map((a) => (
+        <div key={a.label} className="flex items-center gap-2">
+          <span className="min-w-0 basis-1/3 truncate text-[13px] font-bold text-ink-2">{a.label}</span>
+          <input
+            aria-label={`قيمة ${a.label}`}
+            value={a.value}
+            maxLength={120}
+            onChange={(e) => onChange(attributes.map((x) => (x.label === a.label ? { ...x, value: e.target.value } : x)))}
+            onBlur={(e) => !e.target.value.trim() && onChange(setAttr(attributes, a.label, ""))}
+            className={cn(bigInput, "flex-1")}
+          />
+          <button type="button" aria-label={`حذف ${a.label}`} onClick={() => onChange(setAttr(attributes, a.label, ""))} className="grid size-11 shrink-0 place-items-center rounded-xl text-ink-3 hover:bg-bad/10 hover:text-bad focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      ))}
+      <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto]">
+        <div>
+          <Label htmlFor={`${idPrefix}-fl`}>اسم المواصفة</Label>
+          <input id={`${idPrefix}-fl`} value={label} maxLength={40} onChange={(e) => setLabel(e.target.value)} placeholder="مثال: الخامة" className={bigInput} />
+        </div>
+        <div>
+          <Label htmlFor={`${idPrefix}-fv`}>القيمة</Label>
+          <input
+            id={`${idPrefix}-fv`}
+            value={value}
+            maxLength={120}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                add();
+              }
+            }}
+            placeholder="مثال: قطن 100%"
+            className={bigInput}
+          />
+        </div>
+        <button type="button" onClick={add} disabled={!label.trim() || !value.trim()} className="mt-auto min-h-12 rounded-xl bg-edge/10 px-4 text-[13px] font-black text-ink transition hover:bg-edge/15 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
+          إضافة
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
 function ProductCard({
   c,
   index,
@@ -349,6 +421,14 @@ function ProductCard({
           ))}
         </fieldset>
       ) : null}
+
+      <FreeAttributes
+        idPrefix={uid}
+        known={attrs.map((a) => a.label)}
+        attributes={c.attributes}
+        onChange={(attributes) => onChange({ attributes })}
+        title={attrs.length ? "مواصفات أخرى" : "تفاصيل المنتج"}
+      />
 
       {sizes ? (
         <details className="group rounded-xl border border-edge/10 bg-edge/[0.02] open:bg-edge/[0.035]" open={c.sizes.length > 0 || c.colors.length > 0}>

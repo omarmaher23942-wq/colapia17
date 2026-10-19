@@ -36,13 +36,13 @@ export type ImportResult =
 
 export async function importProductsAction(raw: unknown): Promise<ImportResult> {
   const s = await storeFor("products");
-  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
+  if (!s) return { ok: false, error: "انتهت جلستكم، سجّلوا الدخول من جديد" };
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "الملف فارغ أو أكبر من المسموح" };
 
   const plan = planImport(parseCsv(parsed.data.csv));
   if (plan.missingColumns.length) return { ok: false, error: "الملف ينقصه عمود الاسم أو السعر" };
-  if (plan.tooMany) return { ok: false, error: `الحد ${IMPORT_MAX_ROWS} منتج في الملف الواحد؛ قسّمه إلى ملفات أصغر` };
+  if (plan.tooMany) return { ok: false, error: `الحد ${IMPORT_MAX_ROWS} منتج في الملف الواحد؛ قسّموه إلى ملفات أصغر` };
   const good = plan.rows.filter((r) => r.errors.length === 0);
   if (!good.length) return { ok: false, error: "لا يوجد صف صالح للاستيراد" };
   // حد المنتجات في باقة المتجر (V3).
@@ -106,7 +106,7 @@ export async function importProductsAction(raw: unknown): Promise<ImportResult> 
     await db.batch([...(catRows.length ? [db.insert(categories).values(catRows)] : []), ...chunks.map((c) => db.insert(products).values(c))] as never);
   } catch (e) {
     console.error("[importProductsAction]", e);
-    return { ok: false, error: "تعذر حفظ المنتجات. لم يُستورد شيء؛ حاول مرة أخرى" };
+    return { ok: false, error: "تعذر حفظ المنتجات. لم يُستورد شيء؛ حاولوا مرة أخرى" };
   }
 
   await invalidateStoreCache(s.store);
@@ -134,7 +134,7 @@ const FINAL_ERRORS = new Set(["invalid_url", "blocked_host", "not_found", "too_l
  */
 export async function rehostProductImagesAction(raw: unknown): Promise<RehostResult> {
   const s = await storeFor("products");
-  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
+  if (!s) return { ok: false, error: "انتهت جلستكم، سجّلوا الدخول من جديد" };
   const parsed = z.object({ id: z.string().uuid() }).safeParse(raw);
   if (!parsed.success) return { ok: false, error: "منتج غير صالح" };
   const db = await getTenantDb(s.storeId);
@@ -146,7 +146,7 @@ export async function rehostProductImagesAction(raw: unknown): Promise<RehostRes
   if (!external.length) return none;
 
   const api = await mediaApi();
-  if (!api) return { ok: false, code: "no_media", error: "أضف مفتاح UploadThing من «الربط والمفاتيح» لنقل الصور إلى متجرك" };
+  if (!api) return { ok: false, code: "no_media", error: "أضيفوا مفتاح مساحة الصور من «الربط والمفاتيح» لنقل الصور إلى متجركم" };
 
   const moved = new Map<string, { url: string; key: string }>();
   const removed: { url: string; reason: string }[] = [];
@@ -179,7 +179,7 @@ export async function rehostProductImagesAction(raw: unknown): Promise<RehostRes
   }
   // كل رفع فشل: المشكلة في مساحة الرفع لا في الصور، فيتوقف النقل كله والصور باقية بروابطها.
   if (uploadFailures > 0 && moved.size === 0) {
-    return { ok: false, code: "upload_down", error: "تعذر الرفع إلى مساحة الصور الآن، والصور باقية بروابطها. أعد المحاولة بعد قليل" };
+    return { ok: false, code: "upload_down", error: "تعذر الرفع إلى مساحة الصور الآن، والصور باقية بروابطها. أعيدوا المحاولة بعد قليل" };
   }
 
   if (moved.size || removed.length) {

@@ -162,7 +162,7 @@ export async function duplicateProductAction(id: string): Promise<{ ok: true; id
     return { ok: true, id: newId };
   } catch (e) {
     console.error("[duplicateProductAction] Error:", e);
-    return { ok: false, error: "تعذر نسخ المنتج، حاول مرة أخرى" };
+    return { ok: false, error: "تعذر نسخ المنتج، حاولوا مرة أخرى" };
   }
 }
 
@@ -172,7 +172,7 @@ const cleanList = (xs: string[], max: number, len: number) => [...new Set(xs.map
 
 export async function saveProductAction(raw: unknown): Promise<SaveProductResult> {
   const s = await storeFor("products");
-  if (!s) return { ok: false, error: "انتهت جلستك، سجّل الدخول من جديد" };
+  if (!s) return { ok: false, error: "انتهت جلستكم، سجّلوا الدخول من جديد" };
   const db = await getTenantDb(s.storeId);
 
   const parsed = productInput.safeParse(raw);
@@ -182,9 +182,9 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
   }
 
   const d = parsed.data;
-  if (d.price <= 0) return { ok: false, error: "اكتب سعر البيع", field: "price" };
+  if (d.price <= 0) return { ok: false, error: "اكتبوا سعر البيع", field: "price" };
   if (d.compareAt && d.compareAt <= d.price) {
-    return { ok: false, error: "السعر قبل الخصم يجب أن يكون أعلى من سعر البيع، أو اتركه فارغاً", field: "compareAt" };
+    return { ok: false, error: "السعر قبل الخصم يجب أن يكون أعلى من سعر البيع، أو اتركوه فارغاً", field: "compareAt" };
   }
   if (d.categoryId && !(await categoryBelongsToStore(s.storeId, d.categoryId))) {
     return { ok: false, error: "القسم غير موجود", field: "categoryId" };
@@ -197,7 +197,7 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
 
   const hasVariants = d.variants.length > 0;
   if (d.trackStock && !hasVariants && (d.stock === null || d.stock === undefined)) {
-    return { ok: false, error: "اكتب الكمية المتاحة، أو أوقف «تتبع المخزون» إن كان المنتج متاحاً دائماً", field: "stock" };
+    return { ok: false, error: "اكتبوا الكمية المتاحة، أو أوقفوا «تتبع المخزون» إن كان المنتج متاحاً دائماً", field: "stock" };
   }
   const totalStock = hasVariants ? d.variants.reduce((sum, v) => sum + (v.isAvailable ? (v.stock ?? 0) : 0), 0) : (d.stock ?? 0);
 
@@ -290,7 +290,7 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
     ] as never);
   } catch (e) {
     console.error("[saveProductAction]", e);
-    return { ok: false, error: "تعذر حفظ المنتج، لم يتغير شيء. حاول مرة أخرى" };
+    return { ok: false, error: "تعذر حفظ المنتج، لم يتغير شيء. حاولوا مرة أخرى" };
   }
 
   await invalidateStoreCache(s.store);
@@ -313,7 +313,7 @@ export async function deleteProductAction(id: string): Promise<{ ok: boolean; er
     return { ok: true };
   } catch (e) {
     console.error("[deleteProductAction]", e);
-    return { ok: false, error: "تعذر حذف المنتج، حاول مرة أخرى" };
+    return { ok: false, error: "تعذر حذف المنتج، حاولوا مرة أخرى" };
   }
 }
 
@@ -384,6 +384,6 @@ export async function bulkUpdateProductsAction(
     return { ok: true };
   } catch (e) {
     console.error("[bulkUpdateProductsAction]", e);
-    return { ok: false, error: "تعذر تنفيذ العملية على المنتجات المحددة، حاول مرة أخرى" };
+    return { ok: false, error: "تعذر تنفيذ العملية على المنتجات المحددة، حاولوا مرة أخرى" };
   }
 }

@@ -60,7 +60,7 @@ function Choice({ tracking: saved, onDone }: { tracking: boolean; onDone?: () =>
   async function pick(next: boolean) {
     if (next === tracking || busy !== null) return;
     setBusy(next);
-    const r = await setInventoryTrackingAction(next).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاول مرة أخرى" }));
+    const r = await setInventoryTrackingAction(next).catch(() => ({ ok: false as const, error: "انقطع الاتصال، حاولواوا مرة أخرى" }));
     setBusy(null);
     if (!r.ok) return void toast.error(r.error);
     setTracking(r.tracking);

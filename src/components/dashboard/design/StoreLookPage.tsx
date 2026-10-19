@@ -3,11 +3,12 @@
 // StoreLookPage — صفحة «شكل المتجر» الواحدة: الهوية، واجهة المتجر والتعديل بالكلام، شريط الإعلان، أقسام الرئيسية،
 // الحركة، وسجل النسخ للاستعادة. معاينة حية للمتجر بجانبها (ورقة على الجوال). كل قسم يحفظ فوراً ويحدّث المعاينة.
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff, History, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { saveAnnouncementAction, saveSectionsAction } from "@/server/actions/design";
 import { saveMotionAction } from "@/server/actions/motion";
-import { undoDesignAction } from "@/server/actions/setup";
+import { undoDesignEditAction } from "@/server/actions/design-edit";
 import type { DesignHistoryItem } from "@/server/design-tweak";
 import { IdentityForm, type IdentityValue } from "@/components/onboarding/IdentityForm";
 import { LookPanel } from "@/components/onboarding/LookPanel";
@@ -28,6 +29,7 @@ export function StoreLookPage({
   canEdit,
   identity,
   heroKind,
+  heroVideoUrl,
   announcement,
   sections,
   motion,
@@ -39,13 +41,22 @@ export function StoreLookPage({
   canEdit: boolean;
   identity: IdentityValue;
   heroKind: "video" | "image" | "auto";
+  heroVideoUrl: string | null;
   announcement: { text: string; enabled: boolean };
   sections: Sec[];
   motion: Motion;
   history: DesignHistoryItem[];
 }) {
+  const router = useRouter();
   const [version, setVersion] = useState(1);
-  const bump = () => setVersion((v) => v + 1);
+  // بعد كل حفظ: تحديث المعاينة وإعادة قراءة بيانات الصفحة من الخادم، وإلا بقيت النماذج على قيم فتح الصفحة
+  // (تعديل بالوصف يغيّر الألوان أو الخطوط فيعيدها حفظ الهوية أو الاستوديو لاحقاً إلى ما كانت عليه).
+  const bump = () => {
+    setVersion((v) => v + 1);
+    router.refresh();
+  };
+  const identityKey = JSON.stringify(identity);
+  const lookKey = JSON.stringify(look);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -57,10 +68,11 @@ export function StoreLookPage({
         {!canEdit ? <Notice tone="warn">لديكم صلاحية العرض فقط في هذه الصفحة.</Notice> : null}
 
         <fieldset disabled={!canEdit} className="space-y-5 border-0 p-0">
-          <ThemeStudio initial={look} canEdit={canEdit} onSaved={bump} />
+          <ThemeStudio key={lookKey} initial={look} canEdit={canEdit} onSaved={bump} />
 
           <Section title="هوية المتجر" hint="الاسم والشعار ولون العلامة. تغيير لون العلامة يغيّر اللون الأساسي ويحفظ خلفية التصميم وأسطحه.">
             <IdentityForm
+              key={identityKey}
               initial={identity}
               submitLabel="حفظ الهوية"
               onSaved={() => {
@@ -75,12 +87,12 @@ export function StoreLookPage({
           </Section>
 
           <Section title="واجهة المتجر" hint="فيديو أو صورة لواجهة المتجر، أو تلقائياً من صور منتجاتكم.">
-            <LookPanel initialHero={heroKind} onChanged={bump} showTweak={false} />
+            <LookPanel key={`${heroKind}|${heroVideoUrl ?? ""}`} initialHero={heroKind} heroVideoUrl={heroVideoUrl} onChanged={bump} showTweak={false} />
           </Section>
 
-          <AnnouncementSection initial={announcement} onSaved={bump} />
-          <SectionsSection initial={sections} onSaved={bump} />
-          <MotionSection initial={motion} onSaved={bump} />
+          <AnnouncementSection key={JSON.stringify(announcement)} initial={announcement} onSaved={bump} />
+          <SectionsSection key={JSON.stringify(sections)} initial={sections} onSaved={bump} />
+          <MotionSection key={JSON.stringify(motion)} initial={motion} onSaved={bump} />
         </fieldset>
 
         <HistorySection items={history} onRestored={bump} canEdit={canEdit} />
@@ -216,13 +228,11 @@ function HistorySection({ items, onRestored, canEdit }: { items: DesignHistoryIt
   const [busy, setBusy] = useState<number | null>(null);
   async function restore(version: number) {
     setBusy(version);
-    const r = await undoDesignAction({ version });
+    const r = await undoDesignEditAction({ version });
     setBusy(null);
     if (!r.ok) return void toast.error(r.error);
     toast.success("استعدنا النسخة المحددة");
     onRestored();
-    // السجل يتحدث بإعادة تحميل الصفحة ليعكس النسخة الجديدة.
-    setTimeout(() => window.location.reload(), 700);
   }
   return (
     <Section title="سجل النسخ" hint="تُحفظ نسخة قبل كل تعديل. استعادة نسخة لا تحذف شيئاً، وتُحفظ الحالة الحالية أيضاً.">

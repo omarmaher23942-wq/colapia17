@@ -21,6 +21,8 @@ export type MessageOrder = {
   reviewUrl?: string | null;
   /** رابط «أكّد طلبك» الموقّع (للطلب الجديد فقط). */
   confirmUrl?: string | null;
+  /** المتجر يسمح بالمعاينة وفتح الشحنة قبل الدفع (يُذكر في رسالة الطلب بالدفع عند الاستلام). */
+  inspectionAllowed?: boolean;
 };
 
 const first = (name: string) => name.trim().split(/\s+/)[0] ?? name;
@@ -75,18 +77,19 @@ export function orderMessage(kind: MessageKind, o: MessageOrder, storeName: stri
   const hi = `أهلاً ${first(o.customerName)}، معك ${storeName}.`;
   const where = [o.address, o.city, governorateName(o.governorate)].filter(Boolean).join("، ");
   const collect = amountToCollect(o);
+  const inspect = o.inspectionAllowed && collect > 0 ? " ويمكنك فتح الشحنة ومعاينتها مع المندوب قبل الدفع." : "";
   switch (kind) {
     case "confirm":
       return o.confirmUrl
-        ? `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)} على العنوان: ${where}. أكّد طلبك بضغطة من هنا لنبدأ التجهيز فوراً: ${o.confirmUrl} ولو في أي تعديل رد علينا هنا.`
-        : `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. نرجو تأكيد العنوان: ${where}. هل البيانات صحيحة لنبدأ التجهيز؟`;
+        ? `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)} على العنوان: ${where}. أكّد طلبك بضغطة من هنا لنبدأ التجهيز فوراً: ${o.confirmUrl} ولو في أي تعديل رد علينا هنا.${inspect}`
+        : `${hi} استلمنا طلبك ${o.code} بقيمة ${formatEgp(o.totalPiasters)}. نرجو تأكيد العنوان: ${where}. هل البيانات صحيحة لنبدأ التجهيز؟${inspect}`;
     case "preparing":
       return `${hi} تأكد طلبك ${o.code} ونجهّزه الآن، وسنبلغك فور خروجه للشحن.`;
     case "shipped": {
       const via = o.courierName ? ` مع ${o.courierName}` : "";
       const track = o.trackingNumber ? ` رقم الشحنة: ${o.trackingNumber}.` : "";
       const pay = collect > 0 ? ` المبلغ المطلوب عند الاستلام: ${formatEgp(collect)}.` : " الطلب مدفوع، لا شيء مطلوب عند الاستلام.";
-      return `${hi} طلبك ${o.code} خرج للشحن${via}.${track}${pay}`;
+      return `${hi} طلبك ${o.code} خرج للشحن${via}.${track}${pay}${inspect}`;
     }
     case "delivered":
       return o.reviewUrl

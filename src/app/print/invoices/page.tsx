@@ -75,6 +75,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         name: bp.brand.name,
         logo: bp.brand.logo?.url ?? null,
         primary: bp.theme.palette.primary,
+        inspection: bp.shipping.inspectionAllowed,
         contact: [bp.channels.phone, bp.channels.whatsappNumber !== bp.channels.phone ? bp.channels.whatsappNumber : null, storeUrl(store.subdomain).replace(/^https?:\/\//, "")]
           .filter(Boolean)
           .join(" · "),

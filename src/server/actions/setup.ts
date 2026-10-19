@@ -19,6 +19,7 @@ import { draftFrom } from "@/lib/store-settings";
 import {
   etaText,
   FONT_PAIRS,
+  fontsAfterIdentity,
   mergeProgress,
   normalizeHex,
   returnsFromTemplate,
@@ -36,7 +37,6 @@ import { startTrial } from "@/ai/lifecycle/deliver";
 import { saveBlueprintAction } from "./blueprint";
 import { saveShippingSettingsAction } from "./shipping";
 import { saveStoreSettingsAction } from "./store-settings";
-import { tweakDesign, undoToVersion, type TweakOutcome } from "@/server/design-tweak";
 import { loadBlueprint, readinessFor } from "@/server/setup-data";
 
 type Fail = { ok: false; error: string; field?: string };
@@ -50,6 +50,14 @@ const loadBp = loadBlueprint;
 async function freshOnboarding(storeId: string): Promise<Record<string, unknown>> {
   const [row] = await db.select({ o: stores.onboarding }).from(stores).where(eq(stores.id, storeId)).limit(1);
   return row?.o ?? {};
+}
+
+/** يدمج مفاتيح في stores.onboarding ذرياً داخل القاعدة (قراءة ثم كتابة من الخادم كانت تمحو ما يكتبه الوكيل أو حفظ آخر بالتوازي). */
+async function patchOnboarding(storeId: string, patch: Record<string, unknown>): Promise<void> {
+  await db
+    .update(stores)
+    .set({ onboarding: sql`coalesce(${stores.onboarding}, '{}'::jsonb) || ${JSON.stringify(patch)}::jsonb`, updatedAt: new Date() })
+    .where(eq(stores.id, storeId));
 }
 
 // ─── التقدم ──────────────────────────────────────────────────────────────────
@@ -89,7 +97,6 @@ export async function saveIdentityAction(raw: unknown): Promise<Ok | Fail> {
   if (!color) return { ok: false, error: "اللون غير صالح", field: "primary" };
   const bp = await loadBp(s.storeId);
   if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
-  const pair = FONT_PAIRS.find((f) => f.id === p.data.fontPair)!;
   const next: StoreBlueprint = {
     ...bp,
     brand: { ...withLogo(bp.brand, p.data.logoUrl, p.data.name), name: p.data.name },
@@ -97,7 +104,7 @@ export async function saveIdentityAction(raw: unknown): Promise<Ok | Fail> {
     theme: {
       ...bp.theme,
       palette: color.toLowerCase() === bp.theme.palette.primary.toLowerCase() ? bp.theme.palette : buildPalette({ ...tokensOf(bp.theme.palette), primary: color }),
-      fonts: { ...bp.theme.fonts, heading: pair.heading, body: pair.body },
+      fonts: { ...bp.theme.fonts, ...fontsAfterIdentity(bp.theme.fonts, p.data.fontPair) },
     },
   };
   const r = await saveBlueprintAction(next, "هوية المتجر");
@@ -136,7 +143,7 @@ export async function saveThemeAction(raw: unknown): Promise<Ok | Fail> {
   if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
   const r = await saveBlueprintAction(applyTheme(bp, theme), "تصميم المتجر");
   if (!r.ok) return { ok: false, error: r.error };
-  await db.update(stores).set({ onboarding: { ...(await freshOnboarding(s.storeId)), themeId: theme }, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
+  await patchOnboarding(s.storeId, { themeId: theme });
   revalidatePath("/dashboard/design");
   return { ok: true };
 }
@@ -147,7 +154,7 @@ export async function saveNicheAction(raw: unknown): Promise<Ok | Fail> {
   if (!s) return { ok: false, error: SESSION_ERR };
   const niche = (raw as { niche?: unknown } | null)?.niche;
   if (!isNiche(niche)) return { ok: false, error: "نوع نشاط غير صالح" };
-  await db.update(stores).set({ onboarding: { ...(await freshOnboarding(s.storeId)), nicheKind: niche }, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
+  await patchOnboarding(s.storeId, { nicheKind: niche });
   return { ok: true };
 }
 
@@ -194,7 +201,7 @@ export async function savePaymentStepAction(raw: unknown): Promise<Ok | (Fail & 
   const fee = d.cod ? Math.round(d.codFee * 100) : 0;
   const tdb = await getTenantDb(s.storeId);
   await tdb.update(shippingZones).set({ codExtraPiasters: fee }).where(eq(shippingZones.storeId, s.storeId));
-  await db.update(stores).set({ onboarding: { ...(await freshOnboarding(s.storeId)), codFee: fee }, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
+  await patchOnboarding(s.storeId, { codFee: fee });
   await invalidateStoreCache(s.store);
   return { ok: true };
 }
@@ -306,26 +313,6 @@ export async function saveHeroMediaAction(raw: unknown): Promise<Ok<{ summary: s
   if ("error" in applied) return { ok: false, error: applied.error };
   const r = await saveBlueprintAction(applied.blueprint, "واجهة المتجر");
   return r.ok ? { ok: true, summary: applied.summary } : { ok: false, error: r.error };
-}
-
-export async function tweakDesignAction(raw: unknown): Promise<TweakOutcome> {
-  const s = await storeFor("content");
-  if (!s) return { ok: false, error: SESSION_ERR };
-  const p = z.object({ text: z.string().max(400) }).safeParse(raw);
-  if (!p.success) return { ok: false, error: "النص طويل" };
-  const r = await tweakDesign(s.storeId, p.data.text);
-  if (r.ok && r.applied) revalidatePath("/dashboard/design");
-  return r;
-}
-
-export async function undoDesignAction(raw: unknown): Promise<Ok | Fail> {
-  const s = await storeFor("content");
-  if (!s) return { ok: false, error: SESSION_ERR };
-  const p = z.object({ version: z.number().int().min(1) }).safeParse(raw);
-  if (!p.success) return { ok: false, error: "نسخة غير صالحة" };
-  const r = await undoToVersion(s.storeId, p.data.version);
-  if (r.ok) revalidatePath("/dashboard/design");
-  return r;
 }
 
 // ─── 9) الجاهزية والتفعيل ────────────────────────────────────────────────────

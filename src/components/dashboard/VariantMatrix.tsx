@@ -59,6 +59,7 @@ export function VariantMatrix({
   variants,
   basePrice,
   trackStock = true,
+  optionSuggestions,
   onChange,
 }: {
   optionNames: string[];
@@ -67,6 +68,8 @@ export function VariantMatrix({
   basePrice: number;
   /** بلا تتبع مخزون تختفي خانات الكمية (كل تركيبة متاحة ما لم يُخفها التاجر). */
   trackStock?: boolean;
+  /** أسماء خيارات مقترحة تناسب نشاط المتجر (للعطور «الحجم»، وللإلكترونيات «السعة»…). بلا قيمة: مقاس ولون وخامة وموديل. */
+  optionSuggestions?: string[];
   onChange: (optionNames: string[], variants: Variant[]) => void;
 }) {
   const [options, setOptions] = useState<Option[]>(() => optionsFrom(optionNames, variants));
@@ -203,7 +206,7 @@ export function VariantMatrix({
 
         {options.length < 3 ? (
           <div className="flex flex-wrap items-center gap-1.5">
-            {NAME_PRESETS.filter((p) => !options.some((o) => o.name.trim() === p.name)).map(({ name, icon: Icon }) => (
+            {(optionSuggestions ? optionSuggestions.map((name) => ({ name, icon: NAME_PRESETS.find((p) => p.name === name)?.icon ?? Layers })) : NAME_PRESETS).filter((p) => !options.some((o) => o.name.trim() === p.name)).map(({ name, icon: Icon }) => (
               <button
                 key={name}
                 type="button"
@@ -223,7 +226,7 @@ export function VariantMatrix({
           </div>
         ) : null}
         <datalist id="variant-option-names">
-          {["المقاس", "اللون", "الخامة", "الموديل", "السعة", "الوزن", "الطول"].map((n) => (
+          {(optionSuggestions ?? ["المقاس", "اللون", "الخامة", "الموديل", "السعة", "الوزن", "الطول"]).map((n) => (
             <option key={n} value={n} />
           ))}
         </datalist>
@@ -344,9 +347,9 @@ export function VariantMatrix({
           ) : null}
         </>
       ) : options.length ? (
-        <p className="text-[11.5px] text-ink-3">أضف قيم الخيارات لتتولد التركيبات تلقائياً.</p>
+        <p className="text-[11.5px] text-ink-3">أضيفوا قيم الخيارات لتتولد التركيبات تلقائياً.</p>
       ) : (
-        <p className="text-[11.5px] text-ink-3">منتج بسيط بدون مقاسات أو ألوان. أضف خياراً إن كان له مقاسات أو ألوان.</p>
+        <p className="text-[11.5px] text-ink-3">منتج بسيط بلا خيارات. أضيفوا خياراً إن كان للمنتج خيارات تختلف في السعر أو المخزون.</p>
       )}
     </div>
   );

@@ -47,7 +47,7 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
   // إيصال تحويل التاجر للمنصة: لصاحب المتجر وحده، ويعمل والمتجر مجمّد.
   async platformReceipt() {
     const s = await ownerStore();
-    if (!s?.store) throw new UploadPolicyError("الدفع لصاحب المتجر فقط. ادخل بحسابه.");
+    if (!s?.store) throw new UploadPolicyError("الدفع لصاحب المتجر فقط. ادخلوا بحسابه.");
     if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) throw new UploadPolicyError("محاولات كثيرة، حاول بعد دقائق");
     return { prefix: `stores/${s.store.id}/receipts`, meta: { storeId: s.store.id } };
   },
@@ -75,7 +75,7 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
   },
   // بحث العميل بالصورة: متجر ظاهر، بحد معدل، والملف مؤقت في مساحة tmp (تحذفه قاعدة انتهاء في الـ bucket).
   async visualSearch({ headers, input }) {
-    if (!(await hit(`vs:ip:${ipBucket(clientIp(headers))}`, 30, 3600))) throw new UploadPolicyError("بحث كتير في وقت قصير، انتظر قليلاً.");
+    if (!(await hit(`vs:ip:${ipBucket(clientIp(headers))}`, 30, 3600))) throw new UploadPolicyError("عمليات بحث كثيرة في وقت قصير. انتظروا قليلاً ثم أعيدوا المحاولة.");
     const store = await publicStore(input);
     return { prefix: `tmp/vs/${store.id}`, meta: { storeId: store.id } };
   },
