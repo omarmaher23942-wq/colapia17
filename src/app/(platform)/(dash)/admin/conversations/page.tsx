@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
-import { Flame, MessagesSquare, Search, Bot, User } from "lucide-react";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { Flame, MessagesSquare, Search, Bot, User, PackageCheck } from "lucide-react";
 import { db } from "@/db/client";
-import { conversations, messages, stores } from "@/db/schema";
+import { conversations, merchants, messages, stores } from "@/db/schema";
+import { handoffColumns, handoffFromRow } from "@/agent/handoff-data";
+import { HANDOFF_KINDS, HANDOFF_TITLE, handoffMessage } from "@/agent/handoff-messages";
 import { pauseLabel, pauseState } from "@/agent/pause";
 import type { Lead } from "@/agent/lead";
 import { ConversationView } from "@/components/platform/ConversationView";
@@ -20,7 +22,7 @@ const STAGE_LABEL: Record<string, string> = {
   trial: "تجربة", payment: "دفع", activated: "مفعّل", frozen: "مجمّد", lost: "ضائع", human: "بشري",
 };
 
-const FILTERS = ["", "human", "persuasion", "products", "proof", "building", "trial", "lost"];
+const FILTERS = ["", "human", "handoff", "persuasion", "building", "link_sent", "trial", "lost"];
 
 const FIELD_ROWS: { key: keyof Lead; label: string }[] = [
   { key: "niche", label: "النشاط" },
@@ -60,17 +62,26 @@ export default async function ConversationsPage({ searchParams }: { searchParams
   const filtered = q ? list.filter((x) => (x.c.profileName ?? "").includes(q) || (x.storeName ?? "").includes(q)) : list;
   const active = id ? filtered.find((x) => x.c.id === id) ?? list.find((x) => x.c.id === id) : filtered[0];
 
-  const [msgs, storeRow, stats] = await Promise.all([
+  const [msgs, storeRow, stats, waiting] = await Promise.all([
     active ? db.select().from(messages).where(eq(messages.conversationId, active.c.id)).orderBy(messages.createdAt).limit(400) : Promise.resolve([]),
     active?.c.storeId
-      ? db.select({ id: stores.id, name: stores.name, status: stores.status, subdomain: stores.subdomain, onboarding: stores.onboarding }).from(stores).where(eq(stores.id, active.c.storeId)).limit(1).then((r) => r[0] ?? null)
+      ? db.select(handoffColumns).from(stores).leftJoin(merchants, eq(merchants.id, stores.merchantId)).where(eq(stores.id, active.c.storeId)).limit(1).then((r) => r[0] ?? null)
       : Promise.resolve(null),
     db.select({
       total: sql<number>`count(*)`.mapWith(Number),
       hot: sql<number>`count(*) filter (where lead_score >= 70)`.mapWith(Number),
       human: sql<number>`count(*) filter (where stage = 'human' and bot_paused)`.mapWith(Number),
-    }).from(conversations)
+    }).from(conversations),
+    // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد.
+    db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(stores)
+      .where(and(eq(stores.status, "setup"), isNotNull(stores.sourceConversationId), sql`${stores.onboarding}->>'linkSentAt' is null`))
+      .then((r) => r[0]?.n ?? 0)
+      .catch(() => 0),
   ]);
+  const handoff = storeRow ? handoffFromRow(storeRow) : null;
+  const activeMemory = (active?.c.memory ?? {}) as { closedBy?: unknown; speaker?: unknown };
 
   if (active?.c.unreadForAdmin) {
     await db.update(conversations).set({ unreadForAdmin: 0 }).where(eq(conversations.id, active.c.id));
@@ -93,7 +104,14 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             المحادثات الحية
           </h1>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <Link href="/admin/conversations/delivery" className="flex items-center gap-2 rounded-xl border border-[#8fa8ff]/30 bg-[#6f86ff]/10 px-4 py-2 text-center hover:bg-[#6f86ff]/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]/60">
+            <PackageCheck className="size-4 text-[#8fa8ff]" aria-hidden="true" />
+            <span>
+              <span className="block text-[10px] font-bold text-[#c3cdf0]">بانتظار التسليم</span>
+              <span className="block text-lg font-black text-white">{waiting}</span>
+            </span>
+          </Link>
           <div className="bg-[#0b0f2a] border border-white/10 rounded-xl px-4 py-2 text-center">
             <p className="text-[10px] text-slate-400 font-bold uppercase">إجمالي</p>
             <p className="text-lg font-black text-white">{stats[0]?.total}</p>
@@ -164,7 +182,20 @@ export default async function ConversationsPage({ searchParams }: { searchParams
               storeId: active.c.storeId, storeName: active.storeName, lastUserAt: active.c.lastUserMessageAt?.toISOString() ?? null,
               collected: collectedRows(active.c.memory, active.c.channel),
               attribution: attributionText(active.c.memory),
-              store: storeRow ? { id: storeRow.id, name: storeRow.name, status: storeRow.status, subdomain: storeRow.subdomain, linkSentAt: typeof (storeRow.onboarding as Record<string, unknown>)?.linkSentAt === "string" ? ((storeRow.onboarding as Record<string, unknown>).linkSentAt as string) : null } : null,
+              store: handoff && storeRow ? { id: storeRow.id, name: storeRow.name, status: storeRow.status, subdomain: storeRow.subdomain, linkSentAt: handoff.linkSentAt } : null,
+              handoff:
+                handoff && storeRow
+                  ? {
+                      storeId: storeRow.id,
+                      storeName: storeRow.name,
+                      storeStatus: storeRow.status,
+                      storeUrl: handoff.storeUrl,
+                      linkSentAt: handoff.linkSentAt,
+                      closedByAgent: activeMemory.closedBy === "agent_done",
+                      messages: HANDOFF_KINDS.map((k) => ({ kind: k, title: HANDOFF_TITLE[k], text: handoffMessage(k, handoff) })),
+                    }
+                  : null,
+              speaker: activeMemory.speaker === "owner" || activeMemory.speaker === "moderator" ? activeMemory.speaker : null,
             }}
             msgs={msgs.map((m) => ({
               id: m.id, role: m.role, text: m.text, atts: m.attachments, at: m.createdAt.toISOString(),

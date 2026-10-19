@@ -21,6 +21,8 @@ export type StateInput = {
   imagesReceived: number;
   summary: string;
   goldenAvailable: boolean;
+  /** تقدير سابق لمن يكتب (صاحب القرار أو مشرف الصفحة). */
+  speaker?: "owner" | "moderator" | "unknown";
 };
 
 const show = (f: LeadField, lead: Lead) => `${LABEL[f]}: ${lead[f]}`;
@@ -31,7 +33,7 @@ export function stateBlock(i: StateInput): string {
   lines.push(`- ردودك السابقة: ${i.replies}${i.replies === 0 ? " (هذا أول رد)" : " (لا ترحب ولا تعرّف بنفسك مجدداً)"}`);
 
   if (i.storeExists) {
-    lines.push("- المتجر أُنشئ بالفعل لهذا العميل وسيصله رابط الإعداد. لا تجمع بيانات ولا تنشئ شيئاً؛ أجب عن أسئلته فقط واطمئنه، وإن سأل عن الرابط فهو يصله قريباً هنا وعلى بريده.");
+    lines.push("- المتجر أُنشئ بالفعل لهذا العميل والفريق يجهّزه. لا تجمع بيانات ولا تنشئ شيئاً؛ أجب عن أسئلته فقط واطمئنه، وإن سأل عن رابط الإعداد فالفريق يرسله هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.");
   } else {
     lines.push(
       st.collected.length ? `- جُمع وتحقق منه الكود: ${st.collected.map((f) => show(f, i.lead)).join("، ")}` : "- لم يُجمع شيء بعد.",
@@ -39,6 +41,11 @@ export function stateBlock(i: StateInput): string {
       st.invalid.length ? `- قيم أرسلها ولم تُقبل (اطلب تصحيحها بلطف دون لوم): ${st.invalid.map((f) => `${LABEL[f]} («${i.invalid[f]}» غير صالح)`).join("، ")}` : "",
       i.lead.instagram ? `- حساب إنستجرام معروف: @${i.lead.instagram} (لا تسأل عنه)` : i.channel === "messenger" ? "- حساب إنستجرام غير معروف (اختياري: اسأل عنه فقط في نهاية جمع البيانات إن لم يذكره)." : "",
     );
+  }
+  if (i.speaker === "moderator") {
+    lines.push("- من يكتب يبدو مشرفاً على الصفحة لا صاحب القرار: أجب باحترام، واطلب بلطف أن ينضم صاحب القرار لهذه المحادثة. لا تطلب منه البريد ولا موافقة البدء.");
+  } else if (i.speaker === "owner") {
+    lines.push("- من يكتب صاحب القرار.");
   }
   lines.push(
     `- الرابط التجريبي (demo): ${i.mentions.demo ? "ذُكر سابقاً (لا تكرره إلا إن سأل)" : "لم يُذكر بعد: اذكره في الوقت المناسب"}`,

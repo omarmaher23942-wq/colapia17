@@ -55,7 +55,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         <div className={`${card} text-center`}>
           <h1 className="text-xl font-black">الرابط غير صالح أو انتهت صلاحيته</h1>
           <p className="mx-auto mt-3 max-w-sm text-[14px] leading-7 text-[#c3cdf0]/80">
-            إن كان لديكم متجر بالفعل فادخلوا من صفحة الدخول. وإن لم يصلكم رابط إعداد، اطلبوه من المساعد في المحادثة وسيعيد إرساله لكم هنا وعلى البريد.
+            إن كان لديكم متجر بالفعل فادخلوا من صفحة الدخول. وإن لم يصلكم رابط إعداد صالح، راسلونا في المحادثة نفسها وسيرسله الفريق لكم من جديد.
           </p>
           <Link href="/login" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-2xl border border-white/15 px-6 text-[14.5px] font-bold hover:bg-white/[0.05]">
             صفحة الدخول

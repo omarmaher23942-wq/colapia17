@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle, Link2, Store } from "lucide-react";
-import { pauseConversationAction, resumeConversationAction, sendSetupLinkNowAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
+import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle, Store } from "lucide-react";
+import { pauseConversationAction, resumeConversationAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
+import { HandoffPanel, type HandoffInfo } from "./HandoffPanel";
 import { PAUSE_CHOICES, PAUSE_LABEL, type PauseChoice } from "@/agent/pause";
 import { AIReasoningPanel } from "./AIReasoningPanel";
 import { SentimentBadge } from "./SentimentBadge";
@@ -52,14 +53,18 @@ type Conv = {
   collected: { label: string; value: string | null }[];
   attribution: string | null;
   store: StoreInfo | null;
+  /** رسائل التسليم الجاهزة (متى ارتبط بالمحادثة متجر). */
+  handoff: HandoffInfo | null;
+  /** تقدير الوكيل لمن يكتب. */
+  speaker: "owner" | "moderator" | "unknown" | null;
 };
 
 const CANNED = [
-  "أهلاً بك، معك فريق Colapia، في خدمتك في أي سؤال.",
-  "تمام، هراجع الموضوع وأرد عليك خلال دقائق.",
-  "متجرك تحت المراجعة النهائية وهيوصلك الرابط قريباً جداً.",
-  "لو عندك أي سؤال عن لوحة التحكم قولي وأنا أشرح لك خطوة بخطوة.",
-  "الباقة تشمل متجرك وسنة استضافة كاملة، وبعدها تجديد سنوي معلن، وبدون أي عمولة على مبيعاتك. السعر الحالي في صفحة الدفع.",
+  "أهلاً بكم، معكم فريق Colapia، ونسعد بالإجابة عن أي سؤال.",
+  "تمام، سنراجع الموضوع ونرد عليكم خلال دقائق.",
+  "الفريق يجهّز متجركم الآن، وسيصلكم رابط الإعداد هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.",
+  "إن كان لديكم أي سؤال عن لوحة التحكم فاكتبوه هنا، وسنشرح لكم خطوة بخطوة.",
+  "لا توجد أي عمولة على مبيعاتكم، والأسعار الحالية كاملة في صفحة الاشتراك داخل لوحة التحكم.",
 ];
 
 const STAGES = ["greeting", "discovery", "persuasion", "trial_offer", "brief", "products", "proof", "policies", "summary", "human", "lost"];
@@ -115,7 +120,9 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
     if (tab === "chat") end.current?.scrollIntoView({ block: "end" });
   }, [msgs.length, tab]);
 
-  const inWindow = conv.lastUserAt ? Date.now() - new Date(conv.lastUserAt).getTime() < 23.5 * 36e5 : false;
+  const age = conv.lastUserAt ? Date.now() - new Date(conv.lastUserAt).getTime() : Infinity;
+  const inWindow = age < 23.5 * 36e5;
+  const sendMode = age < 24 * 36e5 ? "normal" : age < 7 * 24 * 36e5 ? "human_agent" : "closed";
 
   const send = () => {
     if (!text.trim()) return;
@@ -146,6 +153,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             <b className="text-sm text-[#eaf0ff] block">{conv.name}</b>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[10px] text-slate-500 uppercase tracking-wider">{conv.channel}</span>
+              {conv.speaker === "moderator" ? <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">مشرف الصفحة</span> : conv.speaker === "owner" ? <span className="rounded-md bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200">صاحب القرار</span> : null}
               <SentimentBadge score={conv.lead} text={msgs[msgs.length - 1]?.text ?? ""} />
             </div>
           </div>
@@ -172,26 +180,25 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
             >
               <Play className="size-3.5" /> استئناف المساعد
             </button>
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              <label className="sr-only" htmlFor="pause-choice">مدة إيقاف المساعد</label>
-              <select
-                id="pause-choice"
-                value={choice}
-                onChange={(e) => setChoice(e.target.value as PauseChoice)}
-                className="min-h-9 rounded-lg border border-white/10 bg-[#07091a] px-2 text-xs font-bold text-[#c3cdf0] outline-none focus:border-[#8fa8ff]"
-              >
-                {PAUSE_CHOICES.map((c) => <option key={c} value={c}>{PAUSE_LABEL[c]}</option>)}
-              </select>
-              <button
-                disabled={p}
-                onClick={() => start(async () => { const r = await pauseConversationAction(conv.id, choice); if (r?.error) toast.error(r.error); else toast.success(`أُوقف المساعد (${PAUSE_LABEL[choice]})`); })}
-                className={AMBER}
-              >
-                <Pause className="size-3.5" /> إيقاف المساعد
-              </button>
-            </span>
-          )}
+          ) : null}
+          <span className="inline-flex items-center gap-1.5">
+            <label className="sr-only" htmlFor="pause-choice">مدة إيقاف المساعد</label>
+            <select
+              id="pause-choice"
+              value={choice}
+              onChange={(e) => setChoice(e.target.value as PauseChoice)}
+              className="min-h-9 rounded-lg border border-white/10 bg-[#07091a] px-2 text-xs font-bold text-[#c3cdf0] outline-none focus:border-[#8fa8ff]"
+            >
+              {PAUSE_CHOICES.map((c) => <option key={c} value={c}>{PAUSE_LABEL[c]}</option>)}
+            </select>
+            <button
+              disabled={p}
+              onClick={() => start(async () => { const r = await pauseConversationAction(conv.id, choice); if (r?.error) toast.error(r.error); else toast.success(`أُوقف المساعد (${PAUSE_LABEL[choice]})`); })}
+              className={AMBER}
+            >
+              <Pause className="size-3.5" /> {conv.paused ? "تغيير مدة الإيقاف" : "إيقاف المساعد"}
+            </button>
+          </span>
         </div>
       </header>
 
@@ -245,23 +252,6 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
                 ) : null}
               </dl>
             </GlassCard>
-            {conv.store ? (
-              <GlassCard icon={Link2} title="رابط الإعداد">
-                <p className="mb-2 text-[11.5px] leading-6 text-[#c3cdf0]">
-                  {conv.store.status !== "setup" ? "أكمل التاجر إعداد متجره." : conv.store.linkSentAt ? `أُرسل الرابط ${new Date(conv.store.linkSentAt).toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" })}.` : "لم يُرسل بعد؛ يُرسل تلقائياً بعد المهلة المضبوطة."}
-                </p>
-                {conv.store.status === "setup" ? (
-                  <button
-                    type="button"
-                    disabled={p}
-                    onClick={() => start(async () => { const r = await sendSetupLinkNowAction(conv.store!.id); if (r && "error" in r && r.error) toast.error(r.error); else toast.success("أُرسل رابط الإعداد"); })}
-                    className={VIOLET}
-                  >
-                    <Link2 className="size-3.5" aria-hidden="true" /> {conv.store.linkSentAt ? "إعادة إرسال رابط الإعداد" : "أرسل رابط الإعداد الآن"}
-                  </button>
-                ) : null}
-              </GlassCard>
-            ) : null}
             <GlassCard icon={Brain} title="ذاكرة الوكيل">
               <Rows data={conv.memory} />
             </GlassCard>
@@ -270,6 +260,7 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
 
         {tab === "chat" && (
           <div className="space-y-4">
+            {conv.handoff ? <HandoffPanel conversationId={conv.id} channel={conv.channel} mode={sendMode} info={conv.handoff} /> : null}
             <div className="flex justify-center mb-4">
               <button onClick={() => setShowThinking(!showThinking)} className="text-[10px] font-bold text-[#8d97c4] hover:text-white transition-colors flex items-center gap-1 bg-white/5 px-3 py-1 rounded-full">
                 <Brain className="size-3" /> {showThinking ? "إخفاء تفكير الـ AI" : "إظهار تفكير الـ AI"}

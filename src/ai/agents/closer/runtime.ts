@@ -1,7 +1,9 @@
 import "server-only";
-// runtime.ts — وكيل الرسائل V2 على إنستجرام وفيسبوك: يقنع ويجمع بيانات العميل بلطف، والكود وحده يتحقق منها ويقرر إنشاء
-// المتجر (agent/create-store). النموذج يقترح (lead, confirmCreate)، والكود يقرر. لا ردود جاهزة عند تعذر الذكاء الاصطناعي:
-// صمت + تنبيه للمالك. التحويل لموظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
+// runtime.ts — وكيل الرسائل V3 على إنستجرام وفيسبوك: مستشار مبيعات يقنع ويجمع بيانات العميل بلطف، والكود وحده يتحقق منها
+// ويقرر إنشاء المتجر (agent/create-store). النموذج يقترح (lead, confirmCreate, speaker)، والكود يقرر. بعد الإنشاء يرسل الكود
+// رسالة التأكيد النهائية ثم **يغلق الوكيل نفسه نهائياً في المحادثة** (botPaused بلا موعد، memory.closedBy = "agent_done")
+// ويحوّلها للمالك (إشعار + بريد)، والتسليم يدوي برسائل جاهزة في صفحة المحادثة؛ لا يُرسل رابط الإعداد آلياً.
+// لا ردود جاهزة عند تعذر الذكاء الاصطناعي: صمت + تنبيه للمالك. طلب موظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
 import { currentPricing, goldenStatus } from "@/server/pricing";
 import { lifecycleTimings } from "@/lifecycle/timings";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -27,7 +29,8 @@ import { stateBlock } from "@/agent/state";
 import { detectMentions, goldenLine, plansLine, renewalLine } from "@/agent/offers";
 import { handoffUntil, pauseState } from "@/agent/pause";
 import { createStoreFromConversation } from "@/agent/create-store";
-import { sendSetupLink } from "@/agent/setup-jobs";
+import * as pricingLib from "@/lib/platform-pricing";
+import type { PricingModel } from "@/lib/platform-pricing";
 import { patchMemory } from "@/agent/memory";
 import { appendDmImages, rehostDmImages, MAX_DM_IMAGES } from "@/agent/attachments";
 
@@ -43,7 +46,12 @@ type Inbound = {
   referral?: Referral;
 };
 type Conv = typeof conversations.$inferSelect;
-type Mem = Record<string, unknown> & { lead?: Lead; leadInvalid?: LeadInvalid; summary?: string; igUsername?: string; mentions?: { demo?: boolean; golden?: boolean }; attribution?: unknown; handoffBy?: string };
+type Speaker = "owner" | "moderator" | "unknown";
+type Mem = Record<string, unknown> & { lead?: Lead; leadInvalid?: LeadInvalid; summary?: string; igUsername?: string; mentions?: { demo?: boolean; golden?: boolean }; attribution?: unknown; handoffBy?: string; speaker?: Speaker; closedBy?: string };
+
+/** دالة حقائق الأسعار للوكيل من وحدة الأسعار إن وُجدت (agentPricingFacts)، وإلا تُبنى من أسطر الباقات الحية. */
+type FactsFn = (model: PricingModel, goldenUsed: number) => string;
+const agentPricingFacts = (pricingLib as unknown as { agentPricingFacts?: FactsFn }).agentPricingFacts;
 
 const AI_ATTEMPT_MS = 9_000;
 const AI_BUDGET_MS = 24_000; // كل النماذج تُجرَّب ضمن هذا الحد الكلي (المعالجة داخل after() محدودة بنحو 30 ث)
@@ -60,13 +68,18 @@ async function interpolateVars(): Promise<{ vars: Record<string, string>; golden
   } catch {
     /* يبقى الرابط كما هو */
   }
+  const legacy = () => [`${plansLine(pricing)}.`, `${renewalLine(pricing)}.`, available && golden ? goldenLine(pricing.golden, golden.seatsLeft) : ""].filter(Boolean).join(" ");
+  let pricingFacts = "";
+  try {
+    pricingFacts = typeof agentPricingFacts === "function" ? agentPricingFacts(pricing, golden?.seatsUsed ?? 0) : legacy();
+  } catch {
+    pricingFacts = legacy();
+  }
   return {
     vars: {
       trialHours: String(timings.trialHours),
-      plansLine: plansLine(pricing),
-      renewalLine: renewalLine(pricing),
+      pricingFacts: pricingFacts || legacy(),
       demoUrl: demo,
-      goldenLine: available && golden ? goldenLine(pricing.golden, golden.seatsLeft) : "",
     },
     goldenAvailable: available,
     goldenPrice: pricing.golden.price,
@@ -216,7 +229,6 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   const [cfgVars, rows, cfg] = await Promise.all([interpolateVars(), recentRows(conv.id), agentConfig()]);
   const assistantTexts = rows.filter((r) => r.role !== "user").map((r) => norm(r.text ?? ""));
   const userHistory = rows.filter((r) => r.role === "user").map((r) => r.text ?? "");
-  const hasImages = batch.some((m) => m.attachments.some((a) => a.type === "image"));
   const lastQuick = batch.map((m) => m.quickReply).filter(Boolean).pop();
   const explicitStart = lastQuick === START_QUICK_REPLY;
 
@@ -229,7 +241,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   let turn: CloserTurn;
   try {
     const system =
-      (await getPrompt("closer.v2", cfgVars.vars)) +
+      (await getPrompt("closer.v3", cfgVars.vars)) +
       stateBlock({
         replies: assistantTexts.length,
         channel,
@@ -240,6 +252,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
         imagesReceived: (lead0.assets ?? []).length,
         summary: typeof mem.summary === "string" ? mem.summary : "",
         goldenAvailable: cfgVars.goldenAvailable,
+        speaker: mem.speaker,
       });
     const history = modelHistory(rows);
     ({ turn } = await converse(system, history, conv.id));
@@ -262,10 +275,13 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   const grounded = groundLeadInput(turn.lead, [...userHistory, ...userTexts]);
   const merged = mergeLead(lead0, grounded, { profileInstagram: channel === "instagram" ? (mem.igUsername ?? null) : null, prevInvalid: mem.leadInvalid });
   const newMentions = detectMentions([turn.reply], { demoHost: cfgVars.demoHost, goldenPrice: cfgVars.goldenPrice });
+  // من يكتب: آخر تقدير واضح يبقى (unknown لا يمحو تقديراً سابقاً).
+  const speaker: Speaker = turn.speaker !== "unknown" ? turn.speaker : (mem.speaker ?? "unknown");
   await patchMemory(conv.id, {
     lead: merged.lead,
     leadInvalid: merged.invalid,
     mentions: { demo: mentions.demo || newMentions.demo, golden: mentions.golden || newMentions.golden },
+    speaker,
     ...(turn.memory ? { summary: turn.memory } : {}),
   }).catch(() => {});
 
@@ -276,25 +292,27 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
     return;
   }
 
-  // إعادة إرسال رابط الإعداد بطلب صريح (بعد إنشاء المتجر)، مرة كل 10 دقائق.
+  // V3: لا إعادة إرسال آلية لرابط الإعداد (المالك يسلّم يدوياً). طلب الرابط بعد الإنشاء يصل الفريق تنبيهاً.
   if (turn.resendLink && conv.storeId) {
-    const ok = await redis.set(`agent:resend:${conv.storeId}`, 1, { nx: true, ex: 600 }).catch(() => "OK");
-    if (ok) {
-      await sendSetupLink(conv.storeId, { force: true }).catch((e) => trace("resend-fail", String((e as Error)?.message ?? e)));
-    }
+    await notifyAdmin(`عميل يطلب رابط إعداد متجره من المحادثة: ${conv.profileName ?? "عميل"}. أرسلوه من صفحة المحادثة.`, { conversationId: conv.id, storeId: conv.storeId }).catch(() => {});
   }
 
-  const decision = decideCreate({ lead: merged.lead, confirmCreate: turn.confirmCreate, explicitStart, storeExists: Boolean(conv.storeId) });
+  // البدء يحتاج صاحب القرار: موافقة مشرف الصفحة لا تنشئ متجراً (يطلب الوكيل حضور صاحب القرار).
+  const decision0 = decideCreate({ lead: merged.lead, confirmCreate: turn.confirmCreate, explicitStart, storeExists: Boolean(conv.storeId) });
+  const decision = decision0 === "create" && speaker === "moderator" && !explicitStart ? "wait_confirm" : decision0;
 
   try {
     if (decision === "create") {
       const r = await createStoreFromConversation(conv.id);
       await trace("create", r.status);
       if (r.status === "created" || r.status === "exists") {
-        await sendIfStillActive(channel, senderId, conv, CREATE_ACK, "building");
+        if (await sendIfStillActive(channel, senderId, conv, CREATE_ACK, "building")) {
+          await closeAfterAgreement(channel, conv, r.storeId, merged.lead, r.status === "created" ? "created" : "exists");
+        }
       } else if (r.status === "setup_open") {
-        await sendIfStillActive(channel, senderId, conv, "عندنا بالفعل متجر قيد الإعداد مسجّل على نفس البريد، وسنعيد إرسال رابط الإعداد لكم الآن هنا وعلى البريد.");
-        await sendSetupLink(r.storeId, { force: true }).catch(() => {});
+        if (await sendIfStillActive(channel, senderId, conv, "عندنا بالفعل متجر قيد التجهيز مسجّل بنفس البريد، وسيتابع الفريق معكم هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.")) {
+          await closeAfterAgreement(channel, conv, r.storeId, merged.lead, "setup_open");
+        }
       } else if (r.status === "capped") {
         if (await sendIfStillActive(channel, senderId, conv, "الطلبات كثيرة اليوم، وسيتواصل معكم أحد الفريق قريباً لإكمال تجهيز متجركم.")) await handoffToHuman(channel, conv, "بلغ السقف اليومي لإنشاء المتاجر آلياً", cfg.handoffPauseHours);
       } else if (r.status === "busy") {
@@ -344,7 +362,7 @@ export async function probeAgent(text: string): Promise<{ ok: true; reply: strin
   try {
     const v = await interpolateVars();
     const system =
-      (await getPrompt("closer.v2", v.vars)) +
+      (await getPrompt("closer.v3", v.vars)) +
       stateBlock({ replies: 0, channel: "instagram", lead: {}, invalid: {}, mentions: { demo: false, golden: false }, storeExists: false, imagesReceived: 0, summary: "", goldenAvailable: v.goldenAvailable });
     const { turn, provider } = await converse(system, [{ role: "user", content: text.slice(0, 300) }]);
     const found = Object.entries(turn.lead).filter(([, x]) => x).map(([k]) => k).join("، ");
@@ -390,6 +408,46 @@ async function handoffToHuman(channel: Channel, conv: Conv, reason: string, paus
       buttons: [{ title: "افتحوا المحادثة", url: `${origin}/admin/conversations?id=${conv.id}` }],
     }).catch(() => {});
   }
+}
+
+/**
+ * بعد موافقة العميل وإنشاء متجره: يغلق الوكيل نفسه في هذه المحادثة نهائياً (لا يعود إلا باستئناف يدوي من الفريق)، ويحوّلها
+ * للمالك: إشعار في /admin/conversations وبريد فوري على عناوين التنبيه، مع رابط المحادثة وقائمة «بانتظار التسليم».
+ */
+async function closeAfterAgreement(channel: Channel, conv: Conv, storeId: string, lead: Lead, how: "created" | "exists" | "setup_open") {
+  await db
+    .update(conversations)
+    .set({
+      botPaused: true,
+      botPausedUntil: null,
+      stage: "handoff",
+      ...(conv.storeId ? {} : { storeId }),
+      unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(conversations.id, conv.id));
+  await patchMemory(conv.id, { closedBy: "agent_done", closedAt: new Date().toISOString(), handoffBy: "agent_done" }).catch(() => {});
+  await trace("closed", `agent_done: ${how} (محادثة …${conv.id.slice(-4)})`);
+  const who = conv.profileName ?? "عميل";
+  const store = lead.storeName ?? "متجر جديد";
+  await notifyAdmin(`وافق ${who} وأُغلق الوكيل في المحادثة: «${store}» بانتظار التسليم. انسخوا رسالة الإعداد من صفحة المحادثة.`, { conversationId: conv.id, storeId }).catch(() => {});
+  const to = getOwnerAlertEmails();
+  if (!to.length) return;
+  const origin = env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`;
+  await sendEmail({
+    to,
+    subject: `متجر جديد بانتظار التسليم: ${store}`,
+    headline: "عميل وافق، والمحادثة الآن لكم",
+    paragraphs: [
+      `${who} على ${channel === "instagram" ? "إنستجرام" : "ماسنجر"} وافق على البدء${how === "setup_open" ? " (له متجر قيد الإعداد بنفس البريد)" : ""}.`,
+      [lead.niche && `النشاط: ${lead.niche}`, `المتجر: ${store}`, lead.email && `البريد: ${lead.email}`, lead.whatsapp && `واتساب: ${lead.whatsapp}`, lead.instagram && `إنستجرام: @${lead.instagram}`].filter(Boolean).join(" · "),
+      "أُغلق الوكيل في هذه المحادثة نهائياً، ولن يُرسل رابط الإعداد آلياً. في صفحة المحادثة رسائل جاهزة للنسخ (رابط الإعداد وطريقة الدخول ورابط المتجر) وزر إرسالها عبر الرسائل مباشرة.",
+    ],
+    buttons: [
+      { title: "افتحوا المحادثة", url: `${origin}/admin/conversations?id=${conv.id}` },
+      { title: "بانتظار التسليم", url: `${origin}/admin/conversations/delivery` },
+    ],
+  }).catch(() => {});
 }
 
 async function getOrCreateConversation(channel: Channel, senderId: string): Promise<Conv | undefined> {
