@@ -20,6 +20,8 @@ type Props = {
   merchantEmail: string | null;
   merchantAvatarUrl: string | null;
   storeStatus: string | null;
+  /** اللوحة مقفلة: لا إشعارات ولا رابط للإعدادات، والحساب يقود للاشتراك. */
+  locked?: boolean;
   acceptingOrders: boolean;
   theme: "dark" | "light";
 };
@@ -91,7 +93,7 @@ function SoundToggle() {
   );
 }
 
-export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl, storeStatus, acceptingOrders, theme }: Props) {
+export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl, storeStatus, acceptingOrders, theme, locked }: Props) {
   const [greeting, setGreeting] = useState<string>("مرحباً");
   const [isMac, setIsMac] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -158,8 +160,8 @@ export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl
           </button>
 
           <DashThemeToggle initial={theme} />
-          <SoundToggle />
-          <AttentionCenter />
+          {locked ? null : <SoundToggle />}
+          {locked ? null : <AttentionCenter />}
 
           <div ref={menuRef} className="relative">
             <button
@@ -211,13 +213,13 @@ export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl
                       <span>بدّل الوضع الفاتح والداكن</span>
                     </button>
                     <Link
-                      href="/dashboard/settings"
+                      href={locked ? "/dashboard/billing" : "/dashboard/settings"}
                       role="menuitem"
                       onClick={() => setUserOpen(false)}
                       className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-[12.5px] font-bold text-ink-2 transition-colors hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova"
                     >
                       <Settings className="size-4" strokeWidth={SW} aria-hidden="true" />
-                      <span>إعدادات المتجر</span>
+                      <span>{locked ? "الاشتراك" : "إعدادات المتجر"}</span>
                     </Link>
                   </div>
 

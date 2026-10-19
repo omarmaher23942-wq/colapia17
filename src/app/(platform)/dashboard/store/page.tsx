@@ -16,9 +16,13 @@ import { cn, publicStoreUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
 import { orderStatusLabel, orderStatusTone, TONE_CHIP } from "@/lib/order-status";
 import { hostingGraceDays } from "@/server/hosting-grace";
+import QRCode from "qrcode";
+import { ShareStoreCard } from "@/components/dashboard/overview/ShareStoreCard";
+import { ReadyMessages } from "@/components/dashboard/store/ReadyMessages";
+import { readyMessages } from "@/lib/ready-messages";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "متجري" };
+export const metadata = { title: "رابط متجري" };
 
 const dateFmt = new Intl.DateTimeFormat("ar-EG-u-nu-latn", { timeZone: "Africa/Cairo", day: "numeric", month: "long", year: "numeric" });
 const dateTimeFmt = new Intl.DateTimeFormat("ar-EG-u-nu-latn", { timeZone: "Africa/Cairo", weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" });
@@ -34,14 +38,14 @@ function statusOf(store: Store, graceDays: number): { label: string; tone: Tone;
   switch (store.status) {
     case "active":
       if (h.phase === "active") return { label: "مفعّل", tone: "ok", detail: `الاستضافة سارية حتى ${dateFmt.format(h.expiresAt)}.` };
-      if (h.phase === "renew_soon") return { label: "مفعّل", tone: "warn", detail: `الاستضافة تنتهي ${dateFmt.format(h.expiresAt)}. التجديد متاح الآن من «الباقة والاستضافة».` };
+      if (h.phase === "renew_soon") return { label: "مفعّل", tone: "warn", detail: `الاستضافة تنتهي ${dateFmt.format(h.expiresAt)}. التجديد متاح الآن من «الاشتراك والاستخدام».` };
       if (h.phase === "grace") return { label: "انتهت الاستضافة", tone: "warn", detail: `متجرك يعمل حتى ${dateFmt.format(h.pauseAt)} ثم يتوقف عن الظهور حتى التجديد.` };
       if (h.phase === "paused") return { label: "متوقف حتى التجديد", tone: "bad", detail: "الزوار يرون أن المتجر غير متاح. بياناتك محفوظة كما هي." };
       return { label: "مفعّل", tone: "ok", detail: null };
     case "trial":
-      return { label: "تجربة نشطة", tone: "warn", detail: (store.trialEndsAt ?? store.demoExpiresAt) ? `تنتهي ${dateTimeFmt.format((store.trialEndsAt ?? store.demoExpiresAt)!)}. التفعيل من «الباقة والاستضافة».` : null };
+      return { label: "تجربة نشطة", tone: "warn", detail: (store.trialEndsAt ?? store.demoExpiresAt) ? `تنتهي ${dateTimeFmt.format((store.trialEndsAt ?? store.demoExpiresAt)!)}. التفعيل من «الاشتراك والاستخدام».` : null };
     case "frozen":
-      return { label: "متوقف بانتظار التفعيل", tone: "bad", detail: store.purgeAt ? `تُحذف بيانات التجربة ${dateTimeFmt.format(store.purgeAt)} إن لم يُفعَّل.` : "التفعيل من «الباقة والاستضافة»." };
+      return { label: "متوقف بانتظار التفعيل", tone: "bad", detail: store.purgeAt ? `تُحذف بيانات التجربة ${dateTimeFmt.format(store.purgeAt)} إن لم يُفعَّل.` : "التفعيل من «الاشتراك والاستخدام»." };
     case "setup":
       return { label: "قيد الإعداد", tone: "warn", detail: "أكملوا إعداد المتجر من لوحتكم ليبدأ العمل." };
     case "building":
@@ -64,6 +68,7 @@ export default async function StoreDetailPage() {
   const status = statusOf(store, await hostingGraceDays().catch(() => 3));
   const url = publicStoreUrl(store);
   const host = url.replace(/^https?:\/\//, "");
+  const qr = await QRCode.toDataURL(url, { width: 280, margin: 1 }).catch(() => "");
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
@@ -94,11 +99,15 @@ export default async function StoreDetailPage() {
           </Link>
           {store.status !== "active" || status.tone !== "ok" ? (
             <Link href="/dashboard/billing" className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-nova/30 bg-nova/10 px-3.5 text-[12.5px] font-black text-ink">
-              <Wallet className="size-4" aria-hidden="true" /> الباقة والاستضافة
+              <Wallet className="size-4" aria-hidden="true" /> الاشتراك والاستخدام
             </Link>
           ) : null}
         </div>
       </header>
+
+      <ShareStoreCard url={url} storeName={store.name} qr={qr} dismissible={false} />
+
+      <ReadyMessages messages={readyMessages(store.name, url)} />
 
       <Suspense fallback={<div className="h-32 animate-pulse rounded-2xl bg-edge/[0.04]" />}>
         <StoreNumbers storeId={store.id} />

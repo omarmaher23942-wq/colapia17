@@ -15,6 +15,7 @@ import type { SessionState } from "./types";
 
 const NAV = [
   { href: "#how", label: "كيف يعمل" },
+  { href: "#themes", label: "التصميمات" },
   { href: "#dashboard", label: "لوحة التحكم" },
   { href: "#features", label: "المميزات" },
   { href: "#pricing", label: "الباقات" },

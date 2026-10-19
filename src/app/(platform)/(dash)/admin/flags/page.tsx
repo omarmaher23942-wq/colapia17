@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const FLAG_DEFAULTS: { key: string; enabled: boolean; description: string; config?: Record<string, unknown> }[] = [
   { key: "bot.enabled", enabled: true, description: "تشغيل الوكيل الآلي على رسائل فيسبوك وإنستجرام لكل المحادثات (مفتاح الطوارئ؛ الإيقاف لمحادثة واحدة من صفحتها)" },
   { key: "bot.instagram", enabled: true, description: "الرد التلقائي على إنستاجرام" },
-  { key: AGENT_FLAG, enabled: true, description: "إعداد الوكيل وإنشاء المتاجر: setupDelayMinutes = دقائق الانتظار قبل إرسال رابط الإعداد، setupDays = أيام الانتظار قبل حذف متجر لم يكتمل إعداده، dailyStoreCap = سقف المتاجر المنشأة يومياً (الحد اليومي)، handoffPauseHours = مدة إيقاف الوكيل بعد طلب موظف، demoUrl = رابط المتجر التجريبي (فارغ = demo.النطاق)", config: { ...DEFAULT_AGENT_CONFIG } },
+  { key: AGENT_FLAG, enabled: true, description: "إعداد الوكيل وإنشاء المتاجر (التسليم يدوي من «بانتظار التسليم»، ورابط الإعداد لا يُرسل آلياً): setupDays = أيام الانتظار قبل حذف متجر لم يكتمل إعداده، dailyStoreCap = سقف المتاجر المنشأة يومياً (الحد اليومي)، handoffPauseHours = مدة إيقاف الوكيل بعد طلب موظف، demoUrl = رابط المتجر التجريبي (فارغ = demo.النطاق)", config: { ...DEFAULT_AGENT_CONFIG } },
   { key: "visual_search", enabled: true, description: "«البحث بالصورة» في كل المتاجر: perMonth = حد البحث الشهري لكل متجر (الإيقاف يخفي الزر)", config: { perMonth: 400 } },
   { key: "change_requests", enabled: true, description: "طلبات التعديل التي ينفذها الفريق: perYear = عددها لكل سنة اشتراك (يظهر في الهبوط والشروط ولوحة التاجر)", config: { perYear: 2 } },
   { key: "models", enabled: true, description: "تجاوز نماذج الوكيل دون إعادة نشر (للحالات الطارئة فقط)", config: { chat: null, architect: null, compose: null } },

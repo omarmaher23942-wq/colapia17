@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { eq, sql, gt, inArray, and } from "drizzle-orm";
+import { eq, sql, gt, inArray, and, isNotNull } from "drizzle-orm";
 import {
   LayoutDashboard,
   MessagesSquare,
@@ -18,6 +18,7 @@ import {
   BadgeDollarSign,
   MessageSquarePlus,
   Rocket,
+  PackageCheck,
   type LucideIcon,
 } from "lucide-react";
 import { getPlatformSession } from "@/server/auth";
@@ -40,6 +41,7 @@ const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
   ["/admin/changes", "طلبات التعديل", MessageSquarePlus],
   ["/admin/conversations", "المحادثات", MessagesSquare],
+  ["/admin/conversations/delivery", "بانتظار التسليم", PackageCheck],
   ["/admin/payments", "التحويلات", Wallet],
   ["/admin/reviews", "المراجعات", Star],
   ["/admin/leads", "الليدز", UserPlus],
@@ -52,10 +54,13 @@ const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin/team", "الفريق", Users],
 ];
 
-const isActive = (path: string, href: string) =>
-  href === "/admin"
-    ? path === "/admin"
-    : path === href || path.startsWith(`${href}/`);
+// الأطول مطابقةً يفوز: «/admin/conversations/delivery» لا يُنشّط «المحادثات» معه.
+const isActive = (path: string, href: string) => {
+  if (href === "/admin") return path === "/admin";
+  const hit = (h: string) => path === h || path.startsWith(`${h}/`);
+  if (!hit(href)) return false;
+  return !NAV.some(([other]) => other !== href && other.startsWith(`${href}/`) && hit(other));
+};
 
 const badgeText = (n: number) => (n > 99 ? "99+" : String(n));
 
@@ -73,9 +78,10 @@ export default async function PlatformAdminLayout({
   const [reviewRows, payRows, unreadRows, reviewsPendingRows, openChangeRows] =
     await Promise.all([
       db
+        // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد (بانتظار تسليمكم اليدوي).
         .select({ review: sql<number>`count(*)`.mapWith(Number) })
         .from(stores)
-        .where(inArray(stores.status, ["setup"]))
+        .where(and(inArray(stores.status, ["setup"]), isNotNull(stores.sourceConversationId), sql`${stores.onboarding}->>'linkSentAt' is null`))
         .catch(() => [{ review: 0 }]),
       db
         .select({ pay: sql<number>`count(*)`.mapWith(Number) })
@@ -104,6 +110,7 @@ export default async function PlatformAdminLayout({
   const badge: Record<string, number> = {
     "/admin/payments": payRows[0]?.pay ?? 0,
     "/admin/conversations": unreadRows[0]?.unread ?? 0,
+    "/admin/conversations/delivery": reviewRows[0]?.review ?? 0,
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
     "/admin/changes": openChangeRows[0]?.c ?? 0,
   };
