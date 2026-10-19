@@ -29,6 +29,7 @@ import {
 import { CosmicBackdrop } from "./CosmicBackdrop";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { TestimonialsSection } from "./TestimonialsSection";
 import { StoreMorph } from "./StoreMorph";
 import { ThemesShowcase } from "./ThemesShowcase";
@@ -294,6 +295,7 @@ export function Landing({ session, reviews, plans, buildFee, trialHours, graceDa
       </main>
 
       <Footer igUrl={igUrl} />
+      <InstallPrompt variant="platform" />
     </div>
   );
 }

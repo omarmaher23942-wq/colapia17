@@ -141,7 +141,7 @@ export function BulkEditor({ initial }: { initial: BulkProductRow[] }) {
         })}
       </ul>
 
-      <div data-savebar className="fixed inset-x-0 bottom-0 z-30 border-t border-edge/10 bg-space-2/95 p-3 backdrop-blur-xl md:start-[264px]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
+      <div data-savebar className="fixed inset-x-0 bottom-0 z-30 border-t border-edge/10 bg-space-2/95 p-3 backdrop-blur-xl lg:start-[264px]" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.75rem)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
           <p className="text-[12.5px] font-bold text-ink-2">{changed.size ? `${arCount(changed.size, NOUN.product)} معدَّل${patches.length < changed.size ? " (فيه خانات تحتاج تصحيحاً)" : ""}` : "لا تغييرات"}</p>
           <div className="flex gap-2">

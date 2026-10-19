@@ -60,7 +60,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
   return (
     <>
       {/* سطح المكتب: جدول */}
-      <div className="dash-card hidden overflow-hidden md:block">
+      <div className="dash-card hidden overflow-hidden xl:block">
         <table className="w-full text-[12.5px]">
           <caption className="sr-only">الطلبات</caption>
           <thead className="border-b border-edge/[0.07] text-[11.5px] text-ink-3">
@@ -156,7 +156,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
       </div>
 
       {/* الموبايل: بطاقات */}
-      <ul className="space-y-2.5 md:hidden">
+      <ul className="grid gap-2.5 sm:grid-cols-2 xl:hidden">
         {rows.map((r) => {
           const checked = selected.has(r.id);
           const link = wa(r);
@@ -212,7 +212,7 @@ export function OrdersList({ rows, storeName }: { rows: OrderRow[]; storeName: s
         <div
           role="toolbar"
           aria-label="إجراءات على الطلبات المحددة"
-          className="fixed inset-x-3 bottom-20 z-40 rounded-2xl border border-nova/30 bg-space-2/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl md:inset-x-auto md:bottom-6 md:start-1/2 md:w-auto md:-translate-x-1/2 rtl:md:translate-x-1/2"
+          className="fixed inset-x-3 bottom-20 z-40 rounded-2xl border border-nova/30 bg-space-2/95 p-3 shadow-2xl shadow-black/40 backdrop-blur-xl lg:inset-x-auto lg:bottom-6 lg:start-1/2 lg:w-auto lg:-translate-x-1/2 rtl:lg:translate-x-1/2"
         >
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-1 text-[12.5px] font-black text-ink">{arCount(selected.size, NOUN.order)}</span>

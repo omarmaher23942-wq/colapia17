@@ -206,7 +206,7 @@ export function ShippingSettings({ initial }: { initial: ShippingState }) {
       </section>
 
       {dirty || saving ? (
-        <div data-savebar className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 md:bottom-4">
+        <div data-savebar className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 lg:bottom-4">
           <div className="dash-card flex items-center justify-between gap-3 border-nova/30 p-2.5 ps-4 shadow-2xl shadow-black/20">
             <p className="text-[12.5px] font-bold text-ink-2">{saving ? "نحفظ…" : "تعديلات غير محفوظة"}</p>
             <div className="flex items-center gap-2">

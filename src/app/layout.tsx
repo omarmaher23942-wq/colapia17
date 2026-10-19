@@ -17,12 +17,11 @@ export const metadata: Metadata = {
   authors: [{ name: "Colapia" }],
   icons: {
     icon: [
-      { url: "/logo.png", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [
-      { url: "/logo.png", sizes: "180x180", type: "image/png" },
-    ],
-    shortcut: ["/logo.png"],
+    apple: [{ url: "/icons/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/icons/icon-192.png"],
   },
   manifest: "/manifest.webmanifest",
   robots: { index: true, follow: true },

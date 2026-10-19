@@ -341,7 +341,7 @@ export function ManualOrderForm({ catalog }: { catalog: PickProduct[] }) {
         </label>
       </Section>
 
-      <div data-savebar className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 md:bottom-4">
+      <div data-savebar className="sticky bottom-[calc(4.75rem+env(safe-area-inset-bottom))] z-30 lg:bottom-4">
         <div className="dash-card flex items-center justify-between gap-3 border-nova/30 p-2.5 ps-4 shadow-2xl shadow-black/20">
           <div className="min-w-0">
             <p className="text-[11px] font-bold text-ink-3">{discount ? `خصم ${formatEgp(discount)} · ` : ""}{shipping === null ? "قبل الشحن" : `شامل الشحن`}</p>

@@ -243,6 +243,6 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     // الأصول الثابتة المشتركة تُخدم مباشرة بدون middleware.
-    "/((?!_next/static|_next/image|icons/|brand/|sounds/|demo/|sw.js).*)",
+    "/((?!_next/static|_next/image|icons/|brand/|sounds/|demo/|sw.js|offline.html).*)",
   ],
 };

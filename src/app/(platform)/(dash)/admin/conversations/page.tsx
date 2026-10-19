@@ -94,7 +94,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] space-y-4" dir="rtl">
+    <div className="flex flex-col h-[calc(100dvh-6rem)] space-y-4" dir="rtl">
       <AutoRefresh everyMs={12000} />
 
       <div className="flex flex-wrap items-center justify-between gap-4 shrink-0">

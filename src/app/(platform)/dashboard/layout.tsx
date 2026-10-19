@@ -17,6 +17,7 @@ import { log } from "@/lib/logger";
 import { DASHBOARD_TITLE_TEMPLATE } from "@/lib/edition";
 import { storeUrl } from "@/lib/utils";
 import { hostingState } from "@/lib/hosting";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { PathBanners } from "@/components/dashboard/PathBanners";
 import { hostingGraceDays } from "@/server/hosting-grace";
 import { and, eq } from "drizzle-orm";
@@ -139,7 +140,7 @@ export default async function DashboardLayout({
 
             <main
               id="dashboard-main"
-              className="min-w-0 flex-1 p-4 pb-40 md:p-8 md:pb-28"
+              className="min-w-0 flex-1 p-4 pb-40 md:p-6 md:pb-40 lg:p-8 lg:pb-28"
             >
               <PathBanners hosting={hosting} perms={memberPerms(session)} trial={trial} lock={lock} />
               {children}
@@ -152,6 +153,7 @@ export default async function DashboardLayout({
 
         {/* Onboarding Tour — للتاجر الجديد فقط */}
         <OnboardingTour autoOpen={showTour} />
+        {showTour ? null : <InstallPrompt variant="platform" />}
       </DashboardPulse>
     </div>
   );

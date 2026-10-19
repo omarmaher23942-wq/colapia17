@@ -18,6 +18,7 @@ import { EditorProvider } from "@/editor/EditorProvider";
 import { Header } from "@/components/storefront/Header";
 import { Footer } from "@/components/storefront/Footer";
 import { CartDrawer } from "@/components/storefront/CartDrawer";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { PromoFromLink } from "@/components/storefront/PromoFromLink";
 import { ConversionWidgets } from "@/components/storefront/ConversionWidgets";
 import { Analytics } from "@/components/storefront/Analytics";
@@ -209,6 +210,13 @@ export default async function StoreLayout({ children, params }: Props) {
 
           {bp.header.bottomBar ? <BottomBar hasCategories={navCategories.length > 0} /> : null}
           <CartDrawer />
+          <InstallPrompt
+            variant="store"
+            storeId={store.id}
+            storeName={bp.brand.name || store.name}
+            logoUrl={bp.brand.logo?.url}
+            disabled={teamPreview || gated}
+          />
           <PromoFromLink subdomain={store.subdomain} />
           <ConversionWidgets />
           {/* بكسلات التاجر لا تعمل في معاينة الفريق (لا نلوّث إحصاءات إعلاناته بزياراتنا). */}
