@@ -38,12 +38,10 @@ import { metaCapiToken } from "@/server/store-secrets";
 import { sendCapiPurchase } from "@/server/meta-capi";
 import { phoneOrderBlock } from "@/lib/order-spam";
 import { isTrustedUploadUrl } from "@/lib/upload-hosts";
-import {
-  emitOrderCreated,
-  emitCartAbandoned,
-} from "@/server/realtime/emitters";
+import { emitOrderCreated } from "@/server/realtime/emitters";
 import { syncVariantTotals } from "@/server/inventory";
 import { getMerchantSession } from "@/server/auth";
+import { isDemoStore, isTestOrder } from "@/lib/demo-store";
 import { hostingServes, hostingState } from "@/lib/hosting";
 import { dbErrorInfo, PG_CHECK, PG_UNIQUE } from "@/lib/db-errors";
 import { nextOrderCode } from "@/server/order-seq";
@@ -257,9 +255,11 @@ export async function placeOrderAction(subdomain: string, raw: unknown): Promise
     const now = new Date();
     // الطلب يُحفظ بجهاز العميل: يجده في «طلباتي» على نفس الجهاز دون حساب ولا رقم طلب.
     const deviceId = await ensureDeviceId(store.id);
-    // طلب صاحب المتجر أو فريقه من متجره (تجربة الشراء) = طلب تجريبي: لا يخصم المخزون ولا يُحسب في المبيعات والعدادات.
-    const owner = await getMerchantSession().catch(() => null);
-    const isTest = teamPass || Boolean(owner?.stores.some((x) => x.id === store.id));
+    // طلب تجريبي: صاحب المتجر أو فريقه من متجرهم (تجربة الشراء)، أو أي طلب في متجر العرض. لا يخصم المخزون
+    // ولا يُحسب في المبيعات والعدادات، ولا يُرسل عنه بريد ولا حدث بكسل.
+    const demoStore = isDemoStore(store);
+    const owner = teamPass || demoStore ? null : await getMerchantSession().catch(() => null);
+    const isTest = isTestOrder({ teamPreview: teamPass, ownStore: Boolean(owner?.stores.some((x) => x.id === store.id)), demoStore });
     const counted = isTest ? 0 : 1;
     if (!isTest) {
       const [c] = await db
@@ -578,7 +578,8 @@ export async function saveAbandonedAction(subdomain: string, raw: unknown): Prom
     if (!phone) return;
     if (!(await allow("abandoned", await ip()))) return;
     const store = await getStoreBySubdomain(subdomain);
-    if (!store) return;
+    // متجر العرض لا يحفظ بيانات زواره: طلباته تجريبية ولا سلات متروكة يُتواصل بشأنها.
+    if (!store || isDemoStore(store)) return;
     const db = await getTenantDb(store.id);
     // هوية الجهاز من الخادم (لا قيمة يرسلها المتصفح).
     const deviceId = await ensureDeviceId(store.id);

@@ -54,7 +54,11 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
 
   // تركيبة موجودة أصلاً (حتى لو نفدت): تبقى قابلة للاختيار مشطوبة، فيظهر «نبلغك أول ما يتوفر» لها بالذات.
   const exists = (i: number, val: string) => p.variants.some((v) => v.optionValues[i] === val && v.optionValues.every((ov, k) => k === i || !sel[k] || ov === sel[k]));
-  const sizeChart = useMemo(() => chartFor(sizeGuide, p.categoryId, p.optionNames), [sizeGuide, p.categoryId, p.optionNames]);
+  const sizeChart = useMemo(() => {
+    const i = p.optionNames.findIndex(isSizeOption);
+    const sizes = i < 0 ? [] : [...new Set(p.variants.map((v) => v.optionValues[i]).filter((x): x is string => Boolean(x)))];
+    return chartFor(sizeGuide, p.categoryId, p.optionNames, sizes);
+  }, [sizeGuide, p.categoryId, p.optionNames, p.variants]);
   const optionValues = (i: number) => orderedOptionValues(i, p.optionNames[i]!, p.variants, p.optionMeta);
   const maxQty = p.trackStock && stock !== null ? Math.max(1, stock) : 99;
   useEffect(() => setQty((q) => Math.min(q, maxQty)), [maxQty]);

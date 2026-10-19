@@ -26,6 +26,19 @@ describe("مساعد المقاس", () => {
     expect(chartFor(guide, "cat1", ["اللون"])).toBeNull();
     expect(chartFor(undefined, null, ["المقاس"])).toBeNull();
   });
+  it("مع مقاسات المنتج: يُتخطى الجدول الذي لا يشترك معها في أي مقاس (انحدار: جدول S–XXL كان يظهر لجاكيت 46–54)", () => {
+    const shoes = { id: "s", ...SIZE_TEMPLATES[3]!.chart, appliesTo: ["cat1"] } as SizeChart;
+    const guide = sizeGuideSchema.parse({ charts: [{ ...tops, id: "letters", appliesTo: ["cat1"] }, shoes, tops] });
+    // قسم فيه جدولان: يُختار الذي يطابق مقاسات المنتج، لا الأول دائماً.
+    expect(chartFor(guide, "cat1", ["المقاس"], ["40", "41"])?.id).toBe("s");
+    expect(chartFor(guide, "cat1", ["المقاس"], [" m ", "L"])?.id).toBe("letters");
+    // لا جدول قسم مطابق: جدول «كل المنتجات» إن طابق، وإلا لا جدول بدل جدول خاطئ.
+    expect(chartFor(guide, "cat2", ["المقاس"], ["S", "M"])?.id).toBe("a");
+    expect(chartFor(guide, "cat2", ["المقاس"], ["46", "48", "50"])).toBeNull();
+    // بلا مقاسات (الاستدعاء القديم) يبقى السلوك كما كان.
+    expect(chartFor(guide, "cat1", ["المقاس"])?.id).toBe("letters");
+    expect(chartFor(guide, "cat1", ["المقاس"], [])?.id).toBe("letters");
+  });
   it("المخطط يقبل الأرقام النصية والفارغ", () => {
     const g = sizeGuideSchema.parse({ charts: [{ id: "x", name: "ج", rows: [{ size: "M", heightFrom: "160", heightTo: "", weightFrom: null }] }] });
     expect(g.charts[0]!.rows[0]).toMatchObject({ heightFrom: 160, heightTo: null });
