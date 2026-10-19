@@ -7,6 +7,7 @@ import { z } from "zod";
 import { storeFor } from "@/server/merchant-guard";
 import { designHistory, type DesignHistoryItem } from "@/server/design-tweak";
 import { loadBlueprint } from "@/server/setup-data";
+import { withAnnouncement } from "@/lib/design-tweak";
 import { saveBlueprintAction } from "./blueprint";
 
 type Res = { ok: true } | { ok: false; error: string };
@@ -49,14 +50,8 @@ export async function saveAnnouncementAction(raw: unknown): Promise<Res> {
   if (p.data.enabled && !p.data.text) return { ok: false, error: "اكتبوا نص الشريط أو أوقفوه" };
   const bp = await loadBlueprint(s.storeId);
   if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
-  const i = bp.home.findIndex((x) => x.type === "announcement");
-  let home = bp.home;
-  if (i >= 0) {
-    home = bp.home.map((x, k) => (k === i && x.type === "announcement" ? { ...x, enabled: p.data.enabled, messages: p.data.text ? [{ ...x.messages[0], text: p.data.text }] : x.messages } : x));
-  } else if (p.data.enabled) {
-    home = [{ id: "announcement-1", type: "announcement", enabled: true, spacing: "normal", background: "primary", reveal: "none", variant: "static", messages: [{ text: p.data.text }], dismissible: true, sticky: true }, ...bp.home];
-  }
-  const r = await saveBlueprintAction({ ...bp, home }, "شريط الإعلان");
+  // المتجر يعرض شريط الهيدر لا قسم الرئيسية القديم، فالكتابة فيه وحده (كان التعديل يُحفظ ولا يظهر).
+  const r = await saveBlueprintAction(withAnnouncement(bp, p.data.text, p.data.enabled), "شريط الإعلان");
   if (r.ok) revalidatePath("/dashboard/design");
   return r.ok ? { ok: true } : { ok: false, error: r.error };
 }

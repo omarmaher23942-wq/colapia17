@@ -11,6 +11,7 @@ import { undoDesignAction } from "@/server/actions/setup";
 import type { DesignHistoryItem } from "@/server/design-tweak";
 import { IdentityForm, type IdentityValue } from "@/components/onboarding/IdentityForm";
 import { LookPanel } from "@/components/onboarding/LookPanel";
+import { DesignChat } from "@/components/design/DesignChat";
 import { PreviewFrame, PreviewSheet } from "@/components/onboarding/PreviewPane";
 import { btnGhost, btnPrimary, Field, inputCls, Notice, Spinner, Switch } from "@/components/onboarding/ui";
 import { Section } from "@/components/dashboard/product/parts";
@@ -63,8 +64,12 @@ export function StoreLookPage({
             />
           </Section>
 
-          <Section title="الواجهة والتعديل بالكلام" hint="فيديو أو صورة لواجهة المتجر، وحقل لوصف أي تغيير تريدونه في الشكل.">
-            <LookPanel initialHero={heroKind} onChanged={bump} />
+          <Section title="التعديل بالوصف" hint="صفوا أي تغيير في الشكل أو المحتوى بجملتكم، وراجعوا الشكل قبل التطبيق وبعده.">
+            <DesignChat onChanged={bump} headingLevel={3} />
+          </Section>
+
+          <Section title="واجهة المتجر" hint="فيديو أو صورة لواجهة المتجر، أو تلقائياً من صور منتجاتكم.">
+            <LookPanel initialHero={heroKind} onChanged={bump} showTweak={false} />
           </Section>
 
           <AnnouncementSection initial={announcement} onSaved={bump} />
