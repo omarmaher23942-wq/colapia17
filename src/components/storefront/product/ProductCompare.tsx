@@ -56,7 +56,7 @@ export function ProductCompare({ current, candidates }: { current: CompareItem; 
               ))}
             </div>
             {rows.length ? (
-              <table className="w-full border-separate border-spacing-0 overflow-hidden rounded-xl border text-[13px]" style={{ borderColor: "var(--border)" }}>
+              <div className="overflow-x-auto"><table className="w-full border-separate border-spacing-0 overflow-hidden rounded-xl border text-[13px]" style={{ borderColor: "var(--border)" }}>
                 <caption className="sr-only">مقارنة السمات</caption>
                 <thead>
                   <tr>
@@ -76,7 +76,7 @@ export function ProductCompare({ current, candidates }: { current: CompareItem; 
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             ) : (
               <p className="text-[13px] opacity-75">لم يكتب المتجر سمات لهذين المنتجين بعد؛ قارنوا بالسعر والصور.</p>
             )}

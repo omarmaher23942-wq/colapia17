@@ -121,7 +121,7 @@ export function StoreComparisonMatrix({
                     <Loader2 className="size-8 animate-spin text-[#8fa8ff]" />
                   </div>
                 ) : (
-                  <table className="w-full text-sm text-start border-collapse">
+                  <div className="overflow-x-auto"><table className="w-full min-w-[480px] text-sm text-start border-collapse">
                     <thead>
                       <tr>
                         <th className="p-4 border-b border-white/10 text-slate-400 w-48">
@@ -278,7 +278,7 @@ export function StoreComparisonMatrix({
                         ))}
                       </tr>
                     </tbody>
-                  </table>
+                  </table></div>
                 )}
               </div>
             </motion.div>

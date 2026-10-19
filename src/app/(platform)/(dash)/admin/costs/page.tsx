@@ -45,7 +45,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
         
         <div className="rounded-3xl border border-white/10 bg-[#0b0f2a] p-5 shadow-2xl">
           <h2 className="mb-4 text-sm font-black text-white">استهلاك التوكنز حسب الغرض</h2>
-          <table className="w-full text-xs text-start">
+          <div className="overflow-x-auto"><table className="w-full text-xs text-start">
             <thead className="border-b border-white/5 text-slate-400">
               <tr>
                 <th className="py-2 text-start font-bold">الغرض</th>
@@ -62,7 +62,7 @@ export default async function CostsPage({ searchParams }: { searchParams: Promis
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </div>
     </div>

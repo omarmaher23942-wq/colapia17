@@ -125,7 +125,10 @@ function createCartStore(storeId: string) {
           set((s) => {
             const cap = lineCap(item);
             if (cap <= 0) return s;
-            if (typeof window !== "undefined") window.clpTrack?.("add_to_cart", { productId: item.productId, name: item.name, price: item.unitPiasters * qty, quantity: qty });
+            if (typeof window !== "undefined") {
+              window.clpTrack?.("add_to_cart", { productId: item.productId, name: item.name, price: item.unitPiasters * qty, quantity: qty });
+              window.dispatchEvent(new Event("clp:cart-add"));
+            }
             const k = itemKey(item);
             const ex = s.items.find((i) => itemKey(i) === k);
             if (ex) {

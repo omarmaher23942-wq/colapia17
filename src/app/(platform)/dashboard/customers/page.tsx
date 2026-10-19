@@ -191,7 +191,7 @@ export default async function DashboardCustomersPage({ searchParams }: { searchP
 
           {data.rows.length ? (
             <>
-              <div className="dash-card hidden overflow-hidden md:block">
+              <div className="dash-card hidden overflow-hidden xl:block">
                 <table className="w-full text-[12.5px]">
                   <caption className="sr-only">العملاء</caption>
                   <thead className="border-b border-edge/[0.07] text-[11.5px] text-ink-3">
@@ -239,7 +239,7 @@ export default async function DashboardCustomersPage({ searchParams }: { searchP
                 </table>
               </div>
 
-              <ul className="space-y-2 md:hidden">
+              <ul className="grid gap-2 sm:grid-cols-2 xl:hidden">
                 {data.rows.map((c) => {
                   const wa = waLink(c.phone);
                   return (

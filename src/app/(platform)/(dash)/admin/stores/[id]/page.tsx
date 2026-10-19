@@ -97,7 +97,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
                 <p className="text-xs text-slate-400 mt-2">
                   {aiTotal.calls} استدعاء ({aiTotal.failed} فشل) · {aiTotal.tokens.toLocaleString("en-US")} توكن إجمالاً. قارن مع سعر موديلك لتعرف تكلفة المعاينة.
                 </p>
-                <table className="mt-3 w-full text-xs">
+                <div className="overflow-x-auto"><table className="mt-3 w-full text-xs">
                   <thead>
                     <tr className="text-slate-500 text-start">
                       <th className="text-start font-bold pb-1">الغرض</th>
@@ -116,7 +116,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </>
             ) : (
               <p className="text-xs text-slate-400 mt-2">لا استدعاءات مسجلة لهذا المتجر.</p>

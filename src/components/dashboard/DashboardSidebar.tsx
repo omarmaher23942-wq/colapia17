@@ -101,8 +101,8 @@ export function DashboardSidebar(props: Props) {
     <>
       <aside
         className={cn(
-          "sticky top-0 hidden h-dvh w-[264px] shrink-0 flex-col border-e border-edge/[0.07] bg-space-2/55 backdrop-blur-2xl md:flex",
-          drawerOpen && "md:hidden"
+          "sticky top-0 hidden h-dvh w-[264px] shrink-0 flex-col border-e border-edge/[0.07] bg-space-2/55 backdrop-blur-2xl lg:flex",
+          drawerOpen && "lg:hidden"
         )}
       >
         <SidebarContent
@@ -115,7 +115,7 @@ export function DashboardSidebar(props: Props) {
 
       <nav
         aria-label="القائمة السريعة"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-edge/10 bg-space-2/95 backdrop-blur-2xl md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-edge/10 bg-space-2/95 backdrop-blur-2xl lg:hidden"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.25rem)" }}
       >
         <ul className="flex items-stretch justify-around gap-1 px-1 py-1.5">
@@ -195,7 +195,7 @@ export function DashboardSidebar(props: Props) {
       {!props.locked && (pathname === "/dashboard" || pathname === "/dashboard/orders") && (!props.perms || allows(props.perms, "orders", "manage")) ? (
         <Link
           href="/dashboard/orders/new"
-          className="fixed bottom-[4.75rem] end-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-b from-nova to-nova-deep px-4 text-[13px] font-black text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 md:hidden"
+          className="fixed bottom-[4.75rem] end-4 z-30 inline-flex min-h-12 items-center gap-2 rounded-full bg-gradient-to-b from-nova to-nova-deep px-4 text-[13px] font-black text-white shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 lg:hidden"
         >
           <PenLine className="size-4" aria-hidden="true" />
           طلب من الشات
@@ -213,7 +213,7 @@ export function DashboardSidebar(props: Props) {
               transition={{ duration: reduce ? 0 : 0.18 }}
               onClick={close}
               aria-hidden="true"
-              className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
               key="drawer"
@@ -228,7 +228,7 @@ export function DashboardSidebar(props: Props) {
                   ? { duration: 0 }
                   : { type: "spring", stiffness: 420, damping: 40, mass: 0.9 }
               }
-              className="fixed inset-y-0 start-0 z-50 flex w-[300px] max-w-[85vw] flex-col border-e border-edge/10 bg-space-2 md:hidden"
+              className="fixed inset-y-0 start-0 z-50 flex w-[300px] max-w-[85vw] flex-col border-e border-edge/10 bg-space-2 lg:hidden"
             >
               <button
                 type="button"

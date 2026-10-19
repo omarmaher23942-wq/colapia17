@@ -198,7 +198,7 @@ export function ImportProducts() {
 
             {good.length ? (
               <div className="overflow-hidden rounded-xl border border-edge/[0.07]">
-                <table className="w-full text-[12px]">
+                <div className="overflow-x-auto"><table className="w-full text-[12px]">
                   <caption className="sr-only">معاينة أول المنتجات</caption>
                   <thead className="bg-edge/[0.03] text-ink-3">
                     <tr>
@@ -219,7 +219,7 @@ export function ImportProducts() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
                 {good.length > 5 ? <p className="border-t border-edge/[0.05] p-2 text-center text-[11.5px] text-ink-3">و{arCount(good.length - 5, NOUN.product)} أخرى</p> : null}
               </div>
             ) : null}

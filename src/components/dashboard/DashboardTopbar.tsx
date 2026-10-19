@@ -127,7 +127,7 @@ export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl
 
   return (
     <header className="sticky top-0 z-30 border-b border-edge/[0.07] bg-space/60 backdrop-blur-2xl">
-      <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-8">
+      <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6 lg:px-8">
         <div className="min-w-0">
           <p className="truncate text-[13px] font-black text-ink">{first ? `${greeting}، ${first}` : greeting}</p>
           <p className={cn("mt-0.5 flex items-center gap-1.5 text-[11px] font-bold", TONE_TEXT[status.tone])}>
@@ -141,7 +141,7 @@ export function DashboardTopbar({ merchantName, merchantEmail, merchantAvatarUrl
             type="button"
             onClick={openCommandPalette}
             aria-label="ابحث عن طلب أو منتج"
-            className="grid size-10 place-items-center rounded-xl text-ink-2/80 transition-colors hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova md:hidden"
+            className="grid size-10 place-items-center rounded-xl text-ink-2/80 transition-colors hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova lg:hidden"
           >
             <Search className="size-4" strokeWidth={2.25} aria-hidden="true" />
           </button>

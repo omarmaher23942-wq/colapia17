@@ -9,8 +9,8 @@ import type { TenantStore } from "@/lib/tenant";
 import { publicStoreUrl } from "@/lib/utils";
 import { socialLinks } from "@/lib/store-channels";
 import { cleanGoogleVerification, e164Egypt } from "@/lib/tracking";
+import { storeIconLinks } from "@/lib/pwa";
 
-const STORE_ICON = "/api/storefront/icon";
 
 /** المتاجر قيد التجربة أو المجمّدة لا تُفهرس؛ المفعّلة فقط تظهر في البحث. */
 export function isIndexable(store: TenantStore, bp: StoreBlueprint | null): boolean {
@@ -35,7 +35,7 @@ export function storeMetadata(store: TenantStore, bp: StoreBlueprint | null): Me
     authors: [{ name }],
     creator: name,
     publisher: name,
-    icons: { icon: STORE_ICON, shortcut: STORE_ICON, apple: STORE_ICON },
+    icons: storeIconLinks(),
     manifest: "/manifest.webmanifest",
     alternates: { canonical: "/" },
     openGraph: {
