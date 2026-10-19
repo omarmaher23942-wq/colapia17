@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { VisualSearch } from "./VisualSearch";
 import { SheetDialog } from "./SheetDialog";
 import { useCopy, useStore } from "./StoreProvider";
+import { StoreLogo } from "./StoreLogo";
 import type { StoreBlueprint } from "@/blueprint/schema";
 
 const SW = 1.75;
@@ -98,11 +99,10 @@ export function Header({
   const openCart = useCart((s) => s.open);
   const wishSaved = useWishlist((s) => s.slugs.length);
   const wishCount = hydrated ? wishSaved : 0;
-  const { design } = useStore();
+  const { design, scheme } = useStore();
   const t = useCopy();
   const surface = design.header.surface;
   const layout = header.variant;
-  const logoH = { sm: "h-7", md: "h-8 sm:h-9", lg: "h-9 sm:h-11" }[design.header.logoSize];
   const hasBottomBar = header.bottomBar;
 
   const [q, setQ] = useState("");
@@ -165,16 +165,10 @@ export function Header({
   const useDropdown = header.showCategoriesMenu && (tree.length > 5 || tree.some((c) => c.children.length > 0));
   const inlineCats = header.showCategoriesMenu && !useDropdown ? tree.slice(0, 5) : [];
 
-  const hasCustomLogo = brand.logo?.url && !brand.logo.url.includes("logo.png") && !brand.logo.url.includes("colapia");
+  // كل شعار مرفوع يظهر كما هو (كان يُستبعد أي رابط فيه «colapia» فيختفي كل شعار على مساحة الصور).
   const logo = (compact = false) => (
-    <Link href="/" className="flex shrink-0 items-center gap-2 font-heading leading-none" aria-label={brand.name}>
-      {hasCustomLogo ? (
-        <Image src={brand.logo!.url} alt={brand.name} width={140} height={40} priority className={cn("w-auto object-contain", compact ? "h-7" : logoH)} />
-      ) : (
-        <span className={cn("font-black tracking-tight", design.header.logoSize === "lg" ? "text-2xl sm:text-3xl" : design.header.logoSize === "sm" ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")} style={{ color: "var(--foreground)" }}>
-          {brand.name}
-        </span>
-      )}
+    <Link href="/" className="flex min-w-0 shrink-0 items-center gap-2 leading-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] rounded-lg" aria-label={`${brand.name}: الرئيسية`}>
+      <StoreLogo brand={brand} size={compact ? "sm" : design.header.logoSize} priority={!compact} scheme={scheme} />
     </Link>
   );
 

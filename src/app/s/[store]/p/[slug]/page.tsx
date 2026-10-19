@@ -15,6 +15,9 @@ import { ProductReviews } from "@/components/storefront/product/ProductReviews";
 import { ProductQuestions } from "@/components/storefront/product/ProductQuestions";
 import { ProductViewTracker } from "@/components/storefront/product/ProductViewTracker";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
+import { ProductCompare, type CompareItem } from "@/components/storefront/product/ProductCompare";
+import { productSpecs } from "@/components/storefront/product/specs";
+import { fetchProductsForSource } from "@/blueprint/section-data";
 import { cn } from "@/lib/utils";
 import { productMetadata, productJsonLd, breadcrumbJsonLd, questionsJsonLd } from "@/lib/storefront-seo";
 import { arCount, NOUN } from "@/lib/format";
@@ -56,6 +59,19 @@ export default async function ProductPage({ params }: P) {
   const avg = stats.count ? stats.avg : p.ratingCount ? p.ratingSum / p.ratingCount : 0;
   const ratingCount = stats.count || p.ratingCount;
   const category = p.categoryId ? cats.find((c) => c.id === p.categoryId) : undefined;
+  const specs = productSpecs(p);
+  // مقارنة بمنتجات القسم نفسه (S4): تظهر فقط حين يوجد منتج آخر في القسم.
+  const compareRowsSrc: Array<Record<string, unknown>> = category ? await fetchProductsForSource(store.id, { type: "category", slug: category.slug }, 13).catch(() => []) : [];
+  const toCompare = (x: Record<string, unknown>): CompareItem => ({
+    slug: String(x.slug),
+    name: String(x.name),
+    pricePiasters: Number(x.pricePiasters) || 0,
+    image: (x.images as { url: string }[] | undefined)?.[0]?.url ?? null,
+    attributes: x.attributes,
+    optionNames: x.optionNames as string[],
+    variants: x.variants as CompareItem["variants"],
+  });
+  const compareCandidates = compareRowsSrc.filter((x) => x.slug !== p.slug).slice(0, 12).map(toCompare);
 
   const crumbs = [
     { name: bp.brand.name, path: "/" },
@@ -86,13 +102,13 @@ export default async function ProductPage({ params }: P) {
       </nav>
       <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "lg:grid-cols-2")}>
         
-        {/* Gallery Area */}
-        <div className="space-y-4">
+        {/* المعرض لاصق على الحاسوب والمعلومات تتمرر بجانبه (تخطيط تحريري)؛ على الجوال المعرض أولاً. */}
+        <div className={cn("space-y-4", bp.productPage.layout !== "gallery_stacked" && "lg:sticky lg:top-24 lg:self-start")}>
           <ProductGallery images={p.images} videos={p.videos} name={p.name} immersive={bp.productPage.layout === "immersive"} />
         </div>
 
-        {/* Product Details Area */}
-        <div className="lg:sticky lg:top-24 lg:self-start">
+        {/* معلومات المنتج */}
+        <div className="min-w-0">
           {p.badges.length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
               {p.badges.map((b) => (
@@ -107,7 +123,7 @@ export default async function ProductPage({ params }: P) {
             <h1 className="font-heading text-2xl font-black leading-tight tracking-tight sm:text-3xl">
               {p.name}
             </h1>
-            {bp.productPage.showShareButtons ? <ShareButton title={p.name} /> : null}
+            {bp.productPage.showShareButtons ? <ShareButton title={p.name} image={p.images[0]?.url ?? null} text={`${p.name} من ${bp.brand.name}`} /> : null}
           </div>
 
           {ratingCount > 0 && (
@@ -134,16 +150,26 @@ export default async function ProductPage({ params }: P) {
             </div>
           )}
 
-          {bp.productPage.showAttributesTable && Array.isArray(p.attributes) && p.attributes.length ? (
-            <dl className="mt-6 overflow-hidden rounded-2xl border text-sm" style={{ borderColor: "var(--border)" }}>
-              {(p.attributes as { label: string; value: string }[]).map((a, i) => (
-                <div key={i} className="grid grid-cols-[minmax(7rem,35%)_1fr] gap-3 px-4 py-2.5 odd:bg-[color-mix(in_srgb,var(--muted)_70%,transparent)]">
-                  <dt className="font-bold opacity-70">{a.label}</dt>
-                  <dd className="font-medium">{a.value}</dd>
-                </div>
-              ))}
-            </dl>
+          {bp.productPage.showAttributesTable !== false && specs.length ? (
+            <section className="mt-6" aria-labelledby="specs-title">
+              <h2 id="specs-title" className="mb-3 font-heading text-lg font-black">
+                المواصفات
+              </h2>
+              <dl className="overflow-hidden rounded-2xl border text-sm" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
+                {specs.map((a) => (
+                  <div key={a.label} className="grid grid-cols-[minmax(6.5rem,35%)_1fr] gap-3 px-4 py-2.5 odd:bg-[color-mix(in_srgb,var(--muted)_70%,transparent)]">
+                    <dt className="font-bold opacity-75">{a.label}</dt>
+                    <dd className="font-medium">{a.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           ) : null}
+
+          <ProductCompare
+            current={{ slug: p.slug, name: p.name, pricePiasters: p.pricePiasters, image: p.images[0]?.url ?? null, attributes: p.attributes, optionNames: p.optionNames, variants: p.variants }}
+            candidates={compareCandidates}
+          />
         </div>
       </div>
 
@@ -152,7 +178,7 @@ export default async function ProductPage({ params }: P) {
           <h2 id="fbt-title" className="font-heading text-xl font-black">
             {fbt.together ? "يُشترى معه عادةً" : "من نفس القسم"}
           </h2>
-          <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="s-stagger mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
             {fbt.rows.map((x) => (
               <ProductCard key={x.id} product={x} />
             ))}

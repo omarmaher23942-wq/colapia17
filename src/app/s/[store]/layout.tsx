@@ -10,6 +10,9 @@ import { truthfulBlueprint } from "@/blueprint/facts";
 import { AnnouncementBar } from "@/components/storefront/AnnouncementBar";
 import { BottomBar } from "@/components/storefront/BottomBar";
 import { migrateToCore } from "@/blueprint/core-migrate";
+import { cardStyleOf } from "@/blueprint/themes";
+import { schemeOf } from "@/blueprint/tokens";
+import { CardFx } from "@/components/storefront/CardFx";
 import { StoreProvider } from "@/components/storefront/StoreProvider";
 import { EditorProvider } from "@/editor/EditorProvider";
 import { Header } from "@/components/storefront/Header";
@@ -115,6 +118,7 @@ export default async function StoreLayout({ children, params }: Props) {
   const kit = createStoreKit({ store, bp, facts });
   const [HeaderSlot, FooterSlot] = await Promise.all([loadSlot(store.subdomain, "Header"), loadSlot(store.subdomain, "Footer")]);
   const theme = storeTheme(store.subdomain);
+  const cardStyle = cardStyleOf(bp);
 
   const coreHeader = <Header header={bp.header} brand={bp.brand} categories={navCategories} channels={bp.channels} />;
   const coreFooter = (
@@ -126,6 +130,7 @@ export default async function StoreLayout({ children, params }: Props) {
       payments={bp.payments}
       categories={navCategories}
       facts={facts}
+      scheme={schemeOf(bp.theme)}
     />
   );
 
@@ -146,6 +151,7 @@ export default async function StoreLayout({ children, params }: Props) {
         cardStyle: bp.theme.productCardStyle,
         facts,
         sizeGuide: bp.sizeGuide,
+        scheme: schemeOf(bp.theme),
       }}
     >
       <EditorProvider>
@@ -166,10 +172,13 @@ export default async function StoreLayout({ children, params }: Props) {
           className="storefront flex min-h-dvh flex-col"
           data-button-style={bp.theme.buttonStyle}
           data-card-style={bp.theme.productCardStyle}
+          data-card={cardStyle}
+          data-design={bp.design.theme}
           data-theme-mode={bp.theme.mode}
-          data-motion="calm"
-          data-depth="off"
+          data-motion={bp.design.motion.level}
+          data-depth={bp.design.motion.depth ? "on" : "off"}
         >
+          <CardFx style={cardStyle} />
           {teamPreview ? (
             <p role="status" className="fixed bottom-3 start-3 z-[60] rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-bold text-amber-950 shadow-lg" data-team-preview>
               معاينة الفريق{gated ? " — لا يراه العملاء بعد" : ""}

@@ -47,7 +47,10 @@ export function ProductGallery({
     const el = track?.children[i] as HTMLElement | undefined;
     if (!track || !el) return;
     programmatic.current = true;
-    track.scrollTo({ left: el.offsetLeft, behavior: smooth ? "smooth" : "auto" });
+    // بالفرق بين موضعي الشريحة والشريط لا بـ offsetLeft: في RTL يبدأ scrollLeft من الصفر ويصير سالباً،
+    // بينما offsetLeft موجب، فكانت المصغّرات والأسهم تقفز لشريحة خاطئة أو لا تتحرك.
+    const delta = el.getBoundingClientRect().left - track.getBoundingClientRect().left;
+    track.scrollTo({ left: track.scrollLeft + delta, behavior: smooth ? "smooth" : "auto" });
     window.setTimeout(() => (programmatic.current = false), 450);
   }, []);
 
@@ -100,8 +103,10 @@ export function ProductGallery({
     const el = strip?.children[idx] as HTMLElement | undefined;
     if (!strip || !el) return;
     const horizontal = strip.scrollWidth > strip.clientWidth + 2;
-    if (horizontal) strip.scrollTo({ left: el.offsetLeft - strip.clientWidth / 2 + el.clientWidth / 2, behavior: "smooth" });
-    else strip.scrollTo({ top: el.offsetTop - strip.clientHeight / 2 + el.clientHeight / 2, behavior: "smooth" });
+    const sr = strip.getBoundingClientRect();
+    const er = el.getBoundingClientRect();
+    if (horizontal) strip.scrollTo({ left: strip.scrollLeft + (er.left - sr.left) - (sr.width - er.width) / 2, behavior: "smooth" });
+    else strip.scrollTo({ top: strip.scrollTop + (er.top - sr.top) - (sr.height - er.height) / 2, behavior: "smooth" });
   }, [idx]);
 
   if (!slides.length) {
@@ -209,10 +214,10 @@ export function ProductGallery({
 
           {slides.length > 1 ? (
             <>
-              <button type="button" onClick={() => select(idx - 1)} disabled={idx === 0} aria-label="السابق" className="absolute end-2 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 lg:grid">
+              <button type="button" onClick={() => select(idx - 1)} disabled={idx === 0} aria-label="السابق" className="absolute start-2 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 lg:grid">
                 <ChevronRight className="size-5" aria-hidden="true" />
               </button>
-              <button type="button" onClick={() => select(idx + 1)} disabled={idx === slides.length - 1} aria-label="التالي" className="absolute start-2 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 lg:grid">
+              <button type="button" onClick={() => select(idx + 1)} disabled={idx === slides.length - 1} aria-label="التالي" className="absolute end-2 top-1/2 hidden size-10 -translate-y-1/2 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/70 disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 lg:grid">
                 <ChevronLeft className="size-5" aria-hidden="true" />
               </button>
               <p className="pointer-events-none absolute bottom-3 end-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold tabular-nums text-white lg:hidden" dir="ltr" aria-live="polite">

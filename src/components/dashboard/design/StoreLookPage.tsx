@@ -15,6 +15,8 @@ import { PreviewFrame, PreviewSheet } from "@/components/onboarding/PreviewPane"
 import { btnGhost, btnPrimary, Field, inputCls, Notice, Spinner, Switch } from "@/components/onboarding/ui";
 import { Section } from "@/components/dashboard/product/parts";
 import { MotionPicker } from "@/components/dashboard/design/MotionPicker";
+import { ThemeStudio } from "@/components/dashboard/design/ThemeStudio";
+import type { Design, Theme } from "@/blueprint/schema";
 import { cn } from "@/lib/utils";
 
 type Sec = { id: string; label: string; enabled: boolean };
@@ -29,7 +31,9 @@ export function StoreLookPage({
   sections,
   motion,
   history,
+  look,
 }: {
+  look: { theme: Theme; design: Design };
   storeUrl: string;
   canEdit: boolean;
   identity: IdentityValue;
@@ -52,7 +56,9 @@ export function StoreLookPage({
         {!canEdit ? <Notice tone="warn">لديكم صلاحية العرض فقط في هذه الصفحة.</Notice> : null}
 
         <fieldset disabled={!canEdit} className="space-y-5 border-0 p-0">
-          <Section title="هوية المتجر" hint="الاسم والشعار ولون العلامة والخطوط. نشتق منها ألوان المتجر كاملة بتباين مقروء.">
+          <ThemeStudio initial={look} canEdit={canEdit} onSaved={bump} />
+
+          <Section title="هوية المتجر" hint="الاسم والشعار ولون العلامة. تغيير لون العلامة يغيّر اللون الأساسي ويحفظ خلفية التصميم وأسطحه.">
             <IdentityForm
               initial={identity}
               submitLabel="حفظ الهوية"

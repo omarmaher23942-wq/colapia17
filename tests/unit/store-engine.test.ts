@@ -34,7 +34,7 @@ describe("skin css sanitizer", () => {
 
 describe("design stylesheet", () => {
   it("compiles any design (defaults and extremes) without throwing", () => {
-    expect(designStyleSheet(bp)).toContain("--r-card:16px");
+    expect(designStyleSheet(bp)).toContain("--r-card:14px");
     const extreme = designSchema.parse({ surface: { background: "waves", divider: "wave", rhythm: "bands", grain: true }, card: { hover: "swap", badge: "ribbon" }, button: { fill: "glass" }, heading: { style: "ornament" } });
     const css = designStyleSheet({ ...bp, design: extreme, theme: { ...bp.theme, productCardStyle: "brutalist" } });
     expect(css).toContain("s-section[data-tone=alt]");

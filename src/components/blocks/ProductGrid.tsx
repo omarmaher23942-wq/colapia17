@@ -6,7 +6,7 @@
 //  - grid: عدد الأعمدة يُختار حتى لا يبقى صف أخير ناقص قدر الإمكان، وعلى الموبايل آخر عنصر فردي يأخذ العرض كاملاً.
 //  - featured_first: الأول بحجم مضاعف والباقي حوله، بعدد يملأ الشبكة تماماً.
 //  - carousel: شريط أفقي بانسياب، بأسهم على الكمبيوتر.
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowLeft, ChevronLeft, ChevronRight, ShoppingBag } from "lucide-react";
@@ -75,7 +75,7 @@ export function ProductGrid({ s, products, hasMore = false, viewAll: viewAllPath
     return (
       <SectionShell s={s}>
         {head}
-        <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <ul className="s-stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {list.map((p, i) => (
             <li key={p.id} className={i === 0 ? "col-span-2 lg:row-span-2" : undefined}>
               <ProductCard product={p} size={i === 0 ? "lg" : "md"} priority={i === 0} />
@@ -98,7 +98,7 @@ function Grid({ items, desired, className }: { items: GridProduct[]; desired: nu
   const n = items.length;
   const cols = balancedColumns(n, desired);
   return (
-    <ul className={cn("grid grid-cols-2 gap-3 sm:gap-4", COLS[cols], className)}>
+    <ul className={cn("s-stagger grid grid-cols-2 gap-3 sm:gap-4", COLS[cols], className)}>
       {items.map((p, i) => (
         // على الموبايل (عمودان): آخر عنصر فردي يأخذ الصف كاملاً بدل خانة فارغة بجانبه.
         <li key={p.id} className={cn(n % 2 === 1 && i === n - 1 && "col-span-2 md:col-span-1")}>
@@ -111,21 +111,42 @@ function Grid({ items, desired, className }: { items: GridProduct[]; desired: nu
 
 function Carousel({ items }: { items: GridProduct[] }) {
   const ref = useRef<HTMLUListElement>(null);
-  const scroll = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8 * -1, behavior: "smooth" });
+  const [progress, setProgress] = useState(0);
+  const [edge, setEdge] = useState<{ start: boolean; end: boolean }>({ start: true, end: false });
+  // RTL: scrollLeft صفر عند البداية وسالب نحو اليسار؛ نقيس بالقيمة المطلقة فيعمل الاتجاهان.
+  const onScroll = () => {
+    const el = ref.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    const x = Math.abs(el.scrollLeft);
+    setProgress(max > 0 ? Math.min(1, x / max) : 1);
+    setEdge({ start: x < 4, end: x > max - 4 });
+  };
+  const scroll = (dir: 1 | -1) => {
+    const el = ref.current;
+    if (!el) return;
+    const rtl = getComputedStyle(el).direction === "rtl";
+    el.scrollBy({ left: dir * el.clientWidth * 0.8 * (rtl ? -1 : 1), behavior: "smooth" });
+  };
+  const visibleShare = Math.min(1, 2.2 / Math.max(1, items.length));
   return (
     <div className="relative">
-      <ul ref={ref} className="-mx-[clamp(1rem,3vw,2rem)] flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-[clamp(1rem,3vw,2rem)] px-[clamp(1rem,3vw,2rem)] pb-2 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden">
+      <ul ref={ref} onScroll={onScroll} className="-mx-[clamp(1rem,3vw,2rem)] flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-px-[clamp(1rem,3vw,2rem)] px-[clamp(1rem,3vw,2rem)] pb-2 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden" aria-label="منتجات القسم، اسحبوا للمزيد">
         {items.map((p) => (
           <li key={p.id} className="w-[46%] shrink-0 snap-start sm:w-[31%] lg:w-[23.5%]">
             <ProductCard product={p} />
           </li>
         ))}
       </ul>
+      {/* مؤشر التمرير: شريط بلون المتجر يوضح الموضع وأن هناك المزيد (موبايل وحاسوب). */}
+      <div className="mx-auto mt-3 h-1 w-24 overflow-hidden rounded-full" style={{ background: "color-mix(in srgb, var(--foreground) 12%, transparent)" }} aria-hidden="true">
+        <div className="h-full rounded-full transition-[margin] duration-150" style={{ width: `${visibleShare * 100}%`, marginInlineStart: `${progress * (1 - visibleShare) * 100}%`, background: "var(--primary)" }} />
+      </div>
       <div className="pointer-events-none absolute inset-y-0 -inset-x-4 hidden items-center justify-between lg:flex">
-        <button type="button" onClick={() => scroll(-1)} aria-label="السابق" className="s-btn pointer-events-auto !size-11 !min-h-0 !rounded-full !p-0 shadow-lg">
+        <button type="button" onClick={() => scroll(-1)} disabled={edge.start} aria-label="السابق" className="s-btn pointer-events-auto !size-11 !min-h-0 !rounded-full !p-0 shadow-lg transition-opacity disabled:!opacity-0">
           <ChevronRight className="size-5" />
         </button>
-        <button type="button" onClick={() => scroll(1)} aria-label="التالي" className="s-btn pointer-events-auto !size-11 !min-h-0 !rounded-full !p-0 shadow-lg">
+        <button type="button" onClick={() => scroll(1)} disabled={edge.end} aria-label="التالي" className="s-btn pointer-events-auto !size-11 !min-h-0 !rounded-full !p-0 shadow-lg transition-opacity disabled:!opacity-0">
           <ChevronLeft className="size-5" />
         </button>
       </div>

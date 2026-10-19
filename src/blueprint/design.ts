@@ -7,6 +7,7 @@
 import type { Design, StoreBlueprint } from "./schema";
 import { designSchema } from "./schema";
 import { sanitizeSkinCss } from "./skin";
+import { cardStyleOf, type CardStyle } from "./themes";
 
 const HEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
 
@@ -189,6 +190,53 @@ function rhythmRules(d: Design, S: string): string {
   return css;
 }
 
+/**
+ * أساليب بطاقة المنتج (V3، docs/STORE-DESIGN.md القسم 4). كلها transform/متغيرات CSS فقط (لا قفزة تخطيط)،
+ * والحركة الدائمة (الإطار الزئبقي) تعمل على البطاقات الظاهرة فقط ([data-in] يضعه CardFx) وتتوقف مع تقليل الحركة.
+ */
+export function cardFxRules(style: CardStyle, S: string): string {
+  switch (style) {
+    case "mercury":
+      return (
+        `@property --s-angle{syntax:"<angle>";inherits:false;initial-value:0deg}@keyframes s-merc{to{--s-angle:360deg}}` +
+        // درجات الزئبق من لون الهوية: لمعة فاتحة، وإطار عميق لا يساوي الخلفية.
+        `${S}{--merc-hi:color-mix(in oklab,var(--primary) 34%,#fff);--merc-deep:color-mix(in oklab,var(--primary) 26%,var(--background));--merc-mid:color-mix(in oklab,var(--primary) 58%,var(--background))}` +
+        `${S} .s-card{border:1.5px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,conic-gradient(from var(--s-angle),var(--merc-deep) 0deg,var(--merc-deep) 36deg,var(--merc-mid) 58deg,var(--merc-hi) 74deg,var(--merc-mid) 92deg,var(--merc-deep) 120deg,var(--merc-deep) 214deg,var(--merc-mid) 240deg,var(--merc-hi) 256deg,var(--merc-mid) 274deg,var(--merc-deep) 300deg) border-box;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--merc-hi) 20%,transparent),inset 0 0 28px -14px color-mix(in srgb,var(--merc-hi) 40%,transparent),0 24px 48px -30px color-mix(in srgb,var(--primary) 55%,transparent)}` +
+        `${S} .s-card[data-in]{animation:s-merc 7s linear infinite}${S} .s-card:hover{animation-duration:3.2s;transform:translateY(-3px)}` +
+        `${S} .s-card .s-media{border-radius:calc(var(--r-card) - 4px);margin:4px 4px 0}`
+      );
+    case "cinematic":
+      return (
+        `@media (hover:hover) and (pointer:fine){${S} .s-card{transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--lift,0px));transition:transform .55s var(--motion-ease),box-shadow .55s}` +
+        `${S} .s-card.is-tilting{transition:transform .08s linear,box-shadow .3s}${S} .s-card:hover{--lift:-6px;box-shadow:var(--elev-hover)}` +
+        `${S} .s-card::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgb(255 255 255/.26),transparent 46%);opacity:var(--go,0);transition:opacity .4s}` +
+        `${S} .s-card .s-media img{transform:translate3d(calc(var(--px,0) * -10px),calc(var(--py,0) * -10px),0) scale(1.08);transition:transform .55s var(--motion-ease)}}`
+      );
+    case "glow":
+      return (
+        `${S} .s-card{border-color:color-mix(in srgb,var(--accent) 16%,var(--border))}` +
+        `${S} .s-card:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--accent) 60%,var(--border));box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 32%,transparent),0 20px 50px -20px color-mix(in srgb,var(--accent) 62%,transparent),0 0 44px -12px color-mix(in srgb,var(--accent) 34%,transparent)}`
+      );
+    default:
+      return `${S} .s-card{box-shadow:none;border-color:var(--border)}${S} .s-card:hover{border-color:color-mix(in srgb,var(--foreground) 30%,var(--border))}`;
+  }
+}
+
+/**
+ * دخول متدرج لعناصر الشبكات مرتبط بالتمرير (scroll-driven): بلا جافاسكربت، والمتصفحات غير الداعمة
+ * أو من طلب تقليل الحركة يرون المحتوى ثابتاً من البداية.
+ */
+function staggerRules(S: string): string {
+  const L = `${S}:is([data-motion="lively"],[data-motion="cinematic"])`;
+  return (
+    `@keyframes s-in{from{opacity:0;transform:translate3d(0,18px,0) scale(.985)}to{opacity:1;transform:none}}` +
+    `@supports (animation-timeline: view()){@media (prefers-reduced-motion:no-preference){` +
+    `${L} .s-stagger>*{animation:s-in linear both;animation-timeline:view();animation-range:entry 0% entry 55%}` +
+    `${L} .s-stagger>*:nth-child(4n+2){animation-range:entry 6% entry 61%}${L} .s-stagger>*:nth-child(4n+3){animation-range:entry 12% entry 67%}${L} .s-stagger>*:nth-child(4n+4){animation-range:entry 18% entry 73%}` +
+    `}}`
+  );
+}
+
 /** متغيرات وقواعد التصميم + جلد الذكاء الاصطناعي، كلها محصورة في نطاق المتجر. */
 /**
  * نظام الحركة: CSS فقط (لا يختفي أي نص لو تأخر الجافاسكربت). المستوى والعمق يأتيان من data-motion
@@ -260,7 +308,9 @@ export function designStyleSheet(bp: Pick<StoreBlueprint, "design" | "customCss"
     `--icon-stroke:${d.icon.stroke}`,
   ].join(";");
 
-  const bg = surface(d);
+  // خلفية V3 (theme.background) تكتبها ورقة الثيم؛ النمط القديم يبقى للمتاجر التي لم تختر تصميماً بعد.
+  const bg = bp.theme.background ? "" : surface(d);
+  const card = cardStyleOf(bp);
   const grain = d.surface.grain
     ? `${S}::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.035;background-image:radial-gradient(var(--foreground) .5px,transparent .5px);background-size:3px 3px}`
     : "";
@@ -272,12 +322,15 @@ export function designStyleSheet(bp: Pick<StoreBlueprint, "design" | "customCss"
     headingRules(d, S) +
     buttonRules(d, S) +
     cardRules(d, S) +
-    cardStyleRules(bp.theme.productCardStyle, S) +
+    (d.cardStyle ? "" : cardStyleRules(bp.theme.productCardStyle, S)) +
+    cardFxRules(card, S) +
+    staggerRules(S) +
+    `${S} :focus-visible{outline-color:var(--ring,var(--primary))}` +
     iconRules(d, S) +
     rhythmRules(d, S) +
     motionRules(S) +
     `@keyframes s-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}${S} .s-rise{animation:s-rise .7s var(--motion-ease) both}` +
-    `@media (prefers-reduced-motion:reduce){${S} *{transition-duration:0s!important;animation-duration:0s!important}}`;
+    `@media (prefers-reduced-motion:reduce){${S} *{transition-duration:0s!important;animation-duration:0s!important;animation-iteration-count:1!important}${S} .s-card{transform:none!important}}`;
 
   return css + sanitizeSkinCss(bp.customCss, S);
 }

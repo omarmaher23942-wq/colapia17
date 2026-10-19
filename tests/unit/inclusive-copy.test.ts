@@ -94,6 +94,9 @@ const ROOTS = [
   "src/blueprint/core-migrate.ts",
   "src/blueprint/core-palette.ts",
   "src/blueprint/registry.tsx",
+  "src/blueprint/themes.ts",
+  "src/components/design",
+  "src/components/dashboard/design",
 ];
 
 // كلمات كاملة (لا أجزاء كلمات): مؤنث حصري، وعامية مذكر صريحة.

@@ -13,6 +13,11 @@ import { loadMoreCollectionAction } from "@/server/actions/collection";
 import { SORTS, PAGE_SIZE, activeFilterCount, filtersToQuery, type CollectionFilters, type Facets, type SortKey } from "@/lib/collection-filters";
 import { arCount, NOUN } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { attributeFacets, matchesFacets } from "./product/specs";
+
+/** المقاس واللون يفلترهما الخادم؛ بقية السمات الحقيقية (سعة، حجم، خامة...) تُفلتر هنا من بيانات المنتجات. */
+const SERVER_FACET = /مقاس|المقاس|size|لون|اللون|color/i;
+const MAX_CLIENT_ROWS = 400;
 
 export type SubCat = { slug: string; name: string; productCount: number };
 
@@ -40,7 +45,31 @@ export function CollectionBrowser({
   const [open, setOpen] = useState(false);
   const [dense, setDense] = useState(false);
   const [draft, setDraft] = useState(filters);
-  const count = activeFilterCount(filters);
+  const [attr, setAttr] = useState<Record<string, string[]>>({});
+  const [draftAttr, setDraftAttr] = useState<Record<string, string[]>>({});
+  const [loadingAll, setLoadingAll] = useState(false);
+  const attrFacets = useMemo(() => attributeFacets(rows).filter((f) => !SERVER_FACET.test(f.label)), [rows]);
+  const attrCount = Object.values(attr).reduce((n, v) => n + v.length, 0);
+  const visible = useMemo(() => (attrCount ? rows.filter((p) => matchesFacets(p, attr)) : rows), [rows, attr, attrCount]);
+
+  // فلترة السمات تحتاج كل منتجات القائمة لا الصفحة الأولى وحدها: تُجلب البقية مرة واحدة (حتى 400) عند فتح الفلاتر.
+  const loadAll = async () => {
+    if (rows.length >= total || rows.length >= MAX_CLIENT_ROWS || loadingAll) return;
+    setLoadingAll(true);
+    let acc = rows;
+    try {
+      while (acc.length < total && acc.length < MAX_CLIENT_ROWS) {
+        const r = await loadMoreCollectionAction({ subdomain, category: categorySlug, query, offset: acc.length });
+        const fresh = (r.rows as ProductCardProduct[]).filter((n) => !acc.some((c) => c.id === n.id));
+        if (!fresh.length) break;
+        acc = [...acc, ...fresh];
+      }
+      setRows(acc);
+    } finally {
+      setLoadingAll(false);
+    }
+  };
+  const count = activeFilterCount(filters) + Object.values(attr).reduce((n, v) => n + v.length, 0);
   const query = useMemo(() => filtersToQuery(filters), [filters]);
   const go = (f: CollectionFilters) => {
     const q = filtersToQuery(f);
@@ -59,6 +88,7 @@ export function CollectionBrowser({
   for (const c of filters.colors) chips.push({ key: `c-${c}`, label: c, clear: { ...filters, colors: filters.colors.filter((x) => x !== c) } });
   if (filters.inStock) chips.push({ key: "stock", label: "متوفر فقط", clear: { ...filters, inStock: false } });
   if (filters.sale) chips.push({ key: "sale", label: "تخفيضات", clear: { ...filters, sale: false } });
+  const attrChips = Object.entries(attr).flatMap(([label, vals]) => vals.map((v) => ({ key: `a-${label}-${v}`, label: `${label}: ${v}`, remove: () => setAttr((cur) => ({ ...cur, [label]: (cur[label] ?? []).filter((x) => x !== v) })) })));
 
   const toggle = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
@@ -83,7 +113,9 @@ export function CollectionBrowser({
             type="button"
             onClick={() => {
               setDraft(filters);
+              setDraftAttr(attr);
               setOpen(true);
+              void loadAll();
             }}
             className="inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-2"
             style={{ borderColor: "var(--border)" }}
@@ -108,7 +140,7 @@ export function CollectionBrowser({
           </select>
         </label>
         <p className="ms-auto text-sm font-bold opacity-70" aria-live="polite">
-          {arCount(total, NOUN.product)}
+          {arCount(attrCount ? visible.length : total, NOUN.product)}
         </p>
         <button type="button" onClick={() => setDense((d) => !d)} aria-pressed={dense} aria-label={dense ? "عرض بطاقات أكبر" : "عرض بطاقات أصغر"} className="hidden size-11 place-items-center rounded-full border sm:grid lg:hidden" style={{ borderColor: "var(--border)" }}>
           {dense ? <Square className="size-4" aria-hidden="true" /> : <LayoutGrid className="size-4" aria-hidden="true" />}
@@ -118,8 +150,16 @@ export function CollectionBrowser({
         </button>
       </div>
 
-      {chips.length ? (
+      {chips.length || attrChips.length ? (
         <ul className="mb-4 flex flex-wrap gap-2" aria-label="الفلاتر الفعالة">
+          {attrChips.map((c) => (
+            <li key={c.key}>
+              <button type="button" onClick={c.remove} className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold focus-visible:outline-none focus-visible:ring-2" style={{ background: "var(--muted)" }} aria-label={`إزالة ${c.label}`}>
+                {c.label}
+                <X className="size-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
           {chips.map((c) => (
             <li key={c.key}>
               <button type="button" onClick={() => go(c.clear)} className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold focus-visible:outline-none focus-visible:ring-2" style={{ background: "var(--muted)" }} aria-label={`إزالة ${c.label}`}>
@@ -129,16 +169,16 @@ export function CollectionBrowser({
             </li>
           ))}
           <li>
-            <button type="button" onClick={() => go({ ...filters, min: null, max: null, sizes: [], colors: [], inStock: false, sale: false })} className="h-9 px-2 text-[13px] font-bold underline-offset-4 hover:underline">
+            <button type="button" onClick={() => { setAttr({}); go({ ...filters, min: null, max: null, sizes: [], colors: [], inStock: false, sale: false }); }} className="h-9 px-2 text-[13px] font-bold underline-offset-4 hover:underline">
               مسح الكل
             </button>
           </li>
         </ul>
       ) : null}
 
-      {rows.length ? (
-        <ul className={cn("grid gap-3 sm:gap-4", dense ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
-          {rows.map((p, i) => (
+      {visible.length ? (
+        <ul className={cn("s-stagger grid gap-3 sm:gap-4", dense ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
+          {visible.map((p, i) => (
             <li key={p.id}>
               <ProductCard product={p} priority={i < 4} />
             </li>
@@ -148,14 +188,14 @@ export function CollectionBrowser({
         <div className="py-16 text-center">
           <p className="font-bold">لا توجد منتجات تطابق هذه الفلاتر</p>
           {count ? (
-            <button type="button" onClick={() => go({ ...filters, min: null, max: null, sizes: [], colors: [], inStock: false, sale: false })} className="s-btn mt-4">
+            <button type="button" onClick={() => { setAttr({}); go({ ...filters, min: null, max: null, sizes: [], colors: [], inStock: false, sale: false }); }} className="s-btn mt-4">
               مسح الفلاتر
             </button>
           ) : null}
         </div>
       )}
 
-      {rows.length < total ? (
+      {rows.length < total && !attrCount ? (
         <div className="mt-8 text-center">
           <p className="mb-3 text-sm opacity-70">
             تم عرض {rows.length} من {total}
@@ -179,6 +219,7 @@ export function CollectionBrowser({
               type="button"
               onClick={() => {
                 setOpen(false);
+                setAttr({});
                 go({ ...draft, min: null, max: null, sizes: [], colors: [], inStock: false, sale: false });
               }}
               className="s-btn-ghost h-12 flex-1"
@@ -189,6 +230,7 @@ export function CollectionBrowser({
               type="button"
               onClick={() => {
                 setOpen(false);
+                setAttr(draftAttr);
                 go(draft);
               }}
               className="s-btn h-12 flex-[2]"
@@ -250,6 +292,25 @@ export function CollectionBrowser({
                 ))}
               </div>
             </fieldset>
+          ) : null}
+
+          {attrFacets.map((f) => (
+            <fieldset key={f.label}>
+              <legend className="mb-2 text-sm font-black">{f.label}</legend>
+              <div className="flex flex-wrap gap-2">
+                {f.values.map((v) => (
+                  <Toggle key={v.value} on={(draftAttr[f.label] ?? []).includes(v.value)} onClick={() => setDraftAttr((d) => ({ ...d, [f.label]: toggle(d[f.label] ?? [], v.value) }))}>
+                    {v.value}
+                    <span className="ms-1 text-[12px] font-medium opacity-70 tabular-nums">({v.count})</span>
+                  </Toggle>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+          {loadingAll ? (
+            <p className="flex items-center gap-2 text-[13px] opacity-75" role="status">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" /> نجهّز كل سمات المنتجات…
+            </p>
           ) : null}
 
           <fieldset className="space-y-2">

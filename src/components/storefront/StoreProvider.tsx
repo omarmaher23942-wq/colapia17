@@ -21,6 +21,8 @@ export type StoreCtx = {
   cardStyle: StoreBlueprint["theme"]["productCardStyle"];
   facts: StoreFact[];
   sizeGuide?: StoreBlueprint["sizeGuide"];
+  /** خلفية المتجر الفعلية: فاتحة/داكنة ثابتة أو تتبع جهاز الزائر (للشعار وما يعتمد على الخلفية). */
+  scheme?: "light" | "dark" | "auto";
 };
 
 const Ctx = createContext<StoreCtx | null>(null);

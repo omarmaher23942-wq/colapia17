@@ -9,6 +9,7 @@ import { BRAND_COLORS, BrandIcon, type BrandKey } from "./brand-icons";
 import { socialLinks } from "@/lib/store-channels";
 import { FooterSection } from "./FooterSection";
 import { waLink } from "@/lib/whatsapp";
+import { StoreLogo } from "./StoreLogo";
 
 const brandColor = (k: BrandKey) => (k === "tiktok" ? "var(--card-foreground)" : BRAND_COLORS[k]);
 const SW = 1.75;
@@ -30,8 +31,10 @@ export function Footer({
   payments,
   categories,
   facts = [],
+  scheme = "light",
 }: {
   facts?: StoreFact[];
+  scheme?: "light" | "dark" | "auto";
   footer: StoreBlueprint["footer"];
   brand: StoreBlueprint["brand"];
   channels: StoreBlueprint["channels"];
@@ -53,7 +56,9 @@ export function Footer({
     <footer className="mt-20 border-t" style={{ background: "var(--card)", borderColor: "var(--border)", color: "var(--card-foreground)" }} dir="rtl">
       <div className="container-x grid gap-x-10 gap-y-2 py-12 md:grid-cols-12 md:gap-y-10 md:py-14">
         <div className="space-y-4 pb-6 md:col-span-4 md:pb-0">
-          <p className="font-heading text-2xl font-black">{brand.name}</p>
+          <Link href="/" className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]" aria-label={`${brand.name}: الرئيسية`}>
+            <StoreLogo brand={brand} size="lg" scheme={scheme} />
+          </Link>
           {footer.tagline || brand.tagline || brand.description ? <p className="max-w-md text-[14px] leading-relaxed opacity-80">{footer.tagline || brand.tagline || brand.description}</p> : null}
           {facts.length ? (
             <ul className="space-y-1.5 pt-1 text-[13px] font-bold opacity-90">

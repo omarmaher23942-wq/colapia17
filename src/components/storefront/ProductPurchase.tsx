@@ -176,14 +176,19 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
   const eta = now && etaDays ? deliveryRange(now, etaDays.min, etaDays.max).text : null;
 
   // صف الثقة: صياغة التاجر إن كتبها (مفلترة بالحقائق)، وإلا أهم حقائق المتجر الفعلية.
+  // المعاينة قبل الدفع (bp.shipping.inspectionAllowed) تظهر دائماً حين يسمح بها المتجر، ولا تظهر أبداً حين لا يسمح.
   const trust = useMemo(() => {
+    const inspection = facts.find((f) => f.key === "inspection");
+    const inspectionRow = inspection ? { icon: inspection.icon, text: "المعاينة متاحة قبل الدفع" } : null;
     const custom = groundedItems(conversion.productTrustRow.map((r) => ({ ...r, title: r.text })), facts);
-    if (custom.length) return custom.slice(0, 4).map((r) => ({ icon: r.icon, text: r.text }));
-    return facts
-      .filter((f) => TRUST_ORDER.includes(f.key))
-      .sort((a, b) => TRUST_ORDER.indexOf(a.key) - TRUST_ORDER.indexOf(b.key))
-      .slice(0, 4)
-      .map((f) => ({ icon: f.icon, text: f.title }));
+    const rows = custom.length
+      ? custom.map((r) => ({ icon: r.icon, text: r.text }))
+      : facts
+          .filter((f) => TRUST_ORDER.includes(f.key) && f.key !== "inspection")
+          .sort((a, b) => TRUST_ORDER.indexOf(a.key) - TRUST_ORDER.indexOf(b.key))
+          .map((f) => ({ icon: f.icon, text: f.title }));
+    const rest = inspectionRow ? rows.filter((r) => !/معاين|فحص|افحص/.test(r.text)) : rows;
+    return (inspectionRow ? [inspectionRow, ...rest] : rest).slice(0, 4);
   }, [conversion.productTrustRow, facts]);
 
   return (
