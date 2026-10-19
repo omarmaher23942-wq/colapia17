@@ -21,12 +21,14 @@ import { ChipsInput, Field, inputCls, Section, Switch } from "./parts";
 import { ProductImages, type ProductImage } from "./ProductImages";
 import { ColorImages } from "./ColorImages";
 
+import { NicheAttributeField } from "@/components/onboarding/ReviewGrid";
+import { attributesFor, attrValue, NICHE_LABEL, setAttr, usesSizeColor, type Niche } from "@/lib/niche-attributes";
 import { FIELD_ORDER, LIMITS, toNumber, validateProduct as validate, type EditorProduct, type Errors, type ProductStats, type Status } from "./model";
 
 const STATUS: { key: Status; label: string; hint: string }[] = [
-  { key: "active", label: "منشور", hint: "يظهر في متجرك ويمكن طلبه." },
+  { key: "active", label: "منشور", hint: "يظهر في المتجر ويمكن طلبه." },
   { key: "draft", label: "مسودة", hint: "لم يكتمل بعد، ولا يراه العملاء." },
-  { key: "hidden", label: "مخفي", hint: "أوقفت عرضه مؤقتاً (موسمي أو متوقف)، ويبقى بكل بياناته." },
+  { key: "hidden", label: "مخفي", hint: "عرضه متوقف مؤقتاً (موسمي أو متوقف)، ويبقى بكل بياناته." },
 ];
 
 export function ProductEditor({
@@ -35,12 +37,15 @@ export function ProductEditor({
   subdomain,
   featuredBadge,
   stats,
+  niche = "other",
 }: {
   initial: EditorProduct;
   categories: { id: string; name: string }[];
   subdomain: string;
   featuredBadge: string;
   stats?: ProductStats;
+  /** نشاط المتجر: يحدد سمات المنتج المعروضة (lib/niche-attributes). */
+  niche?: Niche;
 }) {
   const router = useRouter();
   const [f, setF] = useState<EditorProduct>(initial);
@@ -51,6 +56,8 @@ export function ProductEditor({
   const savedRef = useRef(JSON.stringify(initial));
   const [savedJson, setSavedJson] = useState(savedRef.current);
   const isNew = !f.id;
+  const nicheAttrs = useMemo(() => attributesFor(niche), [niche]);
+  const nicheLabels = useMemo(() => new Set(nicheAttrs.map((a) => a.label)), [nicheAttrs]);
 
   const json = JSON.stringify(f);
   const dirty = json !== savedJson;
@@ -117,7 +124,7 @@ export function ProductEditor({
         isFeatured: f.isFeatured,
         seoTitle: f.seoTitle,
         seoDescription: f.seoDescription,
-      }).catch(() => ({ ok: false as const, error: "انقطع الاتصال ولم يُحفظ شيء. حاول مرة أخرى", field: undefined }));
+      }).catch(() => ({ ok: false as const, error: "انقطع الاتصال ولم يُحفظ شيء. حاولوا مرة أخرى", field: undefined }));
       if (!r.ok) {
         if (r.field && FIELD_ORDER.includes(r.field as keyof Errors)) {
           setErrors((x) => ({ ...x, [r.field!]: r.error }));
@@ -135,7 +142,7 @@ export function ProductEditor({
         savedRef.current = nextJson;
         setSavedJson(nextJson);
         setF(next);
-        toast.success(f.status === "active" ? "أُضيف المنتج وصار في متجرك" : "حُفظ المنتج");
+        toast.success(f.status === "active" ? "أُضيف المنتج وصار في المتجر" : "حُفظ المنتج");
         router.replace(`/dashboard/products/${r.id}`, { scroll: false });
       } else {
         toast.success("حُفظت التعديلات");
@@ -193,7 +200,7 @@ export function ProductEditor({
     const r = await duplicateProductAction(f.id!);
     setBusy(null);
     if (!r.ok) return void toast.error(r.error);
-    toast.success("نُسخ المنتج كمسودة. عدّل ما يختلف ثم انشره");
+    toast.success("نُسخ المنتج كمسودة. عدّلوا ما يختلف ثم انشروه");
     router.push(`/dashboard/products/${r.id}`);
   }
 
@@ -318,7 +325,20 @@ export function ProductEditor({
             <ProductImages value={f.images} onChange={setImages} name={f.name} />
           </Section>
 
-          <Section title="المقاسات والألوان" hint="للمنتج الذي له مقاسات أو ألوان: اكتب القيم وتتولد كل التركيبات بكمياتها وأسعارها.">
+          {nicheAttrs.length ? (
+            <Section title="تفاصيل المنتج" hint={`حقول تناسب نشاط ${NICHE_LABEL[niche]}، وتظهر للزبون جدولاً في صفحة المنتج. اتركوا الفارغ كما هو.`}>
+              <div className="space-y-4">
+                {nicheAttrs.map((a) => (
+                  <NicheAttributeField key={a.key} idPrefix="pe" attr={a} value={attrValue(f.attributes, a.label)} onChange={(v) => up("attributes", setAttr(f.attributes, a.label, v))} />
+                ))}
+              </div>
+            </Section>
+          ) : null}
+
+          <Section
+            title={usesSizeColor(niche) ? "المقاسات والألوان" : "خيارات المنتج"}
+            hint={usesSizeColor(niche) ? "للمنتج الذي له مقاسات أو ألوان: اكتبوا القيم وتتولد كل التركيبات بكمياتها وأسعارها." : "اختياري: للمنتج الذي يُباع بخيارات مختلفة السعر أو المخزون (مثل السعة أو الحجم). اتركوه فارغاً للمنتج البسيط."}
+          >
             <VariantMatrix
               optionNames={f.optionNames}
               variants={f.variants}
@@ -330,8 +350,8 @@ export function ProductEditor({
           </Section>
 
           <Section
-            title="المواصفات"
-            hint="جدول يظهر في صفحة المنتج: الخامة، الموديل، الضمان، بلد الصنع…"
+            title={nicheAttrs.length ? "مواصفات إضافية" : "المواصفات"}
+            hint="جدول يظهر في صفحة المنتج: أي مواصفة أخرى بالاسم والقيمة."
             action={
               f.attributes.length < 30 ? (
                 <button type="button" onClick={() => up("attributes", [...f.attributes, { label: "", value: "" }])} className="inline-flex min-h-10 items-center gap-1 rounded-xl border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/5 hover:text-ink">
@@ -341,9 +361,9 @@ export function ProductEditor({
               ) : null
             }
           >
-            {f.attributes.length ? (
+            {f.attributes.some((a) => !nicheLabels.has(a.label)) ? (
               <ul className="space-y-2">
-                {f.attributes.map((a, i) => (
+                {f.attributes.map((a, i) => nicheLabels.has(a.label) ? null : (
                   <li key={i} className="grid grid-cols-[1fr_1.4fr_auto] items-center gap-2">
                     <input
                       aria-label={`اسم المواصفة ${i + 1}`}
@@ -438,7 +458,7 @@ export function ProductEditor({
               </Field>
             </div>
             <div data-field="cost">
-              <Field label="سعر التكلفة" optional error={errors.cost} hint="لا يراه العملاء. منه نحسب ربحك في كل طلب.">
+              <Field label="سعر التكلفة" optional error={errors.cost} hint="لا يراه العملاء. منه نحسب الربح في كل طلب.">
                 {(p) => <input {...p} className={cn(inputCls, "tabular-nums")} inputMode="decimal" dir="ltr" value={f.cost} onChange={(e) => up("cost", e.target.value)} placeholder="—" />}
               </Field>
             </div>
@@ -446,11 +466,11 @@ export function ProductEditor({
               <div className={cn("rounded-xl p-3 text-[12.5px] leading-6", profit > 0 ? "bg-ok/10 text-ok" : "bg-bad/10 text-bad")} aria-live="polite">
                 {profit > 0 ? (
                   <>
-                    ربحك <b className="tabular-nums">{formatEgp(Math.round(profit * 100))}</b> في القطعة (هامش {fmtNum(margin!)}%)
+                    الربح <b className="tabular-nums">{formatEgp(Math.round(profit * 100))}</b> في القطعة (هامش {fmtNum(margin!)}%)
                     {f.variants.some((v) => v.price !== null && v.price !== undefined && v.price !== price) ? <span className="block text-[11.5px] opacity-80">حسب سعر المنتج؛ التركيبات بسعر مختلف يختلف ربحها.</span> : null}
                   </>
                 ) : (
-                  <>تبيع بخسارة {formatEgp(Math.round(-profit * 100))} في القطعة. راجع السعر أو التكلفة.</>
+                  <>البيع بخسارة {formatEgp(Math.round(-profit * 100))} في القطعة. راجعوا السعر أو التكلفة.</>
                 )}
               </div>
             ) : null}
@@ -485,7 +505,7 @@ export function ProductEditor({
 
           <Section title="التنظيم">
             <div data-field="categoryId">
-              <Field label="القسم" error={errors.categoryId} hint={categories.length ? undefined : "لا أقسام بعد. أنشئها من صفحة «الأقسام»."}>
+              <Field label="القسم" error={errors.categoryId} hint={categories.length ? undefined : "لا أقسام بعد. أنشئوها من صفحة «الأقسام»."}>
                 {(p) => (
                   <select {...p} className={cn(inputCls, "bg-space-2")} value={f.categoryId ?? ""} onChange={(e) => up("categoryId", e.target.value || null)}>
                     <option value="">بلا قسم</option>
@@ -498,10 +518,10 @@ export function ProductEditor({
                 )}
               </Field>
             </div>
-            <Field label="كلمات البحث" optional hint="كلمات يكتبها العملاء للوصول إليه، بالعربي والفرانكو. افصل بينها بفاصلة.">
+            <Field label="كلمات البحث" optional hint="كلمات يكتبها العملاء للوصول إليه، بالعربي والفرانكو، تفصل بينها فاصلة.">
               {(p) => <ChipsInput id={p.id} describedBy={p["aria-describedby"]} value={f.tags} onChange={(v) => up("tags", v)} placeholder="فستان صيفي، fostan" max={20} maxLen={40} />}
             </Field>
-            <Field label="شارات صفحة المنتج" optional hint="حقائق قصيرة تظهر فوق السعر، مثل: قطن 100%، صناعة مصرية. لا تكتب ما لا يصح.">
+            <Field label="شارات صفحة المنتج" optional hint="حقائق قصيرة تظهر فوق السعر، مثل: قطن 100%، صناعة مصرية. اكتبوا ما يصح فقط.">
               {(p) => <ChipsInput id={p.id} describedBy={p["aria-describedby"]} value={f.badges} onChange={(v) => up("badges", v)} placeholder="قطن 100%" max={6} maxLen={30} />}
             </Field>
           </Section>
@@ -543,7 +563,7 @@ export function ProductEditor({
         open={dialog?.kind === "delete"}
         onClose={() => setDialog(null)}
         title={`حذف «${f.name}»؟`}
-        description="يختفي من متجرك ومن القوائم فوراً. الطلبات السابقة تبقى كما هي بأسمائها وأسعارها."
+        description="يختفي من المتجر ومن القوائم فوراً. الطلبات السابقة تبقى كما هي بأسمائها وأسعارها."
         confirmLabel="حذف المنتج"
         tone="danger"
         onConfirm={remove}
@@ -551,9 +571,9 @@ export function ProductEditor({
       <ConfirmDialog
         open={dialog?.kind === "leave"}
         onClose={() => setDialog(null)}
-        title="تغادر دون حفظ؟"
-        description="تعديلاتك على هذا المنتج لم تُحفظ بعد وستضيع."
-        confirmLabel="غادر دون حفظ"
+        title="المغادرة دون حفظ؟"
+        description="التعديلات على هذا المنتج لم تُحفظ بعد وستضيع."
+        confirmLabel="المغادرة دون حفظ"
         tone="danger"
         onConfirm={async () => {
           const href = dialog?.kind === "leave" ? dialog.href : "/dashboard/products";

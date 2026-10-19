@@ -13,6 +13,8 @@ export const MEDIA_ROUTES = {
   merchantAvatar: { maxBytes: 4 << 20, maxFiles: 1 },
   // بحث العميل بالصورة في المتجر (لا يُحفظ في أي جدول، ويُحذف بعد المطابقة).
   visualSearch: { maxBytes: 4 << 20, maxFiles: 1 },
+  // فيديو واجهة المتجر (MP4/WEBM حتى 40 ميجابايت)، يُحسب على حد الفيديو الشهري للباقة.
+  brandVideo: { maxBytes: 40 << 20, maxFiles: 1 },
 } as const satisfies Record<string, { maxBytes: number; maxFiles: number }>;
 
 export type MediaRoute = keyof typeof MEDIA_ROUTES;
@@ -37,6 +39,24 @@ export function sniffImageType(b: Uint8Array): string | null {
   if (b.length >= 6 && (at(0, "GIF87a") || at(0, "GIF89a"))) return "image/gif";
   if (b.length >= 12 && at(0, "RIFF") && at(8, "WEBP")) return "image/webp";
   if (b.length >= 12 && at(4, "ftyp") && (at(8, "avif") || at(8, "avis"))) return "image/avif";
+  return null;
+}
+
+/** مسارات الفيديو (البقية صور). */
+export const VIDEO_ROUTES: ReadonlySet<MediaRoute> = new Set<MediaRoute>(["brandVideo"]);
+
+/**
+ * نوع الفيديو الحقيقي من بايتاته: MP4 (ftyp بعلامة mp4/iso/avc/M4V/dash) أو WEBM (EBML). QuickTime (MOV من آيفون)
+ * يُرفض برسالة خاصة: كثير من المتصفحات لا تشغّله.
+ */
+export function sniffVideoType(b: Uint8Array): { type: string; ext: string } | "quicktime" | null {
+  const at = (i: number, s: string) => s.split("").every((c, k) => b[i + k] === c.charCodeAt(0));
+  if (b.length > 12 && at(4, "ftyp")) {
+    if (at(8, "qt  ")) return "quicktime";
+    if (["heic", "heix", "hevc", "mif1", "msf1", "avif", "avis"].some((x) => at(8, x))) return null;
+    return { type: "video/mp4", ext: "mp4" };
+  }
+  if (b.length > 4 && b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return { type: "video/webm", ext: "webm" };
   return null;
 }
 

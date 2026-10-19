@@ -1,14 +1,15 @@
 "use client";
 
-// ImportTool — صفحة «استيراد منتجات» في اللوحة: أداة الإعداد نفسها (نص/صور/ملف ← مراجعة ← اعتماد) للإضافات اللاحقة.
+// ImportTool — صفحة «استيراد منتجات» في اللوحة: أداة الإعداد نفسها (صور مجمّعة/نص/ملف ← مراجعة ← اعتماد) للإضافات اللاحقة.
 import { useState } from "react";
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import { ProductImporter, type CommitStats } from "@/components/onboarding/ProductImporter";
 import { btnGhost, btnPrimary } from "@/components/onboarding/ui";
 import { fmtNum } from "@/lib/format";
+import type { Niche } from "@/lib/niche-attributes";
 
-export function ImportTool({ existingCategories }: { existingCategories: string[] }) {
+export function ImportTool({ existingCategories, niche, draftKey }: { existingCategories: string[]; niche: Niche; draftKey: string }) {
   const [done, setDone] = useState<CommitStats | null>(null);
   const [round, setRound] = useState(0);
 
@@ -41,5 +42,5 @@ export function ImportTool({ existingCategories }: { existingCategories: string[
       </div>
     );
   }
-  return <ProductImporter key={round} existingCategories={existingCategories} onCommitted={setDone} />;
+  return <ProductImporter key={round} existingCategories={existingCategories} niche={niche} draftKey={draftKey} onCommitted={setDone} />;
 }

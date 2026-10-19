@@ -4,7 +4,7 @@
 // الحفظ في الحالتين saveIdentityAction (لوحة الألوان كاملة تُشتق من لون العلامة بتباين AA).
 import { useRef, useState } from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
-import { saveIdentityAction } from "@/server/actions/setup";
+import { saveIdentityAction, saveLogoAction } from "@/server/actions/setup";
 import { BRAND_SWATCHES, brandContrast, FONT_PAIRS, normalizeHex } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 import { btnGhost, btnPrimary, Field, inputCls, Notice, Spinner } from "./ui";
@@ -18,7 +18,10 @@ export function IdentityForm({
   onSaved,
   submitLabel = "حفظ ومتابعة",
   secondary,
+  onLogoSaved,
 }: {
+  /** يُستدعى بعد حفظ الشعار فعلاً (لتحديث المعاينة فوراً). */
+  onLogoSaved?: () => void;
   initial: IdentityValue;
   /** يُستدعى مع كل تعديل (لتحديث المعاينة المحلية أو علامة التغيير). */
   onChange?: (v: IdentityValue) => void;
@@ -40,15 +43,34 @@ export function IdentityForm({
   const isSwatch = BRAND_SWATCHES.some((s) => s.hex === v.primary);
   const light = brandContrast(v.primary) < 3;
 
+  // الشعار يُحفظ فور رفعه (لا ينتظر «حفظ ومتابعة»): يظهر في الهيدر والفوتر وأيقونة التبويب في المعاينة مباشرة.
+  // الشعار الشفاف يبقى شفافاً (PNG/WebP)، فلا تظهر حوله خلفية سوداء أو بيضاء.
   async function pickLogo(files: FileList | null) {
     if (!files?.length) return;
     setUp(true);
     setErr(null);
-    const r = await uploadImages([files[0]!], { route: "brandAsset" });
+    try {
+      const r = await uploadImages([files[0]!], { route: "brandAsset", keepAlpha: true });
+      const url = r.urls[0];
+      if (!url) return setErr(r.error ?? "تعذر رفع الشعار. حاولوا مرة أخرى.");
+      const saved = await saveLogoAction({ url });
+      if (!saved.ok) return setErr(saved.error);
+      set({ logoUrl: url });
+      onLogoSaved?.();
+    } finally {
+      setUp(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function removeLogo() {
+    setUp(true);
+    setErr(null);
+    const saved = await saveLogoAction({ url: null });
     setUp(false);
-    if (r.error) setErr(r.error);
-    if (r.urls[0]) set({ logoUrl: r.urls[0] });
-    if (fileRef.current) fileRef.current.value = "";
+    if (!saved.ok) return setErr(saved.error);
+    set({ logoUrl: null });
+    onLogoSaved?.();
   }
 
   async function save() {
@@ -88,20 +110,20 @@ export function IdentityForm({
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <input ref={fileRef} type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={(e) => void pickLogo(e.target.files)} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="ملف الشعار" className="sr-only" tabIndex={-1} onChange={(e) => void pickLogo(e.target.files)} />
             <button type="button" className={btnGhost} disabled={up} onClick={() => fileRef.current?.click()}>
               {up ? <Spinner /> : <ImagePlus className="size-4" aria-hidden="true" />}
               {v.logoUrl ? "تغيير الشعار" : "رفع الشعار"}
             </button>
             {v.logoUrl ? (
-              <button type="button" className={btnGhost} onClick={() => set({ logoUrl: null })}>
+              <button type="button" className={btnGhost} disabled={up} onClick={() => void removeLogo()}>
                 <Trash2 className="size-4" aria-hidden="true" />
                 بدون شعار الآن
               </button>
             ) : null}
           </div>
         </div>
-        <p className="mt-1.5 text-[11.5px] leading-5 text-ink-3">{v.logoUrl ? "الأفضل شعار بخلفية شفافة (PNG)." : "بلا شعار نعرض اسم المتجر نصاً أنيقاً في الأعلى، ويمكنكم إضافة الشعار في أي وقت."}</p>
+        <p className="mt-1.5 text-[11.5px] leading-5 text-ink-3">{v.logoUrl ? "حُفظ الشعار، ويظهر الآن في أعلى المتجر وأسفله وفي الفواتير وأيقونة التبويب. الأفضل شعار بخلفية شفافة (PNG)." : "بلا شعار نعرض اسم المتجر نصاً أنيقاً في الأعلى، ويمكنكم إضافة الشعار في أي وقت."}</p>
       </div>
 
       <fieldset>

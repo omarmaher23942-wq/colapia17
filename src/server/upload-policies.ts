@@ -38,6 +38,12 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     if (!s) throw new UploadPolicyError("غير مصرح");
     return { prefix: `stores/${s.storeId}/brand`, meta: { storeId: s.storeId } };
   },
+  // فيديو واجهة المتجر: لمن يدير المحتوى.
+  async brandVideo() {
+    const s = await storeFor("content");
+    if (!s) throw new UploadPolicyError("غير مصرح");
+    return { prefix: `stores/${s.storeId}/hero`, meta: { storeId: s.storeId } };
+  },
   // إيصال تحويل التاجر للمنصة: لصاحب المتجر وحده، ويعمل والمتجر مجمّد.
   async platformReceipt() {
     const s = await ownerStore();

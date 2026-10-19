@@ -5,17 +5,22 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { fmtNum } from "@/lib/format";
 import type { SetupData } from "@/lib/onboarding";
+import type { Niche } from "@/lib/niche-attributes";
 import { ProductImporter, type CommitStats } from "./ProductImporter";
 import { btnGhost, btnPrimary, Notice } from "./ui";
 
 export function StepProducts({
   data,
+  niche,
+  draftKey,
   dmImages,
   onCommitted,
   onNext,
   onBack,
 }: {
   data: SetupData["products"];
+  niche: Niche;
+  draftKey: string;
   dmImages: string[];
   onCommitted: (s: CommitStats) => void;
   onNext: () => void;
@@ -27,7 +32,7 @@ export function StepProducts({
       {data.total > 0 ? (
         <Notice tone="ok">
           <p className="font-black">{data.active > 0 ? `لديكم ${fmtNum(data.active)} منتج ظاهر في المتجر` : "اعتمدتم منتجات، لكن بلا أسعار بعد"}.</p>
-          {data.drafts > 0 ? <p>{fmtNum(data.drafts)} منها مسودة بلا سعر ولن تظهر حتى تحددوا سعرها من «المنتجات» بلوحة التحكم.</p> : null}
+          {data.drafts > 0 ? <p>{fmtNum(data.drafts)} منها بلا سعر ولن تظهر حتى تحددوا سعرها من «المنتجات» بلوحة التحكم.</p> : null}
           {last ? (
             <p className="mt-1 flex items-center gap-1.5">
               <CheckCircle2 className="size-4" aria-hidden="true" />
@@ -38,6 +43,8 @@ export function StepProducts({
       ) : null}
 
       <ProductImporter
+        niche={niche}
+        draftKey={draftKey}
         existingCategories={data.categories}
         dmImages={dmImages}
         onCommitted={(s) => {

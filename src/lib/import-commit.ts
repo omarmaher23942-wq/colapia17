@@ -31,6 +31,7 @@ export type CommitPlan = {
     trackStock: boolean;
     stock: number | null;
     images: { url: string; alt: string }[];
+    attributes: { label: string; value: string }[];
     optionNames: string[];
     status: "active" | "draft";
     sortOrder: number;
@@ -91,10 +92,11 @@ export function planCommit(inp: CommitInput): CommitPlan {
       trackStock: !hasVariants && inp.tracking && c.stock !== null,
       stock: !hasVariants && inp.tracking && c.stock !== null ? c.stock : null,
       images: c.images.map((url) => ({ url, alt: c.name })),
+      attributes: c.attributes ?? [],
       optionNames: hasVariants ? plan.optionNames : [],
       status: draft ? "draft" : "active",
       sortOrder: off.products + i,
-      searchText: buildSearchText([c.name, c.description, c.category, ...c.colors, ...c.sizes]),
+      searchText: buildSearchText([c.name, c.description, c.category, ...c.colors, ...c.sizes, ...(c.attributes ?? []).map((a) => a.value)]),
     });
     plan.combos.forEach((optionValues, k) => variants.push({ storeId: inp.storeId, productId: id, optionValues, pricePiasters: null, stock: null, isAvailable: true, sortOrder: k }));
   });

@@ -30,7 +30,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
   const { startUpload } = useMediaUpload("productImage", {
     onUploadError: (e) => {
       // رسائلنا العربية تُعرض كما هي، وغيرها برسالة مفهومة.
-      toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكد من الاتصال وحاول مرة أخرى");
+      toast.error(/[\u0600-\u06FF]/.test(e?.message ?? "") ? e.message : "تعذر رفع الصورة. تأكدوا من الاتصال وحاولوا مرة أخرى");
     },
   });
 
@@ -163,7 +163,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
             >
               <ImagePlus className="size-6 text-nova-2" strokeWidth={1.75} aria-hidden="true" />
               <span className="text-[12.5px] font-black text-ink">{value.length ? "إضافة صور" : "رفع صور المنتج"}</span>
-              <span className="hidden text-[11px] text-ink-3 sm:block">أو اسحبها إلى هنا</span>
+              <span className="hidden text-[11px] text-ink-3 sm:block">أو اسحبوها إلى هنا</span>
             </button>
           </li>
         ) : null}
@@ -182,7 +182,7 @@ export function ProductImages({ value, onChange, name }: { value: ProductImage[]
           if (files.length) void upload(files);
         }}
       />
-      {value.length > 1 ? <p className="mt-2 hidden text-[11.5px] text-ink-3 md:block">اسحب الصور لترتيبها. الأولى تظهر في بطاقة المنتج.</p> : null}
+      {value.length > 1 ? <p className="mt-2 hidden text-[11.5px] text-ink-3 md:block">اسحبوا الصور لترتيبها. الأولى تظهر في بطاقة المنتج.</p> : null}
     </div>
   );
 }

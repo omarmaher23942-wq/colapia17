@@ -1,26 +1,50 @@
 "use client";
 
-// ProductImporter — أداة إضافة المنتجات بثلاث طرق متجاورة (كتابة حرة، صور، ملف) وصور المحادثة إن وُجدت. تُستعمل في خطوة
-// «المنتجات» بالإعداد وفي «استيراد منتجات» باللوحة. الطرق كلها تنتهي بشبكة مراجعة، ولا يُحفظ شيء قبل «اعتماد المنتجات».
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+// ProductImporter — أداة إضافة المنتجات: صور مجمّعة (الأسرع: كل صورة تُقرأ منتجاً)، أو كتابة حرة، أو ملف، وصور المحادثة
+// إن وُجدت. تُستعمل في خطوة «المنتجات» بالإعداد وفي «استيراد منتجات» باللوحة. الطرق كلها تنتهي بشبكة مراجعة بحقول تتبع
+// نشاط المتجر، والسعر وحده إلزامي. المراجعة تُحفظ تلقائياً على الجهاز فلا يضيع شيء عند إغلاق الصفحة، ولا يُحفظ في المتجر
+// شيء قبل «اعتماد المنتجات».
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CheckCircle2, FileSpreadsheet, ImagePlus, MessageSquareText, PenLine, Sparkles, UploadCloud } from "lucide-react";
 import { importAnalyzeImagesAction, importAnalyzeTextAction, importCommitAction } from "@/server/actions/setup-import";
+import { saveNicheAction } from "@/server/actions/setup";
 import { rehostProductImagesAction } from "@/server/actions/product-import";
-import { chunk, IMPORT_MAX_CANDIDATES, IMPORT_TEXT_CHUNK, mergeCandidates, newId, normalizeCandidate, splitProductText, summarize, unifyCategories, type Candidate } from "@/lib/import-candidates";
+import { chunk, IMPORT_MAX_CANDIDATES, IMPORT_TEXT_CHUNK, mergeCandidates, missingPrice, newId, splitProductText, summarize, unifyCategories, type Candidate } from "@/lib/import-candidates";
+import { isNiche, NICHE_LABEL, NICHES, type Niche } from "@/lib/niche-attributes";
+import { BulkPhotos } from "./BulkPhotos";
 import { fmtNum } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { AddBlankButton, ReviewGrid } from "./ReviewGrid";
 import { btnGhost, btnPrimary, Notice, Spinner } from "./ui";
-import { uploadImages } from "./upload";
 
 type Tab = "text" | "images" | "file" | "dm";
 type Progress = { label: string; done: number; total: number } | null;
 
 const TABS: { id: Tab; title: string; sub: string; icon: typeof PenLine }[] = [
+  { id: "images", title: "صور المنتجات", sub: "كل الصور مرة واحدة، والسعر منكم", icon: ImagePlus },
   { id: "text", title: "اكتبوا منتجاتكم", sub: "منتج في كل سطر أو فقرة", icon: PenLine },
-  { id: "images", title: "ارفعوا الصور", sub: "صورة لكل منتج أو صور مجمّعة", icon: ImagePlus },
   { id: "file", title: "ارفعوا ملفاً", sub: "Excel أو PDF أو Word أو نص", icon: FileSpreadsheet },
 ];
+
+const blank = (): Candidate => ({ id: newId(), name: "", price: null, compareAt: null, description: "", category: "", sizes: [], colors: [], images: [], stock: null, source: "manual", attributes: [] });
+
+type Draft = { v: 1; niche: Niche; items: Candidate[] };
+function readDraft(key: string | undefined): Draft | null {
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Draft;
+    if (d?.v !== 1 || !Array.isArray(d.items)) return null;
+    // الصور المحلية (معاينات لم تُرفع) لا تُستعاد: الروابط المرفوعة فقط.
+    const items = d.items
+      .filter((c) => c && typeof c.id === "string")
+      .map((c) => ({ ...blank(), ...c, images: (c.images ?? []).filter((u) => /^https:\/\//.test(u)), attributes: Array.isArray(c.attributes) ? c.attributes : [] }));
+    return items.length ? { v: 1, niche: isNiche(d.niche) ? d.niche : "other", items } : null;
+  } catch {
+    return null;
+  }
+}
 
 export type CommitStats = { active: number; drafts: number; newCategories: number; variantCount: number };
 
@@ -29,15 +53,25 @@ export function ProductImporter({
   dmImages = [],
   onCommitted,
   commitLabel = "اعتماد المنتجات",
+  niche: initialNiche = "other",
+  draftKey,
 }: {
   existingCategories: string[];
   dmImages?: string[];
   onCommitted: (s: CommitStats) => void;
   commitLabel?: string;
+  /** نشاط المتجر (يحدد حقول المنتج). */
+  niche?: Niche;
+  /** مفتاح حفظ المراجعة على هذا الجهاز (يشمل معرّف المتجر). */
+  draftKey?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("text");
+  const [tab, setTab] = useState<Tab>("images");
+  const [niche, setNiche] = useState<Niche>(initialNiche);
+  const [showErrors, setShowErrors] = useState(false);
+  const [restored, setRestored] = useState(false);
+  const [photosBusy, setPhotosBusy] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
   const [text, setText] = useState("");
-  const [mode, setMode] = useState<"per_image" | "grouped">("per_image");
   const [cleanup, setCleanup] = useState(true);
   const [items, setItems] = useState<Candidate[]>([]);
   const [progress, setProgress] = useState<Progress>(null);
@@ -45,11 +79,39 @@ export function ProductImporter({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [picked, setPicked] = useState<string[]>([]);
-  const imgRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const reviewRef = useRef<HTMLDivElement>(null);
   const tabsId = useId();
-  const busy = progress !== null || saving;
+  const busy = progress !== null || saving || photosBusy;
+
+  // استعادة المراجعة المحفوظة على الجهاز (بعد التحميل لا أثناء العرض الأول، فلا اختلاف بين الخادم والمتصفح).
+  useEffect(() => {
+    const d = readDraft(draftKey);
+    if (d) {
+      setItems(d.items);
+      setRestored(true);
+    }
+    setDraftReady(true);
+  }, [draftKey]);
+
+  // الحفظ التلقائي للمراجعة (بعد توقف قصير عن الكتابة).
+  useEffect(() => {
+    if (!draftKey || !draftReady) return;
+    const t = setTimeout(() => {
+      try {
+        if (items.length) localStorage.setItem(draftKey, JSON.stringify({ v: 1, niche, items } satisfies Draft));
+        else localStorage.removeItem(draftKey);
+      } catch {
+        /* التخزين غير متاح (تصفح خاص): المراجعة تعمل بلا حفظ محلي */
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [items, niche, draftKey, draftReady]);
+
+  function changeNiche(n: Niche) {
+    setNiche(n);
+    void saveNicheAction({ niche: n });
+  }
 
   const tabs = useMemo(() => (dmImages.length ? [...TABS, { id: "dm" as const, title: "صور المحادثة", sub: `${fmtNum(dmImages.length)} صورة أرسلتموها`, icon: MessageSquareText }] : TABS), [dmImages.length]);
 
@@ -64,7 +126,8 @@ export function ProductImporter({
       let done = 0;
       for (const b of batches) {
         setProgress({ label: "نفرز الصور إلى منتجات", done, total: urls.length });
-        const r = await importAnalyzeImagesAction({ urls: b, mode });
+        // صور المحادثة وصفحات الملفات: قد تكون عدة صور للمنتج نفسه، فتُجمع المتشابهة.
+        const r = await importAnalyzeImagesAction({ urls: b, mode: "grouped" });
         if (!r.ok) {
           setError(r.error);
           break;
@@ -74,7 +137,7 @@ export function ProductImporter({
         done += b.length;
       }
     },
-    [addCandidates, mode]
+    [addCandidates]
   );
 
   const runEntries = useCallback(
@@ -107,22 +170,6 @@ export function ProductImporter({
       setProgress(null);
     }
     setText("");
-  }
-
-  async function onImages(files: FileList | null) {
-    if (!files?.length) return;
-    setError(null);
-    setNotice(null);
-    try {
-      const list = [...files].slice(0, 40);
-      setProgress({ label: "نجهّز الصور ونرفعها", done: 0, total: list.length });
-      const up = await uploadImages(list, { cleanup, onProgress: (done, total) => setProgress({ label: "نجهّز الصور ونرفعها", done, total }) });
-      if (up.error) setError(up.error);
-      if (up.urls.length) await runImages(up.urls);
-    } finally {
-      setProgress(null);
-      if (imgRef.current) imgRef.current.value = "";
-    }
   }
 
   async function onFile(files: FileList | null) {
@@ -167,10 +214,18 @@ export function ProductImporter({
   }
 
   async function commit() {
-    setSaving(true);
     setError(null);
-    const clean = items.map((c) => normalizeCandidate(c)).filter((c): c is Candidate => Boolean(c));
-    const r = await importCommitAction({ candidates: clean });
+    const missing = missingPrice(items);
+    if (missing.length) {
+      setShowErrors(true);
+      setError(missing.length === 1 ? "أضيفوا سعر المنتج المتبقي ثم اعتمدوا." : `أضيفوا أسعار ${fmtNum(missing.length)} منتجات ثم اعتمدوا. السعر هو الحقل الإلزامي الوحيد.`);
+      const el = document.getElementById(`cand-${missing[0]!.id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => el?.querySelector<HTMLInputElement>("input[inputmode=decimal]")?.focus({ preventScroll: true }), 350);
+      return;
+    }
+    setSaving(true);
+    const r = await importCommitAction({ candidates: items, niche });
     if (!r.ok) {
       setSaving(false);
       return setError(r.error);
@@ -179,6 +234,13 @@ export function ProductImporter({
     for (const p of r.rehost) await rehostProductImagesAction({ id: p.id }).catch(() => null);
     setSaving(false);
     setItems([]);
+    setShowErrors(false);
+    setRestored(false);
+    try {
+      if (draftKey) localStorage.removeItem(draftKey);
+    } catch {
+      /* لا شيء */
+    }
     onCommitted({ active: r.active, drafts: r.drafts, newCategories: r.newCategories, variantCount: r.variantCount });
   }
 
@@ -186,6 +248,36 @@ export function ProductImporter({
 
   return (
     <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-edge/10 bg-edge/[0.03] p-3">
+        <label htmlFor={`${tabsId}-niche`} className="text-[13px] font-black text-ink">
+          نشاط المتجر
+        </label>
+        <select id={`${tabsId}-niche`} value={niche} onChange={(e) => changeNiche(e.target.value as Niche)} className="min-h-11 rounded-xl border border-edge/15 bg-space-2 px-3 text-[15px] font-bold text-ink outline-none focus:border-nova/60 focus:ring-2 focus:ring-nova/20">
+          {NICHES.map((n) => (
+            <option key={n} value={n}>
+              {NICHE_LABEL[n]}
+            </option>
+          ))}
+        </select>
+        <span className="text-[12px] leading-5 text-ink-3">تظهر حقول المنتج المناسبة لنشاطكم فقط (مثل المقاسات للملابس، والسعة للإلكترونيات).</span>
+      </div>
+
+      {restored && items.length ? (
+        <Notice tone="info">
+          <p>استعدنا {fmtNum(items.length)} منتجاً لم تُعتمد بعد من زيارتكم السابقة.</p>
+          <button
+            type="button"
+            className="mt-1 min-h-10 font-bold underline underline-offset-4"
+            onClick={() => {
+              setItems([]);
+              setRestored(false);
+            }}
+          >
+            البدء من جديد
+          </button>
+        </Notice>
+      ) : null}
+
       <div role="tablist" aria-label="طرق إضافة المنتجات" className={cn("grid gap-2", tabs.length === 4 ? "sm:grid-cols-4" : "sm:grid-cols-3")}>
         {tabs.map((t) => {
           const Icon = t.icon;
@@ -238,41 +330,22 @@ export function ProductImporter({
 
         {tab === "images" ? (
           <div className="space-y-4">
-            <fieldset className="space-y-2">
-              <legend className="text-[13px] font-black text-ink">كيف رتّبتم الصور؟</legend>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {(
-                  [
-                    ["per_image", "كل صورة منتج مستقل", "نُنشئ منتجاً من كل صورة."],
-                    ["grouped", "صور مجمّعة", "عدة صور قد تخص المنتج نفسه، فنجمع المتشابه."],
-                  ] as const
-                ).map(([v, t, d]) => (
-                  <label key={v} className={cn("flex cursor-pointer items-start gap-2.5 rounded-xl border p-3 transition", mode === v ? "border-nova bg-nova/[0.07]" : "border-edge/12 hover:border-edge/30")}>
-                    <input type="radio" name={`${tabsId}-mode`} checked={mode === v} onChange={() => setMode(v)} className="mt-1 accent-[var(--dash-nova)]" />
-                    <span>
-                      <span className="block text-[13px] font-black text-ink">{t}</span>
-                      <span className="block text-[12px] text-ink-3">{d}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-            <label className="flex cursor-pointer items-start gap-2.5 text-[12.5px] text-ink-2">
-              <input type="checkbox" checked={cleanup} onChange={(e) => setCleanup(e.target.checked)} className="mt-1 size-4 accent-[var(--dash-nova)]" />
+            <BulkPhotos
+              niche={niche}
+              categories={[...new Set([...existingCategories, ...items.map((i) => i.category).filter(Boolean)])]}
+              cleanup={cleanup}
+              onBusy={setPhotosBusy}
+              onNotice={setNotice}
+              onCandidate={(c) => setItems((cur) => [...cur, c].slice(0, IMPORT_MAX_CANDIDATES))}
+              onAttach={(id, url) => setItems((cur) => cur.map((c) => (c.id === id ? { ...c, images: [...new Set([...c.images, url])].slice(0, 10) } : c)))}
+            />
+            <label className="flex min-h-11 cursor-pointer items-start gap-2.5 text-[13px] text-ink-2">
+              <input type="checkbox" checked={cleanup} onChange={(e) => setCleanup(e.target.checked)} className="mt-1 size-5 accent-[var(--dash-nova)]" />
               <span>
-                <span className="font-bold text-ink">تنظيف الصور تلقائياً</span>
-                <span className="block text-ink-3">تصحيح الاتجاه وقص الهوامش الفارغة وتوسيط المنتج على خلفية فاتحة موحدة.</span>
+                <span className="font-bold text-ink">تحسين الصور تلقائياً</span>
+                <span className="block text-[12px] text-ink-3">تصحيح الاتجاه وقص الهوامش الفارغة وتوسيط المنتج (للصور التي لم تُزل خلفيتها).</span>
               </span>
             </label>
-            <DropZone
-              inputRef={imgRef}
-              accept="image/*"
-              multiple
-              disabled={busy}
-              title="اسحبوا الصور هنا أو اضغطوا للاختيار"
-              hint="JPG أو PNG أو WEBP، حتى 40 صورة في المرة"
-              onFiles={(f) => void onImages(f)}
-            />
           </div>
         ) : null}
 
@@ -356,22 +429,23 @@ export function ProductImporter({
                   {fmtNum(sum.total)} منتج{sum.categories.length ? ` في ${fmtNum(sum.categories.length)} ${sum.categories.length === 1 ? "قسم" : "أقسام"}` : ""}. عدّلوا أي شيء قبل الاعتماد.
                 </p>
               </div>
-              <AddBlankButton disabled={items.length >= IMPORT_MAX_CANDIDATES || busy} onAdd={() => setItems((c) => [{ id: newId(), name: "", price: null, compareAt: null, description: "", category: "", sizes: [], colors: [], images: [], stock: null, source: "manual" }, ...c])} />
+              <AddBlankButton disabled={items.length >= IMPORT_MAX_CANDIDATES || saving} onAdd={() => setItems((c) => [blank(), ...c])} />
             </div>
-            <ReviewGrid items={items} onChange={setItems} existingCategories={existingCategories} />
+            <ReviewGrid items={items} onChange={setItems} existingCategories={existingCategories} niche={niche} showErrors={showErrors} />
             <div className="sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-edge/15 bg-space-2/95 p-3 shadow-lg backdrop-blur">
-              <p className="text-[12.5px] text-ink-2" aria-live="polite">
+              <p className="text-[13px] text-ink-2" aria-live="polite">
                 {sum.drafts ? (
                   <>
-                    <b className="text-ink">{fmtNum(sum.ready)}</b> جاهز للظهور و<b className="text-warn">{fmtNum(sum.drafts)}</b> بلا سعر (مسودة)
+                    <b className="text-ink">{fmtNum(sum.ready)}</b> جاهز، و<b className="text-bad">{fmtNum(sum.drafts)}</b> ينقصه السعر
                   </>
                 ) : (
                   <>
                     <b className="text-ink">{fmtNum(sum.total)}</b> منتج جاهز للظهور في المتجر
                   </>
                 )}
+                {draftKey ? <span className="block text-[11.5px] text-ink-3">تُحفظ المراجعة تلقائياً على هذا الجهاز.</span> : null}
               </p>
-              <button type="button" className={btnPrimary} disabled={busy || items.every((i) => !i.name.trim())} onClick={() => void commit()}>
+              <button type="button" className={cn(btnPrimary, "min-h-12 text-[15px]")} disabled={busy || !items.length} onClick={() => void commit()}>
                 {saving ? <Spinner /> : <CheckCircle2 className="size-4" aria-hidden="true" />}
                 {commitLabel}
               </button>
@@ -379,8 +453,8 @@ export function ProductImporter({
           </>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[12.5px] text-ink-3">ستظهر المنتجات المفروزة هنا لمراجعتها قبل الاعتماد.</p>
-            <AddBlankButton onAdd={() => setItems([{ id: newId(), name: "", price: null, compareAt: null, description: "", category: "", sizes: [], colors: [], images: [], stock: null, source: "manual" }])} />
+            <p className="text-[12.5px] text-ink-3">تظهر المنتجات هنا لمراجعتها وكتابة أسعارها قبل الاعتماد.</p>
+            <AddBlankButton onAdd={() => setItems([blank()])} />
           </div>
         )}
       </div>

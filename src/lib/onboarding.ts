@@ -20,7 +20,7 @@ export const STEPS: readonly StepInfo[] = [
   { id: "returns", short: "الاستبدال", title: "الاستبدال والاسترجاع", why: "سياسة واضحة تُطمئن المشتري وتزيد الطلبات. اختاروا ما تلتزمون به فقط.", optional: false },
   { id: "contact", short: "التواصل", title: "قنوات التواصل", why: "واتساب هو أسرع طريق بين الزائر وبينكم. بقية القنوات تظهر في أسفل المتجر.", optional: false },
   { id: "discount", short: "كود خصم", title: "كود خصم (اختياري)", why: "لا نُنشئ أي كود نيابة عنكم. إن أردتم عرضاً لأول زبائنكم فأنشئوه هنا، أو تخطوا الخطوة.", optional: true },
-  { id: "look", short: "لمسات الشكل", title: "لمسات الشكل (اختياري)", why: "واجهة المتجر الأولى تحمل الانطباع كله. اختاروا فيديو أو صورة، أو اكتبوا ما تريدون تغييره.", optional: true },
+  { id: "look", short: "التصميم", title: "التصميم والواجهة", why: "التصميم وواجهة المتجر يحملان الانطباع الأول كله. اختاروا تصميماً كاملاً، ثم فيديو أو صورة للواجهة، أو اكتبوا ما تريدون تغييره.", optional: true },
   { id: "publish", short: "التفعيل", title: "تفعيل المتجر", why: "نراجع جاهزية متجركم معكم، ثم يبدأ العمل ويمكن لزبائنكم الطلب.", optional: false },
 ] as const;
 
@@ -291,7 +291,9 @@ export type SetupData = {
   shipping: { plan: ShippingPlan; etaMin: number; etaMax: number; freeOver: number | null; saved: boolean };
   returns: ReturnsTemplate;
   contact: { whatsapp: string; instagram: string; facebook: string; tiktok: string };
-  look: { heroKind: "video" | "image" | "auto"; hasVideo: boolean };
+  look: { heroKind: "video" | "image" | "auto"; hasVideo: boolean; videoUrl: string | null; themeId: string | null };
+  /** نشاط المتجر الذي تتبعه حقول المنتج (lib/niche-attributes). */
+  niche: import("@/lib/niche-attributes").Niche;
   discounts: number;
   readiness: { ok: boolean; items: ReadinessItem[] };
 };
