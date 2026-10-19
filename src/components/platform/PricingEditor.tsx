@@ -97,7 +97,7 @@ type GoldenUsage = { confirmed: number; underReview: number };
 export function PricingConsole({ initial, usage }: { initial: PricingModel; usage: GoldenUsage }) {
   const router = useRouter();
   const [build, setBuild] = useState(String(initial.build.price));
-  const [g, setG] = useState({ enabled: initial.golden.enabled, code: initial.golden.code, buildPrice: String(initial.golden.buildPrice), seats: String(initial.golden.seats) });
+  const [g, setG] = useState({ enabled: initial.golden.enabled, code: initial.golden.code, buildPrice: String(initial.golden.buildPrice), seats: String(initial.golden.seats), firstMonthFree: initial.golden.firstMonthFree });
   const [rows, setRows] = useState<PlanRow[]>(initial.plans.map(toRow));
   const [months, setMonths] = useState<number[]>(initial.months);
   const [featured, setFeatured] = useState<PlanId>(initial.featured);
@@ -108,7 +108,7 @@ export function PricingConsole({ initial, usage }: { initial: PricingModel; usag
     () => ({
       v: 4,
       build: { price: n(build) },
-      golden: { enabled: g.enabled, code: g.code.trim().toUpperCase(), buildPrice: n(g.buildPrice), seats: n(g.seats) },
+      golden: { enabled: g.enabled, code: g.code.trim().toUpperCase(), buildPrice: n(g.buildPrice), seats: n(g.seats), firstMonthFree: g.firstMonthFree },
       plans: rows.map(fromRow),
       months: [...months].sort((a, b) => a - b),
       featured,
@@ -170,7 +170,7 @@ export function PricingConsole({ initial, usage }: { initial: PricingModel; usag
           </label>
         </div>
         <p className="mb-4 mt-1 text-[12.5px] leading-6 text-[#a9b3dc]">
-          كود يُكتب في صفحة الدفع للدفعة الأولى فيخفّض رسوم التجهيز فقط. يُرفض تلقائياً باكتمال المقاعد أو إيقاف العرض، والمقعد يُحسب بالإيصال المؤكد وقيد المراجعة.
+          كود يُكتب في صفحة الدفع للدفعة الأولى فيخفّض رسوم التجهيز ويهدي الشهر الأول من الباقة الأساسية (قابل للإيقاف). يُرفض تلقائياً باكتمال المقاعد أو إيقاف العرض، والمقعد يُحسب بالإيصال المؤكد وقيد المراجعة.
         </p>
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
@@ -181,6 +181,10 @@ export function PricingConsole({ initial, usage }: { initial: PricingModel; usag
           </div>
           <NumField id="golden-build" text="رسوم التجهيز بالكود" value={g.buildPrice} onChange={(v) => setG({ ...g, buildPrice: v })} suffix="ج.م" />
           <NumField id="golden-seats" text="عدد المقاعد" value={g.seats} onChange={(v) => setG({ ...g, seats: v })} />
+          <label className="flex min-h-11 cursor-pointer items-center gap-2 text-[12.5px] font-bold text-white sm:col-span-3">
+            <input type="checkbox" checked={g.firstMonthFree} onChange={(e) => setG({ ...g, firstMonthFree: e.target.checked })} className="size-5 accent-amber-300" />
+            الشهر الأول من الباقة الأساسية هدية مع الكود
+          </label>
         </div>
         <div className="mt-4 rounded-2xl bg-black/20 p-3" aria-live="polite">
           <div className="flex flex-wrap items-baseline justify-between gap-2 text-[12.5px] font-bold text-[#e6ebff]">

@@ -1,6 +1,6 @@
 // landing-pricing.ts — تحويل نموذج الأسعار v4 إلى بطاقات للهبوط (خالص ومختبَر).
 // الباقات الثلاث بسعرها الشهري وأهم حدودها الحقيقية، ورسوم التجهيز مرة واحدة. لا ذكر للدائرة الذهبية (بدعوة فقط).
-import { limitHighlights, monthsLabel, startingPrice, type PlanId, type PricingModel } from "@/lib/platform-pricing";
+import { goldenAvailability, limitHighlights, monthsLabel, startingPrice, type PlanId, type PricingModel } from "@/lib/platform-pricing";
 
 export type PlanCard = {
   id: PlanId;
@@ -26,6 +26,25 @@ export function planCards(model: PricingModel): PlanCard[] {
     priceText: fmtPrice(p.monthly),
     highlights: limitHighlights(p.limits),
   }));
+}
+
+export type LandingOffer = {
+  buildPrice: number;
+  buildText: string;
+  /** عرض الدائرة الذهبية: null إن كان متوقفاً أو اكتملت مقاعده (لا نعرض ما لا يمكن شراؤه). */
+  golden: null | { priceText: string; seatsLeft: number; seats: number; firstMonthFree: boolean; firstMonthText: string };
+};
+
+/** بطاقة رسوم التجهيز وعرض المقاعد الذهبية من الأسعار الحالية وعدد المقاعد المستخدمة فعلاً (بلا ذكر للكود). */
+export function landingOffer(model: PricingModel, goldenUsed: number): LandingOffer {
+  const g = goldenAvailability(model.golden, goldenUsed);
+  return {
+    buildPrice: model.build.price,
+    buildText: fmtPrice(model.build.price),
+    golden: g.available
+      ? { priceText: fmtPrice(model.golden.buildPrice), seatsLeft: g.seatsLeft, seats: model.golden.seats, firstMonthFree: model.golden.firstMonthFree, firstMonthText: fmtPrice(startingPrice(model)) }
+      : null,
+  };
 }
 
 /** سطر رسوم التجهيز والمدد: «تجهيز المتجر ٢٬٩٩٩ ج.م مرة واحدة، والدفع لشهر أو ٣ أشهر أو …». */

@@ -35,7 +35,7 @@ import { StoreMorph } from "./StoreMorph";
 import { ThemesShowcase } from "./ThemesShowcase";
 import { MINI_STORES, StoreMini } from "./StoreMini";
 import { CTA_GHOST, CTA_PRIMARY, Eyebrow } from "./shared";
-import { changesLabel, fmtPrice, type PlanCard } from "@/lib/landing-pricing";
+import { changesLabel, fmtPrice, type LandingOffer, type PlanCard } from "@/lib/landing-pricing";
 import type { LandingReview, SessionState } from "./types";
 
 type Props = {
@@ -44,6 +44,7 @@ type Props = {
   plans: PlanCard[];
   /** سطر رسوم التجهيز والمدد من الأسعار الحالية (lib/landing-pricing.ts buildFeeText). */
   buildFee?: string;
+  offer?: LandingOffer;
   trialHours: number;
   graceDays: number;
   changesPerYear: number;
@@ -51,7 +52,7 @@ type Props = {
   demoHref: string;
 };
 
-export function Landing({ session, reviews, plans, buildFee, trialHours, graceDays, changesPerYear, igUrl, demoHref }: Props) {
+export function Landing({ session, reviews, plans, buildFee, offer, trialHours, graceDays, changesPerYear, igUrl, demoHref }: Props) {
   const merchant = session === "merchant";
 
   const Primary = () =>
@@ -61,7 +62,7 @@ export function Landing({ session, reviews, plans, buildFee, trialHours, graceDa
       </Link>
     ) : (
       <a href={igUrl} target="_blank" rel="noopener noreferrer" className={CTA_PRIMARY}>
-        <Instagram className="size-5" aria-hidden="true" /> ابدأوا من إنستجرام
+        <Instagram className="size-5" aria-hidden="true" /> ابدأوا متجركم
       </a>
     );
   const Demo = ({ arrow }: { arrow?: boolean }) => (
@@ -223,7 +224,32 @@ export function Landing({ session, reviews, plans, buildFee, trialHours, graceDa
         {/* ─── الباقات ─── */}
         <section id="pricing" className="container-x scroll-mt-24 pb-24 sm:pb-32">
           <Heading eyebrow="الباقات" title="اشتراك شهري واضح، وحدود معلنة من اليوم الأول" subtitle={buildFee ?? "تجهيز المتجر مرة واحدة، ثم الاستضافة الشهرية بالباقة المناسبة."} />
-          <div className="mx-auto mt-14 grid max-w-5xl gap-5 md:grid-cols-3">
+          {offer ? (
+            <div className="mx-auto mt-10 grid max-w-5xl gap-4 md:grid-cols-2">
+              <div className="land-card rounded-3xl border border-white/10 p-6">
+                <p className="text-sm font-bold text-[#c3cdf0]/80">تجهيز المتجر (مرة واحدة مع أول دفعة)</p>
+                <p className="mt-2 flex items-end gap-2">
+                  <span className="text-4xl font-black tabular-nums">{offer.buildText}</span>
+                  <span className="mb-1 text-sm font-bold text-[#c3cdf0]/70">ج.م</span>
+                </p>
+                <p className="mt-2 text-[13px] leading-7 text-[#c3cdf0]/75">تصميم المتجر وإدخال البيانات والإعدادات والمراجعة قبل التسليم.</p>
+              </div>
+              {offer.golden ? (
+                <div className="rounded-3xl border border-amber-300/35 bg-amber-300/[0.07] p-6">
+                  <p className="text-sm font-black text-amber-300">الدائرة الذهبية · لأول {fmtPrice(offer.golden.seats)} براندات</p>
+                  <p className="mt-2 flex items-end gap-2">
+                    <span className="text-4xl font-black tabular-nums">{offer.golden.priceText}</span>
+                    <span className="mb-1 text-sm font-bold text-[#c3cdf0]/70">ج.م للتجهيز</span>
+                  </p>
+                  <p className="mt-2 text-[13px] leading-7 text-[#c3cdf0]/80">
+                    {offer.golden.firstMonthFree ? `ومعه الشهر الأول من الباقة الأساسية (${offer.golden.firstMonthText} ج.م) هدية. ` : ""}
+                    المتبقي {fmtPrice(offer.golden.seatsLeft)} من {fmtPrice(offer.golden.seats)} مقاعد، ويُفعَّل بكود عرض يصلكم بدعوة.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
             {plans.map((p) => (
               <article
                 key={p.id}

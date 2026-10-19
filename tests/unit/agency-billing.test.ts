@@ -25,7 +25,7 @@ describe("نموذج الأسعار v4", () => {
     ]);
     expect(DEFAULT_PRICING.months).toEqual([1, 3, 6, 12]);
     expect(DEFAULT_PRICING.featured).toBe("growth");
-    expect(DEFAULT_PRICING.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 999, seats: 10 });
+    expect(DEFAULT_PRICING.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 999, seats: 10, firstMonthFree: true });
     expect(DEFAULT_PRICING.plans[0]!.limits.customDomain).toBe(false);
     expect(DEFAULT_PRICING.plans[1]!.limits.products).toBe(2000);
     expect(startingPrice(DEFAULT_PRICING)).toBe(199);
@@ -57,7 +57,7 @@ describe("نموذج الأسعار v4", () => {
     expect(m.plans[1]).toEqual(DEFAULT_PRICING.plans[1]);
     expect(m.months).toEqual([3, 12]);
     expect(m.featured).toBe("growth");
-    expect(m.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 500, seats: 4 });
+    expect(m.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 500, seats: 4, firstMonthFree: true });
   });
 
   it("المبلغ: الأولى = التجهيز + الباقة × الأشهر، والتجديد = الباقة × الأشهر، والذهبية تخفّض التجهيز فقط", () => {
@@ -65,7 +65,7 @@ describe("نموذج الأسعار v4", () => {
     expect(setup.ok && [setup.build, setup.hosting, setup.total]).toEqual([2999, 1497, 4496]);
     expect(setup.ok && setup.lines).toHaveLength(2);
     const golden = quote(DEFAULT_PRICING, { planId: "basic", months: 1, kind: "setup", golden: true });
-    expect(golden.ok && golden.total).toBe(999 + 199);
+    expect(golden.ok && golden.total).toBe(999); // الشهر الأول من الأساسية هدية الدائرة الذهبية
     const renewal = quote(DEFAULT_PRICING, { planId: "pro", months: 12, kind: "renewal" });
     expect(renewal.ok && [renewal.build, renewal.total]).toEqual([0, 1499 * 12]);
     expect(quote(DEFAULT_PRICING, { planId: "pro", months: 2, kind: "setup" }).ok).toBe(false);
