@@ -1,6 +1,7 @@
 import "server-only";
-// setup-jobs.ts — دورة حياة المتجر قبل اكتمال إعداده (حالة setup): رابط الإعداد بعد مهلة، تذكيران، وحذف المتجر غير
-// المكتمل بعد setupDays. تعمل بالجدولة القائمة (lifecycle/scheduler) وتُسجَّل معالجاتها في lifecycle/handlers.ts.
+// setup-jobs.ts — دورة حياة المتجر قبل اكتمال إعداده (حالة setup). V3: التسليم يدوي بيد المالك، فلا يُرسل رابط الإعداد
+// آلياً بعد مهلة (مهمة setup.link القديمة تتخطى نفسها). من لحظة التسليم (إرسال الرابط من اللوحة، أو تعليمه «أُرسل» بعد نسخه)
+// تُجدول التذكيرات وحذف المتجر غير المكتمل بعد setupDays. تُسجَّل المعالجات في lifecycle/handlers.ts.
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { conversations, stores } from "@/db/schema";
@@ -14,16 +15,37 @@ import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { trace } from "@/lib/meta-trace";
 import { setupLink } from "./tokens";
 import { setupLinkMessage, setupReminderMessage, setupSchedule } from "./setup-messages";
+import { agentConfig } from "./settings";
 
 type Store = typeof stores.$inferSelect;
 
-/** يجدول رابط الإعداد وتذكيريه وحذف المتجر غير المكتمل. المهمة الفاشلة في النشر يلتقطها الكنّاس. */
-export async function scheduleSetupJobs(storeId: string, opts: { delayMinutes: number; setupDays: number }) {
-  const t = setupSchedule(new Date(), opts);
-  await schedule(storeId, "setup.link", t.link);
+/** بعد تسليم رابط الإعداد: تذكيران وحذف المتجر غير المكتمل محسوبة من لحظة التسليم. المهمة الفاشلة في النشر يلتقطها الكنّاس. */
+async function scheduleSetupFollowups(storeId: string, deliveredAt: Date) {
+  const cfg = await agentConfig();
+  const t = setupSchedule(deliveredAt, { delayMinutes: 0, setupDays: cfg.setupDays });
+  await cancelJobs(storeId, ["setup.link"]).catch(() => {});
   await schedule(storeId, "setup.reminder_24h", t.reminder24);
   await schedule(storeId, "setup.reminder_72h", t.reminder72);
   await schedule(storeId, "setup.purge", t.purge);
+}
+
+/**
+ * يعلّم أن رابط الإعداد سُلِّم للتاجر (نسخه المالك وأرسله بنفسه، أو أرسله من صفحة المحادثة)، ويبدأ من هذه اللحظة التذكيرات
+ * ومهلة الحذف. لا يغيّر موعد تسليم سابق (المرة الأولى هي المعتبرة).
+ */
+export async function markSetupLinkSent(storeId: string, actor: string, via: "copy" | "channel" | "auto" = "copy"): Promise<{ ok: true; first: boolean } | { ok: false; error: string }> {
+  const [store] = await db.select().from(stores).where(eq(stores.id, storeId)).limit(1);
+  if (!store) return { ok: false, error: "المتجر غير موجود" };
+  if (store.status !== "setup") return { ok: false, error: "هذا المتجر أكمل إعداده بالفعل." };
+  const first = !sentAt(store, "linkSentAt");
+  const now = new Date();
+  if (first) {
+    await patchOnboarding(store.id, { linkSentAt: now.toISOString(), linkSentVia: via });
+    await scheduleSetupFollowups(store.id, now);
+  }
+  await db.update(conversations).set({ stage: "link_sent", updatedAt: now }).where(eq(conversations.storeId, store.id));
+  await recordEvent({ storeId: store.id, storeRef: store.subdomain, type: "setup.link_sent", actor, data: { via, first } });
+  return { ok: true, first };
 }
 
 /** دمج ذري في stores.onboarding (لا يمحو ما كتبه مسار الإعداد). */
@@ -62,9 +84,13 @@ export async function sendSetupLink(storeId: string, opts: { force?: boolean } =
     // لا نعلّمه مُرسلاً: تُعاد المحاولة (المهمة تفشل فيعيدها الكنّاس) وفريقنا ينبَّه من deliverToMerchant.
     throw new Error("تعذّر توصيل رابط الإعداد (لا محادثة مفتوحة ولا بريد صالح)");
   }
-  await patchOnboarding(store.id, { linkSentAt: new Date().toISOString() });
-  await db.update(conversations).set({ stage: "link_sent", updatedAt: new Date() }).where(eq(conversations.storeId, store.id));
-  await cancelJobs(store.id, opts.force ? ["setup.link"] : []);
+  const first = !sentAt(store, "linkSentAt");
+  const now = new Date();
+  if (first) {
+    await patchOnboarding(store.id, { linkSentAt: now.toISOString(), linkSentVia: "message" });
+    await scheduleSetupFollowups(store.id, now);
+  }
+  await db.update(conversations).set({ stage: "link_sent", updatedAt: now }).where(eq(conversations.storeId, store.id));
   await recordEvent({ storeId: store.id, storeRef: store.subdomain, type: "setup.link_sent", actor: opts.force ? "owner" : "system", data: { ...report } });
   await trace("setup-link", `${store.subdomain} meta=${report.viaMeta} email=${report.emailed}`);
   return { sent: true, viaMeta: report.viaMeta, emailed: report.emailed };
@@ -86,12 +112,18 @@ async function remind(store: Store, kind: "24h" | "72h") {
 }
 
 export const setupHandlers = {
-  "setup.link": async (s: Store) => sendSetupLink(s.id),
+  /** V3: لا إرسال آلي لرابط الإعداد. مهام قديمة مجدولة قبل التحويل تتخطى نفسها؛ التسليم يدوي من صفحة المحادثة. */
+  "setup.link": async (_s: Store) => ({ skip: "manual_delivery" }),
   "setup.reminder_24h": async (s: Store) => remind(s, "24h"),
   "setup.reminder_72h": async (s: Store) => remind(s, "72h"),
   /** حذف المتجر غير المكتمل نهائياً (بياناته وصوره وصفه) ليتحرر النطاق الفرعي. */
   "setup.purge": async (s: Store) => {
     if (s.status !== "setup") return { skip: `status:${s.status}` };
+    // لا حذف لمتجر لم يُسلَّم رابطه بعد (ينتظر المالك)، ولا قبل انقضاء المهلة من لحظة التسليم (مهام قديمة حُسبت من الإنشاء).
+    const delivered = sentAt(s, "linkSentAt");
+    if (!delivered) return { skip: "not_delivered" };
+    const { setupDays } = await agentConfig();
+    if (Date.now() - new Date(delivered).getTime() < setupDays * 86_400_000 - 3_600_000) return { skip: "grace" };
     const dm = (((s.onboarding as Record<string, unknown> | null)?.dmImages as unknown[]) ?? []).filter((u): u is string => typeof u === "string");
     const keys = dm.map((u) => r2KeyFromUrl(u)).filter((k): k is string => Boolean(k));
     const okData = await purgeStore(s);

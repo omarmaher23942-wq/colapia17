@@ -19,6 +19,7 @@ import {
   previewKeyMatches,
 } from "@/lib/store-preview";
 import { OWNER_COOKIE, OWNER_COOKIE_TTL_S, safeLandingPath, verifyOwnerPass } from "@/lib/owner-pass";
+import { subdomainRedirectKey } from "@/lib/subdomain-change";
 
 const ROOT = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "localhost:3000").toLowerCase();
 
@@ -58,6 +59,9 @@ async function redisGet(key: string): Promise<string | null> {
     return null;
   }
 }
+
+/** عدة مفاتيح بالتوازي (كل مفتاح بذاكرته القصيرة نفسها)؛ أي فشل = لا قيمة لذلك المفتاح. */
+const redisGetMany = (keys: string[]) => Promise.all(keys.map(redisGet));
 
 /** نطاقات المزود نفسه (نشرات Vercel وروابط Cloudflare Workers): تُعامل كالمنصة، لا كنطاق متجر. */
 const isProviderHost = (h: string) => h.endsWith(".vercel.app") || h.endsWith(".workers.dev");
@@ -213,9 +217,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // متجر له نطاق خاص مفعّل: نطاقه الفرعي يحوّل إليه (نفس المسار)، عدا الفريق في المعاينة ومسارات الـ API.
+  // ورابط قديم لمتجر غيّر رابطه من الإعدادات (sdr:<القديم>، 30 يوماً): يحوّل 308 للرابط الجديد بنفس المسار.
   if (!onCustomDomain && !preview && (req.method === "GET" || req.method === "HEAD") && !isUnder(pathname, "/api")) {
-    const custom = await redisGet(`cdr:${sub}`);
+    const [custom, renamed] = await redisGetMany([`cdr:${sub}`, subdomainRedirectKey(sub)]);
     if (custom) return NextResponse.redirect(`https://${custom}${pathname}${url.search}`, 308);
+    if (renamed && renamed !== sub && /^[a-z0-9-]{3,30}$/.test(renamed)) {
+      return NextResponse.redirect(`${url.protocol}//${renamed}.${ROOT}${pathname}${url.search}`, 308);
+    }
   }
 
   const headers = trustedHeaders(req, sub, preview);

@@ -1,4 +1,4 @@
-// turn.ts — دور الوكيل بصيغته الثانية (خالص ومختبَر): {reply, memory, requestHuman, lead, confirmCreate}.
+// turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, confirmCreate}.
 // التحليل **صارم**: لا رد صالح = يُرفض الناتج ويُجرَّب النموذج التالي. لا يُرسل أبداً نص خام فيه أقواس أو أسماء حقول.
 import { z } from "zod";
 import { stripEmoji } from "@/lib/emoji";
@@ -13,6 +13,8 @@ function clean(value: unknown, max = 1000): string {
 }
 
 const optText = (max: number) => z.string().nullish().transform((s) => clean(s, max) || undefined);
+
+export type Speaker = "owner" | "moderator" | "unknown";
 
 export const closerTurnSchema = z.object({
   reply: z.string().transform((s) => clean(s, 800)),
@@ -29,7 +31,9 @@ export const closerTurnSchema = z.object({
     .nullish()
     .transform((l) => l ?? {}),
   confirmCreate: z.boolean().nullish().transform((v) => v === true),
-  /** طلب صريح لإعادة إرسال رابط الإعداد (بعد إنشاء المتجر). */
+  /** تقدير النموذج لمن يكتب: صاحب القرار أو مشرف الصفحة. قيمة غير معروفة = unknown (لا يُرفض الدور بسببها). */
+  speaker: z.unknown().transform((v): Speaker => (v === "owner" || v === "moderator" ? v : "unknown")),
+  /** حقل قديم (V2): كان يطلب إعادة إرسال رابط الإعداد آلياً. يُقبل ويُتجاهل؛ الرابط يرسله المالك يدوياً في V3. */
   resendLink: z.boolean().nullish().transform((v) => v === true),
 });
 
@@ -63,7 +67,7 @@ export function extractJsonObject(text: string): unknown {
 
 /** رد يسرّب بنية الـ JSON أو أسماء الحقول إلى العميل. */
 export function looksLikeLeak(reply: string): boolean {
-  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|confirmCreate|lead)\s*"\s*:/.test(reply) || /```/.test(reply);
+  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|confirmCreate|lead|speaker)\s*"\s*:/.test(reply) || /```/.test(reply);
 }
 
 /** تحليل صارم لدور الوكيل: null إن لم يكن JSON صالحاً بحقل reply نصي غير فارغ وغير مسرّب. */

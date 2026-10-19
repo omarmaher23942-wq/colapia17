@@ -72,7 +72,7 @@ describe("إعداد الوكيل", () => {
 });
 
 describe("اختيار النطاق الفرعي", () => {
-  it("حساب إنستجرام أولاً ثم الاسم، والمأخوذ يتبدل", () => {
+  it("اسم المتجر أولاً ثم حساب إنستجرام، والمأخوذ يتبدل", () => {
     expect(suggestSlug({ storeName: "نور للملابس", socialUrl: "https://www.instagram.com/nour_wear/", code: "123456" })).toBe("nour-wear");
     expect(suggestSlug({ storeName: "Nour Store", socialUrl: null, code: "123456" })).toBe("nour-store");
     const taken = new Set(["nour-wear", "nour-wear-2"]);

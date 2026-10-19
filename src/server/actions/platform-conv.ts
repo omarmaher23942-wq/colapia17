@@ -7,7 +7,9 @@ import { requirePlatformCap } from "@/server/platform-guard";
 import { meta, replyMode } from "@/channels/meta";
 import { aiText } from "@/ai/providers";
 import { isPauseChoice, pauseUntil, PAUSE_LABEL } from "@/agent/pause";
-import { sendSetupLink } from "@/agent/setup-jobs";
+import { markSetupLinkSent, sendSetupLink } from "@/agent/setup-jobs";
+import { handoffMessage, HANDOFF_TITLE, isHandoffKind } from "@/agent/handoff-messages";
+import { handoffInputFor } from "@/agent/handoff-data";
 import { patchMemory } from "@/agent/memory";
 
 async function guard() { return requirePlatformCap("conversations", "غير مصرح"); }
@@ -34,7 +36,10 @@ export async function resumeConversationAction(id: string) {
   const u = await guard();
   const [c] = await db.select().from(conversations).where(eq(conversations.id, id));
   if (!c) return { error: "محادثة غير موجودة" };
-  await db.update(conversations).set({ botPaused: false, botPausedUntil: null, stage: c.stage === "human" ? "persuasion" : c.stage, updatedAt: new Date() }).where(eq(conversations.id, id));
+  const stage = c.stage === "human" ? "persuasion" : c.stage === "handoff" ? (c.storeId ? "building" : "persuasion") : c.stage;
+  await db.update(conversations).set({ botPaused: false, botPausedUntil: null, stage, updatedAt: new Date() }).where(eq(conversations.id, id));
+  // استئناف يدوي لمحادثة أغلقها الوكيل بعد الموافقة: قرار الفريق، فتُمسح علامة الإغلاق.
+  await patchMemory(id, { closedBy: null, handoffBy: null }).catch(() => {});
   await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: "إعادة تشغيل المساعد", data: { conversationId: id } });
   revalidatePath("/admin/conversations");
   return {};
@@ -56,6 +61,47 @@ export async function sendSetupLinkNowAction(storeId: string) {
     return { error: String((e as Error)?.message ?? e).slice(0, 200) };
   }
 }
+/**
+ * يرسل إحدى رسائل التسليم الجاهزة (رابط الإعداد، الدخول، المتجر جاهز) عبر القناة نفسها باسم الفريق. النص يُبنى على الخادم
+ * من بيانات المتجر الحقيقية (لا نص من المتصفح). داخل 24 ساعة من آخر رسالة للعميل رسالة عادية، وحتى 7 أيام بوسم الرد البشري،
+ * وبعدها ممنوع (تُنسخ وتُرسل بوسيلة أخرى). رسالة الإعداد تعلّم الرابط مُسلَّماً فتبدأ التذكيرات ومهلة الحذف.
+ */
+export async function sendHandoffMessageAction(conversationId: string, kind: string) {
+  const u = await guard();
+  if (!isHandoffKind(kind)) return { error: "رسالة غير معروفة" };
+  const [c] = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1);
+  if (!c) return { error: "محادثة غير موجودة" };
+  if (!c.storeId) return { error: "لا متجر مرتبط بهذه المحادثة بعد." };
+  const data = await handoffInputFor(c.storeId);
+  if (!data) return { error: "المتجر غير موجود" };
+  if (kind === "setup" && data.status !== "setup") return { error: "هذا المتجر أكمل إعداده؛ أرسلوا رسالة الدخول أو رابط المتجر." };
+  const mode = replyMode(c.lastUserMessageAt);
+  if (mode.mode === "closed") return { error: "مرّ أكثر من 7 أيام على آخر رسالة من العميل، ولا تسمح Meta بالرد الآن. انسخوا الرسالة وأرسلوها على واتساب أو البريد." };
+  const text = handoffMessage(kind, data);
+  try {
+    await meta.text(c.channel, c.externalId, text, mode.mode === "human_agent" ? "HUMAN_AGENT" : undefined);
+  } catch (e) {
+    return { error: `فشل الإرسال: ${String(e).slice(0, 160)}` };
+  }
+  await db.insert(messages).values({ conversationId, role: "human_agent", text, model: u.name });
+  await db.update(conversations).set({ lastBotMessageAt: new Date(), updatedAt: new Date() }).where(eq(conversations.id, conversationId));
+  if (kind === "setup") await markSetupLinkSent(c.storeId, `platform:${u.id}`, "channel");
+  await db.insert(systemEvents).values({ scope: "ai", actor: `platform:${u.id}`, message: `أُرسلت رسالة التسليم: ${HANDOFF_TITLE[kind]}`, data: { conversationId, storeId: c.storeId } });
+  revalidatePath("/admin/conversations");
+  revalidatePath("/admin/conversations/delivery");
+  return { sent: true as const, tagged: mode.mode === "human_agent" };
+}
+
+/** بعد نسخ رسالة الإعداد وإرسالها بوسيلة أخرى: يعلّم الرابط مُسلَّماً (تبدأ التذكيرات ومهلة الحذف من الآن). */
+export async function markSetupDeliveredAction(storeId: string) {
+  const u = await guard();
+  const r = await markSetupLinkSent(storeId, `platform:${u.id}`, "copy");
+  if (!r.ok) return { error: r.error };
+  revalidatePath("/admin/conversations");
+  revalidatePath("/admin/conversations/delivery");
+  return { ok: true as const, first: r.first };
+}
+
 /** رد بشري يرسل عبر القناة (مع tag خارج النافذة) ويحفظ. لا يوقف المساعد (قرار المالك 2026-10-12): الإيقاف بزر «أوقف المساعد» فقط. */
 export async function humanReplyAction(id: string, text: string) {
   const u = await guard(); const [c] = await db.select().from(conversations).where(eq(conversations.id, id)); if (!c) return { error: "محادثة غير موجودة" };

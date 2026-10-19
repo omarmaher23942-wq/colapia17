@@ -3,7 +3,8 @@ import "server-only";
 // أن البيانات كاملة وموافقاً عليها. آمن للتكرار (idempotent): قفل Redis + قيد فريد على stores.source_conversation_id.
 //
 // الترتيب: قفل ← تحقق من المحادثة والبيانات ← حدود الإساءة ← التاجر (بالبريد القانوني) ← نطاق فرعي ← دفعة واحدة
-// (المتجر بحالة setup + Blueprint الافتراضي + مناطق الشحن) ← ربط المحادثة ← إشعار المالك ← جدولة رابط الإعداد.
+// (المتجر بحالة setup + Blueprint الافتراضي + مناطق الشحن) ← ربط المحادثة ← إشعار المالك. رابط الإعداد **لا يُرسل آلياً**
+// (V3): المالك يسلّمه يدوياً من صفحة المحادثة، ومن لحظتها تُجدول التذكيرات وحذف المتجر غير المكتمل (setup-jobs).
 // لا محتوى وهمي: لا منتجات ولا نصوص مخترعة. المتجر مخفي تماماً حتى يكمل صاحبه الإعداد.
 import { randomUUID } from "node:crypto";
 import { and, eq, gte, like, sql } from "drizzle-orm";
@@ -24,7 +25,7 @@ import { sendEmail } from "@/lib/email";
 import { canonicalEmail } from "@/lib/contact";
 import { isLeadComplete, type Lead } from "./lead";
 import { agentConfig } from "./settings";
-import { scheduleSetupJobs } from "./setup-jobs";
+import { isSubdomainHeld } from "@/server/subdomain-hold";
 
 export type CreateResult =
   | { status: "created"; storeId: string; subdomain: string; merchantId: string }
@@ -150,15 +151,21 @@ export async function createStoreFromConversation(convId: string): Promise<Creat
     const dmImages = (lead.assets ?? []).filter((u) => /^https:\/\//.test(u)).slice(0, 40);
     const now = new Date();
 
-    // النطاق: من حساب إنستجرام ثم الاسم؛ والتصادم يُعاد بنطاق بديل.
-    const base = (lead.instagram ?? full.storeName).toLowerCase();
-    let taken = await takenLike(base);
+    // النطاق (V3): من **اسم المتجر** بنقحرة مقروءة ثم حساب إنستجرام، ولا يُشتق من البريد أبداً (كان حساب إنستجرام أولاً،
+    // وهو كثيراً حساب صاحب البراند الشخصي بنفس اسم بريده، فخرجت نطاقات باسم البريد). والتصادم يُعاد بنطاق بديل، والروابط
+    // القديمة لمتاجر غيّرت رابطها محجوزة لأصحابها مدة التحويل.
+    const slugInput = { storeName: full.storeName, socialUrl: lead.instagram ? `https://www.instagram.com/${lead.instagram}/` : null, email: full.email, code: codeFrom(convId) };
+    let taken = await takenLike(suggestSlug(slugInput));
     let storeId = "";
     let subdomain = "";
     for (let attempt = 0; attempt < 5; attempt++) {
-      const slug = suggestSlug({ storeName: full.storeName, socialUrl: lead.instagram ? `https://www.instagram.com/${lead.instagram}/` : null, code: codeFrom(convId) }, (s) => taken.has(s));
-      const candidate = attempt === 0 ? slug : `${slug.slice(0, 24)}-${Math.random().toString(36).slice(2, 6)}`;
+      const slug = suggestSlug(slugInput, (s) => taken.has(s));
+      const candidate = attempt === 0 ? slug : `${slug.slice(0, 24).replace(/-$/, "")}-${Math.random().toString(36).slice(2, 6)}`;
       if (!isValidSubdomain(candidate)) continue;
+      if (await isSubdomainHeld(candidate)) {
+        taken = new Set([...taken, candidate]);
+        continue;
+      }
       const id = randomUUID();
       const tdb = await getTenantDb(id);
       try {
@@ -197,8 +204,7 @@ export async function createStoreFromConversation(convId: string): Promise<Creat
       .where(eq(conversations.id, convId));
 
     await trace("store-created", `${subdomain} (محادثة …${convId.slice(-4)})`);
-    await notifyAdmin(`أُنشئ متجر جديد من المحادثة: ${full.storeName} (${subdomain}). رابط الإعداد يُرسل بعد ${cfg.setupDelayMinutes} دقيقة، أو أرسلوه الآن من صفحة المحادثة.`, { conversationId: convId, storeId }).catch(() => {});
-    await scheduleSetupJobs(storeId, { delayMinutes: cfg.setupDelayMinutes, setupDays: cfg.setupDays }).catch((e) => console.error("[create-store] scheduling failed", e));
+    await notifyAdmin(`أُنشئ متجر جديد من المحادثة: ${full.storeName} (${subdomain}). بانتظار التسليم: أرسلوا رابط الإعداد من صفحة المحادثة.`, { conversationId: convId, storeId }).catch(() => {});
 
     return { status: "created", storeId, subdomain, merchantId };
   } catch (e) {

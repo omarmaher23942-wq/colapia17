@@ -20,6 +20,7 @@ import { requestPulse } from "../DashboardPulse";
 import { ContactSection, PaymentsSection, ShareCard, VacationSection } from "./StoreSections";
 import { AccountTab, type AccountInfo } from "./AccountTab";
 import { InventoryMode } from "../products/InventoryMode";
+import { SubdomainSection } from "./SubdomainSection";
 
 export type SettingsTab = "store" | "payments" | "contact" | "account";
 const TABS: { key: SettingsTab; label: string; icon: typeof UserIcon }[] = [
@@ -180,6 +181,7 @@ export function SettingsPage({ initialTab, store, settings, account }: { initial
           {tab === "store" ? (
             <div className="space-y-5">
               <ShareCard store={store} />
+              <SubdomainSection />
               <VacationSection d={d} patch={patch} errors={errors} />
               <section aria-labelledby="inv-title" className="dash-card space-y-3 p-4 sm:p-5">
                 <div>
