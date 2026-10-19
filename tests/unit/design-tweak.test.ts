@@ -22,7 +22,14 @@ import {
 import { diffBlueprint } from "@/lib/blueprint-patch";
 import { resolvePath, schemaHas } from "@/lib/design-edit/schema-map";
 
-const light = () => blueprintSchema.parse(defaultBlueprint({ name: "متجر الاختبار", industry: "fashion" }));
+/** متجر فاتح تلقائي الوضع بخلفية بيضاء (التصميم الافتراضي صار داكناً، فيُثبَّت الفاتح هنا صراحة). */
+const light = () => {
+  const bp = blueprintSchema.parse(defaultBlueprint({ name: "متجر الاختبار", industry: "fashion" }));
+  bp.theme.mode = "auto";
+  bp.theme.palette = deriveCorePalette("#7aa2ff", "light");
+  if (bp.theme.background) bp.theme.background = { ...bp.theme.background, kind: "solid", color: "#ffffff" };
+  return bp;
+};
 /** متجر داكن (كحلي) كتصميم «منتصف الليل»: الخلفية والأزرار مختلفتان بوضوح. */
 const dark = () => {
   const bp = light();

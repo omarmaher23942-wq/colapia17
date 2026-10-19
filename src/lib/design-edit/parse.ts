@@ -153,8 +153,9 @@ function colorOps(c: string, n: string, ctx: Ctx): DesignOp[] {
   const kindPath = ctx.enumOf("theme.background.kind") ? "theme.background.kind" : "theme.background.type";
 
   if (bgTarget && /(متدرج|تدرج|جريدينت|gradient)/.test(n)) {
+    // التدرج يُكتب في الحقلين: نوع خلفية التصميم (V3) وسطح المتجر (المتاجر الأقدم).
     if (kinds?.includes("gradient")) ops.push({ path: kindPath, value: "gradient" });
-    else ops.push({ path: "design.surface.background", value: "soft_gradient" });
+    ops.push({ path: "design.surface.background", value: "soft_gradient" });
   } else if (bgTarget && /(ساده|سادة|بدون زخرف|بلا زخرف|solid|plain)/.test(n)) {
     if (kinds?.includes("solid")) ops.push({ path: kindPath, value: "solid" });
     ops.push({ path: "design.surface.background", value: "solid" });
