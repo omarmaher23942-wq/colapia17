@@ -4,7 +4,7 @@ import { requireStoreArea } from "@/server/merchant-guard";
 import { loadBlueprint } from "@/server/setup-data";
 import { designHistory } from "@/server/design-tweak";
 import { pairIdFor } from "@/lib/onboarding";
-import { SECTION_LABELS } from "@/lib/design-tweak";
+import { announcementState, SECTION_LABELS } from "@/lib/design-tweak";
 import { publicStoreUrl } from "@/lib/utils";
 import { allows } from "@/lib/store-perms";
 import { StoreLookPage } from "@/components/dashboard/design/StoreLookPage";
@@ -20,7 +20,6 @@ export default async function DesignPage() {
   const history = await designHistory(store.id, 12);
 
   const hero = bp.home.find((s) => s.type === "hero");
-  const ann = bp.home.find((s) => s.type === "announcement");
   const url = publicStoreUrl(store);
 
   return (
@@ -29,7 +28,7 @@ export default async function DesignPage() {
       canEdit={allows(session.perms, "content", "manage")}
       identity={{ name: bp.brand.name, primary: bp.theme.palette.primary, fontPair: pairIdFor(bp.theme.fonts.heading, bp.theme.fonts.body), logoUrl: bp.brand.logo?.url ?? null }}
       heroKind={hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto"}
-      announcement={{ text: ann && ann.type === "announcement" ? (ann.messages[0]?.text ?? "") : "", enabled: Boolean(ann && ann.enabled !== false) }}
+      announcement={announcementState(bp)}
       sections={bp.home.filter((s) => s.type !== "hero" && s.type !== "announcement").map((s) => ({ id: s.id, label: SECTION_LABELS[s.type] ?? s.type, enabled: s.enabled !== false }))}
       motion={bp.design.motion}
       history={history}
