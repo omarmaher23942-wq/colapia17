@@ -22,6 +22,7 @@ export async function notifyOwnerOfPayment(p: {
   kind?: "setup" | "renewal";
   plan?: "standard" | "golden";
   months?: number;
+  tierName?: string;
   screenshotUrl: string;
   assessment: ReceiptAssessment;
 }): Promise<void> {
@@ -34,7 +35,7 @@ export async function notifyOwnerOfPayment(p: {
     headline: p.kind === "renewal" ? "إيصال تجديد استضافة ينتظر قرارك" : "إيصال دفع جديد ينتظر قرارك",
     paragraphs: [
       `المتجر: ${p.storeName} (${p.subdomain})`,
-      `الباقة: ${p.plan === "golden" ? "الدائرة الذهبية" : "عادية"}${p.months ? `، ${p.months} أشهر` : ""}.`,
+      `الباقة: ${p.tierName ?? "—"}${p.months ? ` لمدة ${p.months} ${p.months === 1 ? "شهر" : "أشهر"}` : ""}${p.plan === "golden" ? " · تجهيز الدائرة الذهبية" : ""}.`,
       `المبلغ: ${p.amountEgp} ج عبر ${METHOD[p.method] ?? p.method}، من الرقم ${p.senderPhone}.`,
       `${LEVEL[p.assessment.level]}: ${p.assessment.summary}`,
       p.kind === "renewal"

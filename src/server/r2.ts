@@ -4,6 +4,7 @@ import "server-only";
 import { AwsClient } from "aws4fetch";
 import { env } from "@/lib/env";
 import { mediaBaseUrl } from "@/lib/media";
+import { parseListObjects } from "@/lib/storage-list";
 
 /** أسماء متغيرات R2 الناقصة (فارغة = مضبوطة كلها). الرابط العام له افتراضي media.<النطاق> فلا يُعدّ ناقصاً. */
 export function r2Missing(): string[] {
@@ -59,4 +60,32 @@ export async function deleteObjects(keys: string[]): Promise<number> {
     done += rs.filter((r) => r && (r.ok || r.status === 404)).length;
   }
   return done;
+}
+
+/**
+ * مجموع ما في بادئة (مساحة المتجر الفعلية): يمر على ListObjectsV2 صفحةً صفحة (حتى maxPages × 1000 ملف).
+ * skip يستبعد مفاتيح لا تُحسب على المتجر. يعيد null إن لم يكن R2 مضبوطاً.
+ */
+export async function prefixUsage(
+  prefix: string,
+  skip?: (key: string) => boolean,
+  maxPages = 20
+): Promise<{ bytes: number; files: number; videos: number; videoBytes: number; complete: boolean } | null> {
+  if (!r2Configured()) return null;
+  const total = { bytes: 0, files: 0, videos: 0, videoBytes: 0, complete: true };
+  let token: string | null = null;
+  for (let page = 0; page < maxPages; page++) {
+    const qs = new URLSearchParams({ "list-type": "2", prefix, "max-keys": "1000" });
+    if (token) qs.set("continuation-token", token);
+    const r = await aws().fetch(`${endpoint()}/${env.R2_BUCKET}?${qs.toString()}`, { method: "GET" });
+    if (!r.ok) throw new Error(`R2 LIST ${r.status}`);
+    const p = parseListObjects(await r.text(), skip);
+    total.bytes += p.bytes;
+    total.files += p.files;
+    total.videos += p.videos;
+    total.videoBytes += p.videoBytes;
+    if (!p.truncated || !p.next) return total;
+    token = p.next;
+  }
+  return { ...total, complete: false };
 }

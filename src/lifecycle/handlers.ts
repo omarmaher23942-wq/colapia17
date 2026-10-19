@@ -83,12 +83,13 @@ async function sendTemplate(
   });
 }
 
-/** أرخص باقة الآن (للرسائل: «الباقات تبدأ من …»). */
+/** أرخص اشتراك شهري الآن (للرسائل: «الاستضافة تبدأ من … شهرياً»). */
 const storePrice = async (_s: Store) => startingPrice(await currentPricing()).toLocaleString("en-US");
-/** خيارات التجديد كلها بأسعارها الحالية: «3 أشهر بـ 999 ج، 6 أشهر بـ 1,699 ج، سنة بـ 2,499 ج». */
+/** رسوم التجهيز الحالية (مرة واحدة مع أول دفعة). */
+const buildPrice = async () => (await currentPricing()).build.price.toLocaleString("en-US");
+/** الباقات الشهرية بأسعارها الحالية (التجديد = الباقة فقط): «الأساسية 199 ج شهرياً، …». */
 async function renewalPlans(): Promise<string> {
-  const p = await currentPricing();
-  return plansLine(p.plans.map((x) => ({ months: x.months, price: x.renewal })));
+  return plansLine(await currentPricing());
 }
 const hosting = async (s: Store) => hostingState(s, new Date(), await hostingGraceDays().catch(() => undefined));
 
@@ -150,7 +151,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     const ends = s.trialEndsAt ? cairoDay(s.trialEndsAt) : "قريباً";
     const n = await storeNumbers(s);
     const pv = await paymentVars(s, activateUrl());
-    const { text } = await renderTemplate("trial.pay", { store: s.name, ends, facts_line: trialFactsLine(n), price: pv.price, plans: pv.plans });
+    const { text } = await renderTemplate("trial.pay", { store: s.name, ends, facts_line: trialFactsLine(n), price: pv.price, plans: pv.plans, build: pv.build });
     return deliverToMerchant(s.id, {
       key: `trial.reminder_20h:${s.id}`,
       text,
@@ -183,7 +184,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     await setStage(s.id, "frozen");
     const price = await storePrice(s);
     const n = await storeNumbers(s);
-    const { text } = await renderTemplate("trial.freeze", { store: s.name, facts_line: trialFactsLine(n), products: n.products, purge_day: cairoDay(purgeAt), price });
+    const { text } = await renderTemplate("trial.freeze", { store: s.name, facts_line: trialFactsLine(n), products: n.products, purge_day: cairoDay(purgeAt), price, build: await buildPrice() });
     await deliverToMerchant(s.id, {
       key: `trial.freeze:${s.id}`,
       text,

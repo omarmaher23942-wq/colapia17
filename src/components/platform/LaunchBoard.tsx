@@ -35,6 +35,7 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
   const [busy, setBusy] = useState<"vision" | "chat" | "reset" | "email" | "media" | "agent" | "resume" | null>(null);
   const [agentText, setAgentText] = useState("هاي، عندي براند ملابس على إنستجرام");
   const [agent, setAgent] = useState<Awaited<ReturnType<typeof testAgentAction>> | null>(null);
+  const [emailTest, setEmailTest] = useState<Awaited<ReturnType<typeof sendTestEmailAction>> | null>(null);
   const [media, setMedia] = useState<{ state: "ok" | "broken"; url: string; host: string } | null>(null);
 
   /** يرفع صورة حقيقية ثم يعرضها في المتصفح من رابطها العام: الرفع وحده لا يكفي، العرض هو ما يراه الزائر. */
@@ -99,15 +100,38 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
           disabled={busy !== null}
           onClick={async () => {
             setBusy("email");
-            const r = await sendTestEmailAction().catch(() => ({ ok: false, error: "تعذر الإرسال" }) as { ok: boolean; error?: string; to?: string });
+            const r = await sendTestEmailAction().catch((e: unknown) => ({ ok: false, error: String((e as Error)?.message ?? "تعذر الإرسال") }) as Awaited<ReturnType<typeof sendTestEmailAction>>);
             setBusy(null);
-            r.ok ? toast.success(`أُرسل إلى ${r.to}. افتح بريدك (وصندوق الرسائل غير المرغوبة).`) : toast.error(r.error ?? "تعذر الإرسال");
+            setEmailTest(r);
+            r.ok ? toast.success(`قبله Resend وأُرسل إلى ${r.to}. افتح بريدك (وصندوق الرسائل غير المرغوبة).`) : toast.error(r.error ?? "تعذر الإرسال");
           }}
           className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/15 px-4 text-[13px] font-black disabled:opacity-50"
         >
           {busy === "email" ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : <Mail className="size-4" aria-hidden="true" />} أرسل لي بريد تجربة
         </button>
       </div>
+
+      {emailTest ? (
+        <section aria-label="رد Resend على بريد التجربة" className={cn("rounded-2xl border p-3 text-[12.5px]", emailTest.ok ? "border-emerald-400/30 bg-emerald-400/[0.05]" : "border-rose-400/30 bg-rose-400/[0.06]")}>
+          <p className="font-black">{emailTest.ok ? "قبل Resend الرسالة" : "رفض Resend الرسالة أو تعذر الاتصال"}</p>
+          <dl className="mt-2 grid gap-x-3 gap-y-1 sm:grid-cols-[auto_1fr]">
+            <dt className="text-[#8d97c4]">من</dt>
+            <dd dir="ltr" className="break-all text-start font-mono">{emailTest.from ?? "—"}</dd>
+            <dt className="text-[#8d97c4]">إلى</dt>
+            <dd dir="ltr" className="break-all text-start font-mono">{emailTest.to ?? "—"}</dd>
+            <dt className="text-[#8d97c4]">الحالة</dt>
+            <dd dir="ltr" className="text-start font-mono">{emailTest.status ?? "—"}{emailTest.id ? ` · id ${emailTest.id}` : ""}</dd>
+            {emailTest.error ? (
+              <>
+                <dt className="text-[#8d97c4]">السبب</dt>
+                <dd className="break-words">{emailTest.error}</dd>
+              </>
+            ) : null}
+          </dl>
+          {emailTest.raw ? <pre dir="ltr" className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all rounded-xl bg-black/30 p-2 text-start font-mono text-[11.5px]">{emailTest.raw}</pre> : null}
+          <p className="mt-2 text-[#8d97c4]">قبول Resend يعني أن الرسالة خرجت؛ إن لم تصل فراجعوا صندوق الرسائل غير المرغوبة وسجلات Resend ← Emails.</p>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap items-stretch gap-2 rounded-2xl border border-white/10 p-3">
         <label className="min-w-0 flex-1 basis-60">

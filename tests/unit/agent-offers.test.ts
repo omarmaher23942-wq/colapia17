@@ -1,30 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_GOLDEN, DEFAULT_PLANS } from "@/lib/platform-pricing";
+import { DEFAULT_GOLDEN, DEFAULT_PRICING } from "@/lib/platform-pricing";
 import { detectMentions, goldenLine, monthlyHint, plansLine, renewalLine } from "@/agent/offers";
 import { stateBlock } from "@/agent/state";
 
 describe("أسطر العروض من الأسعار الحقيقية", () => {
-  it("الباقات والتجديد", () => {
-    expect(plansLine({ plans: DEFAULT_PLANS })).toBe("3 أشهر 1,999 ج، 6 أشهر 2,499 ج، سنة 3,499 ج");
-    expect(renewalLine({ plans: DEFAULT_PLANS })).toContain("3 أشهر 999 ج");
-    expect(monthlyHint({ plans: DEFAULT_PLANS })).toContain("292");
+  it("التجهيز والباقات والتجديد", () => {
+    expect(plansLine(DEFAULT_PRICING)).toBe("التجهيز 2,999 ج مرة واحدة، والاستضافة: الأساسية 199 ج شهرياً، النمو 499 ج شهرياً، الاحترافية 1,499 ج شهرياً");
+    expect(renewalLine(DEFAULT_PRICING)).toContain("بلا رسوم تجهيز");
+    expect(monthlyHint(DEFAULT_PRICING)).toContain("199");
   });
 
   it("سطر الدائرة الذهبية فارغ إن توقف العرض أو اكتملت المقاعد", () => {
     expect(goldenLine({ ...DEFAULT_GOLDEN, enabled: false }, 5)).toBe("");
     expect(goldenLine(DEFAULT_GOLDEN, 0)).toBe("");
-    const line = goldenLine(DEFAULT_GOLDEN, 3);
-    expect(line).toContain("499");
+    const line = goldenLine(DEFAULT_GOLDEN, 3, 2999);
+    expect(line).toContain("999");
+    expect(line).toContain("بدلاً من 2,999");
     expect(line).toContain("3 مقاعد");
-    expect(line).toContain("Collab");
-    expect(line).toContain("5 و10 آلاف");
     expect(goldenLine(DEFAULT_GOLDEN, 1)).toContain("مقعد فقط");
   });
 
   it("رصد ما ذكره الوكيل من ديمو وعرض ذهبي", () => {
-    expect(detectMentions(["جربوا demo.colapia.com"], { demoHost: "demo.colapia.com", goldenPrice: 499 })).toEqual({ demo: true, golden: false });
-    expect(detectMentions(["عندنا الدائرة الذهبية"], { demoHost: "demo.colapia.com", goldenPrice: 499 })).toEqual({ demo: false, golden: true });
-    expect(detectMentions([], { demoHost: "d.co", goldenPrice: 499 })).toEqual({ demo: false, golden: false });
+    expect(detectMentions(["جربوا demo.colapia.com"], { demoHost: "demo.colapia.com", goldenPrice: 999 })).toEqual({ demo: true, golden: false });
+    expect(detectMentions(["عندنا الدائرة الذهبية"], { demoHost: "demo.colapia.com", goldenPrice: 999 })).toEqual({ demo: false, golden: true });
+    expect(detectMentions([], { demoHost: "d.co", goldenPrice: 999 })).toEqual({ demo: false, golden: false });
   });
 });
 

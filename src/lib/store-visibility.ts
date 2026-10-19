@@ -48,3 +48,25 @@ export function storeVisibility(store: VisibilityStore, hosting: VisibilityHosti
 export function gateShowsName(gate: VisibilityGate | null): boolean {
   return gate !== "setup" && gate !== "unavailable";
 }
+
+/**
+ * قفل لوحة التاجر (V3-PLAN 1، D4): متجر مجمّد بعد انتهاء التجربة بلا دفع، أو متوقف بعد انتهاء اشتراكه ومهلة السماح،
+ * تُقفل لوحته كلها إلا صفحة الاشتراك (والاستخدام والخروج)، ثم يعود كل شيء كما كان فور قبول الدفع.
+ * التجربة الجارية والإيصال قيد المراجعة لا يقفلان شيئاً (التجميد نفسه يتأجل أثناء المراجعة في دورة الحياة).
+ */
+export type DashboardLock = "frozen" | "paused" | null;
+
+export function dashboardLock(store: VisibilityStore, hosting: VisibilityHosting): DashboardLock {
+  if (store.deletedAt) return null;
+  if (store.status === "frozen") return "frozen";
+  if (store.status === "active" && hosting.phase === "paused") return "paused";
+  return null;
+}
+
+/** الصفحات المفتوحة أثناء القفل. */
+export const LOCK_OPEN_PATHS = ["/dashboard/billing", "/dashboard/usage"] as const;
+
+export function lockAllowsPath(path: string): boolean {
+  const p = path.split(/[?#]/)[0] ?? "";
+  return LOCK_OPEN_PATHS.some((x) => p === x || p.startsWith(`${x}/`));
+}

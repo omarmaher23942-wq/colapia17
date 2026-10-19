@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRICING } from "@/lib/platform-pricing";
-import { changesLabel, fmtPrice, instagramUrl, planCards, startingText } from "@/lib/landing-pricing";
+import { buildFeeText, changesLabel, fmtPrice, instagramUrl, planCards, startingText } from "@/lib/landing-pricing";
 
 describe("landing-pricing", () => {
-  it("يبني ثلاث بطاقات مرتبة بالمدة مع الباقة المميزة والتكلفة الشهرية", () => {
+  it("ثلاث بطاقات بالسعر الشهري والمميَّزة وأبرز الحدود الحقيقية", () => {
     const cards = planCards(DEFAULT_PRICING);
-    expect(cards.map((c) => c.months)).toEqual([3, 6, 12]);
-    expect(cards.filter((c) => c.featured).map((c) => c.months)).toEqual([12]);
-    expect(cards[0]!.price).toBe(1999);
-    expect(cards[0]!.renewal).toBe(999);
-    expect(cards[2]!.perMonth).toBeLessThan(cards[0]!.perMonth);
-    expect(cards[0]!.priceText).toBe(fmtPrice(1999));
+    expect(cards.map((c) => c.id)).toEqual(["basic", "growth", "pro"]);
+    expect(cards.filter((c) => c.featured).map((c) => c.id)).toEqual(["growth"]);
+    expect(cards[0]!.price).toBe(199);
+    expect(cards[0]!.priceText).toBe(fmtPrice(199));
+    expect(cards[1]!.highlights.join(" ")).toContain("2,000");
   });
 
-  it("لا يعرض الدائرة الذهبية ضمن البطاقات", () => {
-    expect(planCards(DEFAULT_PRICING).every((c) => c.price !== DEFAULT_PRICING.golden.price)).toBe(true);
+  it("سطر التجهيز والمدد ونص البداية", () => {
+    expect(buildFeeText(DEFAULT_PRICING)).toContain(fmtPrice(2999));
+    expect(buildFeeText(DEFAULT_PRICING)).toContain("سنة");
+    expect(startingText(DEFAULT_PRICING)).toContain(fmtPrice(199));
   });
 
-  it("نص السعر الابتدائي من أرخص باقة", () => {
-    expect(startingText(DEFAULT_PRICING)).toContain(fmtPrice(1999));
+  it("لا تظهر الدائرة الذهبية في البطاقات", () => {
+    expect(JSON.stringify(planCards(DEFAULT_PRICING))).not.toContain("GOLDEN");
   });
 
   it("عدد طلبات التعديل بصيغة عربية صحيحة", () => {

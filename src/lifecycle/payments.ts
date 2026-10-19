@@ -12,7 +12,7 @@ import {
   type JobKind,
 } from "./scheduler";
 import { DEFAULT_PLAN_MONTHS, addMonths, extendHosting, hostingExpiry } from "@/lib/hosting";
-import { monthsLabel } from "@/lib/platform-pricing";
+import { monthsLabel, planById, planIdFrom } from "@/lib/platform-pricing";
 import { currentPricing } from "@/server/pricing";
 import { recordEvent, transition } from "./machine";
 import { deliverToMerchant } from "./messenger";
@@ -64,7 +64,7 @@ export async function confirmStorePayment(
       )
     )
     .returning();
-  if (!pay) throw new Error("الدفعة اتراجعت قبل كده أو غير موجودة");
+  if (!pay) throw new Error("الدفعة رُوجعت من قبل أو غير موجودة");
 
   const [store] = await db
     .select()
@@ -108,9 +108,10 @@ export async function confirmStorePayment(
     await revert(paymentId);
     throw new Error("الدائرة الذهبية للباقة الأولى فقط");
   }
+  const pricing = await currentPricing();
   if (golden) {
     // مقاعد الدائرة الذهبية: لا يتجاوز عدد الدفعات المؤكدة بها العدد المحدد وقت القبول.
-    const { golden: offer } = await currentPricing();
+    const offer = pricing.golden;
     const [taken] = await db
       .select({ n: count() })
       .from(platformPayments)
@@ -122,7 +123,10 @@ export async function confirmStorePayment(
   }
   // التمديد بمدة الدفعة: من نهاية الاشتراك الحالي إن كان سارياً، وإلا من اليوم.
   const expiresAt = extendHosting(renewal ? hostingExpiry(store) : null, months, now);
-  const planSet = { plan: golden ? "golden" : "standard", planMonths: months };
+  // باقة الاستضافة المسجّلة على الدفعة (دفعة قديمة بلا باقة = «النمو»): حدود المتجر تُقرأ منها (server/usage.ts).
+  const tier = planIdFrom(pay.tier) ?? "growth";
+  const tierName = planById(pricing, tier)?.name ?? tier;
+  const planSet = { plan: tier, planMonths: months };
 
   if (!renewal) {
     const r = await transition({
@@ -172,7 +176,7 @@ export async function confirmStorePayment(
     storeRef: store.subdomain,
     type: "payment.confirmed",
     actor,
-    data: { paymentId, kind: renewal ? "renewal" : "setup", plan: planSet.plan, months, hostingExpiresAt: expiresAt.toISOString() },
+    data: { paymentId, kind: renewal ? "renewal" : "setup", plan: tier, golden, months, hostingExpiresAt: expiresAt.toISOString() },
   });
 
   // حدث Pusher: تأكيد الدفعة.
@@ -189,6 +193,7 @@ export async function confirmStorePayment(
     store_url: storeUrl(store.subdomain),
     expires: formatDay(expiresAt),
     months: monthsLabel(months),
+    plan: tierName,
   });
   await deliverToMerchant(store.id, {
     key: `payment.confirmed:${paymentId}`,
@@ -210,7 +215,7 @@ export async function rejectStorePayment(
     .where(eq(platformPayments.id, paymentId))
     .limit(1);
   if (!pay || pay.status !== "under_review")
-    throw new Error("الدفعة اتراجعت قبل كده أو غير موجودة");
+    throw new Error("الدفعة رُوجعت من قبل أو غير موجودة");
 
   const [store] = await db
     .select()
@@ -238,7 +243,7 @@ export async function rejectStorePayment(
       )
     )
     .returning({ id: platformPayments.id });
-  if (!claimed) throw new Error("الدفعة اتراجعت قبل كده");
+  if (!claimed) throw new Error("الدفعة رُوجعت من قبل");
 
   if (renewal) {
     // رفض تجديد: الاشتراك الحالي كما هو، بلا تجميد ولا مهلة حذف.
@@ -350,7 +355,7 @@ export async function revokeStorePayment(
       .update(stores)
       .set({
         hostingExpiresAt: rolledBack,
-        plan: prev?.plan ?? store.plan,
+        plan: prev?.tier ?? planIdFrom(store.plan) ?? "growth",
         planMonths: prev ? prev.months ?? DEFAULT_PLAN_MONTHS : store.planMonths,
         updatedAt: now,
       })
@@ -387,7 +392,7 @@ export async function revokeStorePayment(
       to: "frozen",
       from: ["active"],
       actor,
-      set: { frozenAt: now, doomAt, hostingExpiresAt: null, plan: "standard", planMonths: null },
+      set: { frozenAt: now, doomAt, hostingExpiresAt: null, plan: "launch", planMonths: null },
       reason: "payment_revoked",
       data: { paymentId },
     });

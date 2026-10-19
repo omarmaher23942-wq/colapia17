@@ -1,89 +1,123 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PRICING,
+  agentPricingFacts,
   goldenAvailability,
-  normalizeCoupon,
-  perMonth,
-  planAmount,
+  limitHighlights,
   previewLines,
   pricingFrom,
+  quote,
   startingPrice,
-  validateGolden,
-  validatePlans,
+  validatePricing,
+  type PricingModel,
 } from "@/lib/platform-pricing";
 import { timingsFrom, trialSchedule } from "@/lifecycle/timings-rules";
 
-describe("نموذج الأسعار v3", () => {
-  it("الافتراضي: 3/6/12 شهراً بسعري أول مرة والتجديد، والمميَّزة 12، والدائرة الذهبية GOLDEN499", () => {
-    expect(DEFAULT_PRICING.plans).toEqual([
-      { months: 3, price: 1999, renewal: 999 },
-      { months: 6, price: 2499, renewal: 1699 },
-      { months: 12, price: 3499, renewal: 2499 },
+const clone = (): PricingModel => JSON.parse(JSON.stringify(DEFAULT_PRICING));
+
+describe("نموذج الأسعار v4", () => {
+  it("الافتراضي: تجهيز 2,999، باقات 199/499/1,499 شهرياً، مدد 1/3/6/12، المميَّزة «النمو»، والذهبية GOLDEN999 لـ10", () => {
+    expect(DEFAULT_PRICING.build.price).toBe(2999);
+    expect(DEFAULT_PRICING.plans.map((p) => [p.id, p.monthly])).toEqual([
+      ["basic", 199],
+      ["growth", 499],
+      ["pro", 1499],
     ]);
-    expect(DEFAULT_PRICING.featured).toBe(12);
-    expect(DEFAULT_PRICING.golden).toEqual({ enabled: true, code: "GOLDEN499", price: 499, months: 3, seats: 5 });
-    expect(normalizeCoupon(" golden ٤٩٩ ")).toBe("GOLDEN499");
+    expect(DEFAULT_PRICING.months).toEqual([1, 3, 6, 12]);
+    expect(DEFAULT_PRICING.featured).toBe("growth");
+    expect(DEFAULT_PRICING.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 999, seats: 10 });
+    expect(DEFAULT_PRICING.plans[0]!.limits.customDomain).toBe(false);
+    expect(DEFAULT_PRICING.plans[1]!.limits.products).toBe(2000);
+    expect(startingPrice(DEFAULT_PRICING)).toBe(199);
   });
+
   it("إعداد فارغ أو تالف = الافتراضي", () => {
     expect(pricingFrom(null)).toEqual(DEFAULT_PRICING);
-    expect(pricingFrom({ v: 3, plans: "x", golden: 5 })).toEqual(DEFAULT_PRICING);
+    expect(pricingFrom("x")).toEqual(DEFAULT_PRICING);
   });
-  it("الشكل القديم (السلّم) يُقرأ بأمان: افتراضي الباقات مع إبقاء عدد المقاعد فقط", () => {
-    const m = pricingFrom({ tiers: [{ upTo: 5, price: 2499 }], basePrice: 2499, renewal: 1299, golden: { code: "GOLDEN599", price: 599, seats: 8 } });
-    expect(m.plans).toEqual(DEFAULT_PRICING.plans);
-    expect(m.golden).toEqual({ ...DEFAULT_PRICING.golden, seats: 8 });
+
+  it("الأشكال القديمة (v3 والسلّم) تُستبدل بالافتراضي مع نقل المقاعد وحالة التشغيل فقط", () => {
+    const v3 = pricingFrom({ v: 3, plans: [{ months: 3, price: 1 }], golden: { enabled: false, code: "GOLDEN499", price: 499, months: 3, seats: 7 } });
+    expect(v3.plans).toEqual(DEFAULT_PRICING.plans);
+    expect(v3.golden).toEqual({ ...DEFAULT_PRICING.golden, enabled: false, seats: 7 });
+    expect(pricingFrom({ tiers: [{ upTo: 5, price: 2499 }], golden: { seats: 3 } }).golden.seats).toBe(3);
   });
-  it("v3 يُقرأ باقةً باقة وما فسد يأخذ الافتراضي", () => {
+
+  it("v4 يُقرأ حقلاً حقلاً، وما فسد يأخذ الافتراضي", () => {
     const m = pricingFrom({
-      v: 3,
-      plans: [{ months: 3, price: 2000, renewal: 1000 }, { months: 6, price: -5, renewal: "x" }, { months: 12, price: 4000, renewal: 3000 }, { months: 9, price: 1, renewal: 1 }],
-      featured: 6,
-      golden: { enabled: false, code: "vip2027", price: 700, months: 2, seats: 3 },
+      v: 4,
+      build: { price: 1500 },
+      plans: [{ id: "basic", name: "البداية", monthly: 149, limits: { products: 100, storageBytes: -1, customDomain: true } }],
+      months: [12, 3, 5, 3],
+      featured: "nope",
+      golden: { enabled: true, code: "bad code!", buildPrice: 500, seats: 4 },
     });
-    expect(m.plans).toEqual([{ months: 3, price: 2000, renewal: 1000 }, { months: 6, price: 2499, renewal: 1699 }, { months: 12, price: 4000, renewal: 3000 }]);
-    expect(m.featured).toBe(6);
-    expect(m.golden).toEqual({ enabled: false, code: "VIP2027", price: 700, months: 2, seats: 3 });
-    expect(pricingFrom({ v: 3, featured: 9 }).featured).toBe(12);
+    expect(m.build.price).toBe(1500);
+    expect(m.plans[0]).toMatchObject({ name: "البداية", monthly: 149, limits: { products: 100, storageBytes: DEFAULT_PRICING.plans[0]!.limits.storageBytes, customDomain: true } });
+    expect(m.plans[1]).toEqual(DEFAULT_PRICING.plans[1]);
+    expect(m.months).toEqual([3, 12]);
+    expect(m.featured).toBe("growth");
+    expect(m.golden).toEqual({ enabled: true, code: "GOLDEN999", buildPrice: 500, seats: 4 });
   });
-  it("المبلغ بنوع الدفعة: أول مرة أو تجديد، ومدة غير معروفة = null", () => {
-    expect(planAmount(DEFAULT_PRICING, 6, "setup")).toBe(2499);
-    expect(planAmount(DEFAULT_PRICING, "12", "renewal")).toBe(2499);
-    expect(planAmount(DEFAULT_PRICING, 4, "setup")).toBeNull();
-    expect(startingPrice(DEFAULT_PRICING)).toBe(1999);
-    expect(perMonth(3499, 12)).toBe(292);
+
+  it("المبلغ: الأولى = التجهيز + الباقة × الأشهر، والتجديد = الباقة × الأشهر، والذهبية تخفّض التجهيز فقط", () => {
+    const setup = quote(DEFAULT_PRICING, { planId: "growth", months: 3, kind: "setup" });
+    expect(setup.ok && [setup.build, setup.hosting, setup.total]).toEqual([2999, 1497, 4496]);
+    expect(setup.ok && setup.lines).toHaveLength(2);
+    const golden = quote(DEFAULT_PRICING, { planId: "basic", months: 1, kind: "setup", golden: true });
+    expect(golden.ok && golden.total).toBe(999 + 199);
+    const renewal = quote(DEFAULT_PRICING, { planId: "pro", months: 12, kind: "renewal" });
+    expect(renewal.ok && [renewal.build, renewal.total]).toEqual([0, 1499 * 12]);
+    expect(quote(DEFAULT_PRICING, { planId: "pro", months: 2, kind: "setup" }).ok).toBe(false);
+    expect(quote(DEFAULT_PRICING, { planId: "gold", months: 1, kind: "setup" }).ok).toBe(false);
+    expect(quote(DEFAULT_PRICING, { planId: "basic", months: 1, kind: "renewal", golden: true }).ok).toBe(false);
   });
+
   it("مقاعد الدائرة الذهبية: المتاح = مفعّل وفيه مقعد", () => {
     const g = DEFAULT_PRICING.golden;
-    expect(goldenAvailability(g, 2)).toEqual({ enabled: true, seatsUsed: 2, seatsLeft: 3, available: true });
-    expect(goldenAvailability(g, 5).available).toBe(false);
-    expect(goldenAvailability(g, 9).seatsLeft).toBe(0);
+    expect(goldenAvailability(g, 3)).toEqual({ enabled: true, seatsUsed: 3, seatsLeft: 7, available: true });
+    expect(goldenAvailability(g, 12).available).toBe(false);
     expect(goldenAvailability({ ...g, enabled: false }, 0).available).toBe(false);
   });
-  it("تحقق المالك من الباقات: يرفض الناقص والفاسد برسالة", () => {
-    const ok = validatePlans({ plans: DEFAULT_PRICING.plans, featured: 12 });
-    expect(ok.ok).toBe(true);
-    const bad = validatePlans({ plans: [{ months: 3, price: 0, renewal: 5 }, ...DEFAULT_PRICING.plans.slice(1)], featured: 12 });
-    expect(bad.ok).toBe(false);
-    expect(validatePlans({ plans: DEFAULT_PRICING.plans, featured: 5 }).ok).toBe(false);
-    expect(validatePlans({ plans: DEFAULT_PRICING.plans.slice(0, 2), featured: 12 }).ok).toBe(false);
+
+  it("تحقق المالك صارم برسالة واضحة", () => {
+    expect(validatePricing(clone()).ok).toBe(true);
+    const noMonths = clone();
+    noMonths.months = [];
+    expect(validatePricing(noMonths)).toMatchObject({ ok: false });
+    const badPrice = clone();
+    badPrice.plans[1]!.monthly = 0;
+    const r = validatePricing(badPrice);
+    expect(!r.ok && r.error).toContain("النمو");
+    const goldenHigher = clone();
+    goldenHigher.golden.buildPrice = 5000;
+    expect(validatePricing(goldenHigher).ok).toBe(false);
+    const badCode = clone();
+    badCode.golden.code = "x";
+    expect(validatePricing(badCode).ok).toBe(false);
+    const badLimit = clone();
+    (badLimit.plans[0]!.limits as Record<string, unknown>).products = "abc";
+    expect(validatePricing(badLimit).ok).toBe(false);
   });
-  it("تحقق المالك من الدائرة الذهبية", () => {
-    expect(validateGolden({ enabled: true, code: "abc", price: 499, months: 3, seats: 5 }).ok).toBe(false);
-    expect(validateGolden({ enabled: true, code: "abcd1", price: 0, months: 3, seats: 5 }).ok).toBe(false);
-    expect(validateGolden({ enabled: true, code: "abcd1", price: 499, months: 40, seats: 5 }).ok).toBe(false);
-    const v = validateGolden({ enabled: false, code: "gold-9", price: 499, months: 3, seats: 0 });
-    expect(v).toEqual({ ok: true, golden: { enabled: false, code: "GOLD-9", price: 499, months: 3, seats: 0 } });
+
+  it("حقائق الوكيل: كل الباقات والتجهيز، والذهبية فقط حين تكون متاحة، بلا أي ذكر للهامش", () => {
+    const on = agentPricingFacts(DEFAULT_PRICING, 4);
+    expect(on).toContain("2,999");
+    expect(on).toContain("499");
+    expect(on).toContain("الدائرة الذهبية");
+    expect(on).toContain("6 من 10");
+    expect(agentPricingFacts(DEFAULT_PRICING, 10)).not.toContain("الدائرة الذهبية");
+    expect(on).not.toMatch(/هامش|ربح|تكلفة فعلية/);
   });
-  it("معاينة المالك: الذهبية تظهر فقط حين تكون متاحة", () => {
-    expect(previewLines(DEFAULT_PRICING, 1).agent).toContain("الدائرة الذهبية");
-    expect(previewLines(DEFAULT_PRICING, 1).landing.at(-1)).toContain("متبقٍ 4 من 5");
-    const off = previewLines({ ...DEFAULT_PRICING, golden: { ...DEFAULT_PRICING.golden, enabled: false } }, 0);
-    expect(off.landing).toHaveLength(3);
-    expect(off.agent).toContain("متوقفة");
-  });
-  it("لا كلمة «مدى الحياة» في المعاينات", () => {
-    const l = previewLines(DEFAULT_PRICING, 0);
-    expect([...l.landing, ...l.billing, l.agent].join(" ")).not.toContain("مدى الحياة");
+
+  it("المعاينة والحدود المعروضة", () => {
+    const p = previewLines(DEFAULT_PRICING, 0);
+    expect(p.billing[0]).toContain("الإجمالي");
+    expect(p.landing.length).toBe(4);
+    const h = limitHighlights(DEFAULT_PRICING.plans[0]!.limits);
+    expect(h.join(" ")).toContain("300");
+    expect(h.join(" ")).toContain("بلا نطاق خاص");
+    expect(JSON.stringify(p)).not.toContain("مدى الحياة");
   });
 });
 

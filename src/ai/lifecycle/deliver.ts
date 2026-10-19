@@ -87,7 +87,7 @@ export async function deliverStore(
   const trialEndsAt = plan.freeze;
   // السعر يُثبَّت للمتجر لحظة التسليم (سلّم الأسعار): هذا ما رآه العميل في بريد التسليم ويدفعه.
   const pricing = await currentPricing();
-  const price = (pricing.plans.find((p) => p.months === pricing.featured) ?? pricing.plans[0]!).price;
+  const price = pricing.build.price;
 
   const r = await transition({
     storeId,
@@ -177,7 +177,7 @@ export async function startTrial(
   const timings = opts.timings ?? (await lifecycleTimings());
   const plan = trialSchedule(now, timings);
   const pricing = await currentPricing();
-  const price = (pricing.plans.find((p) => p.months === pricing.featured) ?? pricing.plans[0]!).price;
+  const price = pricing.build.price;
 
   const r = await transition({
     storeId,

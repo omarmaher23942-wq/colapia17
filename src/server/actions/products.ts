@@ -6,6 +6,7 @@ import { and, eq, inArray, isNull, sql, type AnyColumn } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
 import { products, productVariants, categories } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
+import { checkProductsQuota } from "@/server/usage";
 import { buildSearchText, slugify } from "@/lib/arabic";
 import { invalidateStoreCache } from "@/lib/tenant";
 
@@ -89,6 +90,8 @@ export async function duplicateProductAction(id: string): Promise<{ ok: true; id
   const s = await storeFor("products");
   if (!s) return { ok: false, error: "غير مصرح" };
   if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "المنتج غير موجود" };
+  const quota = await checkProductsQuota(s.storeId, 1);
+  if (!quota.ok) return { ok: false, error: quota.message };
   const db = await getTenantDb(s.storeId);
 
   try {
@@ -185,6 +188,11 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
   }
   if (d.categoryId && !(await categoryBelongsToStore(s.storeId, d.categoryId))) {
     return { ok: false, error: "القسم غير موجود", field: "categoryId" };
+  }
+  // حد المنتجات في باقة المتجر (V3): يُفحص عند الإنشاء فقط، والتعديل مفتوح دائماً.
+  if (!d.id) {
+    const q = await checkProductsQuota(s.storeId, 1);
+    if (!q.ok) return { ok: false, error: q.message };
   }
 
   const hasVariants = d.variants.length > 0;

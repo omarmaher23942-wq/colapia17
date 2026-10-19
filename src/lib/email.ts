@@ -6,14 +6,15 @@
 // hello@, orders@, noreply@ — كلها من colapia.com. متوافق مع SPF/DKIM.
 import "server-only";
 import type { ReactElement } from "react";
-import { env, clientEnv } from "@/lib/env";
+import { env, clientEnv, cleanSecretValue } from "@/lib/env";
+import { resolveSender, type SenderKind } from "@/lib/email-sender";
 import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
 import { log } from "@/lib/logger";
 
 export type EmailButton = { title: string; url: string };
 
-export type SenderKind = "orders" | "hello" | "noreply" | "custom";
+export type { SenderKind };
 
 export type SendTemplatedOptions = {
   to: string | string[];
@@ -56,42 +57,15 @@ function validRecipients(to: string | string[]): string[] {
 }
 
 /**
- * كل الإيميلات تُرسَل من النطاق الجذر (colapia.com).
- *
- * السبب الجذري: Resend يتحقق من DKIM/SPF لكل نطاق على حدة. wildcard
- * verification للـ subdomains غير مدعوم. لذلك أي إيميل من
- * orders@store.colapia.com سيُرفض. الحل: استخدام colapia.com دائماً.
- *
- * @param senderKind - يحدد البادئة (orders/hello/noreply).
- * @param _storeSubdomain - مهمَل. محفوظ للتوقيع API فقط.
+ * عنوان المرسل: دائماً من النطاق الموثّق (lib/email-sender.ts فيه شرح السبب الجذري). النطاق من ROOT_DOMAIN وقت التشغيل
+ * (لا من NEXT_PUBLIC_* المثبَّت وقت البناء)، وEMAIL_FROM يحدد الاسم والبادئة فقط متى كان على النطاق نفسه.
  */
-function resolveFrom(
-  senderKind: SenderKind,
-  _storeSubdomain?: string,
-  fromName?: string
-): string {
-  const rootDomain = clientEnv.NEXT_PUBLIC_ROOT_DOMAIN || "colapia.com";
-  // اسم العرض بلا رموز تكسر ترويسة البريد.
-  const displayName = (fromName ?? "").replace(/[<>"\r\n]/g, "").trim().slice(0, 60) || "Colapia";
-
-  if (senderKind === "custom") {
-    return env.EMAIL_FROM || `${displayName} <hello@${rootDomain}>`;
-  }
-  // EMAIL_FROM على نطاق آخر غير الرئيسي: عنوان الإرسال منه باسم المتجر.
-  if (env.EMAIL_FROM && !env.EMAIL_FROM.includes(rootDomain)) {
-    const addr = /<([^>]+)>/.exec(env.EMAIL_FROM)?.[1] ?? env.EMAIL_FROM;
-    return `${displayName} <${addr}>`;
-  }
-
-  const prefix =
-    senderKind === "orders"
-      ? "orders"
-      : senderKind === "noreply"
-      ? "noreply"
-      : "hello";
-
-  return `${displayName} <${prefix}@${rootDomain}>`;
+export function resolveFrom(senderKind: SenderKind, _storeSubdomain?: string, fromName?: string): string {
+  return resolveSender({ kind: senderKind, rootDomain: env.ROOT_DOMAIN || clientEnv.NEXT_PUBLIC_ROOT_DOMAIN, emailFrom: env.EMAIL_FROM, fromName });
 }
+
+/** مفتاح Resend كما يُلصق عادةً (مسافة أو سطر زائد، تنصيص، «RESEND_API_KEY=»، «Bearer»): سطر جديد في الترويسة كان يُفشل كل طلب. */
+export const resendKey = (): string | undefined => cleanSecretValue(env.RESEND_API_KEY);
 
 export async function renderEmail(element: ReactElement): Promise<string> {
   const { renderToStaticMarkup } = await import("react-dom/server");
@@ -164,8 +138,8 @@ async function sendViaResend(args: {
   replyTo?: string;
   idempotencyKey?: string;
   tags?: Array<{ name: string; value: string }>;
-}): Promise<{ ok: boolean; id?: string; error?: string; status?: number }> {
-  const apiKey = env.RESEND_API_KEY;
+}): Promise<{ ok: boolean; id?: string; error?: string; status?: number; raw?: string }> {
+  const apiKey = resendKey();
   if (!apiKey) {
     return { ok: false, error: "RESEND_API_KEY missing" };
   }
@@ -195,35 +169,58 @@ async function sendViaResend(args: {
       cache: "no-store",
     });
 
+    const raw = (await res.text().catch(() => "")).slice(0, 1000);
     if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      return {
-        ok: false,
-        status: res.status,
-        error: errText.slice(0, 500) || `HTTP ${res.status}`,
-      };
+      // رسالة Resend الحقيقية (مثل «The colapia.com domain is not verified» أو «API key is invalid»).
+      let message = raw;
+      try {
+        message = (JSON.parse(raw) as { message?: string }).message ?? raw;
+      } catch {
+        /* نص عادي */
+      }
+      return { ok: false, status: res.status, error: (message || `HTTP ${res.status}`).slice(0, 500), raw };
     }
-
-    const json = (await res.json()) as { id?: string };
-    return { ok: true, id: json.id };
+    let id: string | undefined;
+    try {
+      id = (JSON.parse(raw) as { id?: string }).id;
+    } catch {
+      /* رد غير متوقع */
+    }
+    return { ok: true, id, status: res.status, raw };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "network" };
   }
 }
 
-export async function sendTemplatedEmail(
-  opts: SendTemplatedOptions
-): Promise<{ ok: boolean; logId?: string; resendId?: string; error?: string }> {
+export type SendResult = { ok: boolean; logId?: string; resendId?: string; error?: string; status?: number; raw?: string; from?: string; to?: string[] };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** سجل البريد في system_events (scope «email»، بعمود المتجر) ليظهر للمالك في صفحة المتجر وفي مركز الجاهزية. */
+async function logEmail(level: "info" | "error", message: string, storeId: string | undefined, data: Record<string, unknown>) {
+  try {
+    await db.insert(systemEvents).values({ scope: "email", level, message: message.slice(0, 300), storeId: storeId && UUID_RE.test(storeId) ? storeId : null, data });
+  } catch {
+    // لا نكسر الإرسال بسبب فشل التسجيل.
+  }
+}
+
+export async function sendTemplatedEmail(opts: SendTemplatedOptions): Promise<SendResult> {
   const recipients = validRecipients(opts.to);
   if (recipients.length === 0) {
+    await logEmail("error", `email_failed: ${opts.subject}`, opts.storeId, { error: "no_valid_recipients", to: opts.to });
     return { ok: false, error: "no_valid_recipients" };
   }
-  // بلا مفتاح Resend (بيئة محلية مثلاً) لا بريد؛ الإشعارات داخل اللوحة تكفي.
-  if (!env.RESEND_API_KEY) return { ok: false, error: "email_disabled" };
+  // بلا مفتاح Resend (بيئة محلية مثلاً) لا بريد؛ ويُسجَّل السبب صراحةً بدل الصمت.
+  if (!resendKey()) {
+    await logEmail("error", `email_failed: ${opts.subject}`, opts.storeId, { error: "RESEND_API_KEY missing", to: recipients });
+    return { ok: false, error: "email_disabled" };
+  }
 
   const senderKind = opts.senderKind ?? "hello";
   const from = resolveFrom(senderKind, opts.storeSubdomain, opts.fromName);
-  const shouldTrack = opts.tracking !== false;
+  // مع مفتاح منع التكرار يجب أن يتطابق جسم الرسالة في كل إعادة (وإلا يرفضها Resend بـ 409)، فلا رابط تتبع عشوائي.
+  const shouldTrack = opts.tracking !== false && !opts.idempotencyKey;
 
   const logId = crypto.randomUUID();
 
@@ -250,7 +247,9 @@ export async function sendTemplatedEmail(
 
   let lastError: string | undefined;
   let lastStatus: number | undefined;
+  let lastRaw: string | undefined;
   let resendId: string | undefined;
+  let attempts = 0;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     if (attempt > 0) {
@@ -259,6 +258,7 @@ export async function sendTemplatedEmail(
       );
     }
 
+    attempts = attempt + 1;
     const result = await sendViaResend({
       from,
       to: recipients,
@@ -272,44 +272,35 @@ export async function sendTemplatedEmail(
       tags: opts.tags,
     });
 
+    lastStatus = result.status;
+    lastRaw = result.raw;
     if (result.ok) {
-      resendId = result.id;
+      resendId = result.id ?? "accepted";
       break;
     }
 
     lastError = result.error;
-    lastStatus = result.status;
 
     if (result.status && result.status >= 400 && result.status < 500) {
       break;
     }
   }
 
-  try {
-    await db.insert(systemEvents).values({
-      scope: "ops",
-      level: resendId ? "info" : "error",
-      message: resendId
-        ? `email_sent: ${opts.subject}`
-        : `email_failed: ${opts.subject}`,
-      data: {
-        logId,
-        resendId,
-        from,
-        to: recipients,
-        senderKind,
-        storeSubdomain: opts.storeSubdomain,
-        storeId: opts.storeId,
-        entityId: opts.entityId,
-        attempts: MAX_ATTEMPTS,
-        error: lastError,
-        status: lastStatus,
-        reqId: opts.reqId,
-      },
-    });
-  } catch {
-    // لا نكسر الإرسال بسبب فشل التسجيل.
-  }
+  await logEmail(resendId ? "info" : "error", `${resendId ? "email_sent" : "email_failed"}: ${opts.subject}`, opts.storeId, {
+    logId,
+    resendId,
+    from,
+    to: recipients,
+    subject: opts.subject.slice(0, 150),
+    senderKind,
+    storeSubdomain: opts.storeSubdomain,
+    entityId: opts.entityId,
+    attempts,
+    status: lastStatus,
+    error: lastError,
+    raw: resendId ? undefined : lastRaw,
+    reqId: opts.reqId,
+  });
 
   if (!resendId) {
     log.warn(
@@ -322,10 +313,10 @@ export async function sendTemplatedEmail(
       `فشل إرسال إيميل "${opts.subject}": ${lastError ?? "unknown"}`,
       lastError
     );
-    return { ok: false, logId, error: lastError ?? "send_failed" };
+    return { ok: false, logId, error: lastError ?? "send_failed", status: lastStatus, raw: lastRaw, from, to: recipients };
   }
 
-  return { ok: true, logId, resendId };
+  return { ok: true, logId, resendId, status: lastStatus, raw: lastRaw, from, to: recipients };
 }
 
 export async function sendEmail(opts: SendEmailOptions): Promise<boolean> {

@@ -40,6 +40,8 @@ type Props = {
   session: SessionState;
   reviews: LandingReview[];
   plans: PlanCard[];
+  /** سطر رسوم التجهيز والمدد من الأسعار الحالية (lib/landing-pricing.ts buildFeeText). */
+  buildFee?: string;
   trialHours: number;
   graceDays: number;
   changesPerYear: number;
@@ -47,7 +49,7 @@ type Props = {
   demoHref: string;
 };
 
-export function Landing({ session, reviews, plans, trialHours, graceDays, changesPerYear, igUrl, demoHref }: Props) {
+export function Landing({ session, reviews, plans, buildFee, trialHours, graceDays, changesPerYear, igUrl, demoHref }: Props) {
   const merchant = session === "merchant";
 
   const Primary = () =>
@@ -212,31 +214,25 @@ export function Landing({ session, reviews, plans, trialHours, graceDays, change
 
         {/* ─── الباقات ─── */}
         <section id="pricing" className="container-x scroll-mt-24 pb-24 sm:pb-32">
-          <Heading eyebrow="الباقات" title="اختاروا المدة، والتجديد معلن من اليوم الأول" subtitle="كل باقة تشمل تجهيز المتجر والاستضافة والتشغيل والتحديثات طوال مدتها." />
+          <Heading eyebrow="الباقات" title="اشتراك شهري واضح، وحدود معلنة من اليوم الأول" subtitle={buildFee ?? "تجهيز المتجر مرة واحدة، ثم الاستضافة الشهرية بالباقة المناسبة."} />
           <div className="mx-auto mt-14 grid max-w-5xl gap-5 md:grid-cols-3">
             {plans.map((p) => (
               <article
-                key={p.months}
+                key={p.id}
                 className={`relative flex flex-col rounded-[2rem] border p-7 ${
                   p.featured
                     ? "border-[#8fa8ff]/40 bg-gradient-to-b from-[#8fa8ff]/14 via-[#0e1430] to-[#0b1026] shadow-[0_40px_120px_-30px_rgba(111,134,255,0.45)]"
                     : "land-card border-white/10"
                 }`}
               >
-                {p.featured ? <span className="absolute -top-3 start-6 rounded-full bg-[#8fa8ff] px-3 py-1 text-[11px] font-black text-[#07091a]">الأكثر توفيراً</span> : null}
+                {p.featured ? <span className="absolute -top-3 start-6 rounded-full bg-[#8fa8ff] px-3 py-1 text-[11px] font-black text-[#07091a]">الأكثر اختياراً</span> : null}
                 <h3 className="text-lg font-black">{p.label}</h3>
                 <div className="mt-4 flex items-end gap-2">
                   <span className="text-5xl font-black tabular-nums">{p.priceText}</span>
-                  <span className="mb-1.5 text-base font-bold text-[#c3cdf0]/70">ج.م</span>
+                  <span className="mb-1.5 text-base font-bold text-[#c3cdf0]/70">ج.م شهرياً</span>
                 </div>
-                <p className="mt-1 text-[13px] text-[#c3cdf0]/70">أي نحو {p.perMonthText} ج.م في الشهر</p>
                 <ul className="mt-6 space-y-2.5 text-[13.5px]">
-                  {[
-                    "متجر مجهّز ولوحة تحكم كاملة",
-                    "استضافة وتشغيل وتحديثات",
-                    "بلا عمولة على المبيعات",
-                    `التجديد ${p.renewalText} ج.م لنفس المدة`,
-                  ].map((b) => (
+                  {[...p.highlights, "بلا عمولة على المبيعات"].map((b) => (
                     <li key={b} className="flex items-start gap-2">
                       <Check className="mt-0.5 size-4 shrink-0 text-emerald-400" aria-hidden="true" /> {b}
                     </li>
@@ -319,17 +315,17 @@ function Feature({ icon: Icon, title, text }: { icon: typeof Camera; title: stri
 
 /** الأسئلة الشائعة (تُستخدم أيضاً في البيانات المنظمة FAQPage). */
 export function landingFaq(o: { trialHours: number; graceDays: number; plans: PlanCard[] }): [string, string][] {
-  const renewals = o.plans.map((p) => `${p.label}: ${p.renewalText} ج.م`).join("، ");
+  const renewals = o.plans.map((p) => `${p.label} ${p.priceText} ج.م شهرياً`).join("، ");
   return [
     ["كيف أبدأ؟", "راسلونا على إنستجرام. نسأل عن نشاطكم وبياناتكم الأساسية في محادثة قصيرة، ثم يصلكم رابط إعداد المتجر لتدخلوا به بحساب Google وتكملوا الباقي بأنفسكم."],
     ["كم يستغرق التجهيز؟", "خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع. ونخبركم في المحادثة حين يكون رابط الإعداد جاهزاً."],
     ["هل التجربة مجانية؟", `نعم، ${o.trialHours} ساعة بعد تفعيل متجركم، بلا بطاقة بنكية. وإن لم تُفعّلوه بعدها لا تدفعون شيئاً، ويتوقف المتجر ثم يُحذف بعد إشعارات تصلكم قبل ذلك.`],
-    ["ماذا تشمل الباقة؟", "تجهيز المتجر ولوحة التحكم، والاستضافة والتشغيل والتحديثات طوال المدة، وبلا عمولة على مبيعاتكم أبداً."],
+    ["ماذا تشمل الباقة؟", "تجهيز المتجر ولوحة التحكم مرة واحدة، ثم الاستضافة والتشغيل والتحديثات شهرياً بحدود باقتكم المعلنة، وبلا عمولة على مبيعاتكم أبداً."],
     ["كيف أدفع؟", "بتحويل فودافون كاش أو إنستاباي ورفع صورة الإيصال من لوحتكم. نراجعه ونفعّل متجركم، ويصلكم بريد فور التفعيل."],
-    ["كم تكلفة التجديد؟", `لكل مدة سعرها المعلن: ${renewals}. تختارون أي مدة عند كل تجديد، وتُضاف إلى نهاية اشتراككم الحالي فلا يضيع يوم.`],
+    ["كم تكلفة التجديد؟", `التجديد للاستضافة الشهرية فقط بلا رسوم تجهيز: ${renewals}. تختارون الباقة وعدد الأشهر عند كل تجديد، وتُضاف المدة إلى نهاية اشتراككم الحالي فلا يضيع يوم.`],
     ["ماذا يحدث إذا انتهى الاشتراك؟", `نذكّركم قبل الانتهاء بشهر وأسبوع ويوم. وبعده يستمر المتجر ${fmtPrice(o.graceDays)} ${o.graceDays <= 2 ? "يوماً" : o.graceDays <= 10 ? "أيام" : "يوماً"} سماحاً، ثم يتوقف عن الظهور للزوار دون حذف أي شيء، ويعود فور التجديد بنفس الرابط.`],
     ["هل أستطيع تعديل متجري؟", "طبعاً. أغلب ما تحتاجونه تعدّلونه بأنفسكم من اللوحة في أي وقت، ويشمل اشتراككم طلبات تعديل ينفذها فريقنا، ويمكنكم رؤية رصيدها في اللوحة."],
-    ["هل هناك حدود للاستخدام؟", "بعض الميزات، مثل البحث بالصورة ورفع الصور والفيديو، لها حدود شهرية عادلة لكل متجر حتى تبقى الخدمة سريعة للجميع. تظهر لكم الأرقام في اللوحة، ونخبركم قبل بلوغها."],
+    ["هل هناك حدود للاستخدام؟", "لكل باقة حدود معلنة لعدد المنتجات ومساحة الصور والفيديو والعمليات التلقائية والبحث بالصورة وأعضاء الفريق، والطلبات والزوار بلا حد. تظهر لكم العدّادات في صفحة الاشتراك، ونخبركم قبل بلوغ أي حد، ويمكن الترقية في أي وقت."],
     ["هل أستطيع ربط دومين خاص؟", "نعم، من اللوحة. تظهر لكم السجلات المطلوبة، وتُفعّل الشهادة الآمنة تلقائياً."],
     ["هل يسجّل زبائني حسابات؟", "لا. يطلب الزبون دون حساب، وتُحفظ مفضلته وطلباته على جهازه، ويصلكم الطلب مع رسالة واتساب جاهزة."],
   ];
