@@ -14,6 +14,7 @@ import { StepPayment, StepReturns, StepShipping } from "./StepsCommerce";
 import { StepContact, StepDiscount } from "./StepsMisc";
 import { StepProducts } from "./StepProducts";
 import { StepPublish } from "./StepPublish";
+import { ThemeSection } from "./ThemeSection";
 import { btnGhost, btnPrimary, StepHeader } from "./ui";
 
 type Save = "idle" | "saving" | "saved";
@@ -139,6 +140,7 @@ export function OnboardingApp({ data }: { data: SetupData }) {
               {step === "identity" ? (
                 <IdentityForm
                   initial={data.identity}
+                  onLogoSaved={refreshPreview}
                   onChange={(v) => setName(v.name)}
                   onSaved={(v) => {
                     setName(v.name);
@@ -150,6 +152,8 @@ export function OnboardingApp({ data }: { data: SetupData }) {
               {step === "products" ? (
                 <StepProducts
                   data={products}
+                  niche={data.niche}
+                  draftKey={`clp-import:${data.store.id}`}
                   dmImages={data.onboarding.dmImages}
                   onCommitted={(s) => {
                     setProducts((p) => ({ ...p, total: p.total + s.active + s.drafts, active: p.active + s.active, drafts: p.drafts + s.drafts }));
@@ -168,7 +172,10 @@ export function OnboardingApp({ data }: { data: SetupData }) {
 
               {step === "look" ? (
                 <div className="space-y-6">
-                  <LookPanel initialHero={data.look.heroKind} onChanged={refreshPreview} />
+                  <ThemeSection initial={data.look.themeId} onChanged={refreshPreview} />
+                  <div className="border-t border-edge/10 pt-6">
+                    <LookPanel initialHero={data.look.heroKind} heroVideoUrl={data.look.videoUrl} onChanged={refreshPreview} />
+                  </div>
                   <div className="flex flex-wrap gap-2 border-t border-edge/10 pt-5">
                     <button type="button" className={btnPrimary} onClick={() => advance("look")}>
                       متابعة
@@ -180,7 +187,7 @@ export function OnboardingApp({ data }: { data: SetupData }) {
                 </div>
               ) : null}
 
-              {step === "publish" ? <StepPublish initial={data.readiness.items} onBack={() => back("publish")} onGoto={(s) => go(s)} onPublished={() => setDone((d) => [...new Set([...d, "publish" as StepId])])} /> : null}
+              {step === "publish" ? <StepPublish initial={data.readiness.items} inspection={data.payments.inspection} onBack={() => back("publish")} onGoto={(s) => go(s)} onPublished={() => setDone((d) => [...new Set([...d, "publish" as StepId])])} /> : null}
             </div>
           </div>
         </main>

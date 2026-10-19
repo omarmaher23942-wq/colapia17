@@ -8,21 +8,33 @@ import { saveHeroMediaAction, tweakDesignAction, undoDesignAction } from "@/serv
 import type { HeroMediaChoice } from "@/lib/design-tweak";
 import { cn } from "@/lib/utils";
 import { btnGhost, btnPrimary, Notice, OptionCard, Spinner } from "./ui";
-import { posterFromVideo, uploadImages } from "./upload";
+import { probeVideo, uploadImages, uploadVideo } from "./upload";
 
 type HeroOpt = "auto" | "video_fashion" | "video_electronics" | "video_upload" | "side_image";
 const OPTIONS: { id: HeroOpt; title: string; sub: string }[] = [
   { id: "auto", title: "تلقائي من منتجاتكم", sub: "نعرض صور منتجاتكم في الواجهة بأفضل تخطيط." },
   { id: "video_fashion", title: "فيديو احترافي جاهز للملابس", sub: "خلفية متحركة أنيقة تناسب الأزياء." },
   { id: "video_electronics", title: "فيديو احترافي جاهز للإلكترونيات", sub: "خلفية متحركة عصرية تناسب الأجهزة." },
-  { id: "video_upload", title: "رفع فيديو خاص بكم", sub: "MP4 أو WEBM حتى 40 ميجابايت. نلتقط له غلافاً يظهر فوراً قبل تحميله." },
+  { id: "video_upload", title: "رفع فيديو خاص بكم", sub: "نلتقط له صورة غلاف تلقائياً تظهر فوراً قبل تحميل الفيديو." },
   { id: "side_image", title: "صورة جانبية", sub: "صورة واحدة بجانب العنوان، بتخطيط هادئ وسريع." },
 ];
 
 const SUGGESTIONS = ["اجعلوا الأزرار خضراء", "كبّروا الخط", "اجعلوا الزوايا أكثر استدارة", "غيّروا خلفية الموقع إلى الأبيض"];
 
-export function LookPanel({ initialHero, onChanged }: { initialHero: "video" | "image" | "auto"; onChanged: () => void }) {
-  const [opt, setOpt] = useState<HeroOpt | null>(initialHero === "auto" ? "auto" : null);
+/** الاختيار الحالي من رابط الفيديو المحفوظ (الجاهزان معروفان بمساراتهما). */
+function initialOpt(kind: "video" | "image" | "auto", videoUrl?: string | null): HeroOpt | null {
+  if (kind === "auto") return "auto";
+  if (kind === "image") return "side_image";
+  if (!videoUrl) return null;
+  if (videoUrl.includes("/demo/media/hero-fashion")) return "video_fashion";
+  if (videoUrl.includes("/demo/media/hero-electronics")) return "video_electronics";
+  return "video_upload";
+}
+
+export function LookPanel({ initialHero, heroVideoUrl, onChanged }: { initialHero: "video" | "image" | "auto"; heroVideoUrl?: string | null; onChanged: () => void }) {
+  const [opt, setOpt] = useState<HeroOpt | null>(initialOpt(initialHero, heroVideoUrl));
+  const [videoPct, setVideoPct] = useState<number | null>(null);
+  const [videoStage, setVideoStage] = useState<string>("");
   const [busy, setBusy] = useState<HeroOpt | null>(null);
   const [heroMsg, setHeroMsg] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const videoRef = useRef<HTMLInputElement>(null);
@@ -49,21 +61,31 @@ export function LookPanel({ initialHero, onChanged }: { initialHero: "video" | "
     setBusy("video_upload");
     setHeroMsg(null);
     try {
-      const fd = new FormData();
-      fd.set("file", f, f.name);
-      const res = await fetch("/api/setup/hero-video", { method: "POST", body: fd, credentials: "same-origin" });
-      const j = (await res.json().catch(() => null)) as { ok: boolean; url?: string; error?: string } | null;
-      if (!j?.ok || !j.url) return setHeroMsg({ tone: "bad", text: j?.error ?? "تعذر رفع الفيديو. حاولوا مرة أخرى." });
-      const poster = await posterFromVideo(f);
+      if (f.size > 40 << 20) return setHeroMsg({ tone: "bad", text: "الفيديو أكبر من 40 ميجابايت. اختصروه أو اضغطوه ثم ارفعوه." });
+      // 1) نتأكد أن المتصفح يشغّله، ونلتقط صورة الغلاف من لقطة مبكرة.
+      setVideoStage("نتحقق من الفيديو ونلتقط صورة الغلاف…");
+      const probe = await probeVideo(f);
+      if (!probe.ok) return setHeroMsg({ tone: "bad", text: probe.error });
+      // 2) الغلاف أولاً (صغير): بدونه لا تظهر الواجهة فوراً.
       let posterUrl: string | undefined;
-      if (poster) {
-        const up = await uploadImages([poster], { route: "brandAsset" });
+      if (probe.poster) {
+        setVideoStage("نرفع صورة الغلاف…");
+        const up = await uploadImages([probe.poster], { route: "brandAsset", keepAlpha: false });
         posterUrl = up.urls[0];
+        if (!posterUrl) return setHeroMsg({ tone: "bad", text: up.error ?? "تعذر رفع صورة الغلاف. حاولوا مرة أخرى." });
       }
-      await apply({ kind: "video_upload", url: j.url, poster: posterUrl }, "video_upload");
+      // 3) الفيديو بتقدم حقيقي.
+      setVideoStage("نرفع الفيديو…");
+      setVideoPct(0);
+      const v = await uploadVideo(f, setVideoPct);
+      if (!v.ok) return setHeroMsg({ tone: "bad", text: v.error });
+      setVideoStage("نطبّق الفيديو على الواجهة…");
+      await apply({ kind: "video_upload", url: v.url, poster: posterUrl }, "video_upload");
     } catch {
       setHeroMsg({ tone: "bad", text: "تعذر الاتصال. تأكدوا من الإنترنت وحاولوا مرة أخرى." });
     } finally {
+      setVideoPct(null);
+      setVideoStage("");
       setBusy((b) => (b === "video_upload" ? null : b));
       if (videoRef.current) videoRef.current.value = "";
     }
@@ -73,7 +95,7 @@ export function LookPanel({ initialHero, onChanged }: { initialHero: "video" | "
     if (!f) return;
     setBusy("side_image");
     setHeroMsg(null);
-    const up = await uploadImages([f], { route: "brandAsset" });
+    const up = await uploadImages([f], { route: "brandAsset", keepAlpha: false });
     if (!up.urls[0]) {
       setBusy(null);
       return setHeroMsg({ tone: "bad", text: up.error ?? "تعذر رفع الصورة" });
@@ -133,7 +155,20 @@ export function LookPanel({ initialHero, onChanged }: { initialHero: "video" | "
                     {busy === "video_upload" ? <Spinner /> : <Video className="size-4" aria-hidden="true" />}
                     {busy === "video_upload" ? "جارٍ الرفع…" : "اختيار الفيديو"}
                   </button>
-                  <p className="mt-2 text-[11.5px] leading-5 text-ink-3">لا يعمل الفيديو مع توفير البيانات، فيظهر الغلاف بدلاً منه. الأفضل فيديو قصير بلا صوت.</p>
+                  {busy === "video_upload" && videoStage ? (
+                    <div className="mt-3" role="status" aria-live="polite">
+                      <p className="text-[12px] font-bold text-ink-2">{videoStage}</p>
+                      {videoPct !== null ? (
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-edge/10" role="progressbar" aria-label="تقدم رفع الفيديو" aria-valuemin={0} aria-valuemax={100} aria-valuenow={videoPct}>
+                            <div className="h-full rounded-full bg-nova transition-[width] duration-300" style={{ width: `${Math.max(4, videoPct)}%` }} />
+                          </div>
+                          <span className="w-10 text-end text-[11.5px] font-black tabular-nums text-ink-2">{videoPct}%</span>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <p className="mt-2 text-[11.5px] leading-5 text-ink-3">MP4 أو WEBM حتى 40 ميجابايت. لا يعمل الفيديو مع توفير البيانات، فيظهر الغلاف بدلاً منه. الأفضل فيديو قصير بلا صوت من 10 إلى 20 ثانية.</p>
                 </>
               ) : null}
               {o.id === "side_image" ? (

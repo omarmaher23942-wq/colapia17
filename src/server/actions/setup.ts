@@ -13,7 +13,6 @@ import { ownerStore, storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { INSPECTION_COD_NOTE } from "@/blueprint/defaults";
 import { invalidateStoreCache } from "@/lib/tenant";
-import { clientEnv } from "@/lib/env";
 import { publicStoreUrl } from "@/lib/utils";
 import { draftFrom } from "@/lib/store-settings";
 import {
@@ -31,6 +30,8 @@ import {
   type StepId,
 } from "@/lib/onboarding";
 import { applyHeroMedia, type HeroMediaChoice } from "@/lib/design-tweak";
+import { applyTheme, isThemeId } from "@/blueprint/themes";
+import { isNiche } from "@/lib/niche-attributes";
 import { startTrial } from "@/ai/lifecycle/deliver";
 import { saveBlueprintAction } from "./blueprint";
 import { saveShippingSettingsAction } from "./shipping";
@@ -91,11 +92,58 @@ export async function saveIdentityAction(raw: unknown): Promise<Ok | Fail> {
   const pair = FONT_PAIRS.find((f) => f.id === p.data.fontPair)!;
   const next: StoreBlueprint = {
     ...bp,
-    brand: { ...bp.brand, name: p.data.name, logo: p.data.logoUrl ? { url: p.data.logoUrl, alt: p.data.name, focalX: 0.5, focalY: 0.5 } : undefined },
+    brand: { ...withLogo(bp.brand, p.data.logoUrl, p.data.name), name: p.data.name },
     theme: { ...bp.theme, palette: brandPalette(color, bp.theme.mode === "dark"), fonts: { ...bp.theme.fonts, heading: pair.heading, body: pair.body } },
   };
   const r = await saveBlueprintAction(next, "هوية المتجر");
   return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+/** الشعار في كل مكان: الهيدر والفوتر والفاتورة وأيقونة التبويب (favicon) وصورة المشاركة تقرأ brand.logo،
+ * والأيقونة تتبعه في brand.favicon ما دام التاجر لم يضع أيقونة مختلفة يدوياً. */
+function withLogo(brand: StoreBlueprint["brand"], url: string | null, name: string): StoreBlueprint["brand"] {
+  const followsLogo = !brand.favicon || brand.favicon === brand.logo?.url;
+  if (!url) return { ...brand, logo: undefined, favicon: followsLogo ? undefined : brand.favicon };
+  return { ...brand, logo: { url, alt: name, focalX: 0.5, focalY: 0.5 }, favicon: followsLogo ? url : brand.favicon };
+}
+
+const logoInput = z.object({ url: z.string().url().refine((u) => u.startsWith("https://"), "رابط الشعار غير آمن").nullable() });
+
+/** يحفظ الشعار فور رفعه (لا ينتظر «حفظ ومتابعة») فيظهر في المعاينة وأيقونة التبويب مباشرة. */
+export async function saveLogoAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("content");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const p = logoInput.safeParse(raw);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "رابط غير صالح" };
+  const bp = await loadBp(s.storeId);
+  if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const r = await saveBlueprintAction({ ...bp, brand: withLogo(bp.brand, p.data.url, bp.brand.name) }, p.data.url ? "شعار المتجر" : "إزالة الشعار");
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
+}
+
+/** يطبّق أحد التصميمات الكاملة (ألوان وخطوط وبطاقات وأزرار) مع إبقاء المحتوى، ويحفظ الاختيار لإعادة عرضه. */
+export async function saveThemeAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("content");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const theme = (raw as { theme?: unknown } | null)?.theme;
+  if (!isThemeId(theme)) return { ok: false, error: "تصميم غير صالح" };
+  const bp = await loadBp(s.storeId);
+  if (!bp) return { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const r = await saveBlueprintAction(applyTheme(bp, theme), "تصميم المتجر");
+  if (!r.ok) return { ok: false, error: r.error };
+  await db.update(stores).set({ onboarding: { ...(await freshOnboarding(s.storeId)), themeId: theme }, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
+  revalidatePath("/dashboard/design");
+  return { ok: true };
+}
+
+/** نوع النشاط الذي يختاره التاجر (يحدد حقول المنتج): يُحفظ في stores.onboarding.nicheKind دون مسح غيره. */
+export async function saveNicheAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("products");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const niche = (raw as { niche?: unknown } | null)?.niche;
+  if (!isNiche(niche)) return { ok: false, error: "نوع نشاط غير صالح" };
+  await db.update(stores).set({ onboarding: { ...(await freshOnboarding(s.storeId)), nicheKind: niche }, updatedAt: new Date() }).where(eq(stores.id, s.storeId));
+  return { ok: true };
 }
 
 // ─── 3) الدفع ────────────────────────────────────────────────────────────────
@@ -246,7 +294,10 @@ export async function saveHeroMediaAction(raw: unknown): Promise<Ok<{ summary: s
     .where(and(eq(products.storeId, s.storeId), eq(products.status, "active"), isNull(products.deletedAt), sql`jsonb_array_length(${products.images}) > 0`))
     .orderBy(products.sortOrder)
     .limit(4);
-  const applied = applyHeroMedia(bp, p.data, clientEnv.NEXT_PUBLIC_APP_URL, rows.map((r) => ({ url: r.images[0]!.url, alt: r.name })));
+  // الفيديوهات الجاهزة تُحفظ بمسار نسبي (/demo/media/...): تُخدم من نطاق المتجر نفسه (ملفات ثابتة خارج الوسيط).
+  // كان الرابط مطلقاً على أصل المنصة، فترفضه سياسة أمان المحتوى على نطاق المتجر (media-src) ولا يقبله مُحسّن الصور
+  // (غير مدرج في المضيفات البعيدة)، فيظهر الغلاف صورة مكسورة والفيديو لا يعمل.
+  const applied = applyHeroMedia(bp, p.data, "", rows.map((r) => ({ url: r.images[0]!.url, alt: r.name })));
   if ("error" in applied) return { ok: false, error: applied.error };
   const r = await saveBlueprintAction(applied.blueprint, "واجهة المتجر");
   return r.ok ? { ok: true, summary: applied.summary } : { ok: false, error: r.error };
@@ -274,11 +325,11 @@ export async function undoDesignAction(raw: unknown): Promise<Ok | Fail> {
 
 // ─── 9) الجاهزية والتفعيل ────────────────────────────────────────────────────
 
-export async function readinessAction(): Promise<Ok<{ ready: boolean; items: ReadinessItem[] }> | Fail> {
+export async function readinessAction(): Promise<Ok<{ ready: boolean; items: ReadinessItem[]; inspection: boolean }> | Fail> {
   const s = await ownerStore();
   if (!s) return { ok: false, error: SESSION_ERR };
-  const r = await readinessFor(s.storeId);
-  return r ? { ok: true, ready: r.ok, items: r.items } : { ok: false, error: "تعذر قراءة إعدادات المتجر" };
+  const [r, bp] = await Promise.all([readinessFor(s.storeId), loadBp(s.storeId)]);
+  return r ? { ok: true, ready: r.ok, items: r.items, inspection: Boolean(bp?.shipping.inspectionAllowed) } : { ok: false, error: "تعذر قراءة إعدادات المتجر" };
 }
 
 /** ترتيب لمسات أخيرة قبل أن يراه الزوار: عناوين البحث والأوصاف، ترتيب الأقسام، وصور الواجهة من المنتجات. */
@@ -312,7 +363,7 @@ async function tidyStore(storeId: string, bp: StoreBlueprint): Promise<void> {
       .where(and(eq(products.storeId, storeId), eq(products.status, "active"), isNull(products.deletedAt), sql`jsonb_array_length(${products.images}) > 0`))
       .orderBy(products.sortOrder)
       .limit(4);
-    const a = applyHeroMedia(bp, { kind: "auto" }, clientEnv.NEXT_PUBLIC_APP_URL, rows.map((r) => ({ url: r.images[0]!.url, alt: r.name })));
+    const a = applyHeroMedia(bp, { kind: "auto" }, "", rows.map((r) => ({ url: r.images[0]!.url, alt: r.name })));
     if (!("error" in a)) next = a.blueprint;
   }
   const seo = { ...next.seo, title: next.seo.title ?? bp.brand.name.slice(0, 70) };

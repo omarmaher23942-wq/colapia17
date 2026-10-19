@@ -7,6 +7,7 @@ import { categories, discounts, products, shippingZones, storeBlueprints, type s
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { pairIdFor, parseOnboarding, planFromZones, publishReadiness, templateFromReturns, type ReadinessItem, type SetupData } from "@/lib/onboarding";
 import { publicStoreUrl } from "@/lib/utils";
+import { resolveNiche } from "@/lib/niche-attributes";
 
 export async function loadBlueprint(storeId: string): Promise<StoreBlueprint | null> {
   const [row] = await db.select().from(storeBlueprints).where(eq(storeBlueprints.storeId, storeId)).limit(1);
@@ -73,7 +74,13 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
       : { plan: { kind: "cairo_giza", cairoFee: 50, restFee: 75 }, etaMin: 2, etaMax: 4, freeOver: null, saved: false },
     returns: templateFromReturns(bp.returns),
     contact: { whatsapp: c.whatsappNumber ?? "", instagram: c.instagramUsername ?? "", facebook: c.facebookUrl ?? "", tiktok: c.tiktokUsername ?? "" },
-    look: { heroKind: hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto", hasVideo: Boolean(hero && hero.type === "hero" && hero.videoUrl) },
+    look: {
+      heroKind: hero && hero.type === "hero" ? (hero.videoUrl ? "video" : hero.images.length ? "image" : "auto") : "auto",
+      hasVideo: Boolean(hero && hero.type === "hero" && hero.videoUrl),
+      videoUrl: hero && hero.type === "hero" ? (hero.videoUrl ?? null) : null,
+      themeId: typeof (store.onboarding as { themeId?: unknown }).themeId === "string" ? ((store.onboarding as { themeId: string }).themeId) : null,
+    },
+    niche: resolveNiche(store.onboarding, bp.brand.tagline, bp.brand.description, bp.brand.name),
     discounts: Number(disc?.n ?? 0),
     readiness: readiness ? { ok: readiness.ok, items: readiness.items } : { ok: false, items: [] },
   };

@@ -14,6 +14,7 @@ import { copyOf } from "@/blueprint/copy";
 import { NO_STORE_HREF } from "@/lib/edition";
 import { ProductEditor } from "@/components/dashboard/product/ProductEditor";
 import { EMPTY_PRODUCT, type EditorProduct } from "@/components/dashboard/product/model";
+import { resolveNiche } from "@/lib/niche-attributes";
 
 export const dynamic = "force-dynamic";
 
@@ -71,9 +72,11 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
       : Promise.resolve([]),
   ]);
   const featuredBadge = copyOf(bp?.copy, "bestSellerBadge");
+  // حقول المنتج تتبع نشاط المتجر (سعة للإلكترونيات، حجم للعطور، وزن للأغذية…).
+  const niche = resolveNiche(store.onboarding, bp?.brand.tagline, bp?.brand.description, bp?.brand.name ?? store.name);
 
   // المنتج الجديد يتبع طريقة المخزون التي اختارها التاجر لمتجره.
-  if (!p) return <ProductEditor key="new" initial={{ ...EMPTY_PRODUCT, trackStock: bp?.inventory.tracking ?? true }} categories={cats} subdomain={store.subdomain} featuredBadge={featuredBadge} />;
+  if (!p) return <ProductEditor key="new" initial={{ ...EMPTY_PRODUCT, trackStock: bp?.inventory.tracking ?? true }} categories={cats} subdomain={store.subdomain} featuredBadge={featuredBadge} niche={niche} />;
 
   const initial: EditorProduct = {
     id: p.id,
@@ -117,6 +120,7 @@ export default async function DashboardProductEditPage({ params }: { params: Pro
       categories={cats}
       subdomain={store.subdomain}
       featuredBadge={featuredBadge}
+      niche={niche}
       stats={{
         views: p.viewCount,
         sold: p.orderCount,

@@ -100,10 +100,30 @@ export function StepPayment({ data, onSaved, onBack }: { data: SetupData["paymen
     >
       <OptionCardSwitch title="الدفع عند الاستلام" description="الأكثر طلباً بين المشترين في مصر. يدفع الزبون للمندوب عند وصول الطلب." on={cod} onChange={setCod}>
         <div className="space-y-4">
-          <Switch checked={inspection} onChange={setInspection} label="السماح بمعاينة الشحنة وفتحها قبل الدفع" hint="تظهر للزبون شارة «معاينة قبل الدفع» وتزيد ثقته. فعّلوها فقط إن كانت شركة الشحن لديكم تسمح بذلك." />
           <Money label="رسوم إضافية للدفع عند الاستلام" optional value={fee} onChange={setFee} error={errs.fee} hint="اتركوها فارغة إن لم تحصّلوا رسوماً. تُضاف على سعر الشحن عند اختيار هذه الوسيلة." />
         </div>
       </OptionCardSwitch>
+
+      <fieldset className="rounded-2xl border border-edge/12 p-4">
+        <legend className="px-1 text-[14px] font-black text-ink">هل تسمحون بالمعاينة وفتح الشحنة قبل الدفع؟</legend>
+        <p className="mb-3 text-[12.5px] leading-6 text-ink-3">إجابتكم تظهر للزبون في صفحة المنتج والدفع والأسئلة الشائعة والفاتورة ورسائل التأكيد. اختاروا «نعم» فقط إن كانت شركة الشحن لديكم تسمح بذلك.</p>
+        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="المعاينة وفتح الشحنة قبل الدفع">
+          {(
+            [
+              [true, "نعم، نسمح بالمعاينة", "يفتح الزبون الشحنة ويعاينها قبل أن يدفع للمندوب."],
+              [false, "لا، الدفع قبل الفتح", "يدفع الزبون أولاً، والاستبدال حسب سياستكم."],
+            ] as const
+          ).map(([v, t, d]) => (
+            <label key={String(v)} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3 transition focus-within:ring-2 focus-within:ring-nova/50", inspection === v ? "border-nova bg-nova/[0.07]" : "border-edge/12 hover:border-edge/30")}>
+              <input type="radio" name="inspection" checked={inspection === v} onChange={() => setInspection(v)} className="mt-1 size-5 accent-[var(--dash-nova)]" />
+              <span>
+                <span className="block text-[13.5px] font-black text-ink">{t}</span>
+                <span className="block text-[12px] leading-5 text-ink-3">{d}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <OptionCardSwitch title="فودافون كاش" description="يحوّل الزبون على رقم محفظتكم ويرفع صورة التحويل مع الطلب." on={vf.enabled} onChange={(on) => setVf({ ...vf, enabled: on })}>
         <div className="grid gap-3 sm:grid-cols-2">

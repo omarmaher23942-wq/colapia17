@@ -15,6 +15,13 @@ const mediaOrigin = (() => {
   }
 })();
 const mediaHost = mediaOrigin ? new URL(mediaOrigin).hostname : "";
+// احتياط ثابت لمساحة ملفات الإنتاج: إن غابت متغيرات النطاق وقت البناء (بناء Cloudflare مثلاً) كان media-src لا يضم
+// media.colapia.com، فيرفض المتصفح تشغيل فيديو الواجهة الذي يرفعه التاجر على نطاق متجره.
+const PROD_MEDIA = "https://media.colapia.com";
+// إزالة الخلفية في المتصفح (اختيارية، components/onboarding/bg-removal.ts): المكتبة وملفات wasm من jsDelivr بإصدار مثبّت،
+// وملفات النموذج من Hugging Face (تحويلات إلى نطاقات hf.co الفرعية).
+const BG_TOOL_SCRIPT = "https://cdn.jsdelivr.net";
+const BG_TOOL_CONNECT = ["https://cdn.jsdelivr.net", "https://huggingface.co", "https://*.huggingface.co", "https://*.hf.co"];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Content Security Policy — يشمل:
@@ -26,13 +33,16 @@ const mediaHost = mediaOrigin ? new URL(mediaOrigin).hostname : "";
 const cspHeader = [
   "default-src 'self'",
 
-  `img-src 'self' data: blob: ${mediaOrigin} https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com`,
+  `img-src 'self' data: blob: ${mediaOrigin} ${PROD_MEDIA} https://utfs.io https://*.ufs.sh https://*.fbcdn.net https://*.cdninstagram.com https://picsum.photos https://api.dicebear.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://www.facebook.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://analytics.tiktok.com`,
 
-  `media-src 'self' data: blob: ${mediaOrigin} https://utfs.io https://*.ufs.sh`,
+  `media-src 'self' data: blob: ${mediaOrigin} ${PROD_MEDIA} https://utfs.io https://*.ufs.sh`,
 
   [
     "script-src 'self' 'unsafe-inline'",
     isDev ? "'unsafe-eval'" : "",
+    // تشغيل WebAssembly لأداة إزالة الخلفية (لا يسمح بـ eval للنصوص).
+    "'wasm-unsafe-eval'",
+    BG_TOOL_SCRIPT,
     "https://connect.facebook.net",
     "https://www.googletagmanager.com",
     "https://analytics.tiktok.com",
@@ -55,6 +65,8 @@ const cspHeader = [
   [
     "connect-src 'self'",
     mediaOrigin,
+    PROD_MEDIA,
+    ...BG_TOOL_CONNECT,
     // ملفات UploadThing القديمة (عرضها وقراءتها فقط؛ الرفع كله يمر بالخادم).
     "https://utfs.io",
     "https://*.ufs.sh",

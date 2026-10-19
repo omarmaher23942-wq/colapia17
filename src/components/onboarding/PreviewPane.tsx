@@ -6,11 +6,18 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, RefreshCw, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SRC = (v: number) => `/dashboard/preview?to=${encodeURIComponent("/")}&v=${v}`;
+// رقم فريد في رابط صفحة المتجر نفسها (لا في رابط التحويل فقط): أي ذاكرة وسيطة للمتصفح أو الشبكة مفتاحها الرابط
+// فلا تُعرض نسخة قديمة بعد الحفظ.
+const SRC = (v: number, stamp: number) => `/dashboard/preview?to=${encodeURIComponent(`/?_pv=${stamp.toString(36)}`)}&v=${v}`;
 
 export function PreviewFrame({ version, className }: { version: number; className?: string }) {
   const [loaded, setLoaded] = useState(false);
-  useEffect(() => setLoaded(false), [version]);
+  // الرقم يُولَّد في المتصفح بعد التحميل (لا أثناء العرض على الخادم) فلا يختلف العرضان.
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    setLoaded(false);
+    setSrc(SRC(version, Date.now()));
+  }, [version]);
   return (
     <div className={cn("relative mx-auto aspect-[9/17] w-full max-w-[380px] overflow-hidden rounded-[2.2rem] border-[7px] border-ink/85 bg-white shadow-2xl", className)}>
       {!loaded ? (
@@ -18,7 +25,7 @@ export function PreviewFrame({ version, className }: { version: number; classNam
           <span className="size-6 animate-spin rounded-full border-[3px] border-nova/25 border-t-nova motion-reduce:animate-none" />
         </div>
       ) : null}
-      <iframe key={version} src={SRC(version)} title="معاينة متجركم" loading="lazy" onLoad={() => setLoaded(true)} className="size-full border-0 bg-white" />
+      {src ? <iframe key={src} src={src} title="معاينة متجركم" onLoad={() => setLoaded(true)} className="size-full border-0 bg-white" /> : null}
     </div>
   );
 }
@@ -32,7 +39,7 @@ export function PreviewPane({ version, onRefresh }: { version: number; onRefresh
           <button type="button" onClick={onRefresh} aria-label="تحديث المعاينة" className="grid size-9 place-items-center rounded-lg text-ink-3 hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
             <RefreshCw className="size-4" aria-hidden="true" />
           </button>
-          <a href={SRC(version)} target="_blank" rel="noreferrer" aria-label="فتح المعاينة في تبويب جديد" className="grid size-9 place-items-center rounded-lg text-ink-3 hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
+          <a href={SRC(version, version)} target="_blank" rel="noreferrer" aria-label="فتح المعاينة في تبويب جديد" className="grid size-9 place-items-center rounded-lg text-ink-3 hover:bg-edge/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50">
             <ExternalLink className="size-4" aria-hidden="true" />
           </a>
         </div>

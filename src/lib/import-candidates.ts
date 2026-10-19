@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { colorFromName } from "@/lib/color-names";
 import { parseNumber } from "@/lib/product-import";
+import { cleanAttributes, type AttrPair } from "@/lib/niche-attributes";
 
 export const IMPORT_MAX_CANDIDATES = 200;
 export const IMPORT_TEXT_CHUNK = 20;
@@ -22,6 +23,8 @@ export type Candidate = {
   /** null = متاح دائماً. */
   stock: number | null;
   source: "text" | "image" | "file" | "manual";
+  /** سمات النشاط (السعة، الحجم، الوزن…) بصيغة products.attributes. */
+  attributes: AttrPair[];
 };
 
 // ─── رقائق جاهزة ────────────────────────────────────────────────────────────
@@ -158,7 +161,7 @@ export function parseProductEntry(entry: string): Candidate | null {
   const rest = segs.slice(1).filter((s) => !PRICE_UNIT.test(s) && !/^\d+(?:[.,]\d+)?$/.test(s) && !COMPARE_LABEL.test(s) && !SIZES_WORD.test(s) && !COLORS_WORD.test(s) && sizesIn(s).length === 0 && !colorsIn(s).length);
   const description = rest.join("، ").slice(0, 600);
 
-  return { id: newId(), name, price, compareAt, description, category: "", sizes, colors, images: [], stock: null, source: "text" };
+  return { id: newId(), name, price, compareAt, description, category: "", sizes, colors, images: [], stock: null, source: "text", attributes: [] };
 }
 
 export function parseProductText(text: string): Candidate[] {
@@ -225,6 +228,7 @@ export function candidatesFromTable(table: string[][]): { candidates: Candidate[
       images: cell(r, "images").split(/[|\s,]+/).filter((u) => /^https:\/\//i.test(u)).slice(0, 10),
       stock: stockRaw !== null && Number.isInteger(stockRaw) && stockRaw >= 0 ? stockRaw : null,
       source: "file",
+      attributes: [],
     };
     return [c];
   });
@@ -243,6 +247,7 @@ export const aiProductSchema = z.object({
   sizes: z.array(z.string()).optional().describe("المقاسات إن ذُكرت فقط"),
   colors: z.array(z.string()).optional().describe("الألوان إن ذُكرت أو ظهرت بوضوح"),
   imageIndexes: z.array(z.number().int()).optional().describe("أرقام الصور (تبدأ من 0) التي تخص هذا المنتج"),
+  attributes: z.array(z.object({ label: z.string(), value: z.string() })).optional().describe("سمات ظاهرة أو مذكورة فقط"),
 });
 export const aiProductsSchema = z.object({ products: z.array(aiProductSchema).max(60) });
 export type AiProduct = z.infer<typeof aiProductSchema>;
@@ -259,6 +264,7 @@ export function candidateFromAi(p: AiProduct, imageUrls: string[], source: Candi
     colors: p.colors ?? [],
     images: uniq(imgs),
     source,
+    attributes: p.attributes ?? [],
   });
 }
 
@@ -291,6 +297,7 @@ export function normalizeCandidate(input: Partial<Omit<Candidate, "id">> & { id?
     images: uniq((input.images ?? []).filter((u) => /^https:\/\//i.test(u))).slice(0, 10),
     stock: typeof input.stock === "number" && Number.isInteger(input.stock) && input.stock >= 0 ? input.stock : null,
     source: input.source ?? "manual",
+    attributes: cleanAttributes(input.attributes ?? []),
   };
 }
 
@@ -319,10 +326,43 @@ export function mergeCandidates(existing: Candidate[], incoming: Candidate[]): C
       colors: uniq([...e.colors, ...c.colors]),
       images: uniq([...e.images, ...c.images]).slice(0, 10),
       stock: e.stock ?? c.stock,
+      attributes: cleanAttributes([...e.attributes, ...c.attributes]),
     };
   }
   return out.slice(0, IMPORT_MAX_CANDIDATES);
 }
+
+/**
+ * يدمج عدة مرشّحين في منتج واحد (صور المنتج نفسه من زوايا مختلفة): يبقى أولهم مكانه بحقوله، وتُضاف صور
+ * الباقين وخياراتهم وسماتهم الناقصة، ويُحذفون من القائمة. أقل من اثنين ← بلا تغيير.
+ */
+export function mergeIntoOne(cands: Candidate[], ids: string[]): Candidate[] {
+  const picked = cands.filter((c) => ids.includes(c.id));
+  if (picked.length < 2) return cands;
+  const [head, ...rest] = picked as [Candidate, ...Candidate[]];
+  const merged: Candidate = {
+    ...head,
+    name: head.name || rest.find((r) => r.name)?.name || "",
+    price: head.price ?? rest.find((r) => r.price !== null)?.price ?? null,
+    compareAt: head.compareAt ?? rest.find((r) => r.compareAt !== null)?.compareAt ?? null,
+    description: head.description || rest.find((r) => r.description)?.description || "",
+    category: head.category || rest.find((r) => r.category)?.category || "",
+    sizes: uniq([...head.sizes, ...rest.flatMap((r) => r.sizes)]),
+    colors: uniq([...head.colors, ...rest.flatMap((r) => r.colors)]),
+    images: uniq([...head.images, ...rest.flatMap((r) => r.images)]).slice(0, 10),
+    attributes: cleanAttributes([...head.attributes, ...rest.flatMap((r) => r.attributes)]),
+  };
+  const drop = new Set(rest.map((r) => r.id));
+  return cands.filter((c) => !drop.has(c.id)).map((c) => (c.id === head.id ? merged : c));
+}
+
+/** أول اسم احتياطي لمنتج تُرك اسمه فارغاً (السعر وحده إلزامي): القسم أو «منتج N». */
+export function fallbackName(c: Pick<Candidate, "category">, index: number): string {
+  return c.category ? `${c.category} ${index + 1}` : `منتج ${index + 1}`;
+}
+
+/** المنتجات التي تنقصها السعر (الإدخال الإلزامي الوحيد). */
+export const missingPrice = (cands: Candidate[]): Candidate[] => cands.filter((c) => c.price === null);
 
 /** تجميع أسماء الأقسام: «تيشيرتات» و«التيشيرتات» قسم واحد، وأقصر اسم يغلب. */
 export function unifyCategories(cands: Candidate[]): Candidate[] {

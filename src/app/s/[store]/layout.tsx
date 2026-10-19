@@ -46,7 +46,17 @@ export async function generateMetadata({
   const store = await getStoreBySubdomain(sub);
   if (!store) return { robots: { index: false, follow: false } };
   const bp = await getBlueprintOrNull(store.id);
-  return storeMetadata(store, bp ? truthfulBlueprint(bp, await getStoreFacts(store.id, bp)) : null);
+  const meta = storeMetadata(store, bp ? truthfulBlueprint(bp, await getStoreFacts(store.id, bp)) : null);
+  // أيقونة التبويب تتبع شعار المتجر: رقم إصدار من رابط الشعار يُجبر المتصفح على جلب الجديدة فور تغييره
+  // (المتصفحات تحتفظ بالأيقونة القديمة طويلاً لنفس الرابط).
+  const mark = bp?.brand.favicon ?? bp?.brand.logo?.url ?? "";
+  if (mark) {
+    let h = 0;
+    for (let i = 0; i < mark.length; i++) h = (h * 31 + mark.charCodeAt(i)) | 0;
+    const icon = `/api/storefront/icon?v=${(h >>> 0).toString(36)}`;
+    meta.icons = { icon, shortcut: icon, apple: icon };
+  }
+  return meta;
 }
 
 export async function generateViewport({

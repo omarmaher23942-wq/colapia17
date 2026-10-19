@@ -165,7 +165,9 @@ export function Header({
   const useDropdown = header.showCategoriesMenu && (tree.length > 5 || tree.some((c) => c.children.length > 0));
   const inlineCats = header.showCategoriesMenu && !useDropdown ? tree.slice(0, 5) : [];
 
-  const hasCustomLogo = brand.logo?.url && !brand.logo.url.includes("logo.png") && !brand.logo.url.includes("colapia");
+  // شعار المنصة الافتراضي القديم (/logo.png) لا يُعرض كشعار متجر. لا نرفض روابط تحوي «colapia»: مساحة ملفات
+  // التجار نفسها على media.colapia.com، فكان ذلك يخفي كل شعار يرفعه التاجر.
+  const hasCustomLogo = Boolean(brand.logo?.url) && !/^(?:https?:\/\/[^/]+)?\/logo\.png(?:\?|$)/.test(brand.logo!.url);
   const logo = (compact = false) => (
     <Link href="/" className="flex shrink-0 items-center gap-2 font-heading leading-none" aria-label={brand.name}>
       {hasCustomLogo ? (
