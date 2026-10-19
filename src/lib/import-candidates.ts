@@ -5,6 +5,7 @@ import { z } from "zod";
 import { colorFromName } from "@/lib/color-names";
 import { parseNumber } from "@/lib/product-import";
 import { cleanAttributes, type AttrPair } from "@/lib/niche-attributes";
+import { applyCategoryPlan, planCategories } from "@/lib/category-merge";
 
 export const IMPORT_MAX_CANDIDATES = 200;
 export const IMPORT_TEXT_CHUNK = 20;
@@ -364,17 +365,9 @@ export function fallbackName(c: Pick<Candidate, "category">, index: number): str
 /** المنتجات التي تنقصها السعر (الإدخال الإلزامي الوحيد). */
 export const missingPrice = (cands: Candidate[]): Candidate[] => cands.filter((c) => c.price === null);
 
-/** تجميع أسماء الأقسام: «تيشيرتات» و«التيشيرتات» قسم واحد، وأقصر اسم يغلب. */
+/** تجميع أسماء الأقسام المتقاربة (مفرد/جمع، «ال»، تضمّن، مرادفات) بلا سقف: السقف يطبَّق في خطوة التصنيف المجمّعة. */
 export function unifyCategories(cands: Candidate[]): Candidate[] {
-  const canon = new Map<string, string>();
-  const k = (s: string) => keyOf(s).replace(/^ال/, "");
-  for (const c of cands) {
-    if (!c.category) continue;
-    const key = k(c.category);
-    const cur = canon.get(key);
-    if (!cur || c.category.length < cur.length) canon.set(key, c.category);
-  }
-  return cands.map((c) => (c.category ? { ...c, category: canon.get(k(c.category)) ?? c.category } : c));
+  return applyCategoryPlan(cands, planCategories(cands, [], Number.POSITIVE_INFINITY));
 }
 
 // ─── التركيبات من الرقائق ───────────────────────────────────────────────────

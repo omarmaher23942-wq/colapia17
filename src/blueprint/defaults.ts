@@ -377,6 +377,7 @@ function baseBlueprint(input: Parameters<typeof defaultBlueprint>[0]): StoreBlue
       defectPolicy: "replace_or_refund",
       defectReportHours: 48,
       defectShippingByStore: true,
+      allowCustomerCancel: false,
     },
     checkout: {
       fields: {

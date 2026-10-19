@@ -30,10 +30,15 @@ describe("تقدم الإعداد", () => {
   it("يقرأ حالة فارغة أو تالفة بتسامح", () => {
     expect(parseOnboarding({})).toMatchObject({ step: "identity", done: [], dmImages: [] });
     expect(parseOnboarding(null).step).toBe("identity");
-    expect(parseOnboarding({ step: "nope", done: ["payment", "x", "payment"], dmImages: ["http://a", "https://ok/1.jpg", 5] })).toMatchObject({ done: ["payment"], dmImages: ["https://ok/1.jpg"] });
+    expect(parseOnboarding({ step: "nope", done: ["look", "x", "look"], dmImages: ["http://a", "https://ok/1.jpg", 5] })).toMatchObject({ done: ["look"], dmImages: ["https://ok/1.jpg"] });
   });
   it("الخطوة الافتراضية أول خطوة غير منجزة", () => {
-    expect(parseOnboarding({ done: ["identity", "products"] }).step).toBe("payment");
+    expect(parseOnboarding({ done: ["identity", "products"] }).step).toBe("look");
+  });
+  it("تقدم محفوظ بالخطوات القديمة يُحوَّل إلى الخمس الجديدة", () => {
+    expect(parseOnboarding({ step: "shipping", done: ["identity", "products"] })).toMatchObject({ step: "commerce" });
+    expect(parseOnboarding({ done: ["identity", "payment", "shipping", "contact"] }).done).toContain("commerce");
+    expect(parseOnboarding({ done: ["identity", "payment"] }).done).not.toContain("commerce");
   });
   it("الدمج يحفظ صور المحادثة وبقية الحقول", () => {
     const m = mergeProgress({ dmImages: ["https://a/1.jpg"], niche: "ملابس", done: ["identity"] }, { step: "products", markDone: "products" });
@@ -41,13 +46,14 @@ describe("تقدم الإعداد", () => {
     expect(typeof m.startedAt).toBe("string");
   });
   it("التراجع عن إنجاز خطوة", () => {
-    expect((mergeProgress({ done: ["identity", "payment"] }, { unmark: "payment" }).done as string[])).toEqual(["identity"]);
+    expect((mergeProgress({ done: ["identity", "look"] }, { unmark: "look" }).done as string[])).toEqual(["identity"]);
   });
   it("التنقل والنسبة", () => {
     expect(nextStep("identity")).toBe("products");
+    expect(STEP_IDS).toHaveLength(5);
     expect(nextStep("publish")).toBe("publish");
     expect(prevStep("identity")).toBe("identity");
-    expect(prevStep("payment")).toBe("products");
+    expect(prevStep("look")).toBe("products");
     expect(progressPercent([])).toBe(0);
     expect(progressPercent([...STEP_IDS])).toBe(100);
   });

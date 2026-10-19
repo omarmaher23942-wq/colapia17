@@ -87,8 +87,23 @@ let readyDevice: "webgpu" | "wasm" | null = null;
 
 /** هل يدعم المتصفح ما يلزم (عامل وحدات + OffscreenCanvas)؟ المتصفحات القديمة تُخبَر بصدق بدل الفشل الصامت. */
 export function bgRemovalSupported(): boolean {
-  return typeof window !== "undefined" && typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined" && typeof createImageBitmap !== "undefined";
+  if (typeof window === "undefined" || typeof Worker === "undefined" || typeof OffscreenCanvas === "undefined" || typeof createImageBitmap === "undefined") return false;
+  return deviceCanRun();
 }
+
+/**
+ * سبب الفشل الأرجح على الهاتف: النموذج يحتاج ذاكرة كبيرة (عدة جيجابايت أثناء المعالجة بدقة النموذج) فتتوقف الصفحة أو يُغلقها
+ * النظام على الهواتف العادية. نعرض الميزة حيث تنجح فعلاً: أجهزة بذاكرة 4GB فأكثر، وللهواتف فقط إن وُجد WebGPU (أخف بكثير).
+ */
+function deviceCanRun(): boolean {
+  const nav = navigator as Navigator & { deviceMemory?: number; gpu?: unknown };
+  if (typeof nav.deviceMemory === "number" && nav.deviceMemory < 4) return false;
+  const mobile = /Android|iPhone|iPad|iPod|Mobile/i.test(nav.userAgent) || (nav.maxTouchPoints > 1 && /Mac/i.test(nav.platform));
+  return !mobile || Boolean(nav.gpu);
+}
+
+/** رسالة صادقة حين لا تتوفر الميزة على هذا الجهاز. */
+export const BG_UNSUPPORTED_NOTE = "إزالة الخلفية غير متاحة على هذا الجهاز (تحتاج ذاكرة وحاسباً أقوى من أغلب الهواتف). سترفعون الصور كما هي، ويمكنكم إزالة الخلفية لاحقاً من حاسوب أو متصفح حديث.";
 
 export const bgRemovalReady = () => readyDevice !== null;
 

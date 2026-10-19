@@ -181,7 +181,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
           subdomain={store.subdomain}
           code={o.code}
           accessPhone={cookieAccess ? undefined : legacyPhone}
-          canCancel={canRequestCancel(o)}
+          canCancel={bp.returns.allowCustomerCancel === true && canRequestCancel(o)}
           cancelRequested={Boolean(o.cancelRequestedAt)}
           returnKinds={win.open ? kinds : []}
           returnDaysLeft={win.daysLeft}

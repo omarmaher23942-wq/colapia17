@@ -3,9 +3,7 @@
 // StepsCommerce — خطوات الدفع والشحن والاستبدال. كل خطوة تحفظ فوراً في بيانات المتجر (نفس إجراءات اللوحة)، وتبدأ بخيارات
 // مختارة مسبقاً مناسبة لأغلب المتاجر، وتشرح أثر كل اختيار على الزائر بلا مصطلحات.
 import { useState } from "react";
-import { savePaymentStepAction, saveReturnsStepAction, saveShippingStepAction } from "@/server/actions/setup";
-import { cleanInstapay } from "@/lib/store-settings";
-import { normalizeEgyptianPhone } from "@/lib/phone";
+import { saveReturnsStepAction, saveShippingStepAction } from "@/server/actions/setup";
 import { SHIPPING_GROUP_LABEL, type ReturnsTemplate, type SetupData, type ShippingPlan } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
 import { btnGhost, btnPrimary, Field, inputCls, Notice, OptionCard, Spinner, Switch } from "./ui";
@@ -45,122 +43,6 @@ function Money({ label, value, onChange, error, hint, placeholder = "0", optiona
         </div>
       )}
     </Field>
-  );
-}
-
-// ─── الدفع ───────────────────────────────────────────────────────────────────
-export function StepPayment({ data, onSaved, onBack }: { data: SetupData["payments"]; onSaved: () => void; onBack: () => void }) {
-  const [cod, setCod] = useState(data.cod);
-  const [inspection, setInspection] = useState(data.inspection);
-  const [fee, setFee] = useState(data.codFee ? String(data.codFee) : "");
-  const [vf, setVf] = useState(data.vodafone);
-  const [ip, setIp] = useState(data.instapay);
-  const [errs, setErrs] = useState<Record<string, string>>({});
-  const [err, setErr] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  function validate() {
-    const e: Record<string, string> = {};
-    if (!cod && !vf.enabled && !ip.enabled) e.none = "فعّلوا وسيلة دفع واحدة على الأقل، وإلا لن يستطيع أحد إتمام الطلب.";
-    if (vf.enabled) {
-      if (!vf.number.trim()) e.vf = "اكتبوا رقم المحفظة الذي يحوّل عليه الزبون";
-      else if (!normalizeEgyptianPhone(vf.number)) e.vf = "رقم موبايل مصري من 11 رقماً يبدأ بـ 01";
-    }
-    if (ip.enabled) {
-      if (!ip.target.trim()) e.ip = "اكتبوا عنوان إنستاباي (مثل name@instapay) أو رقم الموبايل";
-      else if (cleanInstapay(ip.target) === null) e.ip = "عنوان بصيغة name@instapay أو رقم موبايل مصري";
-    }
-    if (cod && fee.trim() && (toNum(fee) === null || toNum(fee)! > 500)) e.fee = "اكتبوا رقماً بين 0 و500";
-    return e;
-  }
-
-  async function submit() {
-    setErr(null);
-    const e = validate();
-    setErrs(e);
-    if (Object.keys(e).length) return;
-    setBusy(true);
-    const r = await savePaymentStepAction({ cod, inspection, codFee: cod ? (toNum(fee) ?? 0) : 0, vodafone: vf, instapay: ip });
-    setBusy(false);
-    if (!r.ok) {
-      if ("errors" in r && r.errors) setErrs({ vf: r.errors["vodafone.number"] ?? "", ip: r.errors["instapay.target"] ?? "", none: r.errors.payments ?? "" });
-      return setErr(r.error);
-    }
-    onSaved();
-  }
-
-  return (
-    <form
-      noValidate
-      className="space-y-4"
-      onSubmit={(ev) => {
-        ev.preventDefault();
-        void submit();
-      }}
-    >
-      <OptionCardSwitch title="الدفع عند الاستلام" description="الأكثر طلباً بين المشترين في مصر. يدفع الزبون للمندوب عند وصول الطلب." on={cod} onChange={setCod}>
-        <div className="space-y-4">
-          <Money label="رسوم إضافية للدفع عند الاستلام" optional value={fee} onChange={setFee} error={errs.fee} hint="اتركوها فارغة إن لم تحصّلوا رسوماً. تُضاف على سعر الشحن عند اختيار هذه الوسيلة." />
-        </div>
-      </OptionCardSwitch>
-
-      <fieldset className="rounded-2xl border border-edge/12 p-4">
-        <legend className="px-1 text-[14px] font-black text-ink">هل تسمحون بالمعاينة وفتح الشحنة قبل الدفع؟</legend>
-        <p className="mb-3 text-[12.5px] leading-6 text-ink-3">إجابتكم تظهر للزبون في صفحة المنتج والدفع والأسئلة الشائعة والفاتورة ورسائل التأكيد. اختاروا «نعم» فقط إن كانت شركة الشحن لديكم تسمح بذلك.</p>
-        <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="المعاينة وفتح الشحنة قبل الدفع">
-          {(
-            [
-              [true, "نعم، نسمح بالمعاينة", "يفتح الزبون الشحنة ويعاينها قبل أن يدفع للمندوب."],
-              [false, "لا، الدفع قبل الفتح", "يدفع الزبون أولاً، والاستبدال حسب سياستكم."],
-            ] as const
-          ).map(([v, t, d]) => (
-            <label key={String(v)} className={cn("flex min-h-14 cursor-pointer items-start gap-3 rounded-xl border p-3 transition focus-within:ring-2 focus-within:ring-nova/50", inspection === v ? "border-nova bg-nova/[0.07]" : "border-edge/12 hover:border-edge/30")}>
-              <input type="radio" name="inspection" checked={inspection === v} onChange={() => setInspection(v)} className="mt-1 size-5 accent-[var(--dash-nova)]" />
-              <span>
-                <span className="block text-[13.5px] font-black text-ink">{t}</span>
-                <span className="block text-[12px] leading-5 text-ink-3">{d}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-
-      <OptionCardSwitch title="فودافون كاش" description="يحوّل الزبون على رقم محفظتكم ويرفع صورة التحويل مع الطلب." on={vf.enabled} onChange={(on) => setVf({ ...vf, enabled: on })}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="رقم المحفظة" error={errs.vf}>
-            {(p) => <input {...p} inputMode="tel" dir="ltr" value={vf.number} onChange={(e) => setVf({ ...vf, number: e.target.value })} placeholder="01012345678" className={cn(inputCls, "text-start")} />}
-          </Field>
-          <Field label="اسم صاحب المحفظة" optional hint="يظهر للزبون ليتأكد قبل التحويل.">
-            {(p) => <input {...p} value={vf.holder} onChange={(e) => setVf({ ...vf, holder: e.target.value })} className={inputCls} />}
-          </Field>
-        </div>
-      </OptionCardSwitch>
-
-      <OptionCardSwitch title="إنستاباي" description="يحوّل الزبون على عنوانكم أو رقمكم ويرفع صورة التحويل مع الطلب." on={ip.enabled} onChange={(on) => setIp({ ...ip, enabled: on })}>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="عنوان إنستاباي أو الرقم" error={errs.ip}>
-            {(p) => <input {...p} dir="ltr" value={ip.target} onChange={(e) => setIp({ ...ip, target: e.target.value })} placeholder="name@instapay" className={cn(inputCls, "text-start")} />}
-          </Field>
-          <Field label="اسم صاحب الحساب" optional>
-            {(p) => <input {...p} value={ip.holder} onChange={(e) => setIp({ ...ip, holder: e.target.value })} className={inputCls} />}
-          </Field>
-        </div>
-      </OptionCardSwitch>
-
-      {errs.none ? <Notice tone="bad">{errs.none}</Notice> : null}
-      {err && !errs.none ? <Notice tone="bad">{err}</Notice> : null}
-      <p className="text-[12px] leading-5 text-ink-3">لا يمكن تفعيل وسيلة تحويل قبل كتابة رقمها. وتستطيعون تغيير كل هذا لاحقاً من الإعدادات.</p>
-      <StepActions onBack={onBack} busy={busy} />
-    </form>
-  );
-}
-
-function OptionCardSwitch({ title, description, on, onChange, children }: { title: string; description: string; on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
-  return (
-    <div className={cn("rounded-2xl border p-4 transition", on ? "border-nova/60 bg-nova/[0.04]" : "border-edge/12")}>
-      <Switch checked={on} onChange={onChange} label={title} hint={description} />
-      {on ? <div className="mt-4 border-t border-edge/10 pt-4">{children}</div> : null}
-    </div>
   );
 }
 

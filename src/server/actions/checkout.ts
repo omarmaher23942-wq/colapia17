@@ -225,7 +225,7 @@ export async function placeOrderAction(subdomain: string, raw: unknown): Promise
     ) {
       throw new CheckoutError("وسيلة الدفع المختارة غير متاحة", "paymentMethod");
     }
-    const giftOn = Boolean(input.gift && (bp.shipping.giftEnabled ?? true) && (input.gift.wrap || input.gift.message || input.gift.hidePrices));
+    const giftOn = Boolean(input.gift && (bp.shipping.giftEnabled ?? false) && (input.gift.wrap || input.gift.message || input.gift.hidePrices));
 
     const cq = await quoteCart(store.id, bp, {
       items: input.items,
@@ -548,7 +548,7 @@ export async function quoteAction(subdomain: string, raw: unknown): Promise<Quot
       paymentMethod: input.paymentMethod,
       discountCode: input.discountCode,
       phone: normalizeEgyptianPhone(input.phone) ?? "",
-      giftWrap: Boolean(input.giftWrap && (bp.shipping.giftEnabled ?? true)),
+      giftWrap: Boolean(input.giftWrap && (bp.shipping.giftEnabled ?? false)),
     };
     try {
       return toQuote(await quoteCart(store.id, bp, { ...base, governorate: input.governorate || undefined }));

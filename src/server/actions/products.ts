@@ -9,6 +9,7 @@ import { storeFor } from "@/server/merchant-guard";
 import { checkProductsQuota } from "@/server/usage";
 import { buildSearchText, slugify } from "@/lib/arabic";
 import { invalidateStoreCache } from "@/lib/tenant";
+import { isHostedImage } from "@/lib/media-hosts";
 
 const egp = z.coerce.number().min(0).transform((v) => Math.round(v * 100));
 
@@ -296,6 +297,29 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
   await invalidateStoreCache(s.store);
   revalidatePath("/dashboard/products");
   return { ok: true, id: productId, slug };
+}
+
+/** يضيف صورة واحدة (مرفوعة على مساحة المتجر) إلى منتج بلا صورة أو بصور قليلة: من الضغط على صورته البديلة مباشرة. */
+export async function addProductImageAction(id: string, url: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const s = await storeFor("products");
+  if (!s) return { ok: false, error: "غير مصرح" };
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, error: "منتج غير صالح" };
+  if (!/^https:\/\//.test(url) || !isHostedImage(url)) return { ok: false, error: "ارفعوا الصورة من هنا مباشرة" };
+  const db = await getTenantDb(s.storeId);
+  try {
+    const done = await db
+      .update(products)
+      .set({ images: sql`coalesce(${products.images}, '[]'::jsonb) || jsonb_build_array(jsonb_build_object('url', ${url}::text, 'alt', ${products.name}))`, updatedAt: new Date() })
+      .where(and(eq(products.id, id), eq(products.storeId, s.storeId), isNull(products.deletedAt), sql`jsonb_array_length(coalesce(${products.images}, '[]'::jsonb)) < 10`))
+      .returning({ id: products.id });
+    if (!done.length) return { ok: false, error: "المنتج غير موجود أو وصل إلى 10 صور" };
+    await invalidateStoreCache(s.store);
+    revalidatePath("/dashboard/products");
+    return { ok: true };
+  } catch (e) {
+    console.error("[addProductImageAction]", e);
+    return { ok: false, error: "تعذر حفظ الصورة، حاولوا مرة أخرى" };
+  }
 }
 
 export async function deleteProductAction(id: string): Promise<{ ok: boolean; error?: string }> {

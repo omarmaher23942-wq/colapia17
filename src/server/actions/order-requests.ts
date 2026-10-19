@@ -43,6 +43,8 @@ export async function requestCancelAction(subdomain: string, raw: unknown): Prom
   const r = await loadOrder(subdomain, p.data.code, p.data.accessPhone);
   if (!r.ok) return { ok: false, error: r.error };
   const { order, db, store } = r;
+  // الإلغاء من الزبون ميزة يفعّلها التاجر صراحةً؛ المغلقة لا تُقبل حتى لو أُرسل الطلب يدوياً.
+  if ((await getBlueprint(store.id)).returns.allowCustomerCancel !== true) return { ok: false, error: "الإلغاء من هذه الصفحة غير متاح، يرجى التواصل مع المتجر" };
   if (!canRequestCancel(order)) {
     return { ok: false, error: order.cancelRequestedAt ? "تم استلام طلب الإلغاء، وسيتواصل معكم المتجر" : "لا يمكن طلب الإلغاء بعد بدء تجهيز الطلب، يرجى التواصل مع المتجر" };
   }

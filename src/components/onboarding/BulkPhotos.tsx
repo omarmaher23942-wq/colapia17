@@ -5,13 +5,13 @@
 // الرفع ← القراءة). كل منتج يُقرأ ما إن تُرفع صورته ويظهر للمراجعة فوراً، والسعر يكتبه التاجر بنفسه.
 // إزالة الخلفية في المتصفح نفسه؛ إن تعذرت لصورة تُستخدم الأصلية ونقول ذلك بوضوح.
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { CheckCircle2, Eraser, Layers, RotateCcw, UploadCloud, X } from "lucide-react";
+import { Camera, CheckCircle2, Eraser, ImagePlus, Layers, RotateCcw, UploadCloud, X } from "lucide-react";
 import { readProductPhotoAction } from "@/server/actions/setup-import";
 import { newId, type Candidate } from "@/lib/import-candidates";
 import { attributesFor, setAttr, usesSizeColor, type Niche } from "@/lib/niche-attributes";
 import { fmtNum } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { bgRemovalReady, bgRemovalSupported, onBgProgress, removeBackground, type BgMode } from "./bg-removal";
+import { BG_UNSUPPORTED_NOTE, bgRemovalReady, bgRemovalSupported, onBgProgress, removeBackground, type BgMode } from "./bg-removal";
 import { btnGhost, btnPrimary, Notice, Spinner } from "./ui";
 import { uploadOneImage } from "./upload";
 
@@ -39,6 +39,7 @@ export function BulkPhotos({
   onAttach,
   onNotice,
   onBusy,
+  onRunDone,
 }: {
   niche: Niche;
   categories: string[];
@@ -49,6 +50,8 @@ export function BulkPhotos({
   onAttach: (candidateId: string, url: string) => void;
   onNotice: (n: string) => void;
   onBusy: (busy: boolean) => void;
+  /** تنتهي دفعة الرفع: معرّفات المنتجات التي ظهرت فيها (للتصنيف المجمّع الواحد). */
+  onRunDone?: (ids: string[]) => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [bgMode, setBgMode] = useState<BgMode>("white");
@@ -58,6 +61,9 @@ export function BulkPhotos({
   const [over, setOver] = useState<string | null>(null);
   const [dropOver, setDropOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const seen = useRef(new Set<string>()); // بصمات ملفات أُضيفت في هذه الجلسة: الصورة نفسها لا تُضاف مرتين
+  const runIds = useRef<string[]>([]);
   const entriesRef = useRef<Entry[]>([]);
   const groupDone = useRef(new Map<string, string>()); // المجموعة ← معرّف المنتج الذي ظهر
   const groupBuffer = useRef(new Map<string, string[]>()); // صور وصلت قبل ظهور منتجها
@@ -85,6 +91,15 @@ export function BulkPhotos({
     const all = [...list];
     const files = all.filter((f) => /^image\/(jpeg|png|webp)$/i.test(f.type) || (!f.type && /\.(jpe?g|png|webp)$/i.test(f.name)));
     if (files.length < all.length) onNotice(`تجاهلنا ${fmtNum(all.length - files.length)} ملفاً بصيغة غير مدعومة. الصور المقبولة: JPG أو PNG أو WEBP (صور آيفون HEIC تُحفظ بصيغة JPG من إعدادات الكاميرا).`);
+    // الصورة نفسها (اسم وحجم وتاريخ) لا تُضاف مرتين، سواء في القائمة أو بعد رفعها.
+    const fresh0 = files.filter((f) => {
+      const k = `${f.name}:${f.size}:${f.lastModified}`;
+      if (seen.current.has(k)) return false;
+      seen.current.add(k);
+      return true;
+    });
+    if (fresh0.length < files.length) onNotice(`تجاهلنا ${fmtNum(files.length - fresh0.length)} صورة مكررة سبق اختيارها.`);
+    files.splice(0, files.length, ...fresh0);
     const room = MAX_FILES - entriesRef.current.length;
     if (files.length > room) onNotice(`يمكن تجهيز ${fmtNum(MAX_FILES)} صورة في الدفعة الواحدة. أضفنا أول ${fmtNum(Math.max(0, room))}، وارفعوا الباقي بعد الانتهاء.`);
     const fresh = files.slice(0, Math.max(0, room)).map((file) => {
@@ -149,6 +164,7 @@ export function BulkPhotos({
       const extra = groupBuffer.current.get(e.group) ?? [];
       groupBuffer.current.delete(e.group);
       groupDone.current.set(e.group, id);
+      runIds.current.push(id);
       onCandidate({
         id,
         name: read.name,
@@ -171,7 +187,12 @@ export function BulkPhotos({
   async function start() {
     const queue = entriesRef.current.filter((e) => e.status === "staged" || e.status === "error");
     if (!queue.length) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      onNotice("لا يوجد اتصال بالإنترنت الآن. صوركم محفوظة هنا، اضغطوا «رفع» مرة أخرى عند عودة الاتصال.");
+      return;
+    }
     bgFailed.current = 0;
+    runIds.current = [];
     setRunning(true);
     if (queue.some((e) => e.removeBg) && !bgRemovalReady()) setTool("جارٍ تجهيز أداة إزالة الخلفية…");
     setEntries((cur) => cur.map((e) => (queue.some((q) => q.id === e.id) ? { ...e, status: "queued", error: undefined, note: undefined } : e)));
@@ -195,6 +216,7 @@ export function BulkPhotos({
     } finally {
       setRunning(false);
       setTool(null);
+      if (runIds.current.length) onRunDone?.(runIds.current);
       if (bgFailed.current) onNotice(`تعذرت إزالة الخلفية في ${fmtNum(bgFailed.current)} صورة، فرفعنا الأصلية كما هي.`);
       // ما تم يخرج من القائمة (صار منتجاً في المراجعة)، وما فشل يبقى لإعادة المحاولة.
       setEntries((cur) => {
@@ -239,11 +261,33 @@ export function BulkPhotos({
             e.target.value = "";
           }}
         />
+        {/* التصوير المباشر: كاميرا الهاتف الخلفية، لقطة بعد لقطة */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          disabled={running}
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(e) => {
+            if (e.target.files) addFiles(e.target.files);
+            e.target.value = "";
+          }}
+        />
         <UploadCloud className="mx-auto size-9 text-ink-3" aria-hidden="true" />
-        <button type="button" disabled={running} onClick={() => inputRef.current?.click()} className={cn(btnPrimary, "mt-3 min-h-12 text-[15px]")}>
-          اختيار صور المنتجات
-        </button>
-        <p className="mt-2 text-[12.5px] leading-6 text-ink-3">اختاروا كل الصور مرة واحدة (حتى {fmtNum(MAX_FILES)} صورة، JPG أو PNG أو WEBP). كل صورة تصير منتجاً، والسعر تكتبونه أنتم.</p>
+        <div className="mt-3 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+          <button type="button" disabled={running} onClick={() => cameraRef.current?.click()} className={cn(btnPrimary, "min-h-14 text-[15px] sm:min-h-12")}>
+            <Camera className="size-5" aria-hidden="true" />
+            {entries.length ? "صوّروا منتجاً آخر" : "صوّروا المنتج"}
+          </button>
+          <button type="button" disabled={running} onClick={() => inputRef.current?.click()} className={cn(btnGhost, "min-h-14 text-[15px] sm:min-h-12")}>
+            <ImagePlus className="size-5" aria-hidden="true" />
+            اختيار من المعرض
+          </button>
+        </div>
+        <p className="mt-2 text-[12.5px] leading-6 text-ink-3">صوّروا المنتج على خلفية نظيفة وإضاءة جيدة، أو اختاروا صوراً جاهزة (حتى {fmtNum(MAX_FILES)} صورة). كل صورة تصير منتجاً، والسعر تكتبونه أنتم.</p>
       </div>
 
       {entries.length ? (
@@ -283,7 +327,7 @@ export function BulkPhotos({
                   {t}
                 </label>
               ))}
-              <span className="text-[12px] leading-5 text-ink-3">تعمل على جهازكم، وأول مرة تحتاج تنزيل الأداة (نحو 100 ميجابايت) ثم تبقى جاهزة.</span>
+              <span className="text-[12px] leading-5 text-ink-3">تعمل على جهازكم، وأول مرة تحتاج تنزيل الأداة (بين 100 و250 ميجابايت حسب الجهاز) ثم تبقى جاهزة.</span>
             </fieldset>
           ) : null}
 
@@ -327,7 +371,7 @@ export function BulkPhotos({
                       </span>
                     ) : null}
                     {editable ? (
-                      <button type="button" aria-label="إزالة الصورة من القائمة" onClick={() => { URL.revokeObjectURL(e.preview); setEntries((cur) => cur.filter((x) => x.id !== e.id)); }} className="absolute end-1.5 top-1.5 grid size-9 place-items-center rounded-full bg-black/60 text-white hover:bg-bad focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
+                      <button type="button" aria-label="إزالة الصورة من القائمة" onClick={() => { URL.revokeObjectURL(e.preview); seen.current.delete(`${e.file.name}:${e.file.size}:${e.file.lastModified}`); setEntries((cur) => cur.filter((x) => x.id !== e.id)); }} className="absolute end-1.5 top-1.5 grid size-9 place-items-center rounded-full bg-black/60 text-white hover:bg-bad focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">
                         <X className="size-4" aria-hidden="true" />
                       </button>
                     ) : null}
@@ -359,7 +403,7 @@ export function BulkPhotos({
           </ul>
 
           {tool ? <Notice tone="info">{tool}</Notice> : null}
-          {!bgRemovalSupported() ? <Notice tone="info">إزالة الخلفية غير متاحة في هذا المتصفح. حدّثوه أو استخدموا Chrome أو Edge أو Safari حديثاً لتفعيلها.</Notice> : null}
+          {!bgRemovalSupported() ? <p className="text-[12px] leading-5 text-ink-3">{BG_UNSUPPORTED_NOTE}</p> : null}
 
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" className={cn(btnPrimary, "min-h-12 text-[15px]")} disabled={running || !staged.length} onClick={() => void start()}>

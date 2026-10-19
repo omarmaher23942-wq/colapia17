@@ -8,6 +8,7 @@ import { Check, Copy, ExternalLink, LayoutDashboard, Rocket, X } from "lucide-re
 import QRCode from "qrcode";
 import { publishStoreAction, readinessAction } from "@/server/actions/setup";
 import type { ReadinessItem, StepId } from "@/lib/onboarding";
+import type { QualityTip } from "@/lib/store-quality";
 import { cn } from "@/lib/utils";
 import { btnGhost, btnPrimary, Notice, Spinner } from "./ui";
 
@@ -16,6 +17,7 @@ type Phase = "check" | "applying" | "done";
 export function StepPublish({ initial, inspection: initialInspection, onBack, onGoto, onPublished }: { initial: ReadinessItem[]; inspection: boolean; onBack: () => void; onGoto: (s: StepId) => void; onPublished: () => void }) {
   const [items, setItems] = useState(initial);
   const [inspection, setInspection] = useState(initialInspection);
+  const [tips, setTips] = useState<QualityTip[]>([]);
   const [phase, setPhase] = useState<Phase>("check");
   const [err, setErr] = useState<string | null>(null);
   const [res, setRes] = useState<{ url: string; host: string } | null>(null);
@@ -27,6 +29,7 @@ export function StepPublish({ initial, inspection: initialInspection, onBack, on
       if (live && r.ok) {
         setItems(r.items);
         setInspection(r.inspection);
+        setTips(r.tips);
       }
     });
     return () => {
@@ -90,12 +93,32 @@ export function StepPublish({ initial, inspection: initialInspection, onBack, on
         ))}
       </ul>
 
+      {tips.length ? (
+        <section aria-labelledby="tips-title" className="dash-card p-4">
+          <h2 id="tips-title" className="text-[13.5px] font-black text-ink">
+            لمسات تحسّن متجركم (اختيارية)
+          </h2>
+          <ul className="mt-2 space-y-2">
+            {tips.map((t) => (
+              <li key={t.id} className="flex items-start justify-between gap-3 text-[12.5px] leading-6 text-ink-2">
+                <span>{t.text}</span>
+                {t.step ? (
+                  <button type="button" onClick={() => onGoto(t.step!)} className={cn(btnGhost, "min-h-10 shrink-0")}>
+                    فتح
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <div className="dash-card flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0">
           <p className="text-[12px] font-bold text-ink-3">المعاينة وفتح الشحنة قبل الدفع</p>
           <p className="text-[14px] font-black text-ink">{inspection ? "مسموحة: يعاين الزبون الشحنة قبل أن يدفع" : "غير مسموحة: الدفع قبل فتح الشحنة"}</p>
         </div>
-        <button type="button" onClick={() => onGoto("payment")} className={cn(btnGhost, "min-h-10 shrink-0")}>
+        <button type="button" onClick={() => onGoto("commerce")} className={cn(btnGhost, "min-h-10 shrink-0")}>
           تغيير
         </button>
       </div>

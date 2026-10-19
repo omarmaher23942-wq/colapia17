@@ -10,6 +10,7 @@ import { categories, productVariants, products } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
 import { checkProductsQuota } from "@/server/usage";
 import { analyzeImages, analyzeText } from "@/server/import/analyze";
+import { categorizeBatch } from "@/server/import/categorize";
 import { fallbackName, IMPORT_MAX_CANDIDATES, normalizeCandidate, type Candidate } from "@/lib/import-candidates";
 import { readProductPhoto, type PhotoRead } from "@/server/import/vision-read";
 import { foldForNiche, isNiche, NICHES, type Niche } from "@/lib/niche-attributes";
@@ -51,6 +52,24 @@ export async function readProductPhotoAction(raw: unknown): Promise<{ ok: true; 
   if (!isHostedImage(p.data.url)) return { ok: false, error: "ارفعوا الصور من هنا مباشرة" };
   if (!(await allow("quote", `imp:${s.storeId}`))) return { ok: true, read: { name: "", color: "", category: "", description: "", attributes: [] }, usedAi: false, notice: "صور كثيرة في وقت قصير، فتركنا بعضها لتكملوا بياناته بأنفسكم." };
   return readProductPhoto(s.storeId, p.data.url, p.data.niche, p.data.categories);
+}
+
+/** تصنيف مجمّع لدفعة الرفع كلها: يحدد أقساماً قليلة (حتى 6) ويوزّع عليها كل المنتجات بدل قسم لكل منتج. */
+export async function categorizeProductsAction(raw: unknown): Promise<{ ok: true; assign: Record<string, string>; categories: string[] } | { ok: false; error: string }> {
+  const s = await storeFor("products");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const p = z
+    .object({
+      items: z.array(z.object({ id: z.string().max(40), name: z.string().max(200), category: z.string().max(120) })).min(1).max(300),
+      niche: z.string().optional(),
+      categories: z.array(z.string().max(80)).max(60).default([]),
+    })
+    .safeParse(raw);
+  if (!p.success) return { ok: false, error: "بيانات التصنيف غير صالحة" };
+  const niche: Niche = isNiche(p.data.niche) ? p.data.niche : "other";
+  if (!(await allow("quote", `imp:${s.storeId}`))) return { ok: false, error: "طلبات كثيرة في وقت قصير" };
+  const r = await categorizeBatch(s.storeId, p.data.items, niche, p.data.categories);
+  return { ok: true, assign: r.assign, categories: r.categories };
 }
 
 const candidateInput = z.object({

@@ -337,9 +337,12 @@ function ProductCard({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.images[0]} alt={title} className="size-full object-contain" loading="lazy" decoding="async" />
             ) : (
-              <span className="grid size-full place-items-center text-ink-3">
-                <ImagePlus className="size-7" aria-hidden="true" />
-              </span>
+              <button type="button" disabled={uploading} onClick={() => fileRef.current?.click()} aria-label={`إضافة صورة للمنتج ${title}`} className="grid size-full place-items-center bg-nova/[0.05] text-nova-2 transition hover:bg-nova/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50 disabled:opacity-70">
+                <span className="flex flex-col items-center gap-1 text-[11px] font-black">
+                  {uploading ? <Spinner className="size-6" /> : <ImagePlus className="size-7" aria-hidden="true" />}
+                  أضيفوا صورة
+                </span>
+              </button>
             )}
           </div>
           {c.images.length > 1 ? <span className="absolute bottom-1.5 start-1.5 rounded-md bg-black/70 px-1.5 text-[11px] font-bold text-white">{fmtNum(c.images.length)} صور</span> : null}

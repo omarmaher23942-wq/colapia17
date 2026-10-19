@@ -7,6 +7,7 @@ import { ImagePlus, Trash2 } from "lucide-react";
 import { saveIdentityAction, saveLogoAction } from "@/server/actions/setup";
 import { BRAND_SWATCHES, brandContrast, FONT_PAIRS, normalizeHex } from "@/lib/onboarding";
 import { cn } from "@/lib/utils";
+import { NICHE_LABEL, NICHES, type Niche } from "@/lib/niche-attributes";
 import { btnGhost, btnPrimary, Field, inputCls, Notice, Spinner } from "./ui";
 import { uploadImages } from "./upload";
 
@@ -19,7 +20,14 @@ export function IdentityForm({
   submitLabel = "حفظ ومتابعة",
   secondary,
   onLogoSaved,
+  simple = false,
+  niche,
+  onNiche,
 }: {
+  /** وضع الإعداد المبسّط: الاسم والنشاط أولاً، والشعار واللون والخطوط في قسم مطوي اختياري. */
+  simple?: boolean;
+  niche?: Niche;
+  onNiche?: (n: Niche) => void;
   /** يُستدعى بعد حفظ الشعار فعلاً (لتحديث المعاينة فوراً). */
   onLogoSaved?: () => void;
   initial: IdentityValue;
@@ -100,6 +108,32 @@ export function IdentityForm({
         {(p) => <input {...p} value={v.name} onChange={(e) => set({ name: e.target.value.slice(0, 60) })} autoComplete="organization" placeholder="مثال: نور للأزياء" className={inputCls} />}
       </Field>
 
+      {niche && onNiche ? (
+        <fieldset>
+          <legend className="mb-1 text-[13px] font-black text-ink">ماذا تبيعون؟</legend>
+          <p className="mb-2 text-[12px] leading-5 text-ink-3">نعرض لكم الحقول المناسبة فقط (مثل المقاسات للملابس، والسعة للإلكترونيات).</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3" role="radiogroup" aria-label="نوع النشاط">
+            {NICHES.map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={niche === n}
+                onClick={() => onNiche(n)}
+                className={cn("min-h-14 rounded-2xl border px-3 text-center text-[14px] font-black transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova/50", niche === n ? "border-nova bg-nova/[0.09] text-ink ring-1 ring-nova/30" : "border-edge/12 text-ink-2 hover:border-edge/30")}
+              >
+                {NICHE_LABEL[n]}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
+      <details open={!simple} className="group space-y-6 [&>summary::-webkit-details-marker]:hidden">
+        <summary className={cn("flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl border border-edge/12 px-3 text-[13px] font-black text-ink-2", !simple && "hidden")}>
+          الشعار واللون والخطوط (اختياري)
+          <span aria-hidden="true" className="text-ink-3 transition group-open:rotate-180">⌄</span>
+        </summary>
       <div>
         <p className="mb-1.5 text-[12.5px] font-bold text-ink">الشعار</p>
         <div className="flex flex-wrap items-center gap-3">
@@ -184,6 +218,7 @@ export function IdentityForm({
           })}
         </div>
       </fieldset>
+      </details>
 
       {err ? <Notice tone="bad">{err}</Notice> : null}
       <div className="flex flex-wrap items-center gap-2">

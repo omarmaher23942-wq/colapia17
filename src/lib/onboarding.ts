@@ -7,22 +7,21 @@ import { GOVERNORATES } from "@/lib/egypt";
 
 // ─── الخطوات ────────────────────────────────────────────────────────────────
 
-export const STEP_IDS = ["identity", "products", "payment", "shipping", "returns", "contact", "discount", "look", "publish"] as const;
+export const STEP_IDS = ["identity", "products", "look", "commerce", "publish"] as const;
 export type StepId = (typeof STEP_IDS)[number];
 
 export type StepInfo = { id: StepId; title: string; why: string; optional: boolean; short: string };
 
 export const STEPS: readonly StepInfo[] = [
-  { id: "identity", short: "الهوية", title: "هوية متجركم", why: "الاسم والشعار واللون أول ما يراه الزائر، وهو ما يجعل متجركم يبدو علامة لا مجرد صفحة.", optional: false },
-  { id: "products", short: "المنتجات", title: "منتجاتكم", why: "اكتبوا أو ارفعوا ما لديكم بأي صورة، ونفرزه إلى منتجات وأقسام تراجعونها قبل الاعتماد.", optional: false },
-  { id: "payment", short: "الدفع", title: "طرق الدفع", why: "الزائر لن يكمل الطلب إن لم يعرف كيف يدفع. فعّلوا ما يناسبكم، وأرقامكم تظهر له عند الحاجة فقط.", optional: false },
-  { id: "shipping", short: "الشحن", title: "الشحن والتوصيل", why: "سعر الشحن ومدته من أكثر ما يسأل عنه المشتري قبل الطلب. الوضوح هنا يقلل الأسئلة والرفض.", optional: false },
-  { id: "returns", short: "الاستبدال", title: "الاستبدال والاسترجاع", why: "سياسة واضحة تُطمئن المشتري وتزيد الطلبات. اختاروا ما تلتزمون به فقط.", optional: false },
-  { id: "contact", short: "التواصل", title: "قنوات التواصل", why: "واتساب هو أسرع طريق بين الزائر وبينكم. بقية القنوات تظهر في أسفل المتجر.", optional: false },
-  { id: "discount", short: "كود خصم", title: "كود خصم (اختياري)", why: "لا نُنشئ أي كود نيابة عنكم. إن أردتم عرضاً لأول زبائنكم فأنشئوه هنا، أو تخطوا الخطوة.", optional: true },
-  { id: "look", short: "التصميم", title: "التصميم والواجهة", why: "التصميم وواجهة المتجر يحملان الانطباع الأول كله. اختاروا تصميماً كاملاً، ثم فيديو أو صورة للواجهة، أو اكتبوا ما تريدون تغييره.", optional: true },
-  { id: "publish", short: "التفعيل", title: "تفعيل المتجر", why: "نراجع جاهزية متجركم معكم، ثم يبدأ العمل ويمكن لزبائنكم الطلب.", optional: false },
+  { id: "identity", short: "المتجر", title: "اسم متجركم ونشاطكم", why: "الاسم أول ما يراه الزائر، ونوع النشاط يحدد الحقول المناسبة لمنتجاتكم. الشعار واللون اختياريان.", optional: false },
+  { id: "products", short: "المنتجات", title: "منتجاتكم", why: "صوّروا المنتجات الآن بكاميرا الهاتف أو اختاروا صورها من المعرض، ونجهّز لكم الأسماء والأقسام لتراجعوها. السعر وحده تكتبونه أنتم.", optional: false },
+  { id: "look", short: "الشكل", title: "شكل متجركم", why: "اختاروا تصميماً جاهزاً وشاهدوه مباشرة على متجركم، أو ابدؤوا من قالب مناسب لنشاطكم. يمكن تغيير أي شيء لاحقاً.", optional: true },
+  { id: "commerce", short: "الدفع والشحن", title: "الدفع والشحن", why: "أسئلة قصيرة، سؤال في كل شاشة. أجيبوا بنعم أو لا، وما لا تريدونه يبقى مغلقاً.", optional: false },
+  { id: "publish", short: "النشر", title: "نشر المتجر", why: "نراجع جاهزية متجركم معكم، ثم يبدأ العمل ويمكن لزبائنكم الطلب.", optional: false },
 ] as const;
+
+/** معرّفات الخطوات القديمة (قبل الدمج في خمس خطوات) ← الخطوة التي حلّت محلها. */
+const LEGACY_STEP: Record<string, StepId> = { payment: "commerce", shipping: "commerce", returns: "commerce", contact: "commerce", discount: "commerce" };
 
 export const isStepId = (v: unknown): v is StepId => typeof v === "string" && (STEP_IDS as readonly string[]).includes(v);
 
@@ -37,10 +36,14 @@ export type OnboardingState = {
 /** يقرأ stores.onboarding (jsonb) بتسامح: أي حقل غريب يُهمل، والخطوة الأولى افتراضية. */
 export function parseOnboarding(raw: unknown): OnboardingState {
   const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-  const done = Array.isArray(o.done) ? ([...new Set(o.done.filter(isStepId))] as StepId[]) : [];
+  const rawDone = Array.isArray(o.done) ? o.done.filter((x): x is string => typeof x === "string") : [];
+  const done = [...new Set(rawDone.filter(isStepId))] as StepId[];
+  // تقدّم محفوظ بالخطوات القديمة: «الدفع والشحن» منجزة متى أُنجزت الدفع والشحن والتواصل القديمة.
+  if (!done.includes("commerce") && ["payment", "shipping", "contact"].every((x) => rawDone.includes(x))) done.push("commerce");
   const dmImages = Array.isArray(o.dmImages) ? o.dmImages.filter((u): u is string => typeof u === "string" && /^https:\/\//.test(u)).slice(0, 60) : [];
+  const savedStep = typeof o.step === "string" ? (isStepId(o.step) ? o.step : LEGACY_STEP[o.step]) : undefined;
   return {
-    step: isStepId(o.step) ? o.step : (STEP_IDS.find((s) => !done.includes(s)) ?? "identity"),
+    step: savedStep ?? STEP_IDS.find((s) => !done.includes(s)) ?? "identity",
     done,
     dmImages,
     niche: typeof o.niche === "string" ? o.niche.slice(0, 80) : undefined,
@@ -215,7 +218,7 @@ export function publishReadiness(f: ReadinessFacts): { ok: boolean; items: Readi
       id: "identity",
       ok: f.storeName.trim().length > 0,
       label: "اسم المتجر",
-      hint: "اكتبوا اسم متجركم في خطوة الهوية.",
+      hint: "اكتبوا اسم متجركم في الخطوة الأولى.",
       step: "identity",
     },
     {
@@ -230,25 +233,31 @@ export function publishReadiness(f: ReadinessFacts): { ok: boolean; items: Readi
       ok: pay.any && pay.incomplete.length === 0,
       label: "وسيلة دفع مكتملة",
       hint: pay.incomplete.length ? `أكملوا بيانات ${pay.incomplete.join(" و")} أو أوقفوها.` : "فعّلوا وسيلة دفع واحدة على الأقل.",
-      step: "payment",
+      step: "commerce",
     },
     {
       id: "shipping",
       ok: f.activeZones >= 1,
       label: "الشحن مضبوط",
       hint: "اختاروا قالب الشحن ليعرف الزبون سعر التوصيل.",
-      step: "shipping",
+      step: "commerce",
     },
     {
       id: "contact",
       ok: Boolean(f.whatsapp),
       label: "رقم واتساب",
       hint: "أضيفوا رقم واتساب المتجر ليصلكم الزبائن ويصلكم تأكيد الطلبات.",
-      step: "contact",
+      step: "commerce",
     },
   ];
   const blockers = items.filter((i) => !i.ok);
   return { ok: blockers.length === 0, items, blockers };
+}
+
+/** أسئلة «الدفع والشحن» بالترتيب: المعاينة تُسأل فقط مع الدفع عند الاستلام. */
+export type CommerceQuestion = "cod" | "inspection" | "transfer" | "whatsapp" | "shipping" | "returns" | "gift" | "cancel" | "discount";
+export function commerceQuestions(cod: boolean): CommerceQuestion[] {
+  return ["cod", ...(cod ? (["inspection"] as const) : []), "transfer", "whatsapp", "shipping", "returns", "gift", "cancel", "discount"];
 }
 
 /** يستنتج قالب الشحن من صفوف المحافظات المحفوظة ليعرضه المعالج عند الرجوع للخطوة. null = لم يُضبط بعد. */
@@ -290,8 +299,10 @@ export type SetupData = {
   };
   shipping: { plan: ShippingPlan; etaMin: number; etaMax: number; freeOver: number | null; saved: boolean };
   returns: ReturnsTemplate;
+  /** خيارات إضافية لا تُفعَّل إلا بإجابة صريحة من التاجر: الأصل «لا». */
+  extras: { gift: boolean; giftFeePounds: number; customerCancel: boolean };
   contact: { whatsapp: string; instagram: string; facebook: string; tiktok: string };
-  look: { heroKind: "video" | "image" | "auto"; hasVideo: boolean; videoUrl: string | null; themeId: string | null };
+  look: { heroKind: "video" | "image" | "auto"; hasVideo: boolean; videoUrl: string | null; themeId: string | null; templateId: string | null };
   /** نشاط المتجر الذي تتبعه حقول المنتج (lib/niche-attributes). */
   niche: import("@/lib/niche-attributes").Niche;
   discounts: number;
