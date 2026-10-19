@@ -36,6 +36,19 @@ export const fontFamilySchema = z.enum([
   "cairo", "tajawal", "ibm_plex_arabic", "almarai", "changa", "el_messiri", "readex_pro", "noto_kufi",
 ]);
 
+/** التصميمات الثمانية (V3). القائمة هنا لأن المخطط يتحقق منها، وthemes.ts يعرّف هوياتها. */
+export const THEME_IDS = ["midnight-mercury", "ivory-atelier", "noir-gold", "coral-pop", "sage-minimal", "neon-tech", "desert-sand", "arctic-glass"] as const;
+export const CARD_STYLES = ["mercury", "cinematic", "glow", "simple"] as const;
+
+/** خلفية المتجر: اللون الأساسي يكتب --background نفسه، والتدرج أو النسيج طبقة خفيفة فوقه. */
+export const storeBackgroundSchema = z.object({
+  kind: z.enum(["solid", "gradient", "texture"]).default("solid"),
+  color: hex,
+  color2: hex.optional(),
+  texture: z.enum(["grain", "dots", "lines", "grid"]).default("grain"),
+});
+export type StoreBackground = z.infer<typeof storeBackgroundSchema>;
+
 export const themeSchema = z.object({
   mode: z.enum(["light", "dark", "auto"]).default("light"),
   palette: paletteSchema,
@@ -57,6 +70,9 @@ export const themeSchema = z.object({
   backgroundPattern: z.enum(["none", "dots", "grid", "noise", "gradient_mesh"]).default("none"),
   imageBackground: z.enum(["none", "muted", "card"]).default("none"),
   ambientBackdrop: ambientBackdropSchema.optional(),
+  background: storeBackgroundSchema.optional(),
+  /** خلفية الوضع المقابل (الداكن عند mode=auto). */
+  darkBackground: storeBackgroundSchema.optional(),
 });
 export type Theme = z.infer<typeof themeSchema>;
 export type Palette = z.infer<typeof paletteSchema>;
@@ -641,6 +657,10 @@ export const productPageSchema = z.object({
 // يكتبه مدير التصميم بالذكاء الاصطناعي لكل متجر، ويُترجم إلى متغيرات CSS وقواعد مكوّنات
 // (blueprint/design.ts). كل حقل له قيمة افتراضية، فأي Blueprint قديم يبقى صالحاً.
 export const designSchema = z.object({
+  /** التصميم الذي طُبّق (V3). اختياري: المتاجر القديمة بلا قيمة. */
+  theme: z.enum(THEME_IDS).optional(),
+  /** أسلوب بطاقة المنتج (V3). بلا قيمة = يُشتق من productCardStyle القديم. */
+  cardStyle: z.enum(CARD_STYLES).optional(),
   concept: z.string().max(80).default(""),
   mood: z.string().max(240).default(""),
   layout: z.object({

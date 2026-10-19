@@ -57,6 +57,18 @@ export function HeroVideo({ src, className }: { src: string; className?: string 
     };
   }, []);
 
+  // بعد إنشاء عنصر الفيديو: React يضبط خاصية muted لا السمة، وSafari على iOS يرفض التشغيل التلقائي بلا السمة،
+  // ومراقب الظهور لا يطلق حدثاً جديداً لعنصر ظاهر أصلاً، فكان الفيديو يبقى متوقفاً على الغلاف. نشغّله صراحة هنا.
+  useEffect(() => {
+    const v = video.current;
+    if (!load || !v) return;
+    v.muted = true;
+    v.defaultMuted = true;
+    v.setAttribute("muted", "");
+    v.setAttribute("playsinline", "");
+    void v.play().catch(() => undefined);
+  }, [load]);
+
   const type = /\.webm(\?|$)/i.test(src) ? "video/webm" : /\.m3u8(\?|$)/i.test(src) ? undefined : "video/mp4";
   return (
     <div ref={box} aria-hidden="true" className={cn("pointer-events-none absolute inset-0", className)}>
@@ -69,10 +81,14 @@ export function HeroVideo({ src, className }: { src: string; className?: string 
           autoPlay
           preload="metadata"
           disablePictureInPicture
-          onCanPlay={() => setReady(true)}
+          onCanPlay={(e) => {
+            setReady(true);
+            void e.currentTarget.play().catch(() => undefined);
+          }}
           className={cn("size-full object-cover transition-opacity duration-1000", ready ? "opacity-100" : "opacity-0")}
         >
-          <source src={src} type={type} />
+          {/* رابط تالف أو صيغة غير مدعومة: تبقى صورة الغلاف بدل مساحة سوداء. */}
+          <source src={src} type={type} onError={() => setLoad(false)} />
         </video>
       ) : null}
     </div>

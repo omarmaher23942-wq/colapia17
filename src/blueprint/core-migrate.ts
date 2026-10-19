@@ -3,7 +3,10 @@
 //  - الواجهة ثلاثة تخطيطات فقط: فيديو، صورة جانبية (split)، منتج بطل.
 //  - الأقسام دوائر أو بلاطات فقط.
 //  - بلا حركات استعراضية (دوران، ميل ثلاثي الأبعاد، كشف كلمة كلمة، أنماط خلفية).
+//  - V3: المتجر الذي اختار تصميماً (design.theme) يحتفظ بحركته وخلفيته كما هي. المتجر القديم يحصل على
+//    أسلوب بطاقة مشتق وخلفية صريحة من لوحته، فتصبح خلفيته توكناً يتغير مع أي تعديل للون.
 import type { Section, StoreBlueprint } from "./schema";
+import { cardStyleOf, isThemeId } from "./themes";
 
 type Hero = Extract<Section, { type: "hero" }>;
 type Cats = Extract<Section, { type: "categories" }>;
@@ -36,11 +39,21 @@ export function migrateToCore(bp: StoreBlueprint): StoreBlueprint {
     }
     home.push(s.reveal === "kinetic" ? ({ ...s, reveal: "fade" } as Section) : s);
   }
+  const v3 = isThemeId(bp.design?.theme);
   return {
     ...bp,
     header: { ...bp.header, announcement },
     home,
-    theme: { ...bp.theme, backgroundPattern: "none", ambientBackdrop: undefined },
-    design: { ...bp.design, motion: { ...bp.design.motion, level: "calm", depth: false } },
+    theme: {
+      ...bp.theme,
+      backgroundPattern: "none",
+      ambientBackdrop: undefined,
+      background: bp.theme.background ?? { kind: "solid", color: bp.theme.palette.background, texture: "grain" },
+    },
+    design: {
+      ...bp.design,
+      cardStyle: cardStyleOf(bp),
+      motion: v3 ? bp.design.motion : { ...bp.design.motion, level: "calm", depth: false },
+    },
   };
 }

@@ -15,7 +15,7 @@ function letterMark(name: string, bg: string, fg: string): string {
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 
-export async function GET() {
+export async function GET(req: Request) {
   const sub = (await headers()).get("x-store-subdomain");
   const store = sub ? await getStoreBySubdomain(sub) : null;
   if (!store) return new Response("Not found", { status: 404 });
@@ -23,7 +23,15 @@ export async function GET() {
   const bp = await getBlueprintOrNull(store.id);
   const custom = bp?.brand.favicon ?? bp?.brand.logo?.url;
   if (custom) {
-    return Response.redirect(custom, 307);
+    // Response.redirect يرفض الروابط النسبية (شعار الديمو /demo/...) فيرمي خطأ وتختفي الأيقونة: نحوّلها لرابط كامل.
+    try {
+      const target = new URL(custom, req.url);
+      if (target.protocol === "https:" || target.origin === new URL(req.url).origin) {
+        return new Response(null, { status: 307, headers: { Location: target.toString(), "Cache-Control": "public, max-age=300" } });
+      }
+    } catch {
+      // رابط تالف: نكمل إلى الحرف الأول.
+    }
   }
 
   const palette = (bp?.theme.palette ?? {}) as Record<string, unknown>;

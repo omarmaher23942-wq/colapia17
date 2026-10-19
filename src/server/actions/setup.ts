@@ -12,12 +12,12 @@ import { categories, products, shippingZones, stores } from "@/db/schema";
 import { ownerStore, storeFor } from "@/server/merchant-guard";
 import { blueprintSchema, type StoreBlueprint } from "@/blueprint/schema";
 import { INSPECTION_COD_NOTE } from "@/blueprint/defaults";
+import { buildPalette, tokensOf } from "@/blueprint/tokens";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { clientEnv } from "@/lib/env";
 import { publicStoreUrl } from "@/lib/utils";
 import { draftFrom } from "@/lib/store-settings";
 import {
-  brandPalette,
   etaText,
   FONT_PAIRS,
   mergeProgress,
@@ -92,7 +92,13 @@ export async function saveIdentityAction(raw: unknown): Promise<Ok | Fail> {
   const next: StoreBlueprint = {
     ...bp,
     brand: { ...bp.brand, name: p.data.name, logo: p.data.logoUrl ? { url: p.data.logoUrl, alt: p.data.name, focalX: 0.5, focalY: 0.5 } : undefined },
-    theme: { ...bp.theme, palette: brandPalette(color, bp.theme.mode === "dark"), fonts: { ...bp.theme.fonts, heading: pair.heading, body: pair.body } },
+    // لون العلامة يغيّر الأساسي وحده ويحفظ خلفية التصميم وأسطحه (كان يعيد بناء اللوحة بخلفية فاتحة ثابتة
+    // مع كل حفظ للهوية، فتضيع خلفية التصميم المختار ولا يتغير شيء مما اختاره التاجر).
+    theme: {
+      ...bp.theme,
+      palette: color.toLowerCase() === bp.theme.palette.primary.toLowerCase() ? bp.theme.palette : buildPalette({ ...tokensOf(bp.theme.palette), primary: color }),
+      fonts: { ...bp.theme.fonts, heading: pair.heading, body: pair.body },
+    },
   };
   const r = await saveBlueprintAction(next, "هوية المتجر");
   return r.ok ? { ok: true } : { ok: false, error: r.error };

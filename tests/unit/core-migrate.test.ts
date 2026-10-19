@@ -18,10 +18,21 @@ describe("core migrate", () => {
     expect(coreHeroVariant({ images: [{ url: "https://x.y/a.jpg", alt: "", focalX: 0.5, focalY: 0.5 }] })).toBe("split");
     expect(coreHeroVariant({ images: [] })).toBe("product_spotlight");
   });
-  it("المتجر الافتراضي صالح بعد التحويل وبلا حركات استعراضية", () => {
-    const out = migrateToCore(defaultBlueprint({ name: "متجر" }));
+  it("المتجر القديم (بلا تصميم V3) صالح بعد التحويل وبلا حركات استعراضية، وخلفيته توكن صريح", () => {
+    const bp = defaultBlueprint({ name: "متجر" });
+    const old = { ...bp, design: { ...bp.design, theme: undefined, cardStyle: undefined }, theme: { ...bp.theme, background: undefined } };
+    const out = migrateToCore(old);
     expect(blueprintSchema.safeParse(out).success).toBe(true);
     expect(out.design.motion.level).toBe("calm");
+    expect(out.theme.background?.color).toBe(bp.theme.palette.background);
+    expect(out.design.cardStyle).toBeTruthy();
+    for (const s of out.home) if (s.type === "hero") expect(["video", "split", "product_spotlight"]).toContain(s.variant);
+  });
+  it("المتجر بتصميم V3 يحتفظ بحركة تصميمه", () => {
+    const out = migrateToCore(defaultBlueprint({ name: "متجر" }));
+    expect(blueprintSchema.safeParse(out).success).toBe(true);
+    expect(out.design.theme).toBe("midnight-mercury");
+    expect(out.design.motion.level).toBe("lively");
     for (const s of out.home) if (s.type === "hero") expect(["video", "split", "product_spotlight"]).toContain(s.variant);
   });
 });

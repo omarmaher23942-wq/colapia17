@@ -147,6 +147,7 @@ export function ImageLightbox({
         onClose();
       }}
       className="clp-lightbox"
+      dir="rtl"
     >
       {open && cur ? (
         <>
@@ -155,10 +156,10 @@ export function ImageLightbox({
           </button>
           {total > 1 ? (
             <>
-              <button type="button" onClick={() => go(-1)} className="clp-lightbox-nav end-3" aria-label="السابق">
+              <button type="button" onClick={() => go(-1)} className="clp-lightbox-nav start-3" aria-label="السابق">
                 <ChevronRight className="size-6" aria-hidden="true" />
               </button>
-              <button type="button" onClick={() => go(1)} className="clp-lightbox-nav start-3" aria-label="التالي">
+              <button type="button" onClick={() => go(1)} className="clp-lightbox-nav end-3" aria-label="التالي">
                 <ChevronLeft className="size-6" aria-hidden="true" />
               </button>
               <p className="clp-lightbox-count" dir="ltr" aria-live="polite">

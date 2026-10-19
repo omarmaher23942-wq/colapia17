@@ -12,6 +12,7 @@ import type { StoreBlueprint } from "./schema";
 import { normalizeChannels, normalizePayments } from "./normalize";
 import { extractPalette, pickAdaptiveFonts, buildVariationSeed } from "./palette";
 import { deriveCorePalette } from "./core-palette";
+import { applyTheme, DEFAULT_THEME } from "./themes";
 
 const cap = (s: string, max: number) => (s.length > max ? s.slice(0, max) : s);
 
@@ -71,6 +72,11 @@ export function defaultBlueprint(input: {
   hasLogo?: boolean;
   variationSeed?: string;
 }): StoreBlueprint {
+  // كل متجر جديد يبدأ بالتصميم الافتراضي كاملاً (V3): ألوان الوضعين والخطوط والبطاقة والخلفية والحركة.
+  return applyTheme(baseBlueprint(input), DEFAULT_THEME);
+}
+
+function baseBlueprint(input: Parameters<typeof defaultBlueprint>[0]): StoreBlueprint {
   const name = cap(input.name.trim() || "متجري", 60);
   const tagline = cap(
     (input.tagline ?? "").trim() || "تسوقوا منتجاتنا بسهولة",

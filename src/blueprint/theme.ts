@@ -1,6 +1,7 @@
 import type { Theme, Palette, AmbientBackdrop } from "./schema";
 import { ensureContrast } from "./palette";
-import { deriveCorePalette } from "./core-palette";
+import { aaText, buttonPair, deriveScheme, isDarkColor as isDarkLum } from "./tokens";
+import type { StoreBackground } from "./schema";
 
 const RADIUS: Record<Theme["radius"], string> = {
   none: "0px",
@@ -418,25 +419,37 @@ export function buildAmbientBackdrop(
 }
 
 // ─── Theme → CSS Vars
-export function themeToCssVars(theme: Theme, mode: "light" | "dark" = "light") {
+function normHex(v: unknown, fallback = "#000000"): string {
+  const c = parseHex(v);
+  return c ? "#" + c.map((x) => x.toString(16).padStart(2, "0")).join("") : fallback;
+}
+
+export function themeToCssVars(theme: Theme, mode: "light" | "dark" = "light", bgOverride?: string) {
   const m = pick(MOTION, theme.motion, "balanced");
   const baseSize = Math.min(22, Math.max(12, Number(theme.fonts?.baseSize) || 16));
-  const p = theme.palette || ({} as Palette);
+  const p = (theme.palette || {}) as Palette & { surface2?: string; ring?: string };
 
-  const bgHex = parseHex(p.background) ? p.background.trim() : (mode === "dark" ? "#07091a" : "#ffffff");
-  const isDark = isColorDark(bgHex) || theme.mode === "dark";
+  // الخلفية: palette.background هو المصدر (يكتبه المحرر والتعديل بالوصف)، وtheme.background.color نسخة متزامنة
+  // تُستخدم فقط إن غابت الأولى. كل نص يُحسب تباينه على الخلفية الفعلية.
+  const bgHex = parseHex(p.background) ? p.background.trim() : parseHex(bgOverride) ? (bgOverride as string).trim() : (mode === "dark" ? "#07091a" : "#ffffff");
+  const isDark = isDarkLum(normHex(bgHex));
 
   const cardHex = parseHex(p.card) ? p.card.trim() : (isDark ? "#0e142b" : "#ffffff");
-  const mutedHex = parseHex(p.muted) ? p.muted.trim() : (isDark ? "#141b38" : "#f8fafc");
-  const primaryHex = parseHex(p.primary) ? p.primary.trim() : "#3b82f6";
-  const accentHex = parseHex(p.accent) ? p.accent.trim() : "#f59e0b";
+  const mutedHex = parseHex(p.surface2) ? p.surface2!.trim() : parseHex(p.muted) ? p.muted.trim() : (isDark ? "#141b38" : "#f8fafc");
   const borderHex = parseHex(p.border) ? p.border.trim() : (isDark ? "#232d56" : "#e2e8f0");
 
-  const fgHex = ensureStrictContrast(bgHex, p.foreground);
-  const cardFgHex = ensureStrictContrast(cardHex, p.cardForeground);
-  const primaryFgHex = ensureStrictContrast(primaryHex, p.primaryForeground);
-  const accentFgHex = ensureStrictContrast(accentHex, p.accentForeground);
-  const mutedFgHex = ensureContrast(isDark ? "#94a3b8" : "#64748b", mutedHex, 4.5);
+  // تباين AA مضمون: النص المفضل يبقى إن بلغ 4.5:1 وإلا يُعدَّل (لا مجرد «فاتح أم داكن»).
+  const fgHex = aaText(normHex(p.foreground, isDark ? "#f3f4f7" : "#14161c"), normHex(bgHex), 4.5);
+  const cardFgHex = aaText(normHex(p.cardForeground, fgHex), normHex(cardHex), 4.5);
+  const mutedFgHex = aaText(normHex(p.mutedForeground, isDark ? "#a3a9b8" : "#5b6170"), normHex(mutedHex), 4.5);
+  const primaryText = aaText(normHex(p.primary, "#3b82f6"), normHex(bgHex), 4.5);
+  const prim = buttonPair(normHex(p.primary, "#3b82f6"), parseHex(p.primaryForeground) ? [normHex(p.primaryForeground)] : []);
+  const acc = buttonPair(normHex(p.accent, "#f59e0b"), parseHex(p.accentForeground) ? [normHex(p.accentForeground)] : []);
+  const primaryHex = prim.bg;
+  const primaryFgHex = prim.fg;
+  const accentHex = acc.bg;
+  const accentFgHex = acc.fg;
+  const ringHex = parseHex(p.ring) ? p.ring!.trim() : primaryText;
 
   const imageRatio =
     theme.imageRatio === "square" ? "1 / 1"
@@ -468,9 +481,18 @@ export function themeToCssVars(theme: Theme, mode: "light" | "dark" = "light") {
     "--primary-rgb": hexToRgb(primaryHex),
     "--accent": accentHex,
     "--accent-foreground": accentFgHex,
-    "--success": "#16a34a",
-    "--warning": "#f59e0b",
-    "--danger": "#dc2626",
+    "--primary-ink": primaryText,
+    "--success": aaText("#16a34a", normHex(bgHex), 4.5),
+    "--warning": aaText("#b45309", normHex(bgHex), 4.5),
+    "--danger": aaText("#dc2626", normHex(bgHex), 4.5),
+    // التوكنات الدلالية (V3، docs/STORE-DESIGN.md): أسماء موحدة فوق الأسماء القديمة.
+    "--bg": bgHex,
+    "--surface": cardHex,
+    "--surface-2": mutedHex,
+    "--text": fgHex,
+    "--text-muted": mutedFgHex,
+    "--primary-contrast": primaryFgHex,
+    "--ring": ringHex,
   };
 
   return vars;
@@ -485,22 +507,55 @@ export function cssVarsToStyle(vars: Record<string, string>) {
     .join(";");
 }
 
+/** طبقة الخلفية فوق --background: تدرج ناعم أو نسيج خفيف (لا صور خارجية؛ نسيج الحبيبات SVG مضمّن). */
+export function backgroundLayer(bg: StoreBackground | undefined): string {
+  if (!bg || bg.kind === "solid") return "background-image:none";
+  if (bg.kind === "gradient") {
+    const c2 = parseHex(bg.color2) ? (bg.color2 as string) : "color-mix(in srgb,var(--primary) 18%,var(--background))";
+    return `background-image:radial-gradient(80rem 46rem at 100% -12%,color-mix(in srgb,${c2} 85%,transparent),transparent 62%),radial-gradient(60rem 40rem at -10% 18%,color-mix(in srgb,${c2} 45%,transparent),transparent 60%)`;
+  }
+  switch (bg.texture) {
+    case "dots":
+      return "background-image:radial-gradient(color-mix(in srgb,var(--foreground) 9%,transparent) 1px,transparent 1.2px);background-size:22px 22px";
+    case "lines":
+      return "background-image:repeating-linear-gradient(135deg,color-mix(in srgb,var(--foreground) 5%,transparent) 0 1px,transparent 1px 18px)";
+    case "grid":
+      return "background-image:linear-gradient(color-mix(in srgb,var(--primary) 7%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--primary) 7%,transparent) 1px,transparent 1px);background-size:44px 44px";
+    default:
+      return `background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:160px 160px`;
+  }
+}
+
+/**
+ * ورقة أنماط الألوان والخطوط للمتجر. الخلفية كلها من الـ Blueprint (لا لون ثابت):
+ * - mode light/dark: لوحة واحدة.
+ * - mode auto: اللوحة للفاتح، وdarkPalette (أو المشتقة من ألوان التاجر نفسها) لمن جهازه داكن.
+ * كانت النسخة الداكنة تُشتق من لون العلامة وحده فتتجاهل الخلفية التي اختارها التاجر: هذا سبب «تغيير اللون لا يغيّر الخلفية».
+ */
 export function themeStyleSheet(theme: Theme, scope = ".storefront") {
-  const css = cssVarsToStyle(themeToCssVars(theme, theme.mode === "dark" ? "dark" : "light"));
+  const baseVars = themeToCssVars(theme, theme.mode === "dark" ? "dark" : "light", theme.background?.color);
+  const css = cssVarsToStyle(baseVars);
   const ambientCss = theme.ambientBackdrop?.layers?.length
     ? `;--ambient-layers:${theme.ambientBackdrop.layers
         .map((l) => `radial-gradient(ellipse ${l.size} at ${l.position}, ${l.color} 0%, transparent 70%)`)
         .join(",")}`
     : "";
   const typography =
-    `:where(${scope}){font-family:var(--font-body);font-size:var(--font-size-base);color:var(--foreground);background:var(--background)}` +
+    `:where(${scope}){font-family:var(--font-body);font-size:var(--font-size-base);color:var(--foreground);background-color:var(--background)}` +
     `:where(${scope}) :where(h1,h2,h3,h4,h5,h6){font-family:var(--font-heading);color:var(--foreground)}`;
-  // الوضع التلقائي: فاتح افتراضياً ويتبع تفضيل جهاز الزائر للداكن بلوحة مشتقة بتباين AA (مع تجاوزات التاجر darkPalette).
-  const auto = theme.mode === "auto";
-  const darkCss = auto
-    ? `@media (prefers-color-scheme: dark){${scope}{${cssVarsToStyle(
-        themeToCssVars({ ...theme, mode: "dark", palette: { ...deriveCorePalette(theme.palette.primary, "dark"), ...(theme.darkPalette ?? {}) } }, "dark")
-      )};color-scheme:dark}}`
-    : "";
-  return `${scope}{${css}${ambientCss};color-scheme:${theme.mode === "dark" ? "dark" : auto ? "light dark" : "light"}}${darkCss}${typography}`;
+  const baseIsDark = isDarkLum(normHex(baseVars["--background"]));
+  const auto = theme.mode === "auto" && !baseIsDark;
+  const bgRule = theme.background ? `${scope}{${backgroundLayer(theme.background)}}` : "";
+  // خلفية الصفحة نفسها (ما خلف المتجر عند السحب الزائد أو الصفحات القصيرة) بلون المتجر لا بالأبيض.
+  const pageBg = `html:has(${scope}){background-color:${baseVars["--background"]}}`;
+  let darkCss = "";
+  if (auto) {
+    const darkPalette = theme.darkPalette && typeof theme.darkPalette.background === "string" && typeof theme.darkPalette.primary === "string"
+      ? { ...deriveScheme(theme.palette, "dark"), ...theme.darkPalette }
+      : deriveScheme(theme.palette, "dark");
+    const darkVars = themeToCssVars({ ...theme, mode: "dark", palette: darkPalette as Palette }, "dark", theme.darkBackground?.color);
+    const darkBgRule = theme.darkBackground ? `${scope}{${backgroundLayer(theme.darkBackground)}}` : "";
+    darkCss = `@media (prefers-color-scheme: dark){${scope}{${cssVarsToStyle(darkVars)};color-scheme:dark}${darkBgRule}html:has(${scope}){background-color:${darkVars["--background"]}}}`;
+  }
+  return `${scope}{${css}${ambientCss};color-scheme:${baseIsDark ? "dark" : auto ? "light dark" : "light"}}${bgRule}${pageBg}${darkCss}${typography}`;
 }

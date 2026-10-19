@@ -1,4 +1,4 @@
-// dashboard/design — «شكل المتجر»: الهوية (شعار وألوان وخطوط)، واجهة المتجر (فيديو/صورة)، شريط الإعلان، ترتيب أقسام الرئيسية،
+// dashboard/design — «شكل المتجر»: التصميم (الثمانية والألوان والخطوط والبطاقة والخلفية)، الهوية (شعار وألوان وخطوط)، واجهة المتجر (فيديو/صورة)، شريط الإعلان، ترتيب أقسام الرئيسية،
 // حقل «اكتبوا ما تريدون تغييره»، وسجل نسخ التصميم للاستعادة. بجانبها معاينة حية للمتجر.
 import { requireStoreArea } from "@/server/merchant-guard";
 import { loadBlueprint } from "@/server/setup-data";
@@ -33,6 +33,7 @@ export default async function DesignPage() {
       sections={bp.home.filter((s) => s.type !== "hero" && s.type !== "announcement").map((s) => ({ id: s.id, label: SECTION_LABELS[s.type] ?? s.type, enabled: s.enabled !== false }))}
       motion={bp.design.motion}
       history={history}
+      look={{ theme: bp.theme, design: bp.design }}
     />
   );
 }
