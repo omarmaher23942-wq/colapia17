@@ -12,10 +12,12 @@ import { cardStyleOf } from "../../src/blueprint/themes";
 import { cleanAttributes } from "../../src/lib/niche-attributes";
 import { chartFor } from "../../src/lib/size-guide";
 import {
-  ATTR_CARE, ATTR_FIT, ATTR_MATERIAL, CATEGORIES, DEMO_THEME, FIT_SLUGS, FIT_VALUES, HERO_POSTER, HERO_VIDEO, VOLUME_SLUGS,
-  buildDemoBlueprint, demoAssetPaths, demoFacts, hexOf, isColorOption, isSizeOption, loadDemoProducts, productRows, questionsFor, ratingTotals, reviewsFor, variantsOf,
+  ATTR_CARE, ATTR_MATERIAL, DEMO_NICHE, DEMO_THEME, buildDemoBlueprint, demoAssetPaths, demoCategories, demoFacts, fakeCategoryIds, hexOf, isColorOption, isSizeOption,
+  loadDemoProducts, productRows, questionsFor, ratingTotals, reviewsFor, variantsOf,
   type DemoProduct, type DemoProductRow, type DemoVariant,
 } from "./catalog";
+
+export { fakeCategoryIds };
 
 export type DemoCheck = {
   errors: string[];
@@ -25,18 +27,14 @@ export type DemoCheck = {
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 const sameJson = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
-/** معرّفات أقسام ثابتة للفحص (في الزرع تأتي من القاعدة). */
-export const fakeCategoryIds = (): Record<string, string> =>
-  Object.fromEntries(CATEGORIES.map((c, i) => [c.key, `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`]));
-
 function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: string[]) {
   const slugs = new Set<string>();
-  const categoryKeys = new Set(CATEGORIES.map((c) => c.key));
+  const categoryKeys = new Set(demoCategories(data).map((c) => c.key));
   for (const p of data) {
     const at = `المنتج ${p.slug}`;
     if (slugs.has(p.slug)) errors.push(`${at}: الرابط مكرر`);
     slugs.add(p.slug);
-    if (!categoryKeys.has(p.category)) errors.push(`${at}: قسم غير معروف ${p.category}`);
+    if (p.options.length === 0 || !p.options.some((o) => isSizeOption(o.name)) || !p.options.some((o) => isColorOption(o.name))) errors.push(`${at}: يلزم خيار مقاس ولون`);
     if (!Number.isInteger(p.price) || p.price <= 0) errors.push(`${at}: سعر غير صالح`);
     if (p.compareAt !== null && p.compareAt <= p.price) errors.push(`${at}: السعر المشطوب لا يزيد على السعر`);
     if (!p.images.length) errors.push(`${at}: بلا صور`);
@@ -46,24 +44,23 @@ function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: stri
       if (isColorOption(o.name)) for (const v of o.values) if (!HEX_RE.test(hexOf(v) ?? "")) errors.push(`${at}: لا لون HEX للقيمة «${v}»`);
     }
   }
-  for (const c of CATEGORIES) if (!data.some((p) => p.category === c.key)) errors.push(`القسم ${c.key} بلا منتجات`);
-  for (const s of FIT_SLUGS) if (!slugs.has(s)) errors.push(`سمة القَصّة لمنتج غير موجود: ${s}`);
+  // نشاط واحد فقط: كل المنتجات أحذية، ومجموعة أقسام فرعية قليلة ومتماسكة (نتيجة دمج المترادفات).
+  if (DEMO_NICHE !== "shoes") errors.push("نشاط متجر العرض يجب أن يكون الأحذية");
+  if (categoryKeys.size < 4 || categoryKeys.size > 6) errors.push(`عدد الأقسام ${categoryKeys.size} (المتوقع 4 إلى 6)`);
+  for (const r of rows) {
+    if (!r.categoryKey || !categoryKeys.has(r.categoryKey)) errors.push(`المنتج ${r.slug}: بلا قسم صالح`);
+    if (r.images.some((i) => !/^\/demo\/products\/[\w.-]+\.webp$/.test(i.url))) errors.push(`المنتج ${r.slug}: صورة ليست من public/demo/products`);
+  }
+  for (const k of categoryKeys) if (!rows.some((r) => r.categoryKey === k)) errors.push(`القسم ${k} بلا منتجات`);
 
-  const allowed = new Set([ATTR_MATERIAL, ATTR_FIT, ATTR_CARE]);
+  const allowed = new Set([ATTR_MATERIAL, ATTR_CARE]);
   for (const r of rows) {
     if (!sameJson(cleanAttributes(r.attributes), r.attributes)) errors.push(`سمات ${r.slug} تتغير عند الحفظ من اللوحة (طول أو تكرار)`);
     for (const a of r.attributes) {
       if (!allowed.has(a.label)) errors.push(`سمة غير متوقعة «${a.label}» في ${r.slug}`);
-      if (a.label === ATTR_FIT && !FIT_VALUES.includes(a.value)) errors.push(`قيمة القَصّة «${a.value}» في ${r.slug} ليست من قيم المحرر`);
     }
   }
 
-  const bySlug = new Map(rows.map((r) => [r.slug, r]));
-  for (const s of VOLUME_SLUGS) {
-    const r = bySlug.get(s);
-    if (!r) errors.push(`منتج خصم الكمية غير موجود: ${s}`);
-    else if (r.compareAtPiasters !== null || r.stock <= 0 || !r.volumeTiers.length) errors.push(`منتج خصم الكمية ${s} يجب أن يكون متوفراً بلا سعر مشطوب وبخصم كمية`);
-  }
   if (!rows.some((r) => r.stock === 0)) errors.push("لا منتجات نافدة (العرض يحتاج حالة «نفد»)");
   if (!rows.some((r) => r.stock > 0 && r.stock <= 5)) errors.push("لا منتجات بكمية منخفضة");
   if (rows.filter((r) => r.stock > 5).length < rows.length / 2) errors.push("أقل من نصف المنتجات متوفر بكمية جيدة");
@@ -111,10 +108,10 @@ function checkBlueprint(bp: StoreBlueprint, data: DemoProduct[], errors: string[
   const ids = bp.home.map((s) => s.id);
   if (new Set(ids).size !== ids.length) errors.push("معرّفات أقسام الرئيسية مكررة");
   const hero = bp.home[0];
-  if (!hero || hero.type !== "hero" || hero.videoUrl !== HERO_VIDEO || hero.images[0]?.url !== HERO_POSTER) errors.push("الواجهة ليست فيديو الأزياء بغلافه");
+  if (!hero || hero.type !== "hero" || hero.videoUrl || hero.images.length < 3 || hero.images.some((i) => !i.url.startsWith("/demo/products/"))) errors.push("الواجهة يجب أن تُبنى من صور منتجات الأحذية (لا فيديو أزياء غير مطابق)");
 
   const slugs = new Set(data.map((p) => p.slug));
-  const cats = new Set(CATEGORIES.map((c) => c.key));
+  const cats = new Set(demoCategories(data).map((c) => c.key));
   const checkTarget = (t: { type: string; slug?: string; sectionId?: string } | undefined, where: string) => {
     if (!t) return;
     if (t.type === "category" && !cats.has(t.slug ?? "")) errors.push(`${where}: قسم غير موجود ${t.slug}`);
@@ -160,12 +157,13 @@ function checkBlueprint(bp: StoreBlueprint, data: DemoProduct[], errors: string[
 }
 
 // جداول المقاسات: الجدول الذي يظهر لمنتج يغطي كل مقاساته، ومنتج لا يغطيه أي جدول لا يرى جدولاً خاطئاً.
-function checkSizeCharts(bp: StoreBlueprint, data: DemoProduct[], categoryIds: Record<string, string>, errors: string[]): number {
+function checkSizeCharts(bp: StoreBlueprint, data: DemoProduct[], rows: DemoProductRow[], categoryIds: Record<string, string>, errors: string[]): number {
+  const keyOf = new Map(rows.map((r) => [r.slug, r.categoryKey]));
   let covered = 0;
   for (const p of data) {
     const size = p.options.find((o) => isSizeOption(o.name));
     if (!size) continue;
-    const chart = chartFor(bp.sizeGuide, categoryIds[p.category], p.options.map((o) => o.name), size.values);
+    const chart = chartFor(bp.sizeGuide, categoryIds[keyOf.get(p.slug) ?? ""], p.options.map((o) => o.name), size.values);
     if (!chart) continue;
     covered++;
     const have = new Set(chart.rows.map((r) => r.size));
@@ -207,7 +205,7 @@ export function verifyDemo(opts: { now?: number; root?: string } = {}): DemoChec
   const variants = new Map(data.map((p) => [p.slug, variantsOf(p)]));
   const reviews = reviewsFor(data, rows, now);
   const questions = questionsFor(data, rows, now);
-  const categoryIds = fakeCategoryIds();
+  const categoryIds = fakeCategoryIds(data);
 
   checkProducts(data, rows, errors);
   checkVariants(data, rows, variants, errors);
@@ -223,7 +221,7 @@ export function verifyDemo(opts: { now?: number; root?: string } = {}): DemoChec
   let assets: string[] = [];
   if (bp) {
     checkBlueprint(bp, data, errors);
-    charts = checkSizeCharts(bp, data, categoryIds, errors);
+    charts = checkSizeCharts(bp, data, rows, categoryIds, errors);
     assets = demoAssetPaths(bp, rows, [...variants.values()].flat());
     checkAssets(assets, root, errors);
   }

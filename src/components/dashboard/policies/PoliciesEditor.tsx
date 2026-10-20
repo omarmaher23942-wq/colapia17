@@ -4,12 +4,13 @@
 // أي تغيير هنا ينعكس فوراً على صفحة السياسة وشارات الثقة والأسئلة الشائعة في المتجر (طبقة الحقائق).
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCcw, PackageX, Eye, Truck, Store, Save, Loader2, ExternalLink, FileText } from "lucide-react";
+import { RotateCcw, PackageX, Eye, Truck, Store, Save, Loader2, ExternalLink, FileText, Gift, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { generatePolicyPage, reportWindow } from "@/blueprint/policy-pages";
 import { Markdown } from "@/components/storefront/Markdown";
 import { savePoliciesAction } from "@/server/actions/policies";
+import { policyChanges, policyIssue, poundsToPiasters } from "@/lib/policy-changes";
 import type { StoreBlueprint } from "@/blueprint/schema";
 
 type Returns = StoreBlueprint["returns"];
@@ -101,12 +102,14 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
 
   const save = () =>
     start(async () => {
-      const r = await savePoliciesAction({
-        returns,
-        shipping: { inspectionAllowed: ship.inspectionAllowed, freeOverPiasters: ship.freeOverPiasters, generalEta: ship.generalEta, pickupEnabled: ship.pickupEnabled, pickupAddress: ship.pickupAddress },
-      });
+      const draft = { returns, shipping: ship };
+      const issue = policyIssue(draft);
+      if (issue) return void toast.error(issue);
+      const changes = policyChanges(bp, draft);
+      if (!changes.length) return void toast.message("لا توجد تغييرات للحفظ");
+      const r = await savePoliciesAction(changes);
       if (r.ok) {
-        toast.success("حفظنا سياساتك، وتحدّث متجرك فوراً");
+        toast.success("حفظنا سياساتكم، وتحدّث المتجر فوراً");
         router.refresh();
       } else toast.error(r.error);
     });
@@ -114,16 +117,23 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_380px]" dir="rtl">
       <div className="min-w-0 space-y-5">
-        <Card icon={RotateCcw} title="الاستبدال والاسترجاع" sub="اختر ما تطبقه فعلاً. صفحة السياسة وشارات الثقة في متجرك تتبع اختيارك حرفياً.">
+        <Card icon={RotateCcw} title="الاستبدال والاسترجاع" sub="اختاروا ما تطبقونه فعلاً. صفحة السياسة وشارات الثقة في المتجر تتبع اختياركم حرفياً.">
           <div className="space-y-2">
             <p className="text-[13px] font-black text-ink">المدة المسموح بها بعد الاستلام</p>
             <Chips label="مدة الاستبدال" value={returns.windowDays} onChange={(v) => setR({ windowDays: v, ...(v > 0 && !returns.allowExchange && !returns.allowRefund ? { allowExchange: true } : {}) })} options={[0, 3, 7, 14, 30].map((d) => ({ value: d, label: d ? `${d} يوم` : "لا يوجد" }))} />
           </div>
+          <Toggle
+            icon={Ban}
+            label="السماح للعميل بطلب إلغاء الطلب"
+            sub="يظهر زر «طلب إلغاء» في صفحة الطلب قبل بدء تجهيزه فقط، ويبقى القرار النهائي لكم. مغلق افتراضياً."
+            on={returns.allowCustomerCancel === true}
+            onChange={(v) => setR({ allowCustomerCancel: v })}
+          />
           {noReturns ? null : (
             <>
               <div className="grid gap-2.5 sm:grid-cols-2">
                 <Toggle icon={RotateCcw} label="استبدال" sub="بمقاس أو لون أو منتج آخر" on={returns.allowExchange} onChange={(v) => setR({ allowExchange: v })} />
-                <Toggle icon={RotateCcw} label="استرجاع المبلغ" sub="رد الفلوس كاملة" on={returns.allowRefund} onChange={(v) => setR({ allowRefund: v })} />
+                <Toggle icon={RotateCcw} label="استرجاع المبلغ" sub="رد المبلغ كاملاً" on={returns.allowRefund} onChange={(v) => setR({ allowRefund: v })} />
               </div>
               <div className="space-y-2">
                 <p className="text-[13px] font-black text-ink">شحن المرتجع (تغيير رأي أو مقاس) على</p>
@@ -161,12 +171,12 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
           )}
         </Card>
 
-        <Card icon={PackageX} title="المنتج المعيب أو المخالف للطلب" sub="التزام مستقل عن الاستبدال العادي، وأنت من يحدده.">
+        <Card icon={PackageX} title="المنتج المعيب أو المخالف للطلب" sub="التزام مستقل عن الاستبدال العادي، وأنتم من تحددونه.">
           <Chips label="التعامل مع المعيب" value={returns.defectPolicy} onChange={(v) => setR({ defectPolicy: v })} options={DEFECT} />
           {returns.defectPolicy !== "none" ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <p className="text-[13px] font-black text-ink">مهلة إبلاغك بالعيب</p>
+                <p className="text-[13px] font-black text-ink">مهلة إبلاغ العميل بالعيب</p>
                 <Chips label="مهلة الإبلاغ" value={returns.defectReportHours} onChange={(v) => setR({ defectReportHours: v })} options={[24, 48, 72, 168, 336, 720].map((h) => ({ value: h, label: reportWindow(h) }))} />
               </div>
               {returns.defectPolicy !== "case_by_case" ? (
@@ -177,7 +187,7 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
               ) : null}
             </div>
           ) : (
-            <p className="text-[12px] leading-6 text-ink-3">لن تذكر صفحة السياسة أي التزام عن العيوب. تذكّر أن قانون حماية المستهلك يحفظ للعميل حقه في المنتج المعيب.</p>
+            <p className="text-[12px] leading-6 text-ink-3">لن تذكر صفحة السياسة أي التزام عن العيوب. يُراعى أن قانون حماية المستهلك يحفظ للعميل حقه في المنتج المعيب.</p>
           )}
         </Card>
 
@@ -200,6 +210,29 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
           {ship.pickupEnabled ? (
             <input value={ship.pickupAddress ?? ""} onChange={(e) => setS({ pickupAddress: e.target.value.slice(0, 200) })} placeholder="عنوان الاستلام بالتفصيل" className="h-11 w-full rounded-xl border border-edge/10 bg-edge/[0.03] px-3.5 text-[14px] font-bold text-ink outline-none focus:border-nova" />
           ) : null}
+          <Toggle
+            icon={Gift}
+            label="خيار الهدية في الدفع"
+            sub="يظهر للعميل خيار «هذا الطلب هدية» بتغليف ورسالة وإخفاء الأسعار من الفاتورة. التغليف برسوم تحددونها، أو مجاناً بكتابة 0."
+            on={ship.giftEnabled === true}
+            onChange={(v) => setS({ giftEnabled: v, giftWrapPiasters: v ? (ship.giftWrapPiasters ?? 0) : undefined })}
+          />
+          {ship.giftEnabled === true ? (
+            <label className="block space-y-2">
+              <span className="text-[13px] font-black text-ink">رسوم التغليف بالجنيه</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={1000}
+                step="1"
+                value={(ship.giftWrapPiasters ?? 0) / 100}
+                onChange={(e) => setS({ giftWrapPiasters: poundsToPiasters(Number(e.target.value)) })}
+                className="h-11 w-full max-w-40 rounded-xl border border-edge/10 bg-edge/[0.03] px-3.5 text-[14px] font-bold text-ink outline-none focus:border-nova focus-visible:ring-2 focus-visible:ring-nova/40"
+              />
+              <span className="block text-[12px] leading-5 text-ink-3">تُضاف إلى إجمالي الطلب عند اختيار التغليف فقط.</span>
+            </label>
+          ) : null}
         </Card>
       </div>
 
@@ -207,7 +240,7 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
         <div className="dash-card overflow-hidden">
           <div className="flex items-center justify-between gap-2 border-b border-edge/[0.07] p-3">
             <span className="flex items-center gap-1.5 text-[12.5px] font-black text-ink">
-              <FileText className="size-4 text-nova-2" /> كما يراها عميلك
+              <FileText className="size-4 text-nova-2" /> كما يراها العميل
             </span>
             <div className="flex gap-1">
               {(["returns", "shipping"] as const).map((k) => (
@@ -222,7 +255,7 @@ export function PoliciesEditor({ bp, storeUrl }: { bp: StoreBlueprint; storeUrl:
           </div>
         </div>
         <a href={`${storeUrl}/pages/${page}`} target="_blank" rel="noopener" className="flex items-center justify-center gap-1.5 text-[12px] font-bold text-ink-3 hover:text-ink">
-          فتح الصفحة في متجرك <ExternalLink className="size-3.5" />
+          فتح الصفحة في المتجر <ExternalLink className="size-3.5" />
         </a>
         <button type="button" onClick={save} disabled={!dirty || pending} className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-nova to-nova-deep text-sm font-black text-white shadow-xl shadow-nova/30 transition disabled:opacity-50">
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
