@@ -31,7 +31,7 @@ const columns = (igUrl: string): { title: string; links: { label: string; href: 
   },
 ];
 
-export function Footer({ igUrl = "https://ig.me/m/colapia" }: { igUrl?: string }) {
+export function Footer({ igUrl = "https://ig.me/colapia" }: { igUrl?: string }) {
   return (
     <footer className="border-t border-white/10 py-16">
       <div className="container-x">
