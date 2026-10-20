@@ -1,6 +1,6 @@
 // seed-demo.ts — ينشئ/يحدّث متجر العرض `demo` (demo.colapia.com) بالأنظمة الجديدة (V3) من scripts/demo/data/*.json:
-// التصميم الافتراضي «منتصف الليل» ببطاقات زئبقية، وواجهة فيديو، و79 منتجاً بسمات نشاط الأزياء وتركيبات ومخزون
-// (نافد ومنخفض ومتوفر)، وأسعار مشطوبة وخصم كمية، وأقسام بأغلفة، ودليل مقاسات، وتقييمات وأسئلة مُجابة.
+// متجر أحذية واحد كامل يُبنى بمسار المنصة نفسه (planCategories + planCommit + قالب البدء + الواجهة التلقائية): تصميم «منتصف الليل»
+// ببطاقات زئبقية، ومنتجات بتركيبات ومخزون (نافد ومنخفض ومتوفر) وأسعار مشطوبة، وأقسام فرعية، ودليل مقاسات، وتقييمات وأسئلة مُجابة.
 // البيانات والـ Blueprint من scripts/demo/catalog.ts (منطق خالص يفحصه verify-demo.ts دون اتصال).
 //
 // الاستخدام:
@@ -19,8 +19,8 @@ import { merchants, stores, storeBlueprints, categories, products, productVarian
 import { canonicalEmail } from "../../src/lib/contact";
 import { invalidateStoreCache } from "../../src/lib/tenant";
 import {
-  CATEGORIES, DEMO_COUPON, DEMO_DEFAULT_EMAIL, DEMO_MERCHANT_NAME, DEMO_SUB,
-  buildDemoBlueprint, categoryImage, demoStoreSettings, loadDemoProducts, productRows, questionsFor, ratingTotals, reviewsFor, shippingZoneRows, variantsOf,
+  DEMO_COUPON, DEMO_DEFAULT_EMAIL, DEMO_MERCHANT_NAME, DEMO_SUB,
+  buildCatalog, buildDemoBlueprint, demoStoreSettings, loadDemoProducts, questionsFor, ratingTotals, reviewsFor, shippingZoneRows, variantsOf,
 } from "./catalog";
 import { verifyDemo } from "./verify-demo";
 
@@ -79,21 +79,15 @@ async function main() {
   const storeId = s!.id;
   const t = await getTenantDb(storeId);
 
-  // ─── الأقسام بأغلفتها ───
-  const cats = await t
-    .insert(categories)
-    .values(CATEGORIES.map((c, i) => ({ storeId, name: c.name, slug: c.key, description: c.description, imageUrl: categoryImage(c.key), sortOrder: i })))
-    .returning({ id: categories.id, slug: categories.slug });
-  const catId = Object.fromEntries(cats.map((c) => [c.slug, c.id]));
-
-  // ─── المنتجات ───
-  const rows = productRows(data, now);
-  const inserted: { id: string; slug: string }[] = [];
-  for (let i = 0; i < rows.length; i += 25) {
-    const batch = rows.slice(i, i + 25).map(({ categoryKey, ...r }) => ({ ...r, storeId, categoryId: catId[categoryKey]! }));
-    inserted.push(...(await t.insert(products).values(batch).returning({ id: products.id, slug: products.slug })));
-  }
+  // ─── الأقسام والمنتجات: مخرجات المسار العادي (دمج الأقسام ثم planCommit) مع إضافات العرض ───
+  const catalog = buildCatalog(data, now, storeId, () => crypto.randomUUID());
+  await t.insert(categories).values(catalog.categories);
+  const rows = catalog.rows;
+  const inserted = rows.map((r) => ({ id: r.id, slug: r.slug }));
+  const dbRows = rows.map(({ categoryKey: _k, ...r }) => ({ ...r, storeId, categoryId: r.categoryId }));
+  for (let i = 0; i < dbRows.length; i += 25) await t.insert(products).values(dbRows.slice(i, i + 25));
   const idOf = new Map(inserted.map((r) => [r.slug, r.id]));
+  const catId = Object.fromEntries(catalog.categories.map((c) => [c.slug, c.id]));
 
   // ─── التركيبات (مقاس × لون) بمخزون موزّع، وصورة لكل لون عند تعدد الألوان ───
   const variantRows: (typeof productVariants.$inferInsert)[] = data.flatMap((p) => variantsOf(p).map((v) => ({ storeId, productId: idOf.get(p.slug)!, ...v })));
@@ -122,7 +116,7 @@ async function main() {
   await t.insert(discounts).values({ storeId, code: DEMO_COUPON.code, type: "percentage", value: DEMO_COUPON.percent, isActive: true });
 
   // ─── الـ Blueprint (يُفحص بمخططه داخل buildDemoBlueprint) ───
-  const bp = buildDemoBlueprint({ storeId, email, categoryIds: catId, productCount: rows.length });
+  const bp = buildDemoBlueprint({ storeId, email, categoryIds: catId, productCount: rows.length, data });
   await t.insert(storeBlueprints).values({ storeId, data: bp, updatedBy: "demo-seed" });
   await invalidateStoreCache({ id: storeId, subdomain: DEMO_SUB });
 
