@@ -20,3 +20,7 @@ repomix-output_part_3.md
 .env.cloudflare
 secrets.json
 .claude/worktrees/
+
+# نسخ قواعد البيانات لا تُرفع أبداً
+*.dump
+*.sql.gz
