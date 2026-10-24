@@ -67,5 +67,5 @@ export function changesLabel(n: number): string {
 /** رابط بدء المحادثة على إنستجرام (متغير بيئة مع قيمة احتياطية آمنة https فقط). */
 export function instagramUrl(env: string | undefined): string {
   const v = (env ?? "").trim();
-  return /^https:\/\//.test(v) ? v : "https://ig.me/m/colapia";
+  return /^https:\/\//.test(v) ? v : "https://ig.me/colapia";
 }
