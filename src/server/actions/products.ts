@@ -1,6 +1,8 @@
 ﻿"use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { notifyIndexNow } from "@/server/seo-data";
 import { z } from "zod";
 import { and, eq, inArray, isNull, sql, type AnyColumn } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
@@ -296,6 +298,8 @@ export async function saveProductAction(raw: unknown): Promise<SaveProductResult
 
   await invalidateStoreCache(s.store);
   revalidatePath("/dashboard/products");
+  // إخطار محركات البحث بالرابط الجديد/المعدّل (بلا إعداد IndexNow لا يفعل شيئاً).
+  if (d.status === "active") after(() => notifyIndexNow(s.store, [`/p/${encodeURIComponent(slug)}`]));
   return { ok: true, id: productId, slug };
 }
 

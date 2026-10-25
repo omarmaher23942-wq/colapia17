@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { requireStore } from "@/lib/tenant";
+import { requireStore, getStoreBySubdomain, getBlueprintOrNull } from "@/lib/tenant";
+import { pageMetadata } from "@/lib/storefront-seo";
+import { isFilteredQuery, seoLocale } from "@/lib/seo-meta";
 import { collectionFacets, queryCollection } from "@/server/repos/collection";
 import { CollectionBrowser } from "@/components/storefront/CollectionBrowser";
 import { Breadcrumbs } from "@/components/storefront/Breadcrumbs";
@@ -9,9 +11,12 @@ import type { ProductCardProduct } from "@/components/storefront/ProductCard";
 type P = { params: Promise<{ store: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> };
 
 // صفحة كل المنتجات قابلة للفهرسة (بلا فلاتر)؛ نسخ الفلاتر والترتيب تشير إليها كـ canonical ولا تُفهرس.
-export async function generateMetadata({ searchParams }: P): Promise<Metadata> {
-  const filtered = Object.keys(await searchParams).length > 0;
-  return { title: "كل المنتجات", alternates: { canonical: "/all" }, robots: filtered ? { index: false, follow: true } : undefined };
+export async function generateMetadata({ params, searchParams }: P): Promise<Metadata> {
+  const filtered = isFilteredQuery(await searchParams);
+  const store = await getStoreBySubdomain((await params).store);
+  const bp = store ? await getBlueprintOrNull(store.id) : null;
+  const name = bp?.brand.name ?? store?.name ?? "";
+  return pageMetadata({ title: "كل المنتجات", path: "/all", description: `تصفحوا كل منتجات ${name}.` }, { name, image: bp?.seo.ogImage ?? bp?.brand.logo?.url, locale: seoLocale(bp) }, { filtered });
 }
 
 export default async function AllProductsPage({ params, searchParams }: P) {

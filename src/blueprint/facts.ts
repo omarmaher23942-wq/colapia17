@@ -48,6 +48,13 @@ export function inspectionOffered(bp: Pick<StoreBlueprint, "shipping" | "payment
   return bp.shipping.inspectionAllowed === true && bp.payments.cod.enabled === true;
 }
 
+/** مهلة الإبلاغ بصيغة طبيعية: 48 ساعة، 3 أيام، 14 يوماً. */
+export function reportWindow(hours: number): string {
+  if (hours < 72) return `${hours} ساعة`;
+  const d = Math.round(hours / 24);
+  return d <= 10 ? `${d} أيام` : `${d} يوماً`;
+}
+
 export function storeFacts(bp: StoreBlueprint, ctx: FactContext = {}): StoreFact[] {
   const out: StoreFact[] = [];
   const r = bp.returns;

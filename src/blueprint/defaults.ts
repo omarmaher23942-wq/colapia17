@@ -164,7 +164,7 @@ function baseBlueprint(input: Parameters<typeof defaultBlueprint>[0]): StoreBlue
       backgroundPattern: "none",
       imageBackground: "none",
     },
-    locale: { language: "ar", currency: "EGP", timezone: "Africa/Cairo" },
+    locale: { language: "ar", country: "EG", currency: "EGP", timezone: "Africa/Cairo" },
     header: {
       variant: "classic",
       sticky: true,
