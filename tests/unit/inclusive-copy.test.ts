@@ -1,6 +1,6 @@
 // قاعدة المالك (2026-10-13، CLAUDE.md 6.1): النصوص المرئية تخاطب أي شخص. هذا الحارس يرفض صيغ المؤنث الحصرية وعامية
 // المذكر الصريحة في ما يراه زائر المتجر والتاجر (المتجر، الهبوط، الاستمارة، المتابعة، البريد، النصوص الافتراضية).
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +15,9 @@ const ROOTS = [
   "src/app/(platform)/login",
   "src/app/(platform)/terms",
   "src/app/(platform)/privacy",
+  "src/app/(platform)/data-deletion",
+  "src/app/(platform)/about",
+  "src/app/(platform)/work",
   "src/lib/email-templates",
   "src/blueprint/defaults.ts",
   "src/blueprint/copy.ts",
@@ -40,7 +43,8 @@ const ROOTS = [
   "src/app/(platform)/(dash)/admin/conversations/delivery",
   "src/lifecycle/templates.ts",
   "src/lifecycle/handlers.ts",
-  "src/lib/landing-pricing.ts",
+  "src/lib/landing-content.ts",
+  "src/lib/platform-seo.ts",
   "src/app/(platform)/page.tsx",
   "src/components/dashboard/billing",
   "src/components/onboarding",
@@ -130,6 +134,7 @@ const BANNED = [
 ];
 
 function files(p: string): string[] {
+  if (!existsSync(p)) return []; // مسار حُذف في وحدة أخرى: لا يكسر الحارس
   const st = statSync(p);
   if (st.isFile()) return /\.(tsx?|json)$/.test(p) ? [p] : [];
   return readdirSync(p).flatMap((n) => files(join(p, n)));

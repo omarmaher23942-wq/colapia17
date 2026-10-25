@@ -7,34 +7,14 @@ import { getTenantDb } from "@/db/tenant";
 import { products, categories } from "@/db/schema";
 import { getStoreBySubdomain, getBlueprint } from "@/lib/tenant";
 import { publicStoreUrl } from "@/lib/utils";
+import { platformSitemap } from "@/lib/platform-seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const h = await headers();
   const sub = h.get("x-store-subdomain");
 
-  if (!sub) {
-    const baseUrl = `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-    return [
-      {
-        url: baseUrl,
-        lastModified: new Date(),
-        changeFrequency: "daily",
-        priority: 1,
-      },
-      {
-        url: `${baseUrl}/privacy`,
-        lastModified: new Date(),
-        changeFrequency: "yearly",
-        priority: 0.5,
-      },
-      {
-        url: `${baseUrl}/terms`,
-        lastModified: new Date(),
-        changeFrequency: "yearly",
-        priority: 0.5,
-      },
-    ];
-  }
+  // نطاق المنصة: الرئيسية و/about و/work والقانونية (lib/platform-seo.ts).
+  if (!sub) return platformSitemap();
 
   const s = await getStoreBySubdomain(sub);
   if (!s || !storeVisibility(s, hostingState(s)).indexable) return [];

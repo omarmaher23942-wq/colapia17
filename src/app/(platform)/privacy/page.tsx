@@ -1,33 +1,43 @@
+import type { Metadata } from "next";
 import { Markdown } from "@/components/storefront/Markdown";
+import { BRAND } from "@/lib/landing-content";
+import { pageMetadata } from "@/lib/platform-seo";
 
-export const metadata = { title: "سياسة الخصوصية" };
+export const metadata: Metadata = pageMetadata("privacy", {
+  title: "سياسة الخصوصية",
+  description: "ما تجمعه Colapia (كولابيا) من بيانات عند التواصل والحجز وطلبات المشاريع، وكيف تستخدمها وتحميها ومدة الاحتفاظ بها وطريقة حذفها.",
+});
 
 const BODY = `## Privacy Policy (English summary)
-Colapia prepares, hosts and operates e-commerce stores for merchants. When you message our Facebook Page or Instagram account, or complete your store setup, we receive what you send (store details, WhatsApp number, email, account link, photos, files and notes), solely to prepare your store and contact you about it. Merchant store data (products, orders, customers) is processed on behalf of the merchant and hosted with our infrastructure providers (application hosting and file storage, a cloud database, caching and job scheduling, and email delivery). Shoppers do not create accounts; their favourites and order list stay on their own device. Images a shopper uploads to a store's visual search, and files a merchant uploads for product import, are analysed automatically by service providers for that purpose only; visual search images are not stored. An active store is never deleted automatically; the merchant may export and delete their data at any time. We do not sell data. Contact: privacy@colapia.com. Data deletion: see /data-deletion.
+Colapia is a web agency. When you message our Instagram account or Facebook Page, book a project, or use the client dashboard, we receive what you send (name, account identifier, email, WhatsApp number, project details, files, payment receipt and requests), solely to answer you, deliver your project and keep our records. An automated assistant may give first replies to messages and hands the conversation to our team when needed. We use infrastructure providers (cloud hosting, database, file storage, email delivery, messaging platforms) to operate our services. After delivery your project runs on your own accounts; we do not keep or access your customers' data unless you ask us to for support. We do not sell data. Contact: ${BRAND.privacyEmail}. Data deletion: see /data-deletion.
 
 ## من نحن وما نجمعه
-Colapia فريق يجهّز المتاجر الإلكترونية ويستضيفها ويشغّلها للتجار.
-- **المحادثة:** عندما تراسلون صفحتنا على فيسبوك أو إنستجرام نستلم اسمكم ومعرّف حسابكم والرسائل والصور التي ترسلونها، ونستخدمها للرد عليكم وجمع بيانات متجركم.
-- **بيانات الإعداد:** اسم المتجر ونشاطه، وبريد حساب Google، ورقم واتساب، وروابط حسابات التواصل، والشعار وصور المنتجات والملفات التي ترفعونها، وسياسات الدفع والشحن والاستبدال التي تحددونها.
-- **الدخول:** نتحقق من هويتكم بحساب Google أو برمز يصل لبريدكم، ولا نحفظ كلمة مرور Google.
-- **سجل الرسائل البريدية:** نحتفظ بسجل ما يُرسل من بريد باسم متجركم وحالة وصوله، لتشخيص أي مشكلة في التسليم.
-نستخدم ذلك فقط لتجهيز متجركم وتشغيله والتواصل معكم بخصوصه.
+Colapia (كولابيا) وكالة تصميم وبرمجة. نجمع البيانات التالية بحسب ما تستخدمونه من خدماتنا:
+- **المحادثة:** عندما تراسلون حسابنا على إنستجرام أو صفحتنا على فيسبوك نستلم اسمكم ومعرّف حسابكم والرسائل والصور والملفات التي ترسلونها. قد يرد عليكم في البداية مساعد آلي، ويحيل المحادثة إلى فريقنا عند الحاجة.
+- **صفحة الحجز وطلب المشروع:** اسم المشروع أو المتجر، ونشاطكم، وحسابات التواصل، والبريد الإلكتروني (ومنه تدخلون إلى لوحة العميل)، ورقم واتساب، وتفضيلات التصميم، والمنتجات أو المحتوى الذي تزوّدوننا به، وصورة إيصال الدفع.
+- **لوحة العميل:** نتحقق من هويتكم بحساب Google أو برمز يصل إلى بريدكم، ولا نحفظ كلمة مرور Google. ونحفظ ما تدخلونه فيها: حالة مشروعكم وطلبات التعديل وما ترفقونه بها.
+- **زيارة موقعنا:** كوكيز ضرورية لتسجيل الدخول وتشغيل الصفحات، ولا نبيع بيانات التصفح.
+نستخدم ذلك فقط للرد عليكم وتنفيذ مشروعكم وتسليمه وإدارة الدفع والتواصل معكم بشأنه وحفظ سجلاتنا.
 
-## بيانات متجركم
-منتجاتكم وطلباتكم وبيانات عملائكم تُعالج لحسابكم أنتم كتجار، وتُخزَّن لدى مزوّدي بنية تشغيل نعتمد عليهم: مزوّد استضافة سحابية (تشغيل التطبيق وتخزين الصور والملفات)، وقاعدة بيانات سحابية، ومزوّد للتخزين المؤقت والمهام المجدولة، ومزوّد لإرسال البريد. وتُحلَّل بعض المحتويات آلياً لدى مزوّدي خدمات متخصصين عند استخدامكم أدوات بعينها (استيراد المنتجات من ملف أو صور، وتعديل الشكل بالوصف، واستوديو المحتوى)، ولا يُشارك إلا ما يلزم لتنفيذ طلبكم. لا نبيع بياناتكم ولا نشاركها مع طرف ثالث إلا لتقديم الخدمة.
+## مع من نشاركها
+نعتمد على مزوّدي بنية تشغيل بفئاتهم: مزوّد استضافة سحابية، وقاعدة بيانات سحابية، ومزوّد لتخزين الملفات والصور، ومزوّد لإرسال البريد، ومنصات المراسلة التي تتواصلون معنا عبرها (إنستجرام وفيسبوك وواتساب)، ومزوّدو خدمات معالجة النصوص والصور لتحليل الرسائل والملفات الواردة عند الحاجة. لا نبيع بياناتكم ولا نشاركها مع أي طرف آخر إلا لتقديم الخدمة أو بطلب قانوني.
 
-## بيانات الزبائن النهائيين
-لا ينشئ الزبائن حسابات. عند الطلب من متجر تاجر نجمع الاسم ورقم الموبايل والعنوان لإتمام التوصيل فقط، ويحتفظ بها التاجر لإدارة طلباته. ونحفظ في متصفح الزائر معرّف جهاز عشوائياً (كوكي) لعدّ الزيارات، ونحفظ مفضلته وقائمة «طلباتي» وسلته في تخزين جهازه نفسه، دون أي بيانات شخصية في المعرّف. ولا نرسل بريداً لزبائن التجار.
-- **«البحث بالصورة»:** الصورة التي يرفعها الزائر للبحث تُحلَّل آلياً لدى مزوّد خدمة لمعرفة القطعة ومطابقتها بمنتجات المتجر، ثم تُهمَل ولا نخزّنها. ويُحفظ للتاجر وصف نصي قصير للقطع التي لم يجدها البحث (بلا الصورة ولا أي بيانات عن الزائر).
+## مشاريعكم بعد التسليم
+بعد التسليم يعمل مشروعكم على حساباتكم أنتم، وبياناته وبيانات زبائنكم عندكم. لا نحتفظ ببيانات زبائنكم ولا نصل إليها إلا إذا طلبتم ذلك صراحةً لدعم فني محدد. وقد نحتفظ بنسخة من ملفات المشروع (الكود والمحتوى الذي زوّدتمونا به) مدة كافية لتنفيذ طلبات التعديل وتصحيح العيوب، ويمكنكم طلب حذفها في أي وقت.
+
+## متجر العرض
+متجر العرض التجريبي لا ينشئ فيه الزائر حساباً. نحفظ في متصفح الزائر معرّف جهاز عشوائياً (كوكي) لعدّ الزيارات، وتُحفظ مفضلته وسلته على جهازه نفسه، ولا نرسل بريداً لزوار المتجر.
 
 ## الاحتفاظ والحذف
-- متجر لم يكتمل إعداده يُحذف بعد المهلة التي نعلنها لكم بالرسائل والبريد.
-- عند انتهاء التجربة دون دفع يتجمد المتجر وتُقفل اللوحة إلا صفحة الاشتراك، وتبقى بياناتكم ويعود كل شيء فور الدفع. ومتاجر التجربة غير المفعّلة تُحذف بعد فترة السماح والتنبيه الأخير اللذين نخبركم بهما قبل الحذف.
-- المتجر المشترك لا يُحذف تلقائياً أبداً حتى لو انتهى اشتراكه: يتوقف عن الظهور فقط وتبقى بياناته حتى تجددوا أو تطلبوا حذفها.
-- يمكنكم تنزيل طلباتكم وعملائكم (CSV من لوحتكم) وطلب نسخة من بقية بيانات متجركم، وطلب حذف بياناتكم نهائياً في أي وقت من صفحة حذف البيانات، وننفذه خلال 7 أيام عمل.
+- نحتفظ ببيانات الحجز وإيصالات الدفع وسجل المشروع ما دام ذلك لازماً لتنفيذ الاتفاق وحفظ سجلاتنا المحاسبية والقانونية.
+- المحادثات والمسودات غير المكتملة نحذفها بعد مدة لا تتجاوز ما يلزم لمتابعتها.
+- يمكنكم في أي وقت طلب نسخة من بياناتكم أو تصحيحها أو حذفها من صفحة تعليمات حذف البيانات، وننفذ طلب الحذف خلال 7 أيام عمل، عدا ما يوجب القانون الاحتفاظ به.
+
+## الأمان
+نحصر الوصول إلى بياناتكم في فريقنا بحسب الحاجة، ونستخدم اتصالات مشفّرة وتحقق هوية في لوحة العميل. ومع ذلك لا يوجد نظام آمن بالكامل، ونرجو إبلاغنا فوراً عند الاشتباه في أي اختراق.
 
 ## التواصل
-privacy@colapia.com`;
+${BRAND.privacyEmail}`;
 
 export default function Privacy() {
   return (
