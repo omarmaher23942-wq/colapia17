@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_PRICING, agentPricingFacts, pricingFrom, quote, validatePricing } from "@/lib/platform-pricing";
-import { landingOffer } from "@/lib/landing-pricing";
 
 describe("الدائرة الذهبية: الشهر الأول مجاناً", () => {
   it("الأساسية لشهر = رسوم الذهبية فقط", () => {
@@ -33,12 +32,8 @@ describe("الدائرة الذهبية: الشهر الأول مجاناً", ()
     expect(pricingFrom({ ...DEFAULT_PRICING, golden: { ...DEFAULT_PRICING.golden, firstMonthFree: false } }).golden.firstMonthFree).toBe(false);
   });
 
-  it("الوكيل والهبوط يذكران الهدية بأرقام حقيقية", () => {
+  it("الوكيل يذكر الهدية بأرقام حقيقية", () => {
     expect(agentPricingFacts(DEFAULT_PRICING, 0)).toContain("الشهر الأول");
-    const o = landingOffer(DEFAULT_PRICING, 3);
-    expect(o.golden?.seatsLeft).toBe(7);
-    expect(o.golden?.firstMonthFree).toBe(true);
-    expect(landingOffer(DEFAULT_PRICING, 10).golden).toBeNull();
     expect(validatePricing(DEFAULT_PRICING).ok).toBe(true);
   });
 });

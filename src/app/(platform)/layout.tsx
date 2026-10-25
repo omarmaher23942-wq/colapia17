@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next";
+import { SITE_DESCRIPTION } from "@/lib/landing-content";
+import { SITE_TITLE, siteOrigin } from "@/lib/platform-seo";
 
+// metadataBase يلزم لروابط opengraph-image المطلقة. العنوان الافتراضي بالاسم الكامل للكيان (Colapia | كولابيا).
 export const metadata: Metadata = {
-  title: { default: "Colapia", template: "%s | Colapia" },
-  description: "فريق Colapia يبني لك متجراً إلكترونياً مخصصاً ويستضيفه، وتجربه مجاناً قبل أي دفع.",
+  metadataBase: new URL(siteOrigin()),
+  title: { default: SITE_TITLE, template: "%s | Colapia" },
+  description: SITE_DESCRIPTION,
 };
 
 export const viewport: Viewport = {
