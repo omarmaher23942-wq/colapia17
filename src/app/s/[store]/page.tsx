@@ -10,8 +10,25 @@ import { migrateToCore } from "@/blueprint/core-migrate";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot } from "@/stores/resolve";
 import { isTeamPreview } from "@/server/store-preview";
-import { storeJsonLd } from "@/lib/storefront-seo";
+import type { Metadata } from "next";
+import { preconnect } from "react-dom";
+import { heroImageUrl, preconnectOrigin } from "@/lib/seo-meta";
+import { publicStoreUrl } from "@/lib/utils";
+import { homeLd, storeMetadata } from "@/lib/storefront-seo";
+import { getStoreBySubdomain, getBlueprintOrNull } from "@/lib/tenant";
+import { loadCategories } from "@/server/seo-data";
 import { jsonLdString } from "@/lib/json-ld";
+
+/** الرئيسية وحدها تحمل canonical وhreflang وog:url الجذر (باقي الصفحات لها canonical خاصة). */
+export async function generateMetadata({ params }: { params: Promise<{ store: string }> }): Promise<Metadata> {
+  const { store: sub } = await params;
+  const store = await getStoreBySubdomain(sub);
+  const bp = store ? await getBlueprintOrNull(store.id) : null;
+  if (!store || !bp) return {};
+  const facts = await getStoreFacts(store.id, bp);
+  const cats = await loadCategories(store.id).catch(() => []);
+  return storeMetadata(store, truthfulBlueprint(bp, facts), { home: true, facts, categoryNames: cats.filter((c) => c.productCount > 0).map((c) => c.name) });
+}
 
 export default async function Home({
   params,
@@ -37,7 +54,11 @@ export default async function Home({
   ]);
 
   // بيانات المتجر المنظمة لمحركات البحث (الاسم، الشعار، الحسابات، خانة البحث).
-  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd(store, truthfulBlueprint(bp, facts))) }} />;
+  // اتصال مسبق بمضيف صورة الواجهة (أول عنصر مرسوم) إن كان خارج نطاق المتجر.
+  const origin = preconnectOrigin(heroImageUrl(bp), new URL(publicStoreUrl(store)).origin);
+  if (origin) preconnect(origin);
+  const cats = await loadCategories(store.id).catch(() => []);
+  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(homeLd(store, truthfulBlueprint(bp, facts), cats.filter((c) => c.productCount > 0))) }} />;
 
   // ترتيب الصفحة الرئيسية بكود المتجر الخاص إن وُجد (stores/<slug>/slots/Home.tsx)، وإلا بترتيب الـ Blueprint.
   if (HomeSlot)

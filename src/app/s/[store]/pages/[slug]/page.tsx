@@ -5,6 +5,10 @@ import { Markdown } from "@/components/storefront/Markdown";
 import { resolvePolicyPage } from "@/blueprint/policy-pages";
 import { groundedText, truthfulBlueprint } from "@/blueprint/facts";
 import { getStoreFacts } from "@/server/repos/facts";
+import { answersLd, pageMetadata } from "@/lib/storefront-seo";
+import { leadSentence, seoLocale } from "@/lib/seo-meta";
+import { storeAnswers } from "@/lib/seo-answers";
+import { jsonLdString } from "@/lib/json-ld";
 
 // الصفحات القانونية تُكتب من سياسة المتجر نفسها؛ غيرها (عن المتجر، تواصل) نص حر يُفحص عند كل عرض.
 const LEGAL = new Set(["shipping", "returns", "privacy", "terms"]);
@@ -16,8 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const store = await getStoreBySubdomain(sub);
   const bp = store ? await getBlueprintOrNull(store.id) : null;
   const page = bp ? resolvePolicyPage(bp, slug) : null;
-  if (!page) return { robots: { index: false } };
-  return { title: page.title, alternates: { canonical: `/pages/${encodeURIComponent(page.slug)}` } };
+  if (!page || !bp) return { robots: { index: false } };
+  return pageMetadata({ title: page.title, path: `/pages/${encodeURIComponent(page.slug)}`, description: leadSentence(page.body, 150) }, { name: bp.brand.name, image: bp.seo.ogImage ?? bp.brand.logo?.url, locale: seoLocale(bp) });
 }
 
 export default async function PolicyPage({ params }: Props) {
@@ -25,7 +29,7 @@ export default async function PolicyPage({ params }: Props) {
   const store = await requireStore(sub);
   const raw = await getBlueprint(store.id);
   const facts = await getStoreFacts(store.id, raw);
-  const page = resolvePolicyPage(truthfulBlueprint(raw, facts), slug);
+  const page = resolvePolicyPage(truthfulBlueprint(raw, facts), slug, facts);
   if (!page) notFound();
   const body = LEGAL.has(page.slug)
     ? page.body
@@ -39,8 +43,12 @@ export default async function PolicyPage({ params }: Props) {
         })
         .filter((l, i, a) => l || a[i - 1])
         .join("\n");
+  // صفحة الأسئلة المولَّدة (لم يكتب التاجر نسخته): FAQPage بنفس الإجابات المعروضة وسمة speakable.
+  const generatedFaq = page.slug === "faq" && !raw.pages.find((p) => p.slug === "faq")?.body.trim();
+  const ld = generatedFaq ? answersLd(store, raw, { title: page.title, slug: page.slug }, storeAnswers(truthfulBlueprint(raw, facts), facts)) : null;
   return (
-    <article className="container-x max-w-3xl py-12">
+    <article className="container-x max-w-3xl py-12" data-speakable={generatedFaq ? "" : undefined}>
+      {ld ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(ld) }} /> : null}
       <h1 className="mb-6 text-3xl">{page.title}</h1>
       <Markdown text={body} />
     </article>

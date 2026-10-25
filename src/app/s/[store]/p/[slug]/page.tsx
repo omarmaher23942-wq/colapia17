@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { requireStore, getBlueprint, getStoreBySubdomain } from "@/lib/tenant";
-import { getProductBySlug, frequentlyBoughtTogether, productReviews, reviewStats, answeredQuestions, deliveryZones, listVisibleCategories } from "@/server/repos/catalog";
+import { getProductBySlug, frequentlyBoughtTogether, productReviews, reviewStats, answeredQuestions, deliveryZones } from "@/server/repos/catalog";
 import { ProductPurchase } from "@/components/storefront/ProductPurchase";
 import { ProductGallery } from "@/components/storefront/ProductGallery";
 import { ProductStickyBar } from "@/components/storefront/ProductStickyBar";
@@ -19,7 +19,10 @@ import { ProductCompare, type CompareItem } from "@/components/storefront/produc
 import { productSpecs } from "@/components/storefront/product/specs";
 import { fetchProductsForSource } from "@/blueprint/section-data";
 import { cn } from "@/lib/utils";
-import { productMetadata, productJsonLd, breadcrumbJsonLd, questionsJsonLd } from "@/lib/storefront-seo";
+import { productMetadata, productLd } from "@/lib/storefront-seo";
+import { getStoreFacts } from "@/server/repos/facts";
+import { loadCategories } from "@/server/seo-data";
+import { seoLocale } from "@/lib/seo-meta";
 import { arCount, NOUN } from "@/lib/format";
 import { jsonLdString } from "@/lib/json-ld";
 
@@ -39,7 +42,8 @@ export async function generateMetadata({ params }: P): Promise<Metadata> {
   if (!store) return {};
   const p = await loadProduct(store.id, slug);
   const bp = p ? await getBlueprint(store.id).catch(() => null) : null;
-  return p ? productMetadata(p, { name: bp?.brand.name ?? store.name, image: bp?.seo.ogImage ?? bp?.brand.logo?.url }) : { title: "المنتج غير موجود", robots: { index: false } };
+  const facts = bp ? await getStoreFacts(store.id, bp).catch(() => undefined) : undefined;
+  return p ? productMetadata(p, { name: bp?.brand.name ?? store.name, image: bp?.seo.ogImage ?? bp?.brand.logo?.url, locale: seoLocale(bp), facts }) : { title: "المنتج غير موجود", robots: { index: false } };
 }
 
 export default async function ProductPage({ params }: P) {
@@ -54,7 +58,7 @@ export default async function ProductPage({ params }: P) {
     bp.productPage.showReviews ? productReviews(store.id, p.id, { limit: 8 }) : [],
     answeredQuestions(store.id, p.id),
     deliveryZones(store.id),
-    p.categoryId ? listVisibleCategories(store.id) : [],
+    p.categoryId ? loadCategories(store.id) : [],
   ]);
   // العدد والمتوسط من التقييمات المعتمدة الفعلية لا من عدّاد مخزّن قد يتأخر.
   const avg = stats.count ? stats.avg : p.ratingCount ? p.ratingSum / p.ratingCount : 0;
@@ -80,7 +84,13 @@ export default async function ProductPage({ params }: P) {
     { name: p.name, path: `/p/${encodeURIComponent(p.slug)}` },
   ];
   const answered = qa.filter((q): q is typeof q & { answer: string } => !!q.answer);
-  const jsonLd = [productJsonLd(store, bp.brand.name, p, p.variants), breadcrumbJsonLd(store, crumbs), questionsJsonLd(answered)].filter(Boolean);
+  const jsonLd = productLd(store, bp, {
+    product: p,
+    variants: p.variants,
+    category: category ? { name: category.name, slug: category.slug } : undefined,
+    rating: { avg, count: ratingCount },
+    reviews: rv,
+  });
 
   return (
     <div className="container-x py-6 md:py-10" dir="rtl">

@@ -641,6 +641,8 @@ export const seoSchema = z.object({
 
 export const localeSchema = z.object({
   language: z.literal("ar").default("ar"),
+  /** رمز الدولة (ISO 3166-1 alpha-2): منه منطقة الخدمة وlocale المشاركة وhreflang وبيانات الشحن المنظمة. */
+  country: z.string().regex(/^[A-Z]{2}$/).default("EG"),
   currency: z.literal("EGP").default("EGP"),
   timezone: z.literal("Africa/Cairo").default("Africa/Cairo"),
 });

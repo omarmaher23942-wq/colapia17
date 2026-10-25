@@ -1,12 +1,6 @@
-import { storeVisibility } from "@/lib/store-visibility";
-import { hostingState } from "@/lib/hosting";
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { and, eq, isNull } from "drizzle-orm";
-import { getTenantDb } from "@/db/tenant";
-import { products, categories } from "@/db/schema";
-import { getStoreBySubdomain, getBlueprint } from "@/lib/tenant";
-import { publicStoreUrl } from "@/lib/utils";
+import { sitemapForStore } from "@/server/seo-data";
 import { platformSitemap } from "@/lib/platform-seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -16,56 +10,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // نطاق المنصة: الرئيسية و/about و/work والقانونية (lib/platform-seo.ts).
   if (!sub) return platformSitemap();
 
-  const s = await getStoreBySubdomain(sub);
-  if (!s || !storeVisibility(s, hostingState(s)).indexable) return [];
-
-  const db = await getTenantDb(s.id);
-  const [bp, ps, cs] = await Promise.all([
-    getBlueprint(s.id),
-    db
-      .select({ slug: products.slug, u: products.updatedAt })
-      .from(products)
-      .where(
-        and(
-          eq(products.storeId, s.id),
-          eq(products.status, "active"),
-          isNull(products.deletedAt)
-        )
-      ),
-    db
-      .select({ slug: categories.slug })
-      .from(categories)
-      .where(
-        and(eq(categories.storeId, s.id), eq(categories.isVisible, true))
-      ),
-  ]);
-
-  const u = (p: string) => publicStoreUrl(s, p);
-
-  return [
-    {
-      url: u(""),
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    ...cs.map((c) => ({
-      url: u(`/c/${encodeURIComponent(c.slug)}`),
-      changeFrequency: "weekly" as const,
-      priority: 0.8,
-    })),
-    ...ps.map((p) => ({
-      url: u(`/p/${encodeURIComponent(p.slug)}`),
-      lastModified: p.u,
-      changeFrequency: "daily" as const,
-      priority: 0.9,
-    })),
-    ...bp.pages
-      .filter((p) => p.enabled)
-      .map((p) => ({
-        url: u(`/pages/${p.slug}`),
-        changeFrequency: "monthly" as const,
-        priority: 0.5,
-      })),
-  ];
+  // المتجر: الصور وآخر تعديل وأولويات الصفحات (lib/seo-sitemap.ts)، ولمتجر ظاهر قابل للفهرسة فقط.
+  return sitemapForStore(sub);
 }

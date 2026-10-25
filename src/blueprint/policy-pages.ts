@@ -4,7 +4,10 @@
 // ما يطبقه التاجر حرفياً (المدة، المصاريف، المعاينة، طرق الدفع)، وأن تكون موجودة دائماً.
 // يكتب التاجر فوقها نسخته الخاصة من لوحة التحكم متى أراد، فتُقدَّم نسخته على المولَّدة.
 import type { StoreBlueprint } from "./schema";
-import { inspectionOffered } from "./facts";
+import { inspectionOffered, reportWindow, type StoreFact } from "./facts";
+import { answersMarkdown, storeAnswers } from "@/lib/seo-answers";
+
+export { reportWindow };
 
 type Page = StoreBlueprint["pages"][number];
 export type PolicySlug = Page["slug"];
@@ -17,13 +20,6 @@ const PAID_BY: Record<StoreBlueprint["returns"]["returnShippingPaidBy"], string>
   // قيمة قديمة: صار العيب سياسة مستقلة (defectLines)، فتبقى هنا لتغيير الرأي أو المقاس فقط.
   store_if_defect: "يتحمل العميل مصاريف شحن المرتجع عند تغيير الرأي أو المقاس.",
 };
-
-/** مهلة الإبلاغ بصيغة طبيعية: 48 ساعة، 3 أيام، 14 يوماً. */
-export function reportWindow(hours: number): string {
-  if (hours < 72) return `${hours} ساعة`;
-  const d = Math.round(hours / 24);
-  return d <= 10 ? `${d} أيام` : `${d} يوماً`;
-}
 
 /** قسم المنتج المعيب كما اختاره التاجر حرفياً؛ لا يُكتب شيء إن اختار «لا يوجد التزام». */
 function defectLines(bp: StoreBlueprint): string[] {
@@ -241,37 +237,43 @@ function aboutPage(bp: StoreBlueprint): Page {
   return { slug: "about", title: `عن ${bp.brand.name}`, body, enabled: true, showInFooter: true };
 }
 
-const BUILDERS: Partial<Record<PolicySlug, (bp: StoreBlueprint) => Page>> = {
+/** «اسألوا عن المتجر»: إجابات مباشرة من السياسات الفعلية (أول ما يقتبسه محرك البحث والمساعد الذكي). */
+function faqPage(bp: StoreBlueprint, facts?: StoreFact[]): Page {
+  return { slug: "faq", title: `اسألوا عن ${bp.brand.name}`, body: answersMarkdown(bp.brand.name, storeAnswers(bp, facts)), enabled: true, showInFooter: true };
+}
+
+const BUILDERS: Partial<Record<PolicySlug, (bp: StoreBlueprint, facts?: StoreFact[]) => Page>> = {
   shipping: shippingPage,
   returns: returnsPage,
   privacy: privacyPage,
   terms: termsPage,
   contact: contactPage,
   about: aboutPage,
+  faq: faqPage,
 };
 
 export const GENERATED_POLICY_SLUGS = Object.keys(BUILDERS) as PolicySlug[];
 
 /** نسخة مولَّدة من سياسات المتجر الفعلية. */
-export function generatePolicyPage(bp: StoreBlueprint, slug: PolicySlug): Page | null {
-  return BUILDERS[slug]?.(bp) ?? null;
+export function generatePolicyPage(bp: StoreBlueprint, slug: PolicySlug, facts?: StoreFact[]): Page | null {
+  return BUILDERS[slug]?.(bp, facts) ?? null;
 }
 
 /** صفحة التاجر إن كتبها (ومفعّلة)، وإلا النسخة المولّدة. صفحة عطّلها التاجر صراحة لا تُعرض. */
-export function resolvePolicyPage(bp: StoreBlueprint, slug: string): Page | null {
+export function resolvePolicyPage(bp: StoreBlueprint, slug: string, facts?: StoreFact[]): Page | null {
   const own = bp.pages.find((p) => p.slug === slug);
   if (own) {
     if (!own.enabled) return null;
     if (own.body.trim()) return own;
     // سجل بلا نص = النسخة المولّدة بإعدادات التاجر (الظهور في الفوتر).
-    const gen = generatePolicyPage(bp, own.slug);
+    const gen = generatePolicyPage(bp, own.slug, facts);
     return gen ? { ...gen, showInFooter: own.showInFooter } : null;
   }
-  return (GENERATED_POLICY_SLUGS as string[]).includes(slug) ? generatePolicyPage(bp, slug as PolicySlug) : null;
+  return (GENERATED_POLICY_SLUGS as string[]).includes(slug) ? generatePolicyPage(bp, slug as PolicySlug, facts) : null;
 }
 
 /** كل صفحات المتجر الظاهرة (نسخ التاجر + المولّدة لما لم يكتبه). */
-export function allPolicyPages(bp: StoreBlueprint): Page[] {
+export function allPolicyPages(bp: StoreBlueprint, facts?: StoreFact[]): Page[] {
   const slugs = new Set<string>([...bp.pages.map((p) => p.slug), ...GENERATED_POLICY_SLUGS]);
-  return [...slugs].map((s) => resolvePolicyPage(bp, s)).filter((p): p is Page => Boolean(p));
+  return [...slugs].map((s) => resolvePolicyPage(bp, s, facts)).filter((p): p is Page => Boolean(p));
 }
