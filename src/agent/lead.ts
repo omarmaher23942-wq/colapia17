@@ -1,26 +1,24 @@
 // lead.ts — بيانات العميل المحتمل التي يجمعها الوكيل في المحادثة، والتحقق منها بالكود لا بالنموذج (خالص ومختبَر).
-// القاعدة: النموذج يقترح، والكود يقرر. قيمة صالحة تُحفظ، وقيمة خاطئة لا تُحفظ وتُسجَّل «غير صالحة» ليصحّحها الوكيل بلطف،
-// وقيمة محفوظة لا تُمحى أبداً بقيمة فارغة أو خاطئة.
+// القاعدة: النموذج يقترح، والكود يتحقق من الصيغة. قيمة صالحة تُحفظ، وقيمة خاطئة لا تُحفظ وتُسجَّل «غير صالحة» ليصحّحها الوكيل
+// بلطف، وقيمة محفوظة لا تُمحى أبداً بقيمة فارغة أو خاطئة. V4: الوكيل لا ينشئ متجراً؛ يمرّر هذه البيانات تعبئةً مسبقة لصفحة الحجز.
 import { stripEmoji } from "@/lib/emoji";
 import { canonicalEmail, normalizeEgyptianPhone, normalizeEmail } from "@/lib/contact";
 import { normalizeDigits } from "@/lib/phone";
+import type { GoldenPrefill } from "@/golden/link";
 
-/** ترتيب جمع الحقول الثابت (الإنستجرام يُلتقط تلقائياً). */
-export const LEAD_FIELDS = ["niche", "storeName", "email", "whatsapp"] as const;
-export type LeadField = (typeof LEAD_FIELDS)[number];
-export type LeadKey = LeadField | "instagram";
+export type LeadKey = "niche" | "storeName" | "email" | "whatsapp" | "instagram" | "styleNotes";
 
 export type Lead = {
   niche?: string;
   storeName?: string;
   email?: string;
-  /** الصيغة القانونية للبريد (تُستخدم للمطابقة ومنع التكرار فقط). */
+  /** الصيغة القانونية للبريد (للمطابقة ومنع التكرار فقط). */
   emailCanonical?: string;
   whatsapp?: string;
   /** اسم حساب إنستجرام بلا @ وبحروف صغيرة. */
   instagram?: string;
-  /** روابط صور أرسلها التاجر في المحادثة (بعد إعادة استضافتها). */
-  assets?: string[];
+  /** ميوله في التصميم (ألوان، طابع، أمثلة يحبها) كما قالها. */
+  styleNotes?: string;
 };
 
 /** ما اقترحه النموذج في هذا الدور (غير موثوق). */
@@ -28,6 +26,13 @@ export type LeadInput = Partial<Record<LeadKey, unknown>>;
 
 /** قيم خاطئة أُرسلت ولم تُقبل (مختصرة) لتصحيحها مع العميل. */
 export type LeadInvalid = Partial<Record<LeadKey, string>>;
+
+/** الحقول بترتيب العرض في «حالة المحادثة». */
+export const LEAD_KEYS: readonly LeadKey[] = ["storeName", "niche", "instagram", "whatsapp", "email", "styleNotes"];
+
+/** الحد الأدنى قبل إصدار رابط الحجز: اسم المتجر والبريد (منه يدخل صاحب المتجر لوحته). الباقي تكمله صفحة الحجز. */
+export const GOLDEN_REQUIRED = ["storeName", "email"] as const;
+export type GoldenRequired = (typeof GOLDEN_REQUIRED)[number];
 
 const squeeze = (v: unknown): string => stripEmoji(typeof v === "string" ? v : "").replace(/\s+/g, " ").trim();
 
@@ -41,6 +46,12 @@ export function validateStoreName(raw: unknown): string | null {
 export function validateNiche(raw: unknown): string | null {
   const s = squeeze(raw);
   return s.length >= 3 && s.length <= 120 && /\p{L}/u.test(s) ? s : null;
+}
+
+/** ميول التصميم: من 3 إلى 300 حرف وفيها حرف. */
+export function validateStyleNotes(raw: unknown): string | null {
+  const s = squeeze(raw);
+  return s.length >= 3 && s.length <= 300 && /\p{L}/u.test(s) ? s : null;
 }
 
 export function validateEmail(raw: unknown): { email: string; canonical: string } | null {
@@ -71,8 +82,8 @@ const brief = (v: unknown) => squeeze(v).slice(0, 60);
 const digitsOf = (v: string) => normalizeDigits(v).replace(/\D/g, "");
 
 /**
- * يُسقط من اقتراح النموذج أي بريد أو رقم لا يظهر فعلاً في كلام العميل (يمنع اختلاق بيانات تواصل). الاسم والنشاط يُترك
- * فهمهما للنموذج لأنهما قد يُعاد صوغهما.
+ * يُسقط من اقتراح النموذج أي بريد أو رقم لا يظهر فعلاً في كلام العميل (يمنع اختلاق بيانات تواصل). الاسم والنشاط وميول التصميم
+ * يُترك فهمها للنموذج لأنها قد تُعاد صياغتها.
  */
 export function groundLeadInput(input: LeadInput | null | undefined, userTexts: string[]): LeadInput {
   const out: LeadInput = { ...(input ?? {}) };
@@ -101,20 +112,18 @@ export function mergeLead(
   const inc = incoming ?? {};
   const has = (v: unknown) => typeof v === "string" && v.trim() !== "";
 
-  if (has(inc.niche)) {
-    const v = validateNiche(inc.niche);
+  const text = (key: "niche" | "storeName" | "styleNotes", check: (raw: unknown) => string | null) => {
+    if (!has(inc[key])) return;
+    const v = check(inc[key]);
     if (v) {
-      lead.niche = v;
-      delete invalid.niche;
-    } else invalid.niche = brief(inc.niche);
-  }
-  if (has(inc.storeName)) {
-    const v = validateStoreName(inc.storeName);
-    if (v) {
-      lead.storeName = v;
-      delete invalid.storeName;
-    } else invalid.storeName = brief(inc.storeName);
-  }
+      lead[key] = v;
+      delete invalid[key];
+    } else invalid[key] = brief(inc[key]);
+  };
+  text("niche", validateNiche);
+  text("storeName", validateStoreName);
+  text("styleNotes", validateStyleNotes);
+
   if (has(inc.email)) {
     const v = validateEmail(inc.email);
     if (v) {
@@ -143,26 +152,29 @@ export function mergeLead(
   return { lead, invalid };
 }
 
-/** الحقول المجموعة والناقصة والخاطئة بالترتيب الثابت. */
-export function leadStatus(lead: Lead, invalid: LeadInvalid = {}): { collected: LeadField[]; missing: LeadField[]; invalid: LeadField[]; instagramKnown: boolean } {
-  const collected = LEAD_FIELDS.filter((f) => Boolean(lead[f]));
-  const missing = LEAD_FIELDS.filter((f) => !lead[f]);
-  return { collected, missing, invalid: LEAD_FIELDS.filter((f) => Boolean(invalid[f]) && !lead[f]), instagramKnown: Boolean(lead.instagram) };
+/** الحقول المجموعة والناقصة والخاطئة بترتيب العرض. */
+export function leadStatus(lead: Lead, invalid: LeadInvalid = {}): { collected: LeadKey[]; missing: LeadKey[]; invalid: LeadKey[] } {
+  return {
+    collected: LEAD_KEYS.filter((k) => Boolean(lead[k])),
+    missing: LEAD_KEYS.filter((k) => !lead[k]),
+    invalid: LEAD_KEYS.filter((k) => Boolean(invalid[k]) && !lead[k]),
+  };
 }
 
-export const isLeadComplete = (lead: Lead): boolean => LEAD_FIELDS.every((f) => Boolean(lead[f]));
-
-export type CreateDecision = "create" | "wait_complete" | "wait_confirm" | "exists";
-
-/** قرار الإنشاء: بالكود فقط. البيانات كاملة وصالحة + موافقة صريحة (إشارة النموذج أو ضغطة زر البدء). */
-export function decideCreate(input: { lead: Lead; confirmCreate: boolean; explicitStart: boolean; storeExists: boolean }): CreateDecision {
-  if (input.storeExists) return "exists";
-  if (!isLeadComplete(input.lead)) return "wait_complete";
-  return input.confirmCreate || input.explicitStart ? "create" : "wait_confirm";
+/** هل تكفي البيانات لإصدار رابط الحجز؟ والناقص من الحقول الإلزامية. */
+export function goldenGate(lead: Lead): { ok: boolean; missing: GoldenRequired[] } {
+  const missing = GOLDEN_REQUIRED.filter((k) => !lead[k]);
+  return { ok: missing.length === 0, missing };
 }
 
-/** نص الزر السريع الذي يعني «ابدؤوا» (حمولته نصه نفسه). */
-export const START_QUICK_REPLY = "ابدأوا تجهيز متجري";
-
-/** رسالة التأكيد النهائية من الكود حرفياً (لا يكتبها النموذج)، وبعدها يغلق الوكيل نفسه في المحادثة ويتولاها الفريق. */
-export const CREATE_ACK = "تمام، الفريق بدأ تجهيز متجركم الآن، وسيصلكم خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع. سنرسل لكم هنا رابط الإعداد وطريقة الدخول فور جاهزيته.";
+/** التعبئة المسبقة لصفحة الحجز: ما جُمع فقط، بلا حقول فارغة. */
+export function goldenPrefill(lead: Lead): GoldenPrefill {
+  const out: GoldenPrefill = {};
+  if (lead.storeName) out.storeName = lead.storeName;
+  if (lead.niche) out.niche = lead.niche;
+  if (lead.instagram) out.instagram = lead.instagram;
+  if (lead.whatsapp) out.whatsapp = lead.whatsapp;
+  if (lead.email) out.email = lead.email;
+  if (lead.styleNotes) out.styleNotes = lead.styleNotes;
+  return out;
+}
