@@ -3,7 +3,6 @@ import { activePrevious, nextPrevious, normalizeSubdomainInput, subdomainRedirec
 import { handoffMessage, HANDOFF_KINDS, isHandoffKind } from "@/agent/handoff-messages";
 import { parseCloserTurn } from "@/ai/agents/closer/turn";
 import { stateBlock } from "@/agent/state";
-import { CREATE_ACK } from "@/agent/lead";
 
 describe("تغيير رابط المتجر: الصيغة", () => {
   it("ينظف المدخل ويقبل لصق الرابط كاملاً", () => {
@@ -66,18 +65,15 @@ describe("رسائل التسليم الجاهزة", () => {
   });
 });
 
-describe("الوكيل V3", () => {
+describe("الوكيل V4", () => {
   it("يقرأ تقدير المحاور ويتسامح مع غيابه أو قيمته الغريبة", () => {
     expect(parseCloserTurn(JSON.stringify({ reply: "أهلاً", speaker: "moderator" }))?.speaker).toBe("moderator");
     expect(parseCloserTurn(JSON.stringify({ reply: "أهلاً" }))?.speaker).toBe("unknown");
     expect(parseCloserTurn(JSON.stringify({ reply: "أهلاً", speaker: 7 }))?.speaker).toBe("unknown");
   });
-  it("حالة المحادثة تطلب حضور صاحب القرار حين يكتب مشرف", () => {
-    const base = { replies: 2, channel: "instagram" as const, lead: {}, invalid: {}, mentions: { demo: false, golden: false }, storeExists: false, imagesReceived: 0, summary: "", goldenAvailable: true };
+  it("حالة المحادثة تذكر المشرف حين يكتب مشرف فقط", () => {
+    const base = { replies: 2, channel: "instagram" as const, lead: {}, invalid: {}, summary: "", offer: { golden: true, seatsLeft: 9, seatsTotal: 10 }, linkSentMinutesAgo: null, otherService: false, idleHours: null };
     expect(stateBlock({ ...base, speaker: "moderator" })).toContain("صاحب القرار");
     expect(stateBlock({ ...base, speaker: "unknown" })).not.toContain("مشرفاً");
-  });
-  it("رسالة التأكيد النهائية بوعد التسليم المعتمد", () => {
-    expect(CREATE_ACK).toContain("خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع");
   });
 });

@@ -1,4 +1,4 @@
-// config.ts — إعداد وكيل الرسائل والإنشاء الآلي (خالص، بلا خادم). يُضبط من /admin/flags ← «agent».
+// config.ts — إعداد وكيل الرسائل (خالص، بلا خادم). يُضبط من /admin/flags ← «agent».
 // مثال: { "setupDelayMinutes": 30, "setupDays": 14, "dailyStoreCap": 40, "handoffPauseHours": 3, "demoUrl": "" }
 
 export type AgentConfig = {
@@ -45,3 +45,6 @@ export function agentConfigFrom(raw: unknown): AgentConfig {
 
 /** رابط الديمو الفعلي. */
 export const demoUrlFor = (cfg: Pick<AgentConfig, "demoUrl">, rootDomain: string) => cfg.demoUrl || `https://demo.${rootDomain}`;
+
+/** موقع Qima: عمل حقيقي نفّذه الفريق، يعرضه الوكيل دليلاً لمن يتشكك أو يطلب أمثلة. */
+export const QIMA_URL = "https://qima-ten.vercel.app";

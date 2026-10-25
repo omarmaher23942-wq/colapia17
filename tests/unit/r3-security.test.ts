@@ -75,10 +75,15 @@ describe("إغلاق الوكيل بعد الموافقة", () => {
   it("«استئناف الكل» لا يوقظ محادثات agent_done", () => {
     expect(read("src/server/actions/launch.ts")).toMatch(/closedBy.*<> 'agent_done'/);
   });
-  it("الإغلاق لا يتوقف على نجاح إرسال رسالة التأكيد", () => {
+  it("الإغلاق لا يتوقف على نجاح إرسال رسالة الإغلاق", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
-    expect(r).not.toMatch(/if \(await sendIfStillActive\(channel, senderId, conv, CREATE_ACK[^)]*\)\) \{\s*await closeAfterAgreement/);
-    expect(r).toMatch(/await closeAfterAgreement\(channel, conv, r\.storeId, merged\.lead, r\.status === "created"/);
+    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*goldenDoneMessage[^\n]*\)\) \{\s*await closeAfterLink/);
+    expect(r).toMatch(/await closeAfterLink\(channel, conv, merged\.lead\)/);
+  });
+  it("مسار الخدمة الأخرى لا يصدر رابط حجز ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
+    const r = read("src/ai/agents/closer/runtime.ts");
+    expect(r).toMatch(/flag: OTHER_SERVICE_FLAG/);
+    expect(read("src/ai/agents/closer/review.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
   });
   it("تغيير المرحلة اليدوي لا يوقظ وكيلاً مغلقاً", () => {
     const c = read("src/server/actions/platform-conv.ts");

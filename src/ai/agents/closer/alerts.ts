@@ -1,11 +1,49 @@
 import "server-only";
-// alerts.ts — تنبيه المالك حين يتعذر الذكاء الاصطناعي على وكيل الرسائل فيصمت الوكيل (لا ردود جاهزة بقرار المالك). مرة واحدة
-// كل 30 دقيقة كحد أقصى حتى لا يُغرق بريده، وبسبب الفشل الحقيقي ورابط الفحص.
-import { clientEnv, getOwnerAlertEmails } from "@/lib/env";
+// alerts.ts — تنبيهات المالك من وكيل الرسائل: تعذر الذكاء الاصطناعي (الوكيل يصمت ولا ردود جاهزة بقرار المالك)، وكل خروج بلا رد،
+// وتحويل لموظف، وطلب «خدمة أخرى»، وإغلاق الوكيل بعد رابط الحجز. محدودة التكرار حتى لا تُغرق بريده، ونصوصها في agent/owner-mail.ts.
+import { clientEnv, env, getOwnerAlertEmails } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
 import { redis } from "@/lib/redis";
 import { runtimeTag } from "@/lib/meta-trace";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
+import { doneMail, handoffMail, otherServiceMail, type OwnerMail } from "@/agent/owner-mail";
+import type { Lead } from "@/agent/lead";
+
+// أصل المنصة من النطاق الرئيسي المضبوط (لا NEXT_PUBLIC_APP_URL الذي قد يشير لنشر قديم).
+const origin = () => (env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`);
+
+/** إشعار لوحة + بريد للمالك بنص جاهز ورابط المحادثة. `mailKey` يمنع تكرار البريد (إشعار اللوحة يُسجَّل دائماً). */
+async function notifyOwner(mail: OwnerMail, conversationId: string, opts: { mailKey?: string; mailTtlS?: number; extraButtons?: { title: string; url: string }[] } = {}): Promise<void> {
+  await notifyAdmin(mail.adminNote, { conversationId }).catch(() => {});
+  if (opts.mailKey) {
+    const first = await redis.set(opts.mailKey, 1, { nx: true, ex: opts.mailTtlS ?? 1800 }).catch(() => "OK");
+    if (!first) return;
+  }
+  const to = getOwnerAlertEmails();
+  if (!to.length) return;
+  await sendEmail({
+    to,
+    subject: mail.subject,
+    headline: mail.headline,
+    paragraphs: mail.paragraphs.filter(Boolean),
+    buttons: [{ title: "افتحوا المحادثة", url: `${origin()}/admin/conversations?id=${conversationId}` }, ...(opts.extraButtons ?? [])],
+  }).catch(() => {});
+}
+
+/** طلب «خدمة أخرى»: بريد إلى عناوين التنبيه (الافتراضي بريد المالك) وإشعار لوحة، مرة لكل محادثة كل 6 ساعات. */
+export async function alertOtherService(i: { conversationId: string; name?: string | null; channel: string; igUsername?: string | null; brief: string; lead?: Lead }): Promise<void> {
+  await notifyOwner(otherServiceMail(i), i.conversationId, { mailKey: `agent:other-mail:${i.conversationId}`, mailTtlS: 6 * 3600 });
+}
+
+/** العميل طلب موظفاً أو رأى الوكيل أن الموقف يحتاج إنساناً: مرة لكل محادثة كل 30 دقيقة. */
+export async function alertHandoff(i: { conversationId: string; name?: string | null; channel: string; reason: string; pauseHours: number }): Promise<void> {
+  await notifyOwner(handoffMail(i), i.conversationId, { mailKey: `agent:handoff-mail:${i.conversationId}` });
+}
+
+/** أُغلق الوكيل بعد رابط الحجز وتأكيد العميل فهمه للخطوات. */
+export async function alertAgentDone(i: { conversationId: string; name?: string | null; channel: string; lead: Lead }): Promise<void> {
+  await notifyOwner(doneMail(i), i.conversationId, { extraButtons: [{ title: "المدفوعات", url: `${origin()}/admin/payments` }] });
+}
 
 /**
  * كل رسالة لا يرد عليها الوكيل لأي سبب (محادثة موقوفة، وكيل مطفأ، حد الرسائل، فشل الإرسال إلى Meta) تُبلَّغ للمالك بسببها

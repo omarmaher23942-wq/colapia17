@@ -121,7 +121,10 @@ const ROOTS = [
   "src/lib/trial-countdown.ts",
   "src/lib/store-visibility.ts",
   "src/server/actions/platform.ts",
-  "src/agent/offers.ts",
+  "src/agent/golden-messages.ts",
+  "src/agent/other-service.ts",
+  "src/agent/owner-mail.ts",
+  "src/ai/agents/closer/prompt.ts",
   "src/lib/demo-store.ts",
   "scripts/demo",
 ];

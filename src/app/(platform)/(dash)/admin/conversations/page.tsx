@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
-import { Flame, MessagesSquare, Search, Bot, User, PackageCheck } from "lucide-react";
+import { Flame, MessagesSquare, Search, Bot, User, PackageCheck, Briefcase } from "lucide-react";
 import { db } from "@/db/client";
 import { conversations, merchants, messages, stores } from "@/db/schema";
 import { handoffColumns, handoffFromRow } from "@/agent/handoff-data";
 import { HANDOFF_KINDS, HANDOFF_TITLE, handoffMessage } from "@/agent/handoff-messages";
 import { pauseLabel, pauseState } from "@/agent/pause";
 import type { Lead } from "@/agent/lead";
+import { OTHER_SERVICE_FLAG, isOtherService } from "@/agent/other-service";
 import { ConversationView } from "@/components/platform/ConversationView";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -22,7 +23,10 @@ const STAGE_LABEL: Record<string, string> = {
   trial: "تجربة", payment: "دفع", activated: "مفعّل", frozen: "مجمّد", lost: "ضائع", human: "بشري",
 };
 
-const FILTERS = ["", "human", "handoff", "persuasion", "building", "link_sent", "trial", "lost"];
+// «other_service» ليست مرحلة: علامة في ذاكرة المحادثة يضعها الوكيل حين يطلب العميل خدمة غير المتجر.
+const FILTERS = ["", "other_service", "human", "handoff", "persuasion", "building", "link_sent", "trial", "lost"];
+const FILTER_LABEL: Record<string, string> = { other_service: "خدمة أخرى" };
+const flagFilter = (stage: string) => (stage === OTHER_SERVICE_FLAG ? sql`${conversations.memory}->>'flag' = ${OTHER_SERVICE_FLAG}` : undefined);
 
 const FIELD_ROWS: { key: keyof Lead; label: string }[] = [
   { key: "niche", label: "النشاط" },
@@ -30,14 +34,13 @@ const FIELD_ROWS: { key: keyof Lead; label: string }[] = [
   { key: "email", label: "البريد" },
   { key: "whatsapp", label: "واتساب" },
   { key: "instagram", label: "إنستجرام" },
+  { key: "styleNotes", label: "ميوله في التصميم" },
 ];
 
 /** ما جمعه الوكيل بالترتيب الثابت. */
 function collectedRows(memory: unknown, channel: string): { label: string; value: string | null }[] {
   const lead = ((memory as { lead?: Lead } | null)?.lead ?? {}) as Lead;
   const rows = FIELD_ROWS.map((f) => ({ label: f.label, value: typeof lead[f.key] === "string" ? (f.key === "instagram" ? `@${lead.instagram}` : (lead[f.key] as string)) : null }));
-  const assets = lead.assets?.length ?? 0;
-  if (assets) rows.push({ label: "صور أرسلها", value: String(assets) });
   return channel === "instagram" ? rows : rows.filter((r) => r.label !== "إنستجرام" || r.value);
 }
 
@@ -55,7 +58,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
     .select({ c: conversations, storeName: stores.name, storeStatus: stores.status })
     .from(conversations)
     .leftJoin(stores, eq(stores.id, conversations.storeId))
-    .where(stage ? eq(conversations.stage, stage as any) : undefined)
+    .where(stage ? (flagFilter(stage) ?? eq(conversations.stage, stage as any)) : undefined)
     .orderBy(desc(conversations.updatedAt))
     .limit(150);
 
@@ -70,7 +73,8 @@ export default async function ConversationsPage({ searchParams }: { searchParams
     db.select({
       total: sql<number>`count(*)`.mapWith(Number),
       hot: sql<number>`count(*) filter (where lead_score >= 70)`.mapWith(Number),
-      human: sql<number>`count(*) filter (where stage = 'human' and bot_paused)`.mapWith(Number),
+      human: sql<number>`count(*) filter (where stage = 'human' and bot_paused and coalesce(memory->>'flag', '') <> 'other_service')`.mapWith(Number),
+      other: sql<number>`count(*) filter (where memory->>'flag' = 'other_service')`.mapWith(Number),
     }).from(conversations),
     // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد.
     db
@@ -120,6 +124,10 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             <p className="text-[10px] text-amber-400 font-bold uppercase">ساخنة 🔥</p>
             <p className="text-lg font-black text-amber-300">{stats[0]?.hot}</p>
           </div>
+          <Link href={`/admin/conversations?stage=${OTHER_SERVICE_FLAG}`} className="bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-2 text-center hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60">
+            <p className="text-[10px] text-violet-300 font-bold">خدمة أخرى</p>
+            <p className="text-lg font-black text-violet-200">{stats[0]?.other ?? 0}</p>
+          </Link>
           <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-2 text-center">
             <p className="text-[10px] text-rose-400 font-bold uppercase">تدخل بشري</p>
             <p className="text-lg font-black text-rose-300">{stats[0]?.human}</p>
@@ -138,7 +146,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
               {FILTERS.map((s) => (
                 <Link key={s} href={`/admin/conversations?stage=${s}`} className={`shrink-0 rounded-lg border px-3 py-1.5 text-[11px] font-bold transition-colors ${stage === s ? "border-[#8fa8ff] bg-[#6f86ff]/20 text-white" : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>
-                  {s ? STAGE_LABEL[s] : "الكل"}
+                  {s ? FILTER_LABEL[s] ?? STAGE_LABEL[s] : "الكل"}
                 </Link>
               ))}
             </div>
@@ -158,6 +166,12 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                   <span className={`rounded-md px-1.5 py-0.5 ${c.stage === "human" ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300"}`}>
                     {STAGE_LABEL[c.stage] ?? c.stage}
                   </span>
+                  {isOtherService(c.memory) && (
+                    <span className="flex items-center gap-1 rounded-md bg-violet-500/20 px-1.5 py-0.5 text-violet-200">
+                      <Briefcase className="size-3" aria-hidden="true" />
+                      خدمة أخرى
+                    </span>
+                  )}
                   {storeName && <span className="truncate text-[#8fa8ff]">{storeName}</span>}
                   <span className="ms-auto flex items-center gap-0.5 text-amber-400 font-mono">
                     <Flame className="size-3" /> {c.leadScore}

@@ -1,5 +1,10 @@
-// turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, confirmCreate}.
+// turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, action, brief}.
 // التحليل **صارم**: لا رد صالح = يُرفض الناتج ويُجرَّب النموذج التالي. لا يُرسل أبداً نص خام فيه أقواس أو أسماء حقول.
+// الأدوات (V4) أفعال يطلبها النموذج في `action` ويقرر الكود تنفيذها بعد التحقق من شروطها الرقمية والبيانية:
+//  golden_link  = إصدار رابط صفحة الحجز وإرساله مع سطر العدّاد والخطوات
+//  other_service = تصنيف الطلب «خدمة أخرى»: إشعار المالك وإيقاف الوكيل بانتظار رده
+//  close_done   = إغلاق الوكيل بعد أن أكد العميل فهم الخطوات (بعد رابط الحجز)
+//  ignore       = رسالة آلية أو غير مقصودة لا تستحق رداً
 import { z } from "zod";
 import { stripEmoji } from "@/lib/emoji";
 
@@ -16,8 +21,11 @@ const optText = (max: number) => z.string().nullish().transform((s) => clean(s, 
 
 export type Speaker = "owner" | "moderator" | "unknown";
 
+export const TURN_ACTIONS = ["none", "golden_link", "other_service", "close_done", "ignore"] as const;
+export type TurnAction = (typeof TURN_ACTIONS)[number];
+
 export const closerTurnSchema = z.object({
-  reply: z.string().transform((s) => clean(s, 800)),
+  reply: z.string().nullish().transform((s) => clean(s, 800)),
   memory: z.string().nullish().transform((s) => clean(s, 900)),
   requestHuman: z.string().nullish().transform((s) => clean(s, 200) || null),
   lead: z
@@ -27,14 +35,16 @@ export const closerTurnSchema = z.object({
       email: optText(160),
       whatsapp: optText(40),
       instagram: optText(120),
+      styleNotes: optText(400),
     })
     .nullish()
     .transform((l) => l ?? {}),
-  confirmCreate: z.boolean().nullish().transform((v) => v === true),
+  /** الفعل المطلوب. قيمة غير معروفة = none (لا يُرفض الدور بسببها). */
+  action: z.unknown().transform((v): TurnAction => (typeof v === "string" && (TURN_ACTIONS as readonly string[]).includes(v) ? (v as TurnAction) : "none")),
+  /** ملخص قصير لطلب «الخدمة الأخرى» يصل المالك (ماذا يريد، لمن، أهم المتطلبات، الموعد إن ذُكر). */
+  brief: z.string().nullish().transform((s) => clean(s, 500)),
   /** تقدير النموذج لمن يكتب: صاحب القرار أو مشرف الصفحة. قيمة غير معروفة = unknown (لا يُرفض الدور بسببها). */
   speaker: z.unknown().transform((v): Speaker => (v === "owner" || v === "moderator" ? v : "unknown")),
-  /** حقل قديم (V2): كان يطلب إعادة إرسال رابط الإعداد آلياً. يُقبل ويُتجاهل؛ الرابط يرسله المالك يدوياً في V3. */
-  resendLink: z.boolean().nullish().transform((v) => v === true),
 });
 
 export type CloserTurn = z.infer<typeof closerTurnSchema>;
@@ -67,10 +77,10 @@ export function extractJsonObject(text: string): unknown {
 
 /** رد يسرّب بنية الـ JSON أو أسماء الحقول إلى العميل. */
 export function looksLikeLeak(reply: string): boolean {
-  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|confirmCreate|lead|speaker)\s*"\s*:/.test(reply) || /```/.test(reply);
+  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|action|lead|speaker|brief)\s*"\s*:/.test(reply) || /```/.test(reply);
 }
 
-/** تحليل صارم لدور الوكيل: null إن لم يكن JSON صالحاً بحقل reply نصي غير فارغ وغير مسرّب. */
+/** تحليل صارم لدور الوكيل: null إن لم يكن JSON صالحاً بحقل reply نصي غير فارغ وغير مسرّب (يُستثنى ignore فلا رد فيه). */
 export function parseCloserTurn(raw: string): CloserTurn | null {
   let obj: unknown;
   try {
@@ -81,6 +91,7 @@ export function parseCloserTurn(raw: string): CloserTurn | null {
   if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
   const p = closerTurnSchema.safeParse(obj);
   if (!p.success) return null;
+  if (p.data.action === "ignore") return p.data;
   if (!p.data.reply || looksLikeLeak(p.data.reply)) return null;
   return p.data;
 }
