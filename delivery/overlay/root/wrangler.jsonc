@@ -1,0 +1,16 @@
+// wrangler.jsonc — إعداد نشر مشروعك على Cloudflare Workers. لا مفاتيح هنا أبداً: الأسرار من لوحة Cloudflare
+// (Settings ← Variables and Secrets) أو `wrangler secret put`. الدليل: docs/SETUP.md.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "{{SLUG}}",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // esbuild كان يحقن دالة __name داخل الدوال فتنكسر السكربتات التي يكتبها React/Next نصاً داخل الصفحة
+  // (خطأ «__name is not defined» في المتصفح). لا تغيّروا هذه القيمة.
+  "keep_names": false,
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  // حاوية R2 لفيديو واجهة المتجر فقط (ملف MP4 واحد مضغوط). أنشئوها قبل أول نشر باسم: {{SLUG}}-media
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "{{SLUG}}-media" }]
+}

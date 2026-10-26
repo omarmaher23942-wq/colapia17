@@ -31,6 +31,8 @@ jobs:
         run: npx tsc --noEmit
       - name: ESLint
         run: npx next lint --quiet
+      - name: مشروع التسليم (توليد + فحص أنواع)
+        run: npm run delivery:check
       - name: الاختبارات
         run: npx vitest run
       - name: البناء
