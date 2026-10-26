@@ -17,7 +17,7 @@ export async function beginPreviewClock(storeId: string, opts: { timings?: Lifec
   const now = opts.now ?? new Date();
   const timings = opts.timings ?? (await lifecycleTimings());
   const plan = trialSchedule(now, timings);
-  const price = (await currentPricing()).build.price;
+  const price = (await currentPricing()).regularPrice;
 
   const [row] = await db
     .update(stores)

@@ -9,14 +9,12 @@ import { deliverStore } from "@/ai/lifecycle/deliver";
 import { recordEvent, transition } from "@/lifecycle/machine";
 import { schedule, type JobKind } from "@/lifecycle/scheduler";
 import { deliverToMerchant } from "@/lifecycle/messenger";
-import { currentPricing } from "@/server/pricing";
-import { hostingGraceDays, lifecycleTimings } from "@/lifecycle/timings";
-import { startingPrice } from "@/lib/platform-pricing";
+import { currentProjectQuote } from "@/server/pricing";
+import { lifecycleTimings } from "@/lifecycle/timings";
 import { purgeStore } from "@/server/store-purge";
 import { trialFacts } from "@/server/repos/trial-facts";
-import { billingUrl, paymentVars, plansLine, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
+import { billingUrl, paymentVars, renderTemplate, type TemplateKey } from "@/lifecycle/templates";
 import { POSTPONE_MS } from "@/lifecycle/config";
-import { hostingState } from "@/lib/hosting";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { setupHandlers } from "@/agent/setup-jobs";
 
@@ -52,22 +50,6 @@ async function postponeIfReviewing(s: Store, kind: JobKind): Promise<boolean> {
   return true;
 }
 
-/** تذكير قبل انتهاء سنة الاستضافة؛ يتخطى إن جُدِّد الاشتراك (تغيّر تاريخ الانتهاء) أو أوقف التاجر متجره. */
-async function hostingReminder(s: Store, days: number) {
-  const st = await hosting(s);
-  if (st.phase !== "renew_soon") return { skip: st.phase };
-  if (Math.abs(st.daysLeft - days) > 1) return { skip: "renewed_or_moved" };
-  const when = days === 1 ? "غداً" : `بعد ${days === 7 ? "أسبوع" : "شهر"}`;
-  const { text } = await renderTemplate("hosting.reminder", { store: s.name, when, expires: cairoDay(st.expiresAt), plans: await renewalPlans() });
-  return deliverToMerchant(s.id, {
-    key: `hosting.reminder_${days}d:${s.id}:${st.expiresAt.getTime()}`,
-    text,
-    purpose: "transactional",
-    buttons: [{ title: "التجديد الآن", url: billingUrl() }],
-    email: { subject: `اشتراك متجركم ${s.name} ينتهي ${when}`, always: days <= 7 },
-  });
-}
-
 async function sendTemplate(
   s: Store,
   key: TemplateKey,
@@ -83,16 +65,9 @@ async function sendTemplate(
   });
 }
 
-/** أرخص اشتراك شهري الآن (للرسائل: «الاستضافة تبدأ من … شهرياً»). */
-const storePrice = async (_s: Store) => startingPrice(await currentPricing()).toLocaleString("en-US");
-/** رسوم التجهيز الحالية (مرة واحدة مع أول دفعة). */
-const buildPrice = async () => (await currentPricing()).build.price.toLocaleString("en-US");
-/** الباقات الشهرية بأسعارها الحالية (التجديد = الباقة فقط): «الأساسية 199 ج شهرياً، …». */
-async function renewalPlans(): Promise<string> {
-  return plansLine(await currentPricing());
-}
-const hosting = async (s: Store) => hostingState(s, new Date(), await hostingGraceDays().catch(() => undefined));
-
+/** سعر التفعيل الآن (الدائرة الذهبية متى بقي مقعد وإلا العادي). */
+const buildPrice = async () => (await currentProjectQuote()).price.toLocaleString("en-US");
+const storePrice = buildPrice;
 const storeNumbers = (s: Store) => trialFacts(s);
 
 /** سطر ما حدث في المتجر خلال التجربة (يُذكر فقط ما حدث فعلاً). */
@@ -118,7 +93,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
     const report = await sendTemplate(s, "payment.invite", await paymentVars(s, activateUrl()), {
       purpose: "promotional",
-      subject: `افتحوا متجر ${s.name} لزبائنكم: الباقات تبدأ من ${await storePrice(s)} ج`,
+      subject: `افتحوا متجر ${s.name} لزبائنكم: التفعيل ${await storePrice()} ج`,
     });
     if (report.viaMeta || report.emailed) {
       await db.update(stores).set({ paymentInvitedAt: new Date(), updatedAt: new Date() }).where(eq(stores.id, s.id));
@@ -183,7 +158,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     await schedule(s.id, "trial.purge", purgeAt);
     await invalidateStoreCache(s).catch(() => {});
     await setStage(s.id, "frozen");
-    const price = await storePrice(s);
+    const price = await storePrice();
     const n = await storeNumbers(s);
     const { text } = await renderTemplate("trial.freeze", { store: s.name, facts_line: trialFactsLine(n), products: n.products, purge_day: cairoDay(purgeAt), price, build: await buildPrice() });
     await deliverToMerchant(s.id, {
@@ -191,7 +166,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
       text,
       purpose: "transactional",
       buttons: [{ title: "تفعيل المتجر", url: activateUrl() }],
-      email: { subject: `انتهت تجربة متجركم ${s.name} وهو محفوظ حتى ${cairoDay(purgeAt)}`, always: true },
+      email: { subject: `انتهت معاينة متجركم ${s.name} وهو محفوظ حتى ${cairoDay(purgeAt)}`, always: true },
     });
     return { frozen: true };
   },
@@ -199,9 +174,9 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   "trial.last_chance": async (s) => {
     if (s.status !== "frozen" || s.doomAt) return { skip: "not_applicable" };
     if (await hasPayment(s.id, ["under_review", "confirmed"])) return { skip: "payment_exists" };
-    const price = await storePrice(s);
+    const price = await storePrice();
     const when = s.purgeAt ? cairoDay(s.purgeAt) : "خلال ساعات";
-    const { text } = await renderTemplate("trial.last_chance", { store: s.name, when, price });
+    const { text } = await renderTemplate("trial.last_chance", { store: s.name, when, build: price });
     return deliverToMerchant(s.id, {
       key: `trial.last_chance:${s.id}`,
       text,
@@ -234,48 +209,13 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     return { deleted: true };
   },
 
-  // ── اشتراك الاستضافة (lib/hosting.ts): تذكيرات قبل الانتهاء، ثم السماح، ثم الإيقاف. لا حذف أبداً. ──
-  "hosting.reminder_30d": (s) => hostingReminder(s, 30),
-  "hosting.reminder_7d": (s) => hostingReminder(s, 7),
-  "hosting.reminder_1d": (s) => hostingReminder(s, 1),
-
-  "hosting.expired": async (s) => {
-    const st = await hosting(s);
-    if (st.phase !== "grace") return { skip: st.phase };
-    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.expired", actor: "timer" });
-    const { text } = await renderTemplate("hosting.expired", { store: s.name, pause_day: cairoDay(st.pauseAt), plans: await renewalPlans() });
-    return deliverToMerchant(s.id, {
-      key: `hosting.expired:${s.id}:${st.expiresAt.getTime()}`,
-      text,
-      purpose: "transactional",
-      buttons: [{ title: "التجديد الآن", url: billingUrl() }],
-      email: { subject: `انتهى اشتراك متجركم ${s.name}`, always: true },
-    });
-  },
-
-  "hosting.paused": async (s) => {
-    const st = await hosting(s);
-    if (st.phase !== "paused") return { skip: st.phase };
-    await invalidateStoreCache(s).catch(() => {});
-    await recordEvent({ storeId: s.id, storeRef: s.subdomain, type: "hosting.paused", actor: "timer" });
-    await notifyAdmin(`توقف متجر ${s.subdomain} لانتهاء الاستضافة وفترة السماح (بياناته محفوظة)`, { storeId: s.id });
-    const { text } = await renderTemplate("hosting.paused", { store: s.name, plans: await renewalPlans() });
-    return deliverToMerchant(s.id, {
-      key: `hosting.paused:${s.id}:${st.expiresAt.getTime()}`,
-      text,
-      purpose: "transactional",
-      buttons: [{ title: "التجديد وإعادة المتجر", url: billingUrl() }],
-      email: { subject: `متجركم ${s.name} متوقف مؤقتاً حتى التجديد`, always: true },
-    });
-  },
-
   "doom.reminder_12h": async (s) => {
     if (!s.doomAt || (s.status !== "trial" && s.status !== "frozen")) return { skip: "not_applicable" };
     if (await hasPayment(s.id, ["under_review"])) return { skip: "payment_under_review" };
     return sendTemplate(
       s,
       "doom.reminder_12h",
-      { store: s.name, price: await storePrice(s), activate_url: activateUrl() },
+      { store: s.name, build: await buildPrice(), activate_url: activateUrl() },
       { purpose: "transactional", subject: `تبقّت 12 ساعة على حذف متجر ${s.name}` }
     );
   },

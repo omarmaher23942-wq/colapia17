@@ -15,11 +15,12 @@ describe("متجر العرض V3", () => {
   it("الفحص الكامل دون اتصال: مخطط صالح، وكل صورة موجودة ومعتمدة، وكل ادعاء صادق", () => {
     const r = verifyDemo({ now: NOW });
     expect(r.errors).toEqual([]);
-    expect(r.stats.products).toBeGreaterThanOrEqual(10);
+    expect(r.stats.products).toBeGreaterThanOrEqual(24);
     expect(r.stats.soldOut).toBeGreaterThan(0);
     expect(r.stats.lowStock).toBeGreaterThan(0);
     expect(r.stats.reviews).toBeGreaterThan(20);
-    expect(r.stats.productsWithSizeGuide).toBe(r.stats.products);
+    // الحقائب والأوشحة والحلي بلا مقاس فلا دليل لها.
+    expect(r.stats.productsWithSizeGuide).toBeGreaterThanOrEqual(r.stats.products - 3);
   });
 
   it("حتمي: نفس النتائج في كل تشغيل", () => {
@@ -32,37 +33,49 @@ describe("متجر العرض V3", () => {
     expect(bp1).toEqual(bp2);
   });
 
-  it("نشاط واحد: أحذية فقط، وأقسام فرعية ناتجة عن دمج المنصة نفسه لأسماء التاجر الخام", () => {
+  it("نشاط واحد: أزياء نسائية، وستة أقسام بترتيب العرض ناتجة عن دمج المنصة نفسه", () => {
     const data = loadDemoProducts();
-    expect(data.every((p) => p.images.every((i) => i.startsWith("/demo/products/")))).toBe(true);
+    expect(data.length).toBeGreaterThanOrEqual(24);
+    expect(data.every((p) => p.images.every((i) => /^\/demo\/(fashion|products|editorial)\//.test(i)))).toBe(true);
     const cats = demoCategories(data);
-    expect(cats.map((c) => c.name)).toEqual(["سنيكرز", "كاجوال", "كعب عالٍ", "بوت", "صنادل"]);
-    // الأسماء الخام («حذاء سنيكرز»، «أحذية كاجوال»…) تُدمج في الجذر الأقصر كما يفعل اعتماد الاستيراد.
-    expect(new Set(data.map((p) => p.category)).size).toBeGreaterThan(cats.length);
+    expect(cats.map((c) => c.name)).toEqual(["فساتين", "عبايات", "بلوزات وجاكيتات", "بناطيل وتنانير", "أطقم", "إكسسوارات وأحذية"]);
     expect(planCategories(data.map((p) => ({ id: p.slug, category: p.category }))).categories).toHaveLength(cats.length);
     const cat = buildCatalog(data, NOW);
     expect(cat.rows.every((r) => r.categoryId && cat.categories.some((c) => c.id === r.categoryId))).toBe(true);
     expect(cat.rows.every((r) => r.attributes.some((a) => a.label === "الخامة"))).toBe(true);
+    // ما له صورة بديلة يحمل حقل art، وما سواه صور فوتوغرافية موثقة.
+    expect(data.filter((p) => p.art).length).toBeGreaterThan(0);
   });
 
-  it("التصميم من قالب الأحذية كاملاً وواجهة تُبنى من صور المنتجات", () => {
-    const bp = buildDemoBlueprint({ storeId: "s", email: "demo@colapia.com", categoryIds: fakeCategoryIds(), productCount: 10 });
+  it("تصميم «عاجي» بواجهة تحريرية وأقسام مخصصة من stores/demo", () => {
+    const bp = buildDemoBlueprint({ storeId: "s", email: "demo@colapia.com", categoryIds: fakeCategoryIds(), productCount: 29 });
     expect(blueprintSchema.safeParse(bp).success).toBe(true);
     expect(bp.design.theme).toBe(DEMO_THEME);
-    expect(bp.design.cardStyle).toBe("mercury");
-    expect(bp.theme.mode).toBe("dark");
+    expect(bp.theme.mode).toBe("light");
     const hero = bp.home[0]!;
+    expect(hero.type === "hero" && hero.variant).toBe("editorial");
     expect(hero.type === "hero" && hero.videoUrl).toBeFalsy();
-    expect(hero.type === "hero" && hero.images.length).toBe(4);
-    expect(hero.type === "hero" && hero.images.every((i) => i.url.startsWith("/demo/products/"))).toBe(true);
+    expect(hero.type === "hero" && hero.images.length).toBe(2);
+    const blocks = bp.home.flatMap((s) => (s.type === "store_block" ? [s.name] : []));
+    expect(blocks).toEqual(["category-mosaic", "shop-the-look", "lookbook", "fit-finder", "fabric-guide", "voices"]);
+    expect(bp.header.announcement?.enabled ?? false).toBe(false);
+    expect(bp.sizeGuide.charts.length).toBe(4);
     expect(bp.shipping.giftEnabled).toBe(true);
-    expect(bp.returns.allowCustomerCancel).toBe(false);
     // الدفع عند الاستلام وحده، وبلا أرقام هاتف أو تحويل مخترعة، ولا فهرسة.
     expect(bp.payments.cod.enabled && !bp.payments.vodafoneCash.enabled && !bp.payments.instapay.enabled).toBe(true);
     expect(bp.channels.whatsappNumber ?? bp.channels.phone).toBeUndefined();
     expect(bp.seo.noIndex).toBe(true);
     expect(bp.shipping.inspectionAllowed).toBe(true);
     expect(bp.returns.windowDays).toBe(14);
+  });
+
+  it("ملفات stores/demo متسقة مع بيانات الديمو (blueprint.json وseed.json مولَّدان)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const seed = JSON.parse(readFileSync("stores/demo/seed.json", "utf8")) as { products: unknown[]; categories: unknown[] };
+    expect(seed.products).toHaveLength(loadDemoProducts().length);
+    expect(seed.categories).toHaveLength(6);
+    const bp = JSON.parse(readFileSync("stores/demo/blueprint.json", "utf8"));
+    expect(blueprintSchema.safeParse(bp).success).toBe(true);
   });
 
   it("الأسئلة الشائعة تمر بفحص الحقائق، وتسقط إن تغيرت السياسة", () => {
@@ -76,9 +89,9 @@ describe("متجر العرض V3", () => {
     expect(asGrounded(items, changed).some((x) => x.q.includes("الاستبدال"))).toBe(false);
   });
 
-  it("إعدادات المتجر: نشط بباقة النمو واستضافة بعيدة، وعلامة العرض، ونشاط الأحذية", () => {
+  it("إعدادات المتجر: نشط بباقة النمو واستضافة بعيدة، وعلامة العرض، ونشاط الأزياء", () => {
     const s = demoStoreSettings(NOW);
-    expect(s).toMatchObject({ status: "active", plan: "growth", acceptingOrders: true, prefs: { demo: true }, onboarding: { nicheKind: "shoes", templateId: "shoes" } });
+    expect(s).toMatchObject({ status: "active", plan: "growth", acceptingOrders: true, prefs: { demo: true }, onboarding: { nicheKind: "fashion", templateId: "fashion" } });
     expect(s.hostingExpiresAt.getUTCFullYear()).toBe(2099);
   });
 

@@ -11,6 +11,9 @@ export const newOrderCode = () => `CLP-${readable()}`;
 /** مرجع طلب متجر في نموذج الوكالة (REQ-7K3M9)، يُذكر للعميل في البريد وواتساب. */
 export const newRequestCode = () => `REQ-${readable()}`;
 
+/** مرجع طلب تعديل بعد التسليم (EDT-7K3M9). */
+export const newEditCode = () => `EDT-${readable()}`;
+
 /** معرف زائر عشوائي للتحليلات (يُنشأ في المتصفح ويُخزن في localStorage) */
 export const newVisitorId = customAlphabet("0123456789abcdefghijklmnopqrstuvwxyz", 21);
 

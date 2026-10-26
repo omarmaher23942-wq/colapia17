@@ -1,28 +1,8 @@
-// hosting.ts — حالة اشتراك المتجر المدفوع على المنصة (باقة شهرية تُدفع لعدد أشهر يختاره التاجر، docs/V3-PLAN.md).
-// منطق خالص مختبَر يعتمد على stores.hosting_expires_at:
-//  - active: يعمل حتى تاريخ الانتهاء. renew_soon: أقل من RENEW_SOON_DAYS، فيظهر تذكير التجديد في اللوحة.
-//  - grace: انتهى الاشتراك، والمتجر ما زال يعمل graceDays يوماً (قابلة للضبط من إعداد «lifecycle»، افتراضي 3).
-//  - paused: بعد السماح يتوقف المتجر عن الظهور للزوار وتُقفل لوحته إلا الاشتراك، و**لا يُحذف شيء أبداً**؛ التجديد يعيده فوراً.
-// لا توجد استضافة «مدى الحياة»: الدائرة الذهبية تخفّض رسوم التجهيز فقط، والاستضافة شهرية كأي متجر.
-// المتجر غير المدفوع (تجربة/تجميد) خارج هذا الملف: له مراحله في lib/billing-stage.ts.
-
-/** مدة الاشتراك الافتراضية لدفعة قديمة بلا مدة مسجّلة. */
+// hosting.ts — متقاعد في V4/V5: لا اشتراك استضافة شهري ولا مهلة سماح ولا إيقاف بانتهاء اشتراك. المتجر الفعّال لا ينتهي.
+// يبقى النوع والدوال كواجهة توافق لمن يستدعيها، وتعيد دائماً «لا حالة» و«يخدم». معاينة الـ 24 ساعة (trial/frozen) لها
+// دورتها المستقلة في lifecycle/. لا تضف هنا منطق انتهاء.
 export const DEFAULT_PLAN_MONTHS = 12;
-/** مهلة السماح الافتراضية بعد الانتهاء (الأيام). تُضبط من إعداد «lifecycle» ← graceDays. */
-export const HOSTING_GRACE_DAYS = 3;
-export const RENEW_SOON_DAYS = 30;
-/** التجديد متاح قبل الانتهاء بهذه المدة (ودائماً في السماح والإيقاف). */
-export const RENEW_OPEN_DAYS = 60;
-
-const DAY = 864e5;
-
-export type HostingStore = {
-  status: string;
-  plan?: string | null;
-  planMonths?: number | null;
-  activatedAt: Date | null;
-  hostingExpiresAt: Date | null;
-};
+export const HOSTING_GRACE_DAYS = 0;
 
 export type HostingState =
   | { phase: "none" }
@@ -30,60 +10,15 @@ export type HostingState =
   | { phase: "grace"; expiresAt: Date; pauseAt: Date; daysLeft: number }
   | { phase: "paused"; expiresAt: Date };
 
-/** يضيف أشهراً تقويمية (UTC)، ويقف عند آخر يوم في الشهر إن لم يوجد اليوم نفسه (31 يناير + شهر = 28/29 فبراير). */
-export function addMonths(from: Date, months: number): Date {
-  const d = new Date(from.getTime());
-  const day = d.getUTCDate();
-  d.setUTCDate(1);
-  d.setUTCMonth(d.getUTCMonth() + Math.round(months));
-  const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
-  d.setUTCDate(Math.min(day, last));
-  return d;
+export function hostingState(..._args: unknown[]): HostingState {
+  return { phase: "none" };
 }
-
-/** نهاية الاستضافة: العمود، وإلا مدة الباقة من التفعيل (متجر فُعِّل قبل العمود). */
-export function hostingExpiry(store: Pick<HostingStore, "activatedAt" | "hostingExpiresAt"> & { planMonths?: number | null }): Date | null {
-  if (store.hostingExpiresAt) return store.hostingExpiresAt;
-  return store.activatedAt ? addMonths(store.activatedAt, store.planMonths || DEFAULT_PLAN_MONTHS) : null;
+export function hostingServes(_state?: HostingState): boolean {
+  return true;
 }
-
-/** تمديد بعدد أشهر من نهاية الاستضافة الحالية، أو من اليوم إن كانت انتهت (لا يدفع التاجر عن أيام توقف فيها متجره). */
-export function extendHosting(current: Date | null, months: number, now = new Date()): Date {
-  const from = current && current.getTime() > now.getTime() ? current : now;
-  return addMonths(from, months > 0 ? months : DEFAULT_PLAN_MONTHS);
-}
-
-/** يقرأ مهلة السماح من إعداد «lifecycle» (0–30 يوماً). */
-export function graceDaysFrom(v: unknown): number {
-  if (v === null || v === undefined || v === "") return HOSTING_GRACE_DAYS;
-  const n = Number(v);
-  return Number.isFinite(n) && n >= 0 && n <= 30 ? Math.round(n) : HOSTING_GRACE_DAYS;
-}
-
-export function hostingState(store: HostingStore, now = new Date(), graceDays: number = HOSTING_GRACE_DAYS): HostingState {
-  if (store.status !== "active") return { phase: "none" };
-  const expiresAt = hostingExpiry(store);
-  if (!expiresAt) return { phase: "none" };
-  const left = expiresAt.getTime() - now.getTime();
-  if (left > 0) {
-    const daysLeft = Math.ceil(left / DAY);
-    return { phase: daysLeft <= RENEW_SOON_DAYS ? "renew_soon" : "active", expiresAt, daysLeft, canRenew: daysLeft <= RENEW_OPEN_DAYS };
-  }
-  const pauseAt = new Date(expiresAt.getTime() + graceDays * DAY);
-  if (pauseAt.getTime() > now.getTime()) {
-    return { phase: "grace", expiresAt, pauseAt, daysLeft: Math.ceil((pauseAt.getTime() - now.getTime()) / DAY) };
-  }
-  return { phase: "paused", expiresAt };
-}
-
-/** هل يُعرض المتجر للزوار ويستقبل طلبات على المنصة؟ (حالة الاستضافة فقط؛ حالات التجربة لها بوابتها.) */
-export function hostingServes(state: HostingState): boolean {
-  return state.phase !== "paused";
-}
-
-/** هل يقبل الدفع الآن تجديداً لهذا المتجر؟ */
-export function canRenewNow(state: HostingState): boolean {
-  if (state.phase === "grace" || state.phase === "paused") return true;
-  if (state.phase === "active" || state.phase === "renew_soon") return state.canRenew;
+export function canRenewNow(_state?: HostingState): boolean {
   return false;
+}
+export function graceDaysFrom(_v?: unknown): number {
+  return 0;
 }

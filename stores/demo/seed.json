@@ -1,0 +1,697 @@
+{
+  "categories": [
+    {
+      "name": "فساتين"
+    },
+    {
+      "name": "عبايات"
+    },
+    {
+      "name": "بلوزات وجاكيتات"
+    },
+    {
+      "name": "بناطيل وتنانير"
+    },
+    {
+      "name": "أطقم"
+    },
+    {
+      "name": "إكسسوارات وأحذية"
+    }
+  ],
+  "products": [
+    {
+      "name": "فستان ساتان ميدي بياقة V",
+      "price": 1450,
+      "compareAt": 1850,
+      "stock": 36,
+      "category": "فساتين",
+      "description": "ساتان ناعم بانسدال هادئ وحزام للخصر، يصلح للمناسبات والسهرات.",
+      "images": [
+        "/demo/fashion/satin-midi-dress-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "زيتي",
+          "أسود",
+          "عنابي"
+        ]
+      }
+    },
+    {
+      "name": "فستان سهرة مخمل بأكمام طويلة",
+      "price": 2350,
+      "stock": 14,
+      "category": "فساتين",
+      "description": "مخمل مرن بقصّة قريبة من الجسم وفتحة جانبية بسيطة.",
+      "images": [
+        "/demo/fashion/velvet-evening-dress-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "عنابي",
+          "أسود",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "فستان كتان بحزام",
+      "price": 1150,
+      "stock": 30,
+      "category": "فساتين",
+      "description": "كتان خفيف بجيبين جانبيين وحزام، للصيف واليوم الطويل.",
+      "images": [
+        "/demo/fashion/linen-belted-dress-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "بيج",
+          "أبيض",
+          "زيتي"
+        ]
+      }
+    },
+    {
+      "name": "فستان ماكسي شيفون بطبعة زهور",
+      "price": 1650,
+      "compareAt": 1990,
+      "stock": 18,
+      "category": "فساتين",
+      "description": "شيفون بطبقتين وكشكشة عند الذيل وأكمام واسعة بأستك.",
+      "images": [
+        "/demo/fashion/chiffon-floral-maxi-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "وردي بودرة",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "فستان قميص بخصر مرن",
+      "price": 1250,
+      "stock": 4,
+      "category": "فساتين",
+      "description": "قصّة قميص بأزرار كاملة وياقة كلاسيكية، يُلبس مفتوحاً أو مغلقاً.",
+      "images": [
+        "/demo/fashion/belted-shirt-dress-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "جمل",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "عباية كريب سوداء بأكمام واسعة",
+      "price": 1350,
+      "stock": 40,
+      "category": "عبايات",
+      "description": "كريب منسدل بقصّة مستقيمة وأكمام واسعة وجيوب جانبية.",
+      "images": [
+        "/demo/fashion/black-crepe-abaya-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أسود",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "عباية مفتوحة كتان",
+      "price": 1550,
+      "stock": 22,
+      "category": "عبايات",
+      "description": "كتان خفيف بقصّة مفتوحة تُلبس فوق أي إطلالة.",
+      "images": [
+        "/demo/fashion/linen-open-abaya-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "بيج",
+          "رمادي"
+        ]
+      }
+    },
+    {
+      "name": "عباية بتطريز عند الأكمام",
+      "price": 2450,
+      "compareAt": 2900,
+      "stock": 9,
+      "category": "عبايات",
+      "description": "كريب فاخر بتطريز دقيق على الأكمام والياقة.",
+      "images": [
+        "/demo/fashion/embroidered-sleeve-abaya-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أسود",
+          "عنابي"
+        ]
+      }
+    },
+    {
+      "name": "إسدال صلاة قطن بقطعتين",
+      "price": 650,
+      "stock": 0,
+      "category": "عبايات",
+      "description": "قطن ناعم بقطعتين: غطاء رأس وتنورة بأستك واسع.",
+      "images": [
+        "/demo/fashion/cotton-prayer-set-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أبيض",
+          "وردي بودرة",
+          "رمادي"
+        ]
+      }
+    },
+    {
+      "name": "بلوزة ساتان بأكمام منفوخة",
+      "price": 590,
+      "stock": 48,
+      "category": "بلوزات وجاكيتات",
+      "description": "ساتان لامع بأكمام منفوخة وأزرار صغيرة عند الكُمّ.",
+      "images": [
+        "/demo/fashion/puff-sleeve-satin-blouse-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "كريمي",
+          "وردي بودرة",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "قميص كتان أوفر سايز",
+      "price": 650,
+      "stock": 40,
+      "category": "بلوزات وجاكيتات",
+      "description": "كتان خفيف بقصّة واسعة وجيب صدر، يُلبس مدسوساً أو سائباً.",
+      "images": [
+        "/demo/fashion/oversize-linen-shirt-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أبيض",
+          "بيج",
+          "سماوي"
+        ]
+      }
+    },
+    {
+      "name": "توب محبوك بقصّة ضيقة",
+      "price": 390,
+      "stock": 60,
+      "category": "بلوزات وجاكيتات",
+      "description": "حياكة مضلّعة مرنة بياقة مستديرة، أساس لأي إطلالة.",
+      "images": [
+        "/demo/fashion/ribbed-knit-top-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أسود",
+          "أبيض",
+          "جمل"
+        ]
+      }
+    },
+    {
+      "name": "كارديجان صوف بأزرار",
+      "price": 980,
+      "compareAt": 1200,
+      "stock": 25,
+      "category": "بلوزات وجاكيتات",
+      "description": "صوف مخلوط بسماكة معتدلة وجيبين أماميين وأزرار كاملة.",
+      "images": [
+        "/demo/fashion/button-wool-cardigan-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "رمادي",
+          "جمل",
+          "عنابي"
+        ]
+      }
+    },
+    {
+      "name": "ترنش كوت بيج بحزام",
+      "price": 2250,
+      "stock": 12,
+      "category": "بلوزات وجاكيتات",
+      "description": "جابردين مقاوم لرذاذ المطر بصفين أزرار وحزام للخصر.",
+      "images": [
+        "/demo/editorial/lookbook-2.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "بيج",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "معطف صوف طويل",
+      "price": 2850,
+      "stock": 8,
+      "category": "بلوزات وجاكيتات",
+      "description": "صوف سميك بقصّة طويلة وأكتاف مريحة وجيوب عميقة.",
+      "images": [
+        "/demo/editorial/lookbook-3.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "جمل",
+          "رمادي"
+        ]
+      }
+    },
+    {
+      "name": "بنطلون قماش واسع بخصر عالٍ",
+      "price": 790,
+      "stock": 54,
+      "category": "بناطيل وتنانير",
+      "description": "قماش منسدل بقصّة واسعة وطيّة أمامية وجيوب جانبية.",
+      "images": [
+        "/demo/fashion/wide-leg-trousers-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أسود",
+          "بيج",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "جينز مستقيم بخصر عالٍ",
+      "price": 850,
+      "stock": 45,
+      "category": "بناطيل وتنانير",
+      "description": "دنيم قطني بقصّة مستقيمة وخصر عالٍ وغسلة متوسطة.",
+      "images": [
+        "/demo/fashion/high-waist-straight-jeans-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "أزرق جينز",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "تنورة بليسيه ميدي",
+      "price": 720,
+      "stock": 33,
+      "category": "بناطيل وتنانير",
+      "description": "ثنيات دقيقة ثابتة بخصر مرن، حركة خفيفة مع كل خطوة.",
+      "images": [
+        "/demo/fashion/pleated-midi-skirt-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "زيتي",
+          "وردي بودرة",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "بنطلون كتان بخصر مرن",
+      "price": 690,
+      "compareAt": 890,
+      "stock": 3,
+      "category": "بناطيل وتنانير",
+      "description": "كتان خفيف بخيط ربط وجيبين، مريح للصيف.",
+      "images": [
+        "/demo/fashion/linen-drawstring-trousers-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "بيج",
+          "أبيض"
+        ]
+      }
+    },
+    {
+      "name": "طقم بليزر وبنطلون",
+      "price": 2150,
+      "stock": 16,
+      "category": "أطقم",
+      "description": "بليزر بقصّة مستقيمة وبنطلون مطابق، يُلبسان معاً أو منفصلين.",
+      "images": [
+        "/demo/editorial/hero-side.webp"
+      ],
+      "featured": true,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "جمل",
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "طقم كاجوال بقميص وبنطلون",
+      "price": 1350,
+      "stock": 20,
+      "category": "أطقم",
+      "description": "قميص بأكمام قصيرة وجيوب أمامية وبنطلون مطابق بخصر مرن.",
+      "images": [
+        "/demo/editorial/lookbook-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "خاكي",
+          "بيج"
+        ]
+      }
+    },
+    {
+      "name": "طقم محبوك: كارديجان وتنورة",
+      "price": 1450,
+      "stock": 14,
+      "category": "أطقم",
+      "description": "حياكة ناعمة: كارديجان قصير وتنورة ميدي بخصر مرن.",
+      "images": [
+        "/demo/fashion/knit-cardigan-skirt-set-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "رمادي",
+          "عنابي"
+        ]
+      }
+    },
+    {
+      "name": "طقم منزلي قطن ناعم",
+      "price": 1100,
+      "stock": 26,
+      "category": "أطقم",
+      "description": "قطن مبطّن خفيف: توب بأكمام طويلة وبنطلون بخصر مرن.",
+      "images": [
+        "/demo/fashion/soft-cotton-lounge-set-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "اللون": [
+          "وردي بودرة",
+          "رمادي"
+        ]
+      }
+    },
+    {
+      "name": "وشاح حرير بطبعة هندسية",
+      "price": 320,
+      "stock": 70,
+      "category": "إكسسوارات وأحذية",
+      "description": "وشاح مربع 90×90 سم بحواف مخيطة يدوياً الشكل.",
+      "images": [
+        "/demo/fashion/geometric-silk-scarf-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "اللون": [
+          "عنابي",
+          "جمل",
+          "كحلي"
+        ]
+      }
+    },
+    {
+      "name": "حقيبة يد جلد بمقبضين",
+      "price": 1450,
+      "compareAt": 1750,
+      "stock": 11,
+      "category": "إكسسوارات وأحذية",
+      "description": "حقيبة بتصميم مهيكل ومقبضين وحزام كتف قابل للفك.",
+      "images": [
+        "/demo/fashion/green-leather-tote-1.webp"
+      ],
+      "featured": true,
+      "options": {
+        "اللون": [
+          "أخضر",
+          "وردي بودرة"
+        ]
+      }
+    },
+    {
+      "name": "حلق دائري بلون السلحفاة",
+      "price": 220,
+      "stock": 50,
+      "category": "إكسسوارات وأحذية",
+      "description": "راتنج خفيف بحلقة كبيرة وإبرة مطلية بالذهب.",
+      "images": [
+        "/demo/fashion/tortoise-hoop-earrings-1.webp"
+      ],
+      "featured": false,
+      "options": {
+        "اللون": [
+          "بني"
+        ]
+      }
+    },
+    {
+      "name": "حذاء كعب عالٍ جلد أسود",
+      "price": 1650,
+      "stock": 24,
+      "category": "إكسسوارات وأحذية",
+      "description": "جلد أسود بمقدمة مدببة وكعب رفيع بارتفاع 9 سم.",
+      "images": [
+        "/demo/products/black-leather-stiletto-pumps-1.webp",
+        "/demo/products/black-leather-stiletto-pumps-2.webp",
+        "/demo/products/black-leather-stiletto-pumps-3.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ],
+        "اللون": [
+          "أسود"
+        ]
+      }
+    },
+    {
+      "name": "حذاء سلينج باك كونياك",
+      "price": 1450,
+      "stock": 5,
+      "category": "إكسسوارات وأحذية",
+      "description": "جلد كونياك بكعب عريض مريح وحزام خلفي.",
+      "images": [
+        "/demo/products/cognac-leather-slingback-heels-1.webp",
+        "/demo/products/cognac-leather-slingback-heels-3.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ],
+        "اللون": [
+          "كونياك"
+        ]
+      }
+    },
+    {
+      "name": "صندل جلد بحزام كاحل",
+      "price": 1150,
+      "compareAt": 1390,
+      "stock": 27,
+      "category": "إكسسوارات وأحذية",
+      "description": "حزامان رفيعان وحزام كاحل بإبزيم ونعل مبطن.",
+      "images": [
+        "/demo/products/black-leather-strap-sandals-1.webp",
+        "/demo/products/black-leather-strap-sandals-2.webp"
+      ],
+      "featured": false,
+      "options": {
+        "المقاس": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ],
+        "اللون": [
+          "أسود"
+        ]
+      }
+    }
+  ]
+}

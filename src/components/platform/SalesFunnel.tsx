@@ -7,7 +7,7 @@ import { FUNNEL_RANGES, STEP_ADVICE, funnelSteps, weakestStep, type FunnelCounts
 
 const n = (v: number) => v.toLocaleString("en-US");
 
-export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; range: FunnelRange; golden: { code: string; used: number; seats: number } }) {
+export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; range: FunnelRange; golden: { used: number; seats: number } }) {
   const main = funnelSteps(counts);
   const weak = weakestStep(main);
   const setupRate = counts.created > 0 ? Math.round((counts.setupDone / counts.created) * 100) : null;
@@ -36,7 +36,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
         <Stat label="إكمال الإعداد" value={setupRate === null ? "—" : `${setupRate}%`} note={counts.created ? `${n(counts.setupDone)} من ${n(counts.created)} متجراً أنشأه الوكيل في الفترة` : "لم يُنشأ متجر في الفترة"} />
         <Link href="/admin/pricing" className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4 transition hover:bg-amber-400/10">
           <p className="flex items-center gap-1.5 text-xs font-bold text-amber-200">
-            <Crown className="size-3.5" aria-hidden="true" /> الدائرة الذهبية ({golden.code})
+            <Crown className="size-3.5" aria-hidden="true" /> الدائرة الذهبية
           </p>
           <p className="mt-1 font-mono text-2xl font-black text-white">
             {n(golden.used)}/{n(golden.seats)}

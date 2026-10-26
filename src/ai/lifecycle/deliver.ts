@@ -40,7 +40,7 @@ export async function deliverStore(
   const now = new Date();
   void opts;
   // السعر يُثبَّت لحظة التسليم (سلّم الأسعار): هذا ما يدفعه العميل لاحقاً.
-  const price = (await currentPricing()).build.price;
+  const price = (await currentPricing()).regularPrice;
 
   const r = await transition({
     storeId,
