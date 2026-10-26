@@ -14,6 +14,8 @@ import { RecentlyViewed } from "@/components/storefront/RecentlyViewed";
 import { ProductReviews } from "@/components/storefront/product/ProductReviews";
 import { ProductQuestions } from "@/components/storefront/product/ProductQuestions";
 import { ProductViewTracker } from "@/components/storefront/product/ProductViewTracker";
+import { ProductInfoPanel } from "@/components/storefront/product/ProductInfoPanel";
+import { ReadMore } from "@/components/storefront/product/ReadMore";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
 import { ProductCompare, type CompareItem } from "@/components/storefront/product/ProductCompare";
 import { productSpecs } from "@/components/storefront/product/specs";
@@ -148,16 +150,22 @@ export default async function ProductPage({ params }: P) {
             </div>
           )}
 
+          {p.orderCount >= 5 ? <p className="mt-2 text-xs font-bold opacity-75">طُلب ضمن {arCount(p.orderCount, NOUN.order)} حتى الآن</p> : null}
+
           {p.shortDescription && (
             <p className="mt-3 text-sm leading-relaxed opacity-80">{p.shortDescription}</p>
           )}
 
           <ProductPurchase product={p} zones={zones} />
 
+          <ProductInfoPanel />
+
           {p.description && (
             <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
               <h2 className="mb-3 font-heading text-lg font-black">الوصف</h2>
-              <Markdown text={p.description} className="prose-ar text-sm opacity-85" />
+              <ReadMore>
+                <Markdown text={p.description} className="prose-ar text-sm opacity-85" />
+              </ReadMore>
             </div>
           )}
 
