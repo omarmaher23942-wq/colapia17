@@ -6,7 +6,8 @@ import { db } from "@/db/client";
 import { scheduledJobs, stores, platformPayments, sessions } from "@/db/schema";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
 import { checkPendingDomains } from "@/server/domains";
-import { sendMonthlyReports } from "@/server/monthly-report";
+import { alertOverdueRequests } from "@/agency/sla";
+import { purgeExpiredBookingDrafts } from "@/golden/purge";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -39,9 +40,13 @@ export async function GET(req: Request) {
     return 0;
   });
 
-  // التقرير الشهري لأصحاب المتاجر المدفوعة (الأيام 1–3 من الشهر، مرة لكل متجر).
-  const monthlyReports = await sendMonthlyReports().catch((e) => {
-    console.error("[ops/tick] monthly reports failed", e);
+  // مشاريع تجاوزت مهلة حالتها داخلياً (بريد للمسؤول والمديرين مرة لكل حالة)، ومسودات الحجز المنتهية.
+  const overdueRequests = await alertOverdueRequests().catch((e: unknown) => {
+    console.error("[ops/tick] overdue alerts failed", e);
+    return 0;
+  });
+  const expiredDrafts = await purgeExpiredBookingDrafts().catch((e: unknown) => {
+    console.error("[ops/tick] draft purge failed", e);
     return 0;
   });
 
@@ -76,7 +81,8 @@ export async function GET(req: Request) {
     overdueReview: overdueReview?.c ?? 0,
     stalePayments: stalePayments?.c ?? 0,
     domainsActivated,
-    monthlyReports,
+    overdueRequests,
+    expiredDrafts,
     expiredSessions,
   });
 }

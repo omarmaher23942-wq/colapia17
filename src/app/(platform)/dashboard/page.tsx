@@ -11,6 +11,7 @@ import { NO_STORE_HREF } from "@/lib/edition";
 import { GoalCard } from "@/components/dashboard/overview/GoalCard";
 import { ShareStoreCard } from "@/components/dashboard/overview/ShareStoreCard";
 import { growthData } from "@/server/repos/growth";
+import { ClientHome } from "@/components/client/ClientHome";
 import { TrialCard } from "@/components/dashboard/TrialCard";
 import { KpiCard } from "@/components/dashboard/KpiCard";
 import { AttentionStrip } from "@/components/dashboard/overview/AttentionStrip";
@@ -48,6 +49,7 @@ type SearchParams = { onboarding?: string; reason?: string; range?: string };
 export default async function DashboardHomePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const session = await getMerchantSession();
   if (!session) return null;
+  if (!session.store) return <ClientHome merchantId={session.merchantId} />;
   await requireStoreArea("analytics");
   const params = await searchParams;
 

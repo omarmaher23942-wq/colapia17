@@ -32,11 +32,10 @@ async function merchantConversation(storeId: string): Promise<Conv | undefined> 
   return conv;
 }
 
-export async function notifyMerchant(
-  storeId: string,
-  rawText: string,
-  opts: { buttons?: LinkButton[]; card?: Card; tag?: Tag; promotional?: boolean } = {}
-): Promise<boolean> {
+type SendOpts = { buttons?: LinkButton[]; card?: Card; tag?: Tag; promotional?: boolean };
+
+/** يرسل لمحادثة ميتا معروفة (ويب فقط يُحفظ في السجل). false إن منعت قواعد النافذة أو فشل الإرسال: البريد هو القناة المضمونة. */
+export async function notifyConversation(conv: Conv, rawText: string, opts: SendOpts = {}, storeId: string | null = null): Promise<boolean> {
   const text = clean(rawText);
   const buttons = cleanButtons(opts.buttons);
   const card: Card | undefined = opts.card
@@ -48,9 +47,6 @@ export async function notifyMerchant(
       }
     : undefined;
   if (!text && !card) return false;
-
-  const conv = await merchantConversation(storeId);
-  if (!conv) return false;
 
   // إذا كانت المحادثة مسجلة عبر الويب فقط (ليست حساب فيسبوك حقيقي)
   if (conv.externalId.startsWith("web_")) {
@@ -72,7 +68,7 @@ export async function notifyMerchant(
     else if (buttons?.length) await meta.buttons(conv.channel, conv.externalId, text, buttons, tag);
     else await meta.text(conv.channel, conv.externalId, text, tag);
   } catch (e) {
-    await logEvent(storeId, "error", "فشل إرسال رسالة للتاجر عبر ميتا (البريد يغطيها)", {
+    await logEvent(storeId, "error", "فشل إرسال رسالة عبر ميتا (البريد يغطيها)", {
       error: String(e).slice(0, 500),
       channel: conv.channel,
       tag: tag ?? null,
@@ -87,6 +83,12 @@ export async function notifyMerchant(
     console.error("[notify] delivered but logging failed", e);
   }
   return true;
+}
+
+export async function notifyMerchant(storeId: string, rawText: string, opts: SendOpts = {}): Promise<boolean> {
+  const conv = await merchantConversation(storeId);
+  if (!conv) return false;
+  return notifyConversation(conv, rawText, opts, storeId);
 }
 
 export async function notifyAdmin(rawText: string, data: Record<string, unknown> = {}) {

@@ -127,6 +127,13 @@
       "when": 1792433686242,
       "tag": "0017_v3_payment_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792885465414,
+      "tag": "0018_v4_delivery",
+      "breakpoints": true
     }
   ]
 }

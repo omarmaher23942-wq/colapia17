@@ -1,12 +1,12 @@
 "use client";
 
-// إلغاء تفعيل قُبل فورياً: يعيد المتجر للتجميد ويُبلغ التاجر بالسبب.
+// إلغاء تأكيد قُبل: يعيد الحجز بانتظار الدفع (ما دام لم يُسند) أو التعديل بانتظار الدفع، ويُبلغ العميل بالسبب.
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Loader2, Undo2 } from "lucide-react";
 import { revokePaymentAction } from "@/server/actions/platform-payments";
 
-const REASONS = ["التحويل لم يصل إلى حساب المنصة", "المبلغ المحوّل أقل من سعر التفعيل", "الإيصال لا يخص هذا المتجر"];
+const REASONS = ["التحويل لم يصل إلى حساب Colapia", "المبلغ المحوّل أقل من السعر المطلوب", "الإيصال لا يخص هذا الطلب"];
 
 export function RevokePayment({ id }: { id: string }) {
   const [open, setOpen] = useState(false);
@@ -20,7 +20,7 @@ export function RevokePayment({ id }: { id: string }) {
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1.5 rounded-xl border border-rose-500/30 px-3 py-2 text-xs font-bold text-rose-300 transition hover:bg-rose-500/10"
       >
-        <Undo2 className="size-3.5" /> إلغاء التفعيل
+        <Undo2 className="size-3.5" /> إلغاء التأكيد
       </button>
     );
 
@@ -43,7 +43,7 @@ export function RevokePayment({ id }: { id: string }) {
             start(async () => {
               try {
                 await revokePaymentAction(id, note);
-                toast.success("أُلغي التفعيل وأُبلغ التاجر");
+                toast.success("أُلغي التأكيد وأُبلغ العميل");
                 setOpen(false);
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "تعذّر الإلغاء");

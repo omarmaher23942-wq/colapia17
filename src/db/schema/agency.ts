@@ -4,7 +4,7 @@
 // جداول تحكم خاصة بالمنصة (لا تدخل مشروع التاجر المستقل: لا تُصدَّر من template/src/db/schema). الحالات والمراحل
 // نصوص بقيود CHECK لا pgEnum، فإضافة مرحلة لاحقاً لا تحتاج ALTER TYPE. الروابط السرية (التعديل والمتابعة) تُخزَّن
 // تجزئتها فقط.
-import { pgTable, uuid, text, timestamp, jsonb, integer, index, uniqueIndex, check } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, integer, boolean, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { merchants, platformUsers } from "./platform";
 import { stores } from "./stores";
@@ -13,8 +13,12 @@ import { conversations } from "./ai";
 import {
   PRODUCTION_STATES,
   type ProductionStateValue,
+  EDIT_STATUSES,
   REQUEST_ASSET_KINDS,
   REQUEST_EVENT_TYPES,
+  REQUEST_OFFERS,
+  type EditStatus,
+  type RequestOffer,
   REQUEST_SOURCES,
   REQUEST_STAGES,
   REQUEST_STATUSES,
@@ -102,6 +106,20 @@ export const storeRequests = pgTable(
     /** آخر تنبيه تأخر داخلي أُرسل للفريق (لا يتكرر لنفس الحالة). */
     slaAlertedAt: timestamp("sla_alerted_at", { withTimezone: true }),
 
+    // ─── V4: العرض والتسليم (migration 0018) ───
+    /** العرض الذي حُسب عليه سعر الحجز لحظة الإرسال (ثابت بعده): الدائرة الذهبية أو السعر العادي. */
+    offer: text("offer").$type<RequestOffer>(),
+    /** لحظة تأكيد المالك للتحويل (بداية مهلة الـ 48 ساعة للتجهيز). */
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    /** لحظة التسليم الفعلي (زر «سلّم للعميل»). */
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    /** نهاية نافذة التعديل المجاني (التسليم + 7 أيام افتراضياً). */
+    freeEditUntil: timestamp("free_edit_until", { withTimezone: true }),
+    /** مستودع المشروع عند العميل (يملؤه الفريق في الميتنج). */
+    repoUrl: text("repo_url"),
+    /** رابط المتجر المنشور (يملؤه الفريق بعد النشر). */
+    storeUrl: text("store_url"),
+
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
@@ -127,6 +145,8 @@ export const storeRequests = pgTable(
     check("store_requests_status_chk", sql`${t.status} IN (${inList(REQUEST_STATUSES)})`),
     check("store_requests_stage_chk", sql`${t.stage} IS NULL OR ${t.stage} IN (${inList(REQUEST_STAGES)})`),
     check("store_requests_source_chk", sql`${t.source} IN (${inList(REQUEST_SOURCES)})`),
+    check("store_requests_offer_chk", sql`${t.offer} IS NULL OR ${t.offer} IN (${inList(REQUEST_OFFERS)})`),
+    index("store_requests_merchant_idx").on(t.merchantId),
   ]
 );
 
@@ -189,4 +209,44 @@ export const platformActivity = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("platform_activity_created_idx").on(t.createdAt), index("platform_activity_actor_idx").on(t.actorId, t.createdAt)]
+);
+
+
+/**
+ * طلبات التعديل بعد تسليم المشروع (V4). واحد مجاني خلال نافذة 7 أيام من التسليم، وما عداه برسوم (999 افتراضياً) تُدفع بتحويل
+ * يؤكده المالك قبل أن يبدأ التنفيذ. الفهرس الفريد الجزئي يمنع استهلاك المجاني مرتين مهما تزامنت الطلبات.
+ */
+export const editRequests = pgTable(
+  "edit_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** مرجع مقروء (EDT-XXXXX). */
+    code: text("code").notNull(),
+    requestId: uuid("request_id").notNull().references(() => storeRequests.id, { onDelete: "cascade" }),
+    merchantId: uuid("merchant_id").references(() => merchants.id, { onDelete: "set null" }),
+    /** بريد العميل وقت الطلب (نسخة للبحث والرد). */
+    clientEmail: text("client_email").notNull(),
+    title: text("title").notNull(),
+    details: text("details").notNull(),
+    files: jsonb("files").$type<{ url: string; name: string }[]>().notNull().default([]),
+    status: text("status").$type<EditStatus>().notNull().default("new"),
+    isFree: boolean("is_free").notNull().default(false),
+    /** الرسوم بالقروش (0 للمجاني). */
+    feePiasters: integer("fee_piasters").notNull().default(0),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** ما يكتبه الفريق للعميل (سبب اعتذار، أو ملخص ما نُفِّذ). */
+    teamNote: text("team_note"),
+    assignedTo: uuid("assigned_to").references(() => platformUsers.id, { onDelete: "set null" }),
+    doneAt: timestamp("done_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("edit_requests_code_uq").on(t.code),
+    index("edit_requests_request_idx").on(t.requestId, t.createdAt),
+    index("edit_requests_status_idx").on(t.status, t.createdAt),
+    index("edit_requests_email_idx").on(t.clientEmail),
+    uniqueIndex("edit_requests_one_free_uq").on(t.requestId).where(sql`is_free AND status <> 'declined'`),
+    check("edit_requests_status_chk", sql`${t.status} IN (${inList(EDIT_STATUSES)})`),
+  ]
 );

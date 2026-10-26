@@ -78,7 +78,7 @@ export async function verifyPlatformPayment(paymentId: string): Promise<Verifica
         ],
         temperature: 0,
       },
-      { purpose: "verify_payment", storeId: p.storeId }
+      { purpose: "verify_payment", storeId: p.storeId ?? undefined }
     );
   } catch (e) {
     result = {
