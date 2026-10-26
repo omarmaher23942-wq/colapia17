@@ -24,6 +24,7 @@ import type { StoreBlueprint } from "@/blueprint/schema";
 import { useHydrated } from "./CartView";
 import { AREAS, deliveryRange, exactAmount, firstErrorField, validateCheckout, type FieldErrors } from "@/lib/checkout-form";
 import { cn } from "@/lib/utils";
+import { formatPhoneLive, sanitizeDraft } from "@/lib/shopper-ui";
 
 type PM = "cod" | "vodafone_cash" | "instapay";
 type Form = {
@@ -191,6 +192,31 @@ export function CheckoutForm({
       landmark: savedCustomer.landmark ?? s.landmark,
     }));
   }, [remember, savedCustomer]);
+  // مسودة الدفع: ما يكتبه الزائر يبقى إن أُغلقت الصفحة أو انتقل لتطبيق التحويل ثم عاد (جلسة المتصفح، بلا بيانات الدفع).
+  const draftKey = `clp-checkout-draft:${subdomain}`;
+  const draftRestored = useRef(false);
+  useEffect(() => {
+    if (draftRestored.current) return;
+    draftRestored.current = true;
+    try {
+      const d = sanitizeDraft(JSON.parse(sessionStorage.getItem(draftKey) ?? "null"));
+      if (Object.keys(d).length) setF((x) => ({ ...x, ...Object.fromEntries(Object.entries(d).filter(([k]) => !(x as Record<string, string>)[k])) }));
+    } catch {
+      /* no-op */
+    }
+  }, [draftKey]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      try {
+        const d = sanitizeDraft({ name: f.name, phone: f.phone, altPhone: f.altPhone, governorate: f.governorate, city: f.city, address: f.address, landmark: f.landmark, notes: f.notes });
+        if (Object.keys(d).length) sessionStorage.setItem(draftKey, JSON.stringify(d));
+      } catch {
+        /* no-op */
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [draftKey, f.name, f.phone, f.altPhone, f.governorate, f.city, f.address, f.landmark, f.notes]);
+
   const express =
     remember &&
     !editing &&
@@ -331,6 +357,11 @@ export function CheckoutForm({
         if (remember) rememberCustomer({ name: f.name, phone: f.phone, altPhone: f.altPhone, governorate: f.governorate, city: f.city, address: f.address, landmark: f.landmark });
         window.clpTrack?.("purchase", { code: r.data.code, total: r.data.total, productIds: [...new Set(items.map((i) => i.productId))] });
         clear();
+        try {
+          sessionStorage.removeItem(draftKey);
+        } catch {
+          /* no-op */
+        }
         clearPromo(subdomain);
         router.push(`/order/${encodeURIComponent(r.data.code)}`);
       } catch {
@@ -396,7 +427,7 @@ export function CheckoutForm({
         {pending ? <Loader2 className="size-5 animate-spin" strokeWidth={SW} aria-hidden="true" /> : <ShieldCheck className="size-5" strokeWidth={SW} aria-hidden="true" />}
         {pending ? "جارٍ تأكيد الطلب" : "تأكيد الطلب"}
       </button>
-      <p className="text-center text-[11px] opacity-60">بالضغط على «تأكيد الطلب» تؤكدون صحة البيانات.{policy?.returnDays ? ` الاستبدال والاسترجاع خلال ${policy.returnDays} يوماً.` : ""}</p>
+      <p className="text-center text-[11px] opacity-60">بالضغط على «تأكيد الطلب» تؤكدون صحة البيانات.{policy?.returnDays ? ` الاستبدال والاسترجاع خلال ${policy.returnDays} يوماً.` : ""}{" "}{policy?.returnDays ? <Link href="/pages/returns" className="underline underline-offset-4">سياسة الاستبدال</Link> : null}{policy?.returnDays ? " · " : ""}<Link href="/pages/terms" className="underline underline-offset-4">الشروط والأحكام</Link></p>
     </aside>
   );
 
@@ -446,8 +477,8 @@ export function CheckoutForm({
               <Field id="co-name" label="الاسم بالكامل" error={err("name")}>
                 <input {...bind("name")} className={F} placeholder="الاسم الثلاثي" autoComplete="name" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={60} />
               </Field>
-              <Field id="co-phone" label="رقم الموبايل" error={err("phone")}>
-                <input {...bind("phone")} className={F} dir="ltr" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={f.phone} onChange={(e) => set("phone", e.target.value)} maxLength={20} />
+              <Field id="co-phone" label="رقم الموبايل" error={err("phone")} hint={phoneNorm ? "رقم صحيح ✓" : undefined}>
+                <input {...bind("phone")} className={F} dir="ltr" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={f.phone} onChange={(e) => set("phone", formatPhoneLive(e.target.value))} maxLength={14} />
               </Field>
               <Field id="co-governorate" label="المحافظة" error={err("governorate")}>
                 <select {...bind("governorate")} className={F} autoComplete="address-level1" value={f.governorate} onChange={(e) => { set("governorate", e.target.value); set("city", ""); }}>
@@ -470,7 +501,7 @@ export function CheckoutForm({
                 <input id="co-landmark" className={F} placeholder="بجوار مسجد أو صيدلية…" value={f.landmark} onChange={(e) => set("landmark", e.target.value)} maxLength={120} />
               </Field>
               <Field id="co-altPhone" label="موبايل بديل" optional error={err("altPhone")}>
-                <input {...bind("altPhone")} className={F} dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" value={f.altPhone} onChange={(e) => set("altPhone", e.target.value)} maxLength={20} />
+                <input {...bind("altPhone")} className={F} dir="ltr" inputMode="tel" placeholder="01xxxxxxxxx" value={f.altPhone} onChange={(e) => set("altPhone", formatPhoneLive(e.target.value))} maxLength={14} />
               </Field>
             </div>
           )}
