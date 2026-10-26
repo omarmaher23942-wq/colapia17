@@ -123,6 +123,12 @@ export const PATCHES: Patch[] = [
   { path: "src/lib/tenant.ts", find: /async function readStore\(sub: string\): Promise<TenantStore \| null> \{[\s\S]*?\n\}\n/, replace: READ_STORE, why: "قاعدة غير مجهزة = إعداد أول" },
   { path: "src/lib/tenant.ts", find: "  if (!store) notFound();\n  if (!opts.allowHidden", replace: '  if (!store) redirect("/setup");\n  if (!opts.allowHidden', why: "متجر غير موجود بعد = /setup" },
   { path: "src/lib/tenant.ts", find: 'import { notFound } from "next/navigation";', replace: 'import { notFound, redirect } from "next/navigation";', why: "redirect" },
+  // ─── بوابة العميل وجداول الوكالة تخص المنصة وحدها ───
+  { path: "src/app/(platform)/dashboard/page.tsx", dropLines: /import \{ ClientHome \} from "@\/components\/client\/ClientHome";/, why: "بوابة العميل للمنصة" },
+  { path: "src/app/(platform)/dashboard/page.tsx", dropLines: /if \(!session\.store\) return <ClientHome /, why: "بوابة العميل للمنصة" },
+  { path: "src/db/schema/commerce.ts", dropLines: /import \{ editRequests, storeRequests \} from "\.\/agency";/, why: "لا جداول وكالة" },
+  { path: "src/db/schema/commerce.ts", find: /requestId: uuid\("request_id"\)\.references\(\(\) => storeRequests\.id, \{ onDelete: "cascade" \}\),/, replace: 'requestId: uuid("request_id"),', why: "لا جداول وكالة" },
+  { path: "src/db/schema/commerce.ts", find: /editRequestId: uuid\("edit_request_id"\)\.references\(\(\) => editRequests\.id, \{ onDelete: "cascade" \}\),/, replace: 'editRequestId: uuid("edit_request_id"),', why: "لا جداول وكالة" },
   // ─── ما يخص المنصة وحدها ───
   { path: "src/components/dashboard/settings/SettingsPage.tsx", dropLines: /import \{ SubdomainSection \} from "\.\/SubdomainSection";/, why: "لا نطاق فرعي على المنصة" },
   { path: "src/components/dashboard/settings/SettingsPage.tsx", dropLines: /<SubdomainSection \/>/, why: "لا نطاق فرعي على المنصة" },
