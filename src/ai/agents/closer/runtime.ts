@@ -1,10 +1,10 @@
 import "server-only";
-// runtime.ts — وكيل الرسائل V4 على إنستجرام وفيسبوك: مستشار مبيعات بالذكاء الاصطناعي وحده يحاور بحرية داخل إطار مهني (prompt.ts).
-// لا قواعد لغوية ولا قرارات حوار في الكود: النموذج يقرر ماذا يقول ومتى يطلب فعلاً (golden_link، other_service، close_done، ignore،
-// أو requestHuman)، والكود يتحقق من الشروط البيانية والرقمية فقط (review.ts) وينفذ:
-//  - golden_link: يصدر رابط صفحة الحجز (golden/link) ويرسله مع سطر العدّاد والخطوات بكلمات ثابتة.
-//  - other_service: يعلّم المحادثة «خدمة أخرى»، يبلّغ المالك (بريد + لوحة)، ويوقف الوكيل بانتظار رده؛ لا دفع ولا رابط حجز.
-//  - close_done: بعد رابط الحجز وتأكيد العميل فهمه يرسل موعد بدء التجهيز ويغلق الوكيل نفسه (closedBy = agent_done) ويحوّل للمالك.
+// runtime.ts — وكيل الرسائل V5 على إنستجرام وفيسبوك: مستشار مبيعات بالذكاء الاصطناعي وحده يحاور بحرية داخل إطار مهني (prompt.ts).
+// لا قواعد لغوية ولا قرارات حوار في الكود: النموذج يقرر ماذا يقول ومتى يطلب فعلاً (build_request، other_service، ignore، أو
+// requestHuman)، والكود يتحقق من الشروط البيانية والرقمية فقط (review.ts) وينفذ:
+//  - build_request: بعد تغطية الأسئلة الخمسة (أو رفض بعضها) يحفظ طلب بناء بلا دفع (agent/build-request-store.ts)، يرسل رسالة
+//    الإغلاق الثابتة (متجر مخصص مجاني، رابط إعداد خلال مدة، لا دفع إلا بعد الإعجاب)، يبلّغ المالك، ويغلق الوكيل في المحادثة.
+//  - other_service: يعلّم المحادثة «خدمة أخرى»، يبلّغ المالك (بريد + لوحة)، ويوقف الوكيل بانتظار رده؛ لا دفع ولا طلب بناء.
 // لا ردود جاهزة عند تعذر الذكاء الاصطناعي: صمت + تنبيه للمالك. طلب موظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
@@ -16,16 +16,16 @@ import { aiText } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
 import { redis } from "@/lib/redis";
-import { issueGoldenLink } from "@/golden/link";
-import { alertAgentDegraded, alertAgentDone, alertAgentSilent, alertHandoff, alertOtherService } from "./alerts";
+import { alertAgentDegraded, alertAgentSilent, alertBuildRequest, alertHandoff, alertOtherService } from "./alerts";
 import { agentFacts, type AgentFacts } from "./facts";
 import { parseCloserTurn, type CloserTurn, type Speaker } from "./turn";
 import { capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView } from "./guard";
 import { HISTORY_LIMIT, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
 import { reviewTurn, type ActionCtx } from "./review";
+import { createBuildRequest } from "@/agent/build-request-store";
+import { BUILD_REQUEST_FLAG, buildRequestMessage, parseDeclined, type Area } from "@/agent/build-request";
 import { agentConfig } from "@/agent/settings";
-import { goldenGate, goldenPrefill, groundLeadInput, mergeLead, type Lead, type LeadInvalid } from "@/agent/lead";
-import { goldenDoneMessage, goldenLinkMessage } from "@/agent/golden-messages";
+import { groundLeadInput, mergeLead, type Lead, type LeadInvalid } from "@/agent/lead";
 import { OTHER_SERVICE_FLAG, briefOf, isOtherService } from "@/agent/other-service";
 import { stateBlock } from "@/agent/state";
 import { handoffUntil, pauseState } from "@/agent/pause";
@@ -51,7 +51,8 @@ type Mem = Record<string, unknown> & {
   speaker?: Speaker;
   closedBy?: string;
   flag?: string;
-  golden?: { linkAt?: string };
+  declined?: Area[];
+  buildRequest?: { id: string; code: string; at: string };
 };
 
 const AI_ATTEMPT_MS = 9_000;
@@ -61,10 +62,6 @@ const MIN_RETRY_MS = 7_000;
 const MAX_RETRIES = 2;
 
 const memOf = (c: Conv): Mem => ((c.memory as Mem | null) ?? {}) as Mem;
-const minutesSince = (iso: string | undefined, now: number): number | null => {
-  const t = iso ? Date.parse(iso) : NaN;
-  return Number.isFinite(t) ? Math.max(0, (now - t) / 60_000) : null;
-};
 
 type Row = { role: string; text: string | null; at: Date };
 
@@ -95,7 +92,7 @@ async function converse(system: string, msgs: ModelMessage[], conversationId: st
 
 /** التعليمات الكاملة لدور: الإطار الثابت بحقائقه الحية + حالة المحادثة. */
 async function systemFor(facts: AgentFacts, state: Parameters<typeof stateBlock>[0]): Promise<string> {
-  return (await getPrompt("closer.v4", facts.vars)) + stateBlock(state);
+  return (await getPrompt("closer.v5", facts.vars)) + stateBlock(state);
 }
 
 export async function handleInbound(channel: Channel, senderId: string, batch: Inbound[]) {
@@ -199,7 +196,8 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
   const started = Date.now();
   const lead0: Lead = mem.lead ?? {};
   const otherService = isOtherService(mem);
-  const linkSentAt = mem.golden?.linkAt ? Date.parse(mem.golden.linkAt) : NaN;
+  const requested = Boolean(mem.buildRequest) || mem.flag === BUILD_REQUEST_FLAG;
+  const declined0: Area[] = parseDeclined(mem.declined);
   const profileInstagram = channel === "instagram" ? (mem.igUsername ?? null) : null;
 
   let turn: CloserTurn;
@@ -213,17 +211,19 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     const assistantTexts = rows.filter((r) => r.role !== "user").map((r) => r.text ?? "");
     const userHistory = rows.filter((r) => r.role === "user").map((r) => r.text ?? "");
     const mergeFrom = (t: CloserTurn) => mergeLead(lead0, groundLeadInput(t.lead, [...userHistory, ...userTexts]), { profileInstagram, prevInvalid: mem.leadInvalid });
-    const actionCtx = (m: { lead: Lead }): ActionCtx => ({ lead: m.lead, otherService, linkSentAt: Number.isFinite(linkSentAt) ? linkSentAt : null, now: Date.now() });
+    const declinedOf = (t: CloserTurn): Area[] => [...new Set([...declined0, ...parseDeclined(t.declined)])];
+    const actionCtx = (m: { lead: Lead }, t: CloserTurn): ActionCtx => ({ lead: m.lead, declined: declinedOf(t), otherService, alreadyRequested: requested });
 
     const system = await systemFor(facts, {
       replies: assistantTexts.length,
       channel,
       lead: lead0,
       invalid: mem.leadInvalid ?? {},
+      declined: declined0,
       summary: typeof mem.summary === "string" ? mem.summary : "",
       speaker: mem.speaker,
       offer: facts.offer,
-      linkSentMinutesAgo: minutesSince(mem.golden?.linkAt, Date.now()),
+      requested,
       otherService,
       idleHours: previousUserAt ? Math.max(0, (Date.now() - previousUserAt.getTime()) / 3_600_000) : null,
     });
@@ -234,7 +234,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     // مراجعة الدور: حراسة المخرج + شروط الفعل + التكرار الحرفي ← محاولات تصحيحية بملاحظة صريحة ضمن ميزانية الدور.
     const notes: string[] = [];
     for (let attempt = 0; ; attempt++) {
-      const review = reviewTurn(turn, { replyCtx: facts.replyCtx, recentAssistant: assistantTexts, action: actionCtx(merged) });
+      const review = reviewTurn(turn, { replyCtx: facts.replyCtx, recentAssistant: assistantTexts, action: actionCtx(merged, turn) });
       if (!review) break;
       await trace(review.kind === "action" ? "action-denied" : "reply-rejected", review.note.slice(0, 120));
       const left = TURN_BUDGET_MS - (Date.now() - started);
@@ -262,7 +262,8 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
 
   // من يكتب: آخر تقدير واضح يبقى (unknown لا يمحو تقديراً سابقاً).
   const speaker: Speaker = turn.speaker !== "unknown" ? turn.speaker : (mem.speaker ?? "unknown");
-  await patchMemory(conv.id, { lead: merged.lead, leadInvalid: merged.invalid, speaker, ...(turn.memory ? { summary: turn.memory } : {}) }).catch(() => {});
+  const declined = [...new Set([...declined0, ...parseDeclined(turn.declined)])];
+  await patchMemory(conv.id, { lead: merged.lead, leadInvalid: merged.invalid, declined, speaker, ...(turn.memory ? { summary: turn.memory } : {}) }).catch(() => {});
 
   try {
     if (turn.action === "ignore") {
@@ -270,15 +271,11 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     } else if (turn.requestHuman) {
       // الوكيل رأى أن الموقف يحتاج إنساناً.
       if (await sendIfStillActive(channel, senderId, conv, turn.reply)) await handoffToHuman(channel, conv, turn.requestHuman, cfg.handoffPauseHours);
-    } else if (turn.action === "golden_link") {
-      await sendGoldenLink(channel, senderId, conv, turn.reply, merged.lead, facts, cfg.handoffPauseHours);
+    } else if (turn.action === "build_request") {
+      await sendBuildRequest(channel, senderId, conv, turn.reply, merged.lead, declined, typeof turn.memory === "string" && turn.memory ? turn.memory : typeof mem.summary === "string" ? mem.summary : "", facts, cfg);
     } else if (turn.action === "other_service") {
       await sendIfStillActive(channel, senderId, conv, turn.reply);
       await escalateOtherService(channel, conv, briefOf(turn.brief, turn.memory || (typeof mem.summary === "string" ? mem.summary : "")), merged.lead, mem.igUsername);
-    } else if (turn.action === "close_done") {
-      // يُغلق الوكيل نفسه في كل الأحوال (حتى لو أوقفه الفريق لحظة الإرسال): وإلا عاد بعد انتهاء إيقاف مؤقت يرد على عميل أنهى الخطوات.
-      await sendIfStillActive(channel, senderId, conv, goldenDoneMessage(turn.reply));
-      await closeAfterLink(channel, conv, merged.lead);
     } else {
       await sendIfStillActive(channel, senderId, conv, turn.reply, conv.stage === "greeting" ? "discovery" : undefined);
     }
@@ -309,24 +306,22 @@ async function sendIfStillActive(channel: Channel, senderId: string, conv: Conv,
 }
 
 /**
- * يصدر رابط صفحة الحجز ويرسله: مقدمة النموذج ثم الرابط وسطر العدّاد (للذهبية فقط) والخطوات بكلمات ثابتة. السعر العادي بلا صياغة ذهبية
- * حين تنتهي المقاعد. تعذر إصدار الرابط = اعتذار قصير وتحويل لموظف بدل وعد لا يتحقق.
+ * ينفذ build_request: يحفظ طلب البناء أولاً (فشل الحفظ = اعتذار قصير وتحويل لموظف بدل وعد لا يتحقق)، ثم يرسل مقدمة النموذج مع
+ * رسالة الإغلاق الثابتة، ثم يغلق الوكيل ويبلّغ المالك. الإغلاق لا يتوقف على نجاح الإرسال: وإلا عاد الوكيل يرد على عميل أُنشئ طلبه.
  */
-async function sendGoldenLink(channel: Channel, senderId: string, conv: Conv, intro: string, lead: Lead, facts: AgentFacts, pauseHours: number) {
-  let link: string;
+async function sendBuildRequest(channel: Channel, senderId: string, conv: Conv, intro: string, lead: Lead, declined: Area[], summary: string, facts: AgentFacts, cfg: { buildWindowHours: number; handoffPauseHours: number }) {
+  let created: Awaited<ReturnType<typeof createBuildRequest>>;
   try {
-    link = await issueGoldenLink({ conversationId: conv.id, prefill: goldenPrefill(lead) });
+    created = await createBuildRequest({ conversationId: conv.id, lead, declined, offer: facts.offer, summary });
   } catch (e) {
     const why = String((e as Error)?.message ?? e).slice(0, 160);
-    await trace("link-failed", why);
-    if (await sendIfStillActive(channel, senderId, conv, "حدث خلل بسيط أثناء تجهيز رابط الحجز، وسيتواصل معكم أحد الفريق بالرابط خلال وقت قصير.")) await handoffToHuman(channel, conv, `تعذر إصدار رابط الحجز: ${why}`, pauseHours);
+    await trace("request-failed", why);
+    if (await sendIfStillActive(channel, senderId, conv, "حدث خلل بسيط أثناء تسجيل طلبكم، وسيتواصل معكم أحد الفريق خلال وقت قصير لاستكماله.")) await handoffToHuman(channel, conv, `تعذر إنشاء طلب البناء: ${why}`, cfg.handoffPauseHours);
     return;
   }
-  const { offer } = facts;
-  const text = goldenLinkMessage(intro, { link, golden: offer.golden, seatsLeft: offer.seatsLeft, seatsTotal: offer.seatsTotal, price: offer.price, regular: offer.regular });
-  if (await sendIfStillActive(channel, senderId, conv, text, "link_sent")) {
-    await patchMemory(conv.id, { golden: { linkAt: new Date().toISOString(), link, golden: offer.golden, seatsLeft: offer.seatsLeft } }).catch(() => {});
-  }
+  const text = buildRequestMessage(intro, { windowHours: cfg.buildWindowHours, offer: facts.offer });
+  await sendIfStillActive(channel, senderId, conv, text);
+  await closeAfterRequest(channel, conv, lead, created, facts.offer.golden, cfg.buildWindowHours);
 }
 
 /** آخر رسائل المحادثة بترتيب زمني (الأقدم أولاً). */
@@ -342,17 +337,17 @@ async function recentRows(conversationId: string): Promise<Row[]> {
 
 /**
  * تجربة كاملة للوكيل بلا إرسال ولا حفظ: نفس البرومبت ونفس المخطط الصارم ونفس سلسلة النماذج، فيظهر لمركز الجاهزية ما كان
- * سيرد به على رسالة حقيقية (أو سبب العجز بنص خطأ كل نموذج). `confirmCreate` يعني هنا أنه سيرسل رابط الحجز.
+ * سيرد به على رسالة حقيقية (أو سبب العجز بنص خطأ كل نموذج). `confirmCreate` يعني هنا أنه سينشئ طلب بناء.
  */
 export async function probeAgent(text: string): Promise<{ ok: true; reply: string; confirmCreate: boolean; leadFound: string; provider: string; ms: number } | { ok: false; error: string }> {
   const t0 = Date.now();
   try {
     const facts = await agentFacts();
-    const system = await systemFor(facts, { replies: 0, channel: "instagram", lead: {}, invalid: {}, summary: "", offer: facts.offer, linkSentMinutesAgo: null, otherService: false, idleHours: null });
+    const system = await systemFor(facts, { replies: 0, channel: "instagram", lead: {}, invalid: {}, declined: [], summary: "", offer: facts.offer, requested: false, otherService: false, idleHours: null });
     const { turn, provider } = await converse(system, [{ role: "user", content: text.slice(0, 300) }], undefined);
     const found = Object.entries(turn.lead).filter(([, x]) => x).map(([k]) => k).join("، ");
     const reply = turn.reply || (turn.requestHuman ? `(حوّل لموظف) ${turn.requestHuman}` : turn.action === "ignore" ? "(تجاهل الرسالة)" : "");
-    return { ok: true, reply, confirmCreate: turn.action === "golden_link", leadFound: found, provider, ms: Date.now() - t0 };
+    return { ok: true, reply, confirmCreate: turn.action === "build_request", leadFound: found, provider, ms: Date.now() - t0 };
   } catch (e) {
     return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 700) };
   }
@@ -388,17 +383,18 @@ async function escalateOtherService(channel: Channel, conv: Conv, brief: string,
 }
 
 /**
- * بعد رابط الحجز وتأكيد العميل فهمه للخطوات: يغلق الوكيل نفسه في هذه المحادثة نهائياً (لا يعود إلا باستئناف يدوي من الفريق)،
- * ويحوّلها للمالك: إشعار في /admin/conversations وبريد فوري مع رابط المحادثة والمدفوعات.
+ * بعد إنشاء طلب البناء: يغلق الوكيل نفسه في هذه المحادثة نهائياً (لا يعود إلا باستئناف يدوي من الفريق)، ويعلّمها «طلب بناء جديد»
+ * ويحوّلها للمالك: إشعار في /admin/conversations وبريد فوري بالطلب. closedBy يبقى agent_done لتستثنيه أداة «استئناف الكل».
  */
-async function closeAfterLink(channel: Channel, conv: Conv, lead: Lead) {
+async function closeAfterRequest(channel: Channel, conv: Conv, lead: Lead, req: { id: string; code: string; existed: boolean }, golden: boolean, windowHours: number) {
   await db
     .update(conversations)
     .set({ botPaused: true, botPausedUntil: null, stage: "handoff", unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() })
     .where(eq(conversations.id, conv.id));
-  await patchMemory(conv.id, { closedBy: "agent_done", closedAt: new Date().toISOString(), handoffBy: "agent_done" }).catch(() => {});
-  await trace("closed", `agent_done (محادثة …${conv.id.slice(-4)})`);
-  await alertAgentDone({ conversationId: conv.id, name: conv.profileName, channel, lead });
+  const at = new Date().toISOString();
+  await patchMemory(conv.id, { flag: BUILD_REQUEST_FLAG, buildRequest: { id: req.id, code: req.code, at }, closedBy: "agent_done", closedAt: at, handoffBy: "agent_done" }).catch(() => {});
+  await trace("closed", `build_request ${req.code} (محادثة …${conv.id.slice(-4)})`);
+  if (!req.existed) await alertBuildRequest({ conversationId: conv.id, name: conv.profileName, channel, lead, code: req.code, golden, windowHours }).catch(() => {});
 }
 
 async function getOrCreateConversation(channel: Channel, senderId: string): Promise<Conv | undefined> {

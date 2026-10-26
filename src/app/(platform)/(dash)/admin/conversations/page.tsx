@@ -8,6 +8,7 @@ import { HANDOFF_KINDS, HANDOFF_TITLE, handoffMessage } from "@/agent/handoff-me
 import { pauseLabel, pauseState } from "@/agent/pause";
 import type { Lead } from "@/agent/lead";
 import { OTHER_SERVICE_FLAG, isOtherService } from "@/agent/other-service";
+import { BUILD_REQUEST_FLAG } from "@/agent/build-request";
 import { ConversationView } from "@/components/platform/ConversationView";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { requirePlatformPage } from "@/server/platform-guard";
@@ -24,9 +25,9 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 // «other_service» ليست مرحلة: علامة في ذاكرة المحادثة يضعها الوكيل حين يطلب العميل خدمة غير المتجر.
-const FILTERS = ["", "other_service", "human", "handoff", "persuasion", "building", "link_sent", "trial", "lost"];
-const FILTER_LABEL: Record<string, string> = { other_service: "خدمة أخرى" };
-const flagFilter = (stage: string) => (stage === OTHER_SERVICE_FLAG ? sql`${conversations.memory}->>'flag' = ${OTHER_SERVICE_FLAG}` : undefined);
+const FILTERS = ["", BUILD_REQUEST_FLAG, "other_service", "human", "handoff", "persuasion", "building", "link_sent", "trial", "lost"];
+const FILTER_LABEL: Record<string, string> = { other_service: "خدمة أخرى", [BUILD_REQUEST_FLAG]: "طلب بناء جديد" };
+const flagFilter = (stage: string) => (stage === OTHER_SERVICE_FLAG || stage === BUILD_REQUEST_FLAG ? sql`${conversations.memory}->>'flag' = ${stage}` : undefined);
 
 const FIELD_ROWS: { key: keyof Lead; label: string }[] = [
   { key: "niche", label: "النشاط" },
@@ -75,6 +76,7 @@ export default async function ConversationsPage({ searchParams }: { searchParams
       hot: sql<number>`count(*) filter (where lead_score >= 70)`.mapWith(Number),
       human: sql<number>`count(*) filter (where stage = 'human' and bot_paused and coalesce(memory->>'flag', '') <> 'other_service')`.mapWith(Number),
       other: sql<number>`count(*) filter (where memory->>'flag' = 'other_service')`.mapWith(Number),
+      build: sql<number>`count(*) filter (where memory->>'flag' = 'build_request')`.mapWith(Number),
     }).from(conversations),
     // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد.
     db
@@ -124,6 +126,10 @@ export default async function ConversationsPage({ searchParams }: { searchParams
             <p className="text-[10px] text-amber-400 font-bold uppercase">ساخنة 🔥</p>
             <p className="text-lg font-black text-amber-300">{stats[0]?.hot}</p>
           </div>
+          <Link href={`/admin/conversations?stage=${BUILD_REQUEST_FLAG}`} className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-2 text-center hover:bg-emerald-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/60">
+            <p className="text-[10px] text-emerald-300 font-bold">طلب بناء جديد</p>
+            <p className="text-lg font-black text-emerald-200">{stats[0]?.build ?? 0}</p>
+          </Link>
           <Link href={`/admin/conversations?stage=${OTHER_SERVICE_FLAG}`} className="bg-violet-500/10 border border-violet-500/30 rounded-xl px-4 py-2 text-center hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300/60">
             <p className="text-[10px] text-violet-300 font-bold">خدمة أخرى</p>
             <p className="text-lg font-black text-violet-200">{stats[0]?.other ?? 0}</p>
@@ -166,6 +172,12 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                   <span className={`rounded-md px-1.5 py-0.5 ${c.stage === "human" ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300"}`}>
                     {STAGE_LABEL[c.stage] ?? c.stage}
                   </span>
+                  {(c.memory as { flag?: unknown } | null)?.flag === BUILD_REQUEST_FLAG && (
+                    <span className="flex items-center gap-1 rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-emerald-200">
+                      <PackageCheck className="size-3" aria-hidden="true" />
+                      طلب بناء جديد
+                    </span>
+                  )}
                   {isOtherService(c.memory) && (
                     <span className="flex items-center gap-1 rounded-md bg-violet-500/20 px-1.5 py-0.5 text-violet-200">
                       <Briefcase className="size-3" aria-hidden="true" />

@@ -77,13 +77,13 @@ describe("إغلاق الوكيل بعد الموافقة", () => {
   });
   it("الإغلاق لا يتوقف على نجاح إرسال رسالة الإغلاق", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
-    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*goldenDoneMessage[^\n]*\)\) \{\s*await closeAfterLink/);
-    expect(r).toMatch(/await closeAfterLink\(channel, conv, merged\.lead\)/);
+    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*buildRequestMessage[^\n]*\)\) \{\s*await closeAfterRequest/);
+    expect(r).toMatch(/await closeAfterRequest\(channel, conv, lead, created/);
   });
-  it("مسار الخدمة الأخرى لا يصدر رابط حجز ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
+  it("مسار الخدمة الأخرى لا ينشئ طلب بناء ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
     expect(r).toMatch(/flag: OTHER_SERVICE_FLAG/);
-    expect(read("src/ai/agents/closer/review.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
+    expect(read("src/agent/build-request.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
   });
   it("تغيير المرحلة اليدوي لا يوقظ وكيلاً مغلقاً", () => {
     const c = read("src/server/actions/platform-conv.ts");

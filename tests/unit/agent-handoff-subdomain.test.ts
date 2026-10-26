@@ -49,7 +49,9 @@ describe("رسائل التسليم الجاهزة", () => {
     const setup = handoffMessage("setup", input);
     expect(setup).toContain(input.setupUrl);
     expect(setup).toContain("nour@gmail.com");
-    expect(setup).toContain("Google");
+    expect(setup).toContain("كلمة مرور");
+    expect(setup).toContain("24 ساعة");
+    expect(setup).not.toContain("Google");
     expect(handoffMessage("login", input)).toContain(input.loginUrl);
     const ready = handoffMessage("ready", input);
     expect(ready).toContain(input.storeUrl);
@@ -58,8 +60,19 @@ describe("رسائل التسليم الجاهزة", () => {
   it("بلا بريد تبقى الرسالة صحيحة", () => {
     expect(handoffMessage("setup", { ...input, email: null })).toContain("بالبريد الذي أعطيتمونا");
   });
+  it("تذكير التفعيل وتأكيد الدفع: بلا مبالغ ولا أسماء أدوات", () => {
+    const a = handoffMessage("activate", input);
+    expect(a).toContain(input.loginUrl);
+    expect(a).toContain("تفعيل الموقع");
+    expect(a).toContain("24 ساعة");
+    const p = handoffMessage("paid", input);
+    expect(p).toContain("تم تأكيد الدفع");
+    expect(p).toContain(input.storeUrl);
+    for (const m of [a, p, handoffMessage("setup", input)]) expect(m).not.toMatch(/groq|neon|cloudflare|vercel|imagekit|\d[\d,]*\s*ج\b/i);
+  });
   it("أنواع الرسائل", () => {
-    expect(HANDOFF_KINDS).toEqual(["setup", "login", "ready"]);
+    expect(HANDOFF_KINDS).toEqual(["setup", "login", "ready", "activate", "paid"]);
+    expect(isHandoffKind("paid")).toBe(true);
     expect(isHandoffKind("ready")).toBe(true);
     expect(isHandoffKind("x")).toBe(false);
   });
@@ -72,7 +85,7 @@ describe("الوكيل V4", () => {
     expect(parseCloserTurn(JSON.stringify({ reply: "أهلاً", speaker: 7 }))?.speaker).toBe("unknown");
   });
   it("حالة المحادثة تذكر المشرف حين يكتب مشرف فقط", () => {
-    const base = { replies: 2, channel: "instagram" as const, lead: {}, invalid: {}, summary: "", offer: { golden: true, seatsLeft: 9, seatsTotal: 10 }, linkSentMinutesAgo: null, otherService: false, idleHours: null };
+    const base = { replies: 2, channel: "instagram" as const, lead: {}, invalid: {}, summary: "", offer: { golden: true, seatsLeft: 9, seatsTotal: 10 }, declined: [], requested: false, otherService: false, idleHours: null };
     expect(stateBlock({ ...base, speaker: "moderator" })).toContain("صاحب القرار");
     expect(stateBlock({ ...base, speaker: "unknown" })).not.toContain("مشرفاً");
   });

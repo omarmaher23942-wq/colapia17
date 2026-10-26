@@ -1,9 +1,8 @@
-// turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, action, brief}.
+// turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, action, brief, declined}.
 // التحليل **صارم**: لا رد صالح = يُرفض الناتج ويُجرَّب النموذج التالي. لا يُرسل أبداً نص خام فيه أقواس أو أسماء حقول.
 // الأدوات (V4) أفعال يطلبها النموذج في `action` ويقرر الكود تنفيذها بعد التحقق من شروطها الرقمية والبيانية:
-//  golden_link  = إصدار رابط صفحة الحجز وإرساله مع سطر العدّاد والخطوات
+//  build_request = إنشاء طلب بناء متجر (بلا دفع) بعد تغطية الأسئلة الخمسة أو رفض بعضها، ثم رسالة الإغلاق الثابتة وإغلاق الوكيل
 //  other_service = تصنيف الطلب «خدمة أخرى»: إشعار المالك وإيقاف الوكيل بانتظار رده
-//  close_done   = إغلاق الوكيل بعد أن أكد العميل فهم الخطوات (بعد رابط الحجز)
 //  ignore       = رسالة آلية أو غير مقصودة لا تستحق رداً
 import { z } from "zod";
 import { stripEmoji } from "@/lib/emoji";
@@ -21,7 +20,7 @@ const optText = (max: number) => z.string().nullish().transform((s) => clean(s, 
 
 export type Speaker = "owner" | "moderator" | "unknown";
 
-export const TURN_ACTIONS = ["none", "golden_link", "other_service", "close_done", "ignore"] as const;
+export const TURN_ACTIONS = ["none", "build_request", "other_service", "ignore"] as const;
 export type TurnAction = (typeof TURN_ACTIONS)[number];
 
 export const closerTurnSchema = z.object({
@@ -36,11 +35,15 @@ export const closerTurnSchema = z.object({
       whatsapp: optText(40),
       instagram: optText(120),
       styleNotes: optText(400),
+      products: optText(500),
+      selling: optText(500),
     })
     .nullish()
     .transform((l) => l ?? {}),
   /** الفعل المطلوب. قيمة غير معروفة = none (لا يُرفض الدور بسببها). */
   action: z.unknown().transform((v): TurnAction => (typeof v === "string" && (TURN_ACTIONS as readonly string[]).includes(v) ? (v as TurnAction) : "none")),
+  /** مجالات رفض العميل الإجابة عنها صراحة هذا الدور (products | look | selling | contact). */
+  declined: z.unknown().transform((v) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 8) : [])),
   /** ملخص قصير لطلب «الخدمة الأخرى» يصل المالك (ماذا يريد، لمن، أهم المتطلبات، الموعد إن ذُكر). */
   brief: z.string().nullish().transform((s) => clean(s, 500)),
   /** تقدير النموذج لمن يكتب: صاحب القرار أو مشرف الصفحة. قيمة غير معروفة = unknown (لا يُرفض الدور بسببها). */
@@ -77,7 +80,7 @@ export function extractJsonObject(text: string): unknown {
 
 /** رد يسرّب بنية الـ JSON أو أسماء الحقول إلى العميل. */
 export function looksLikeLeak(reply: string): boolean {
-  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|action|lead|speaker|brief)\s*"\s*:/.test(reply) || /```/.test(reply);
+  return /^\s*[{[]/.test(reply) || /"\s*(reply|memory|requestHuman|action|lead|speaker|brief|declined)\s*"\s*:/.test(reply) || /```/.test(reply);
 }
 
 /** تحليل صارم لدور الوكيل: null إن لم يكن JSON صالحاً بحقل reply نصي غير فارغ وغير مسرّب (يُستثنى ignore فلا رد فيه). */
