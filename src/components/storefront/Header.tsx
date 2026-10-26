@@ -19,6 +19,7 @@ import { hrefFor } from "@/lib/links";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { VisualSearch } from "./VisualSearch";
+import { SearchBox } from "./SearchBox";
 import { SheetDialog } from "./SheetDialog";
 import { useCopy, useStore } from "./StoreProvider";
 import { StoreLogo } from "./StoreLogo";
@@ -26,60 +27,12 @@ import type { StoreBlueprint } from "@/blueprint/schema";
 
 const SW = 1.75;
 export type HeaderCat = { id: string; name: string; slug: string; parentId?: string | null };
-type Sugg = { slug: string; name: string; price: number; image: string | null };
 
 /** أقسام المستوى الأعلى مع أبنائها (قسم لقسم غير ظاهر يُعامل كأعلى مستوى). */
 export function groupCategories(cats: HeaderCat[]) {
   const ids = new Set(cats.map((c) => c.id));
   const top = cats.filter((c) => !c.parentId || !ids.has(c.parentId));
   return top.map((t) => ({ ...t, children: cats.filter((c) => c.parentId === t.id) }));
-}
-
-function useSuggestions(q: string) {
-  const [items, setItems] = useState<Sugg[]>([]);
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2) {
-      setItems([]);
-      return;
-    }
-    const ac = new AbortController();
-    const t = window.setTimeout(() => {
-      fetch(`/api/storefront/suggest?q=${encodeURIComponent(term)}`, { signal: ac.signal, cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : { items: [] }))
-        .then((j: { items?: Sugg[] }) => setItems(j.items ?? []))
-        .catch(() => undefined);
-    }, 220);
-    return () => {
-      window.clearTimeout(t);
-      ac.abort();
-    };
-  }, [q]);
-  return items;
-}
-
-function SuggestList({ items, onPick, className }: { items: Sugg[]; onPick: () => void; className?: string }) {
-  if (!items.length) return null;
-  return (
-    <ul className={cn("overflow-hidden rounded-2xl border shadow-2xl", className)} style={{ background: "var(--card)", borderColor: "var(--border)" }} aria-label="اقتراحات البحث">
-      {items.map((it) => (
-        <li key={it.slug}>
-          <Link href={`/p/${encodeURIComponent(it.slug)}`} onClick={onPick} className="flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-[var(--muted)] focus-visible:bg-[var(--muted)] focus-visible:outline-none">
-            <span className="relative size-11 shrink-0 overflow-hidden rounded-lg" style={{ background: "var(--muted)" }}>
-              {it.image ? <Image src={it.image} alt="" fill sizes="44px" className="object-cover" /> : null}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-[13px] font-bold">{it.name}</span>
-            <span className="shrink-0 text-[12px] font-black tabular-nums">{formatEgp(it.price)}</span>
-          </Link>
-        </li>
-      ))}
-      <li>
-        <button type="submit" className="w-full px-3 py-3 text-start text-[13px] font-black" style={{ color: "var(--primary)" }}>
-          عرض كل النتائج
-        </button>
-      </li>
-    </ul>
-  );
 }
 
 export function Header({
@@ -105,8 +58,6 @@ export function Header({
   const layout = header.variant;
   const hasBottomBar = header.bottomBar;
 
-  const [q, setQ] = useState("");
-  const sugg = useSuggestions(q);
   const [deskFocus, setDeskFocus] = useState(false);
   const [menu, setMenu] = useState(false);
   const [search, setSearch] = useState(false);
@@ -249,13 +200,7 @@ export function Header({
           </nav>
 
           {header.showSearch ? (
-            <form action="/search" role="search" className="relative mx-2 hidden max-w-sm flex-1 lg:block" onFocus={() => setDeskFocus(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget) && setDeskFocus(false)}>
-              <div className="flex items-center gap-2 rounded-full border px-3.5" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-                <Search className="size-4 shrink-0 opacity-60" strokeWidth={SW} aria-hidden="true" />
-                <input name="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("searchPlaceholder")} aria-label="البحث" autoComplete="off" enterKeyHint="search" className="h-10 w-full bg-transparent text-base outline-none" />
-              </div>
-              {deskFocus ? <SuggestList items={sugg} onPick={() => setQ("")} className="absolute inset-x-0 top-full z-50 mt-2" /> : null}
-            </form>
+            <SearchBox variant="desktop" categories={categories} onFocusChange={setDeskFocus} className="mx-2 hidden max-w-sm flex-1 lg:block" />
           ) : null}
 
           <div className="flex items-center gap-1">
@@ -302,16 +247,9 @@ export function Header({
 
         {search ? (
           <div className="border-t p-3 lg:hidden" style={{ background: "var(--card)", borderColor: "var(--border)" }}>
-            <form action="/search" role="search" className="container-x relative">
-              <div className="flex items-center gap-2 rounded-xl border px-3.5" style={{ background: "var(--background)", borderColor: "var(--border)" }}>
-                <Search className="size-4 opacity-60" strokeWidth={SW} aria-hidden="true" />
-                <input name="q" placeholder={t("searchPlaceholder")} className="h-11 w-full bg-transparent text-base outline-none" autoFocus aria-label="البحث" autoComplete="off" enterKeyHint="search" value={q} onChange={(e) => setQ(e.target.value)} />
-                <button type="button" onClick={() => setSearch(false)} className="grid size-9 place-items-center rounded-md opacity-60 hover:opacity-100" aria-label="إغلاق البحث">
-                  <X className="size-4" strokeWidth={SW} aria-hidden="true" />
-                </button>
-              </div>
-              <SuggestList items={sugg} onPick={() => setSearch(false)} className="absolute inset-x-4 top-full z-50 mt-2" />
-            </form>
+            <div className="container-x relative">
+              <SearchBox variant="mobile" categories={categories} autoFocus onDone={() => setSearch(false)} />
+            </div>
           </div>
         ) : null}
       </header>
