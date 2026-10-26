@@ -99,20 +99,10 @@ export function factNumbers(facts: string): Set<number> {
   return set;
 }
 
-/** الأرقام المسموح بذكرها كأسعار: أسعار النموذج الحالي ومجاميعها الطبيعية (تجهيز + باقة × أشهر، مع أو بدون الشهر المجاني). */
-export function allowedPriceNumbers(model: Pick<PricingModel, "build" | "golden" | "plans" | "months">, facts = ""): Set<number> {
+/** الأرقام المسموح بذكرها كأسعار: أرقام الحقائق الحالية وأسعار النموذج (المشروع، الدائرة الذهبية، رسوم التعديل). */
+export function allowedPriceNumbers(model: Pick<PricingModel, "regularPrice" | "golden" | "edit">, facts = ""): Set<number> {
   const set = factNumbers(facts);
-  const builds = [model.build.price, model.golden.buildPrice, 0];
-  for (const b of builds) set.add(b);
-  for (const p of model.plans) {
-    set.add(p.monthly);
-    for (const m of model.months) {
-      for (const k of [m, m - 1]) {
-        if (k < 0) continue;
-        for (const b of builds) set.add(b + p.monthly * k);
-      }
-    }
-  }
+  for (const n of [model.regularPrice, model.golden.price, model.edit.fee, 0]) set.add(n);
   return set;
 }
 

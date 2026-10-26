@@ -8,6 +8,7 @@ import { DashboardPulse } from "@/components/dashboard/DashboardPulse";
 import { attentionCounts } from "@/server/repos/attention";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { memberPerms, storeLock } from "@/server/merchant-guard";
+import { ClientShell } from "@/components/client/ClientShell";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { DashboardTopbar } from "@/components/dashboard/DashboardTopbar";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
@@ -50,6 +51,16 @@ export default async function DashboardLayout({
     // يعود بعد الدخول للصفحة التي فتحها (رابط «تفعيل المتجر» في بريد أو صفحة المتابعة مثلاً).
     const back = (await headers()).get("x-pathname") ?? "/dashboard";
     redirect(`/login?redirect=${encodeURIComponent(back.startsWith("/dashboard") ? back : "/dashboard")}&reason=no_session`);
+  }
+
+  // V4: حساب بلا متجر مستضاف = عميل مشروع: بوابته (مشروعي، طلب تعديل، السجل) بإطار خفيف.
+  if (!session.store) {
+    const themeCookie = (await cookies()).get(DASH_THEME_COOKIE)?.value;
+    return (
+      <ClientShell name={session.merchant.displayName} email={session.merchant.email} theme={themeCookie === "dark" ? "dark" : "light"} followSystem={!themeCookie}>
+        {children}
+      </ClientShell>
+    );
   }
 
   // اشتراك الاستضافة: تذكير في كل الصفحات قبل الانتهاء وفي السماح. عند التجميد أو الإيقاف تُقفل اللوحة إلا الاشتراك

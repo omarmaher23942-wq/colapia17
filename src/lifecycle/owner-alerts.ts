@@ -1,51 +1,49 @@
 import "server-only";
-// owner-alerts.ts — تنبيهات فورية لمالك المنصة بالبريد (إيصال دفع جديد ينتظر قراره).
+// owner-alerts.ts — تنبيهات فورية لمالك المنصة بالبريد (إيصال دفع جديد ينتظر قراره، أو سؤال عن مشروع غير متجر).
 import { clientEnv, getOwnerAlertEmails } from "@/lib/env";
 import { sendEmail } from "@/lib/email";
-import { storeUrl } from "@/lib/utils";
 import type { ReceiptAssessment } from "./payment-policy";
 
 const METHOD: Record<string, string> = { vodafone_cash: "فودافون كاش", instapay: "إنستاباي" };
 const LEVEL: Record<ReceiptAssessment["level"], string> = {
-  ok: "✅ الفحص الآلي: يبدو مطابقاً",
-  check: "🟡 الفحص الآلي: يحتاج نظرة منك",
-  danger: "🔴 الفحص الآلي: إشارة احتيال",
+  ok: "الفحص الآلي: يبدو مطابقاً",
+  check: "الفحص الآلي: يحتاج نظرة منك",
+  danger: "الفحص الآلي: إشارة احتيال",
 };
 
 export async function notifyOwnerOfPayment(p: {
   paymentId: string;
-  storeName: string;
-  subdomain: string;
+  kind: "project" | "edit";
+  /** اسم المتجر (حجز) أو عنوان التعديل. */
+  title: string;
+  clientEmail: string;
   method: string;
   senderPhone: string;
   amountEgp: number;
-  kind?: "setup" | "renewal";
-  plan?: "standard" | "golden";
-  months?: number;
-  tierName?: string;
+  offer?: "standard" | "golden";
   screenshotUrl: string;
   assessment: ReceiptAssessment;
 }): Promise<void> {
   const to = getOwnerAlertEmails();
   if (!to.length) return;
   const review = `${clientEnv.NEXT_PUBLIC_APP_URL}/admin/payments?focus=${p.paymentId}`;
+  const edit = p.kind === "edit";
   await sendEmail({
     to,
-    subject: `${p.assessment.level === "danger" ? "🔴 " : ""}${p.kind === "renewal" ? "تجديد استضافة" : "إيصال دفع جديد"}: ${p.storeName} (${p.amountEgp} ج)`,
-    headline: p.kind === "renewal" ? "إيصال تجديد استضافة ينتظر قرارك" : "إيصال دفع جديد ينتظر قرارك",
+    subject: `${p.assessment.level === "danger" ? "[تنبيه] " : ""}${edit ? "رسوم تعديل" : "حجز جديد"}: ${p.title} (${p.amountEgp} ج)`,
+    headline: edit ? "إيصال رسوم تعديل ينتظر قرارك" : "حجز جديد بإيصال ينتظر قرارك",
     paragraphs: [
-      `المتجر: ${p.storeName} (${p.subdomain})`,
-      `الباقة: ${p.tierName ?? "—"}${p.months ? ` لمدة ${p.months} ${p.months === 1 ? "شهر" : "أشهر"}` : ""}${p.plan === "golden" ? " · تجهيز الدائرة الذهبية" : ""}.`,
+      `${edit ? "التعديل" : "المشروع"}: ${p.title}${!edit && p.offer === "golden" ? " · الدائرة الذهبية" : ""}`,
+      `العميل: ${p.clientEmail}`,
       `المبلغ: ${p.amountEgp} ج عبر ${METHOD[p.method] ?? p.method}، من الرقم ${p.senderPhone}.`,
       `${LEVEL[p.assessment.level]}: ${p.assessment.summary}`,
-      p.kind === "renewal"
-        ? "بمجرد القبول تُمد استضافة المتجر بمدة الباقة (ويعود فوراً إن كان متوقفاً)، ويصل التاجر بريد التأكيد."
-        : "المتجر لن يُفعَّل حتى تقبل الإيصال. بمجرد القبول يُفعَّل بمدة الباقة ويصل التاجر بريد التفعيل.",
+      edit
+        ? "التنفيذ لا يبدأ حتى تقبل الإيصال، وبعد القبول يصل العميل بريد التأكيد."
+        : "الحجز لا يدخل الإنتاج حتى تقبل الإيصال. بعد القبول ينقص عدّاد الدائرة الذهبية (إن كان ذهبياً) ويصل العميل بريد التأكيد.",
     ],
     buttons: [
       { title: "راجع واقبل الآن", url: review },
       { title: "صورة الإيصال", url: p.screenshotUrl },
-      { title: "شاهد المتجر", url: storeUrl(p.subdomain) },
     ],
   });
 }

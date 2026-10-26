@@ -1,11 +1,10 @@
-// landing-pricing.ts — تحويل نموذج الأسعار v4 إلى بطاقات للهبوط (خالص ومختبَر).
-// الباقات الثلاث بسعرها الشهري وأهم حدودها الحقيقية، ورسوم التجهيز مرة واحدة. لا ذكر للدائرة الذهبية (بدعوة فقط).
-import { goldenAvailability, limitHighlights, monthsLabel, startingPrice, type PlanId, type PricingModel } from "@/lib/platform-pricing";
+// landing-pricing.ts — تحويل نموذج الأسعار (V4) إلى نصوص وبطاقات للهبوط (خالص ومختبَر).
+import { goldenAvailability, type PricingModel } from "@/lib/platform-pricing";
 
 export type PlanCard = {
-  id: PlanId;
+  id: string;
   label: string;
-  /** السعر الشهري بالجنيه. */
+  /** السعر بالجنيه. */
   price: number;
   featured: boolean;
   priceText: string;
@@ -17,44 +16,45 @@ export function fmtPrice(n: number): string {
   return new Intl.NumberFormat("ar-EG").format(Math.round(n));
 }
 
+/** V4: سعر واحد لمشروع المتجر (لا باقات). */
 export function planCards(model: PricingModel): PlanCard[] {
-  return model.plans.map((p) => ({
-    id: p.id,
-    label: p.name,
-    price: p.monthly,
-    featured: p.id === model.featured,
-    priceText: fmtPrice(p.monthly),
-    highlights: limitHighlights(p.limits),
-  }));
+  return [
+    {
+      id: "project",
+      label: "مشروع متجر",
+      price: model.regularPrice,
+      featured: true,
+      priceText: fmtPrice(model.regularPrice),
+      highlights: ["تصميم وتجهيز متجركم بالكامل", "تسليم الكود والمشروع ملكاً لكم", "جلسة تسليم مباشرة معكم"],
+    },
+  ];
 }
 
 export type LandingOffer = {
   buildPrice: number;
   buildText: string;
-  /** عرض الدائرة الذهبية: null إن كان متوقفاً أو اكتملت مقاعده (لا نعرض ما لا يمكن شراؤه). */
+  /** عرض الدائرة الذهبية: null إن كان متوقفاً أو اكتملت مقاعده (لا نعرض ما لا يمكن حجزه). */
   golden: null | { priceText: string; seatsLeft: number; seats: number; firstMonthFree: boolean; firstMonthText: string };
 };
 
-/** بطاقة رسوم التجهيز وعرض المقاعد الذهبية من الأسعار الحالية وعدد المقاعد المستخدمة فعلاً (بلا ذكر للكود). */
-export function landingOffer(model: PricingModel, goldenUsed: number): LandingOffer {
-  const g = goldenAvailability(model.golden, goldenUsed);
+/** بطاقة السعر وعرض المقاعد الذهبية من الأسعار الحالية والحجوزات المؤكدة فعلاً. */
+export function landingOffer(model: PricingModel, confirmedGolden: number): LandingOffer {
+  const g = goldenAvailability(model.golden, confirmedGolden);
   return {
-    buildPrice: model.build.price,
-    buildText: fmtPrice(model.build.price),
-    golden: g.available
-      ? { priceText: fmtPrice(model.golden.buildPrice), seatsLeft: g.seatsLeft, seats: model.golden.seats, firstMonthFree: model.golden.firstMonthFree, firstMonthText: fmtPrice(startingPrice(model)) }
-      : null,
+    buildPrice: model.regularPrice,
+    buildText: fmtPrice(model.regularPrice),
+    golden: g.available ? { priceText: fmtPrice(model.golden.price), seatsLeft: g.seatsLeft, seats: model.golden.seats, firstMonthFree: false, firstMonthText: "" } : null,
   };
 }
 
-/** سطر رسوم التجهيز والمدد: «تجهيز المتجر ٢٬٩٩٩ ج.م مرة واحدة، والدفع لشهر أو ٣ أشهر أو …». */
+/** سطر السعر: «مشروع المتجر ٤٬٩٩٩ ج.م يُدفع قبل التسليم، بلا اشتراك شهري ولا عمولة». */
 export function buildFeeText(model: PricingModel): string {
-  return `تجهيز المتجر ${fmtPrice(model.build.price)} ج.م مرة واحدة مع أول دفعة، ثم الاستضافة الشهرية بالباقة المختارة لمدة ${model.months.map(monthsLabel).join(" أو ")}.`;
+  return `مشروع المتجر ${fmtPrice(model.regularPrice)} ج.م يُدفع قبل التسليم، بلا اشتراك شهري ولا عمولة على مبيعاتكم.`;
 }
 
-/** سطر قصير للوصف: «الاستضافة من ١٩٩ ج.م شهرياً». */
+/** سطر قصير للوصف. */
 export function startingText(model: PricingModel): string {
-  return `الاستضافة من ${fmtPrice(startingPrice(model))} ج.م شهرياً`;
+  return `مشروع متجر بـ ${fmtPrice(model.regularPrice)} ج.م`;
 }
 
 /** «طلب تعديل واحد» / «طلبا تعديل» / «٣ طلبات تعديل» / «١١ طلب تعديل». */

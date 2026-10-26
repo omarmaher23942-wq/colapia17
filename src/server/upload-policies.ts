@@ -9,6 +9,7 @@ import { allow } from "@/lib/ratelimit";
 import { clientIp, ipBucket } from "@/lib/client-ip";
 import { hit } from "@/lib/rate-hit";
 import type { MediaRoute } from "@/lib/media";
+import { addReceiptAsset, draftIsOpen, findByDraftToken, receiptCount } from "@/golden/repo";
 
 export class UploadPolicyError extends Error {}
 
@@ -51,6 +52,28 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     if (!(await allow("proof", `ut_receipt:${s.merchantId}`))) throw new UploadPolicyError("محاولات كثيرة، حاول بعد دقائق");
     return { prefix: `stores/${s.store.id}/receipts`, meta: { storeId: s.store.id } };
   },
+  async bookingReceipt({ headers, input }) {
+    const p = z.object({ token: z.string().min(20).max(64) }).safeParse(input);
+    if (!p.success) throw new UploadPolicyError("طلب غير صالح");
+    if (!(await hit(`golden:upload:${ipBucket(clientIp(headers))}`, 20, 3600))) throw new UploadPolicyError("رفع كثير في وقت قصير. انتظروا قليلاً ثم أعيدوا المحاولة.");
+    const row = await findByDraftToken(p.data.token);
+    if (!row || !draftIsOpen(row)) throw new UploadPolicyError("انتهت صلاحية صفحة الحجز. افتحوها من جديد.");
+    if ((await receiptCount(row.id)) >= 5) throw new UploadPolicyError("وصلتم الحد الأقصى لعدد الإيصالات المرفوعة.");
+    return { prefix: `requests/${row.id}/receipt`, meta: { requestId: row.id } };
+  },
+  // إيصال رسوم تعديل وملفات طلب التعديل من بوابة العميل (جلسته بالبريد المسجل).
+  async clientReceipt() {
+    const s = await getMerchantSession();
+    if (!s) throw new UploadPolicyError("سجّلوا الدخول أولاً.");
+    if (!(await hit(`client:upload:${s.merchantId}`, 30, 3600))) throw new UploadPolicyError("رفع كثير في وقت قصير. انتظروا قليلاً.");
+    return { prefix: `clients/${s.merchantId}/receipts`, meta: { merchantId: s.merchantId } };
+  },
+  async editFile() {
+    const s = await getMerchantSession();
+    if (!s) throw new UploadPolicyError("سجّلوا الدخول أولاً.");
+    if (!(await hit(`client:upload:${s.merchantId}`, 30, 3600))) throw new UploadPolicyError("رفع كثير في وقت قصير. انتظروا قليلاً.");
+    return { prefix: `clients/${s.merchantId}/edits`, meta: { merchantId: s.merchantId } };
+  },
   async transferProof({ headers, input }) {
     if (!(await allow("proof", `ut:${clientIp(headers)}`))) throw new UploadPolicyError("محاولات كثيرة، حاول بعد دقائق");
     const store = await publicStore(input);
@@ -85,9 +108,7 @@ export function authorizeUpload(route: MediaRoute, ctx: Ctx): Promise<UploadGran
   return POLICIES[route](ctx);
 }
 
-/** ما بعد الرفع: لا مسار يحتاج تسجيلاً حالياً (الخطاف باقٍ لمسارات لاحقة). */
-export async function afterUpload(
-  _route: MediaRoute,
-  _meta: UploadGrant["meta"],
-  _file: { key: string; url: string; type: string; size: number }
-): Promise<void> {}
+/** ما بعد الرفع: إيصال الحجز يُسجَّل بمفتاحه ضمن ملفات الحجز (الإرسال يرجع إليه بالمفتاح لا بالرابط: لا تزوير). */
+export async function afterUpload(route: MediaRoute, meta: UploadGrant["meta"], file: { key: string; url: string; type: string; size: number }): Promise<void> {
+  if (route === "bookingReceipt" && typeof meta.requestId === "string") await addReceiptAsset(meta.requestId, file);
+}

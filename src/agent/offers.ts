@@ -1,32 +1,27 @@
 // offers.ts — الأسطر التي يتغذى بها برومبت الوكيل من الأسعار الحقيقية (خالص ومختبَر). لا رقم يُكتب في البرومبت يدوياً.
-// نموذج v4 (V3-PLAN 1): رسوم تجهيز مرة واحدة + اشتراك شهري بثلاث باقات، والحقائق الكاملة في agentPricingFacts.
-import { fmtEgp, monthsLabel, startingPrice, type GoldenOffer, type PricingModel } from "@/lib/platform-pricing";
+// نموذج V4: سعر مشروع واحد يُدفع قبل التسليم، والدائرة الذهبية بسعر مخفّض لأول المقاعد، وتعديل مجاني ثم برسوم.
+import { fmtEgp, type GoldenOffer, type PricingModel } from "@/lib/platform-pricing";
 
-/** التجهيز والباقات بأسعارها الحالية: «التجهيز 2,999 ج مرة واحدة، والاستضافة: الأساسية 199 ج شهرياً، …». */
-export function plansLine(model: Pick<PricingModel, "plans" | "build">): string {
-  return `التجهيز ${fmtEgp(model.build.price)} ج مرة واحدة، والاستضافة: ${model.plans.map((p) => `${p.name} ${fmtEgp(p.monthly)} ج شهرياً`).join("، ")}`;
+/** سعر المشروع: «مشروع المتجر 4,999 ج كاملاً يُدفع قبل التسليم». */
+export function plansLine(model: Pick<PricingModel, "regularPrice">): string {
+  return `مشروع المتجر ${fmtEgp(model.regularPrice)} ج كاملاً يُدفع قبل التسليم`;
 }
 
-/** التجديد = الباقة الشهرية فقط، للمدد المتاحة. */
-export function renewalLine(model: Pick<PricingModel, "months">): string {
-  return `التجديد: الباقة الشهرية فقط بلا رسوم تجهيز، لمدة ${model.months.map(monthsLabel).join(" أو ")}`;
-}
-
-/** أرخص اشتراك شهري (للمقارنة الصادقة). */
-export function monthlyHint(model: Pick<PricingModel, "plans">): string {
-  return model.plans.length ? `الاستضافة تبدأ من ${fmtEgp(startingPrice(model as PricingModel))} ج في الشهر` : "";
+/** التعديل بعد التسليم (يُذكر فقط إن سُئل). */
+export function renewalLine(model: Pick<PricingModel, "edit">): string {
+  return `بعد التسليم تعديل مجاني واحد خلال ${model.edit.freeDays} أيام، وما زاد ${fmtEgp(model.edit.fee)} ج للتعديل`;
 }
 
 /**
  * سطر الدائرة الذهبية للبرومبت. فارغ تماماً إن كان العرض متوقفاً أو اكتملت مقاعده، فلا يذكره الوكيل.
- * regularBuild: رسوم التجهيز العادية للمقارنة الصادقة («بدلاً من …»).
+ * regularPrice: السعر العادي للمقارنة الصادقة («بدلاً من …»).
  */
-export function goldenLine(g: GoldenOffer, seatsLeft: number, regularBuild?: number): string {
+export function goldenLine(g: GoldenOffer, seatsLeft: number, regularPrice?: number): string {
   if (!g.enabled || seatsLeft <= 0) return "";
-  const instead = regularBuild && regularBuild > g.buildPrice ? ` بدلاً من ${fmtEgp(regularBuild)} ج` : "";
+  const instead = regularPrice && regularPrice > g.price ? ` بدلاً من ${fmtEgp(regularPrice)} ج` : "";
   return [
-    `عرض خاص «الدائرة الذهبية» متاح الآن، متبقٍ ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : seatsLeft === 2 ? "مقعدان" : "مقاعد"} فقط:`,
-    `تجهيز المتجر بـ ${fmtEgp(g.buildPrice)} ج${instead}، والاستضافة الشهرية كما هي بالباقة التي يختارها.`,
+    `عرض خاص «الدائرة الذهبية» للمتاجر متاح الآن، متبقٍ ${seatsLeft} ${seatsLeft === 1 ? "مقعد" : seatsLeft === 2 ? "مقعدان" : "مقاعد"} فقط:`,
+    `سعر المشروع ${fmtEgp(g.price)} ج${instead}، مقابل تعاون (Collab أو شهادة) بموافقة العميل على النسخة النهائية.`,
     "اذكره بهدوء كعرض خاص لا كضغط، ولا تخترع مدة أو شروطاً غير ما هنا.",
   ].join(" ");
 }

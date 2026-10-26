@@ -6,6 +6,10 @@ export const MEDIA_ROUTES = {
   productImage: { maxBytes: 8 << 20, maxFiles: 10 },
   brandAsset: { maxBytes: 4 << 20, maxFiles: 1 },
   platformReceipt: { maxBytes: 8 << 20, maxFiles: 1 },
+  // V4: إيصال حجز المشروع من صفحة /golden العامة (مربوط برمز الحجز)، وإيصال رسوم التعديل وملفات طلب التعديل من بوابة العميل.
+  bookingReceipt: { maxBytes: 8 << 20, maxFiles: 1 },
+  clientReceipt: { maxBytes: 8 << 20, maxFiles: 1 },
+  editFile: { maxBytes: 8 << 20, maxFiles: 6 },
   transferProof: { maxBytes: 8 << 20, maxFiles: 1 },
   customerReviewImage: { maxBytes: 4 << 20, maxFiles: 3 },
   // صور طلب الاستبدال/الاسترجاع من صفحة الطلب.

@@ -3,9 +3,6 @@
 // - تجلب المراجعات المعتمدة من ذاكرة Redis (5 دقائق) لتفادي ضرب الـ DB في كل طلب (لا ذاكرة Next: تعمل على أي استضافة).
 // - تسلّم session و reviews إلى Landing (مكوّن خادم؛ التفاعل في جزر صغيرة).
 import { currentPricing, goldenStatus } from "@/server/pricing";
-import { lifecycleTimings } from "@/lifecycle/timings";
-import { getFlag } from "@/lib/flags";
-import { perYearFrom } from "@/lib/change-requests";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { cached } from "@/lib/redis";
@@ -15,7 +12,6 @@ import { platformReviews } from "../../db/schema/platform";
 import { Landing, landingFaq } from "../../components/landing/Landing";
 import { buildFeeText, planCards, instagramUrl, landingOffer } from "@/lib/landing-pricing";
 import { demoUrl } from "@/agent/settings";
-import { hostingGraceDays } from "@/server/hosting-grace";
 import type { LandingReview, SessionState } from "../../components/landing/types";
 
 const getApprovedReviews = () =>
@@ -70,18 +66,11 @@ async function getSessionState(): Promise<SessionState> {
 export default async function Page() {
   const [reviews, session] = await Promise.all([getApprovedReviews(), getSessionState()]);
 
-  const [pricing, gold, timings, changes, demo, grace] = await Promise.all([
-    currentPricing(),
-    goldenStatus().catch(() => null),
-    lifecycleTimings(),
-    getFlag<Record<string, unknown>>("change_requests").catch(() => ({ enabled: true, config: null })),
-    demoUrl(),
-    hostingGraceDays().catch(() => 3),
-  ]);
+  const [pricing, gold, demo] = await Promise.all([currentPricing(), goldenStatus().catch(() => null), demoUrl()]);
   const plans = planCards(pricing);
-  const offer = landingOffer(pricing, gold ? gold.confirmed + gold.underReview : pricing.golden.seats);
+  const offer = landingOffer(pricing, gold ? gold.confirmed : pricing.golden.seats);
   const igUrl = instagramUrl(process.env.NEXT_PUBLIC_INSTAGRAM_URL);
-  const faq = landingFaq({ trialHours: timings.trialHours, graceDays: grace, plans });
+  const faq = landingFaq({ trialHours: 0, graceDays: 0, plans });
 
   // بيانات منظمة صادقة: المنظمة والخدمة بباقاتها الفعلية الحالية، والأسئلة الشائعة.
   const jsonLd = {
@@ -112,9 +101,9 @@ export default async function Page() {
         plans={plans}
         buildFee={buildFeeText(pricing)}
         offer={offer}
-        trialHours={timings.trialHours}
-        graceDays={grace}
-        changesPerYear={perYearFrom(changes.config)}
+        trialHours={0}
+        graceDays={0}
+        changesPerYear={0}
         igUrl={igUrl}
         demoHref={demo}
       />

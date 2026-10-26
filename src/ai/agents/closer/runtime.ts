@@ -6,7 +6,6 @@ import "server-only";
 // لا ردود جاهزة عند تعذر الذكاء الاصطناعي: صمت + تنبيه للمالك. طلب موظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
 import { currentPricing, goldenStatus } from "@/server/pricing";
 import { agentPricingFacts } from "@/lib/platform-pricing";
-import { lifecycleTimings } from "@/lifecycle/timings";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
@@ -57,7 +56,7 @@ const HISTORY_LIMIT = 30;
 const memOf = (c: Conv): Mem => ((c.memory as Mem | null) ?? {}) as Mem;
 
 async function interpolateVars(): Promise<{ vars: Record<string, string>; goldenAvailable: boolean; goldenPrice: number; demoHost: string; replyCtx: ReplyCtx }> {
-  const [pricing, timings, golden, demo] = await Promise.all([currentPricing(), lifecycleTimings(), goldenStatus().catch(() => null), demoUrl()]);
+  const [pricing, golden, demo] = await Promise.all([currentPricing(), goldenStatus().catch(() => null), demoUrl()]);
   const available = Boolean(golden?.available);
   let host = demo;
   try {
@@ -65,26 +64,26 @@ async function interpolateVars(): Promise<{ vars: Record<string, string>; golden
   } catch {
     /* يبقى الرابط كما هو */
   }
-  const legacy = () => [`${plansLine(pricing)}.`, `${renewalLine(pricing)}.`, available && golden ? goldenLine(pricing.golden, golden.seatsLeft) : ""].filter(Boolean).join(" ");
+  const legacy = () => [`${plansLine(pricing)}.`, `${renewalLine(pricing)}.`, available && golden ? goldenLine(pricing.golden, golden.seatsLeft, pricing.regularPrice) : ""].filter(Boolean).join(" ");
   let pricingFacts = "";
   try {
     // تعذر قراءة المقاعد: لا نعرض الدائرة الذهبية (أفضل من وعد بمقعد قد لا يوجد).
-    pricingFacts = agentPricingFacts(pricing, golden ? golden.seatsUsed : pricing.golden.seats);
+    pricingFacts = agentPricingFacts(pricing, golden ? golden.confirmed : pricing.golden.seats);
   } catch {
     pricingFacts = legacy();
   }
   const facts = pricingFacts || legacy();
   return {
     vars: {
-      trialHours: String(timings.trialHours),
+      trialHours: "0",
       pricingFacts: facts,
       demoUrl: demo,
     },
     goldenAvailable: available,
-    goldenPrice: pricing.golden.buildPrice,
+    goldenPrice: pricing.golden.price,
     demoHost: host,
     // ما يُسمح للرد بذكره: نطاقاتنا والرابط التجريبي فقط، وأسعار الحقائق ومجاميعها الطبيعية فقط.
-    replyCtx: { allowedHosts: [host, env.ROOT_DOMAIN, "colapia.com"], allowedPrices: allowedPriceNumbers(pricing, `${facts} ${timings.trialHours}`), facts },
+    replyCtx: { allowedHosts: [host, env.ROOT_DOMAIN, "colapia.com"], allowedPrices: allowedPriceNumbers(pricing, facts), facts },
   };
 }
 
