@@ -45,7 +45,7 @@ export async function queryCollection(storeId: string, scope: CollectionScope, f
   }
   const where = and(...baseWhere(storeId, catIds, f, subId));
   const order =
-    f.sort === "price_asc" ? [asc(products.pricePiasters)] : f.sort === "price_desc" ? [desc(products.pricePiasters)] : f.sort === "newest" ? [desc(products.createdAt)] : [desc(products.orderCount), asc(products.sortOrder)];
+    f.sort === "price_asc" ? [asc(products.pricePiasters)] : f.sort === "price_desc" ? [desc(products.pricePiasters)] : f.sort === "newest" ? [desc(products.createdAt)] : f.sort === "rating" ? [sql`(${products.ratingSum}::float / nullif(${products.ratingCount}, 0)) desc nulls last`, desc(products.ratingCount)] : f.sort === "discount" ? [sql`(case when ${products.compareAtPiasters} > ${products.pricePiasters} then (${products.compareAtPiasters} - ${products.pricePiasters})::float / ${products.compareAtPiasters} else 0 end) desc`] : [desc(products.orderCount), asc(products.sortOrder)];
   const [rows, [count]] = await Promise.all([
     db.select().from(products).where(where).orderBy(...order, asc(products.id)).limit(opts.limit ?? PAGE_SIZE).offset(opts.offset ?? 0),
     db.select({ n: sql<number>`count(*)::int` }).from(products).where(where),
