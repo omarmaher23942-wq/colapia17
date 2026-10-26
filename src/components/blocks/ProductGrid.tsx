@@ -75,7 +75,7 @@ export function ProductGrid({ s, products, hasMore = false, viewAll: viewAllPath
     return (
       <SectionShell s={s}>
         {head}
-        <ul className="s-stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <ul className="s-stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {list.map((p, i) => (
             <li key={p.id} className={i === 0 ? "col-span-2 lg:row-span-2" : undefined}>
               <ProductCard product={p} size={i === 0 ? "lg" : "md"} priority={i === 0} />

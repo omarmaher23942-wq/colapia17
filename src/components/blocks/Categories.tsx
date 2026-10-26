@@ -35,7 +35,7 @@ export function Categories({ s, categories }: { s: CategoriesSection; categories
           ))}
         </ul>
       ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
           {list.map((c) => (
             <li key={c.id}>
               <Link href={`/c/${encodeURIComponent(c.slug)}`} className="s-card group relative block aspect-[4/5] overflow-hidden focus-visible:outline-none focus-visible:ring-2">

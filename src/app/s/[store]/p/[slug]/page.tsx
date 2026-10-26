@@ -113,10 +113,10 @@ export default async function ProductPage({ params }: P) {
           </span>
         ))}
       </nav>
-      <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "lg:grid-cols-2")}>
+      <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "md:grid-cols-2")}>
         
         {/* المعرض لاصق على الحاسوب والمعلومات تتمرر بجانبه (تخطيط تحريري)؛ على الجوال المعرض أولاً. */}
-        <div className={cn("space-y-4", bp.productPage.layout !== "gallery_stacked" && "lg:sticky lg:top-24 lg:self-start")}>
+        <div className={cn("space-y-4", bp.productPage.layout !== "gallery_stacked" && "md:sticky md:top-24 md:self-start")}>
           <ProductGallery images={p.images} videos={p.videos} name={p.name} immersive={bp.productPage.layout === "immersive"} />
         </div>
 
