@@ -91,7 +91,7 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
         </Link>
       ) : null}
 
-      <SalesFunnel counts={funnel} range={range} golden={{ code: golden.code, used: golden.confirmed + golden.underReview, seats: golden.seats }} />
+      <SalesFunnel counts={funnel} range={range} golden={{ used: golden.seatsUsed, seats: golden.seats }} />
 
       {/* Top Widgets Row */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

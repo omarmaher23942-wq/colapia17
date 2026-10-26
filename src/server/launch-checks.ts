@@ -321,10 +321,10 @@ const checkGolden = () =>
   run("golden", "الدائرة الذهبية", async () => {
     const { goldenStatus } = await import("@/server/pricing");
     const g = await goldenStatus();
-    const used = g.confirmed + g.underReview;
-    if (!g.enabled) return { status: "skip", detail: "متوقفة: لا يعرضها الوكيل ولا يقبل الدفع كودها" };
+    const used = g.seatsUsed;
+    if (!g.enabled) return { status: "skip", detail: "متوقفة: لا تُعرض ويُعرض السعر العادي" };
     return g.available
-      ? { status: "ok", detail: `مفعّلة بالكود ${g.code}: ${used} من ${g.seats} مقاعد مستخدمة (تجهيز ${g.buildPrice} ج بدلاً من ${g.regularBuildPrice} ج)` }
+      ? { status: "ok", detail: `مفعّلة: ${used} من ${g.seats} مقاعد مشغولة (${g.price} ج بدلاً من ${g.regularPrice} ج)` }
       : { status: "warn", detail: `اكتملت المقاعد (${used} من ${g.seats})`, fix: "زد المقاعد أو أوقف العرض من /admin/pricing" };
   });
 

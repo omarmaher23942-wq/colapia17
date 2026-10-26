@@ -4,7 +4,6 @@ import { and, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
 import { env } from "@/lib/env";
-import { hostingGraceDays } from "./timings";
 import { timingsFrom, trialSchedule, type LifecycleTimings } from "./timings-rules";
 
 export const JOB_KINDS = [
@@ -20,11 +19,6 @@ export const JOB_KINDS = [
   "doom.reminder_12h",
   "doom.reminder_1h",
   "doom.purge",            // المسح النهائي بعد رفض الدفع
-  "hosting.reminder_30d",  // قبل انتهاء سنة الاستضافة بشهر
-  "hosting.reminder_7d",
-  "hosting.reminder_1d",
-  "hosting.expired",       // انتهت السنة: يبدأ السماح (المتجر يعمل)
-  "hosting.paused",        // انتهى السماح: المتجر يتوقف عن الظهور للزوار (لا حذف أبداً)
   "setup.link",            // رابط إعداد المتجر بعد إنشائه من المحادثة (بعد مهلة قابلة للضبط)
   "setup.reminder_24h",
   "setup.reminder_72h",
@@ -159,22 +153,6 @@ export async function scheduleTrial(storeId: string, deliveredAt: Date, timings?
 
 export const schedulePaymentInvite = (storeId: string, deliveredAt: Date) =>
   schedule(storeId, "payment.invite", new Date(deliveredAt.getTime() + env.PAYMENT_INVITE_DELAY_MIN * 60_000));
-
-/** عداد الـ 24 ساعة بعد رفض الدفع: مسح نهائي + تذكيران اختياريان للعميل */
-/** تذكيرات اشتراك الاستضافة حول تاريخ انتهائه (lib/hosting.ts). أي تجديد يعيد جدولتها بالتاريخ الجديد. */
-export async function scheduleHosting(storeId: string, expiresAt: Date) {
-  const now = Date.now();
-  const D = 24 * H;
-  const graceDays = await hostingGraceDays().catch(() => 3);
-  const jobs: [JobKind, Date][] = [
-    ["hosting.reminder_30d", new Date(expiresAt.getTime() - 30 * D)],
-    ["hosting.reminder_7d", new Date(expiresAt.getTime() - 7 * D)],
-    ["hosting.reminder_1d", new Date(expiresAt.getTime() - D)],
-    ["hosting.expired", expiresAt],
-    ["hosting.paused", new Date(expiresAt.getTime() + graceDays * D)],
-  ];
-  for (const [kind, at] of jobs) if (at.getTime() > now) await schedule(storeId, kind, at);
-}
 
 export async function scheduleDoom(storeId: string, doomAt: Date) {
   await schedule(storeId, "doom.purge", doomAt);

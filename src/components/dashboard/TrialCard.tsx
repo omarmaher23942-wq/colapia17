@@ -1,11 +1,7 @@
-// TrialCard — عدّاد التجربة في النظرة العامة بأقل دفعة أولى حقيقية (التجهيز + أرخص باقة لأقصر مدة متاحة).
+// TrialCard — عدّاد المعاينة المجانية في النظرة العامة بسعر التفعيل الحالي (ذهبي متى بقي مقعد وإلا عادي).
 import "server-only";
 import { TrialCountdownCard } from "@/components/dashboard/TrialCountdownCard";
-import { currentPricing } from "@/server/pricing";
-import { startingPrice } from "@/lib/platform-pricing";
-import type { PricingModel } from "@/lib/platform-pricing";
-
-const firstPayment = (m: PricingModel) => m.build.price + startingPrice(m) * (m.months[0] ?? 1);
+import { currentProjectQuote } from "@/server/pricing";
 
 type Store = { priceLockedEgp: number | null; trialEndsAt: Date | null; demoExpiresAt?: Date | null; demoStartedAt: Date | null; deliveredAt: Date | null };
 
@@ -17,7 +13,7 @@ export async function TrialCard({ store }: { store: Store }) {
       expiresAt={ends.toISOString()}
       startedAt={(store.demoStartedAt ?? store.deliveredAt)?.toISOString() ?? null}
       serverNow={Date.now()}
-      planPrice={firstPayment(await currentPricing())}
+      planPrice={(await currentProjectQuote()).price}
     />
   );
 }
