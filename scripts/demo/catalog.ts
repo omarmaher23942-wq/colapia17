@@ -79,6 +79,9 @@ const HEX: Record<string, string> = {
   "كونياك": "#9a4f1f", "بني فاتح": "#a67c52", "كاميل": "#c19a6b", "بني": "#7a5233", "كحلي": "#1d2b4f", "جمل": "#c19a6b", "خاكي": "#a39a6a", "وردي بودرة": "#e8c4c4",
   "زيتي": "#5b6b2f", "عنابي": "#7a1f3d", "بيج": "#d6c7a1", "كريمي": "#f3eee2", "أبيض": "#ffffff", "أسود": "#111111", "رمادي": "#9ca3af", "سماوي": "#a9cfe6",
   "أزرق جينز": "#4a6fa5", "أخضر": "#2f6b4a",
+  // ألوان قطع الكتالوج المقدَّم من المالك (من لون القطعة في الصورة).
+  "كحلي مقلّم": "#1f2a44", "عنابي مقلّم": "#4a1c28", "بيج فاتح": "#e0d0ba", "بني داكن": "#33211a", "فحمي": "#2c2b30", "أحمر": "#df2d31",
+  "أحمر قاني": "#b00328", "أحمر داكن": "#91021a", "بيج منقّط": "#c1b19f", "وردي ترابي": "#ad7970", "وردي مقلّم": "#bba7aa", "رمادي دافئ": "#9a9995",
 };
 export const hexOf = (label: string): string | undefined => HEX[label] ?? colorFromName(label) ?? undefined;
 export const isColorOption = (n: string) => /لون/.test(n);
@@ -149,7 +152,7 @@ const toCandidate = (p: DemoProduct): Candidate => ({
 
 /** أقسام المتجر النهائية بعد الدمج (مفتاح كل قسم = رابطه). */
 export function planDemoCategories(data: DemoProduct[]): { assign: Record<string, string>; names: string[] } {
-  const plan = planCategories(data.map((p) => ({ id: p.slug, category: p.category })));
+  const plan = planCategories(data.map((p) => ({ id: p.slug, category: p.category })), [], DEMO_MAX_CATEGORIES);
   return { assign: plan.assign, names: plan.categories };
 }
 
@@ -175,7 +178,7 @@ function agesInDays(data: DemoProduct[]): Map<string, number> {
 
 /** الكتالوج كما يعتمده المسار العادي (planCommit) مع إضافات العرض: المخزون والتكلفة والخيارات المرئية والأعمار. */
 export function buildCatalog(data: DemoProduct[], now: number, storeId = "00000000-0000-4000-8000-0000000000aa", newId: () => string = seqId()): DemoCatalog {
-  const merged = applyCategoryPlan(data.map(toCandidate), planCategories(data.map((p) => ({ id: p.slug, category: p.category }))));
+  const merged = applyCategoryPlan(data.map(toCandidate), planCategories(data.map((p) => ({ id: p.slug, category: p.category })), [], DEMO_MAX_CATEGORIES));
   const plan = planCommit({ storeId, candidates: merged, existingCategories: [], existingSlugs: [], tracking: true, newId, sortOffset: { categories: 0, products: 0 } });
   // ترتيب الأقسام في الواجهة: فساتين فعبايات فبقية الأقسام، بدل ترتيب الدمج (بعدد المنتجات).
   const orderOf = (name: string) => {
@@ -335,8 +338,8 @@ const row = (size: string, cells: string[], h: [number, number] | null = null, w
 
 /** أقسام كل جدول بأسماء الأقسام النهائية (تُترجم لمعرّفاتها عند البناء). */
 const CHART_SCOPE = {
-  dresses: ["فساتين", "عبايات", "أطقم"],
-  tops: ["بلوزات وجاكيتات"],
+  dresses: ["فساتين", "عبايات", "أطقم وملابس منزلية"],
+  tops: ["بلوزات وتونيكات", "بلوفرات وتريكو", "جواكت ومعاطف"],
   bottoms: ["بناطيل وتنانير"],
   shoes: ["إكسسوارات وأحذية"],
 } as const;
@@ -355,7 +358,7 @@ export function sizeCharts(categoryIds: Record<string, string>, names: Record<st
       ],
     },
     {
-      id: "szdemotops", ...dress, name: "مقاسات البلوزات والجاكيتات", appliesTo: ids(CHART_SCOPE.tops), unit: "سم", columns: ["الصدر", "الكتف", "الطول"],
+      id: "szdemotops", ...dress, name: "مقاسات البلوزات والبلوفرات والجواكت", appliesTo: ids(CHART_SCOPE.tops), unit: "سم", columns: ["الصدر", "الكتف", "الطول"],
       note: "قياس القطعة مفرودة على سطح مستوٍ.",
       rows: [
         row("S", ["90", "37", "60"], [155, 163], [47, 56]), row("M", ["96", "38.5", "62"], [160, 168], [55, 65]),
@@ -445,13 +448,15 @@ export const DEMO_EDITORIAL = {
 /** غلاف كل قسم في «تسوقوا حسب القسم»: صورة فوتوغرافية متى وُجدت لقسمه، وإلا صورة أول منتج. */
 export const CATEGORY_COVERS: Record<string, string> = {
   "فساتين": DEMO_EDITORIAL.railDresses,
-  "بلوزات وجاكيتات": DEMO_EDITORIAL.heroSecond.url,
-  "أطقم": DEMO_EDITORIAL.blazer,
+  "جواكت ومعاطف": DEMO_EDITORIAL.heroSecond.url,
+  "أطقم وملابس منزلية": DEMO_EDITORIAL.blazer,
   "إكسسوارات وأحذية": DEMO_EDITORIAL.bag,
 };
 
 /** ترتيب عرض الأقسام (الأكثر تسوقاً أولاً)، وما سواه يتبع بترتيبه. */
-export const CATEGORY_ORDER = ["فساتين", "عبايات", "بلوزات وجاكيتات", "بناطيل وتنانير", "أطقم", "إكسسوارات وأحذية"];
+export const CATEGORY_ORDER = ["فساتين", "عبايات", "بلوزات وتونيكات", "بلوفرات وتريكو", "جواكت ومعاطف", "بناطيل وتنانير", "أطقم وملابس منزلية", "إكسسوارات وأحذية"];
+/** سقف أقسام الديمو: ثمانية أقسام لكتالوج بنحو خمسين منتجاً (الافتراضي للمتاجر الجديدة 6). */
+export const DEMO_MAX_CATEGORIES = 8;
 
 export function buildDemoBlueprint(opts: { storeId: string; email: string; categoryIds: Record<string, string>; productCount: number; data?: DemoProduct[] }): StoreBlueprint {
   const data = opts.data ?? loadDemoProducts();

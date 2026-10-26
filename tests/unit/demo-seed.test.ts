@@ -5,7 +5,7 @@ import { groundedItems } from "@/blueprint/facts";
 import { verifyDemo, fakeCategoryIds } from "../../scripts/demo/verify-demo";
 import { planCategories } from "@/lib/category-merge";
 import {
-  DEMO_THEME, buildCatalog, buildDemoBlueprint, demoCategories, demoFacts, demoStoreSettings, distribute, faqItems,
+  CATEGORY_ORDER, DEMO_MAX_CATEGORIES, DEMO_THEME, buildCatalog, buildDemoBlueprint, demoCategories, demoFacts, demoStoreSettings, distribute, faqItems,
   loadDemoProducts, productRows, ratingTotals, reviewsFor, variantsOf,
 } from "../../scripts/demo/catalog";
 
@@ -19,8 +19,8 @@ describe("متجر العرض V3", () => {
     expect(r.stats.soldOut).toBeGreaterThan(0);
     expect(r.stats.lowStock).toBeGreaterThan(0);
     expect(r.stats.reviews).toBeGreaterThan(20);
-    // الحقائب والأوشحة والحلي بلا مقاس فلا دليل لها.
-    expect(r.stats.productsWithSizeGuide).toBeGreaterThanOrEqual(r.stats.products - 3);
+    // الحقائب والأوشحة والحلي والقبعات بلا مقاس (ثمانية منتجات) فلا دليل لها.
+    expect(r.stats.productsWithSizeGuide).toBeGreaterThanOrEqual(r.stats.products - 8);
   });
 
   it("حتمي: نفس النتائج في كل تشغيل", () => {
@@ -38,8 +38,8 @@ describe("متجر العرض V3", () => {
     expect(data.length).toBeGreaterThanOrEqual(24);
     expect(data.every((p) => p.images.every((i) => /^\/demo\/(fashion|products|editorial)\//.test(i)))).toBe(true);
     const cats = demoCategories(data);
-    expect(cats.map((c) => c.name)).toEqual(["فساتين", "عبايات", "بلوزات وجاكيتات", "بناطيل وتنانير", "أطقم", "إكسسوارات وأحذية"]);
-    expect(planCategories(data.map((p) => ({ id: p.slug, category: p.category }))).categories).toHaveLength(cats.length);
+    expect(cats.map((c) => c.name)).toEqual(CATEGORY_ORDER);
+    expect(planCategories(data.map((p) => ({ id: p.slug, category: p.category })), [], DEMO_MAX_CATEGORIES).categories).toHaveLength(cats.length);
     const cat = buildCatalog(data, NOW);
     expect(cat.rows.every((r) => r.categoryId && cat.categories.some((c) => c.id === r.categoryId))).toBe(true);
     expect(cat.rows.every((r) => r.attributes.some((a) => a.label === "الخامة"))).toBe(true);
@@ -73,7 +73,7 @@ describe("متجر العرض V3", () => {
     const { readFileSync } = await import("node:fs");
     const seed = JSON.parse(readFileSync("stores/demo/seed.json", "utf8")) as { products: unknown[]; categories: unknown[] };
     expect(seed.products).toHaveLength(loadDemoProducts().length);
-    expect(seed.categories).toHaveLength(6);
+    expect(seed.categories).toHaveLength(8);
     const bp = JSON.parse(readFileSync("stores/demo/blueprint.json", "utf8"));
     expect(blueprintSchema.safeParse(bp).success).toBe(true);
   });

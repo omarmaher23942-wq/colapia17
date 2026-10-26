@@ -11,7 +11,7 @@ import { groundedItems } from "../../src/blueprint/facts";
 import { cleanAttributes } from "../../src/lib/niche-attributes";
 import { chartFor } from "../../src/lib/size-guide";
 import {
-  ATTR_CARE, ATTR_FIT, ATTR_MATERIAL, DEMO_NICHE, DEMO_THEME, buildDemoBlueprint, demoAssetPaths, demoCategories, demoFacts, fakeCategoryIds, hexOf, isColorOption, isSizeOption,
+  ATTR_CARE, DEMO_MAX_CATEGORIES, ATTR_FIT, ATTR_MATERIAL, DEMO_NICHE, DEMO_THEME, buildDemoBlueprint, demoAssetPaths, demoCategories, demoFacts, fakeCategoryIds, hexOf, isColorOption, isSizeOption,
   loadDemoProducts, productRows, questionsFor, ratingTotals, reviewsFor, variantsOf,
   type DemoProduct, type DemoProductRow, type DemoVariant,
 } from "./catalog";
@@ -34,7 +34,7 @@ function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: stri
     if (slugs.has(p.slug)) errors.push(`${at}: الرابط مكرر`);
     slugs.add(p.slug);
     // الحقائب والأوشحة والحلي بلا مقاس؛ كل ما عداها (ملابس وأحذية) بمقاس ولون.
-    const noSize = p.tags.some((t) => ["حقائب", "أوشحة", "حلي"].includes(t));
+    const noSize = p.tags.some((t) => ["حقائب", "أوشحة", "حلي", "قبعات"].includes(t));
     if (!p.options.some((o) => isColorOption(o.name)) || (!noSize && !p.options.some((o) => isSizeOption(o.name)))) errors.push(`${at}: يلزم خيار لون${noSize ? "" : " ومقاس"}`);
     if (p.art && !existsSync(join(process.cwd(), "public", p.images[0] ?? "x"))) errors.push(`${at}: الصورة البديلة غير مولَّدة (npx tsx scripts/demo/make-art.ts)`);
     if (!Number.isInteger(p.price) || p.price <= 0) errors.push(`${at}: سعر غير صالح`);
@@ -48,8 +48,8 @@ function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: stri
   }
   // نشاط واحد فقط: أزياء نسائية، ومجموعة أقسام قليلة ومتماسكة (نتيجة دمج المترادفات).
   if (DEMO_NICHE !== "fashion") errors.push("نشاط متجر العرض يجب أن يكون الأزياء");
-  if (data.length < 24 || data.length > 30) errors.push(`عدد المنتجات ${data.length} (المتوقع 24 إلى 30)`);
-  if (categoryKeys.size < 4 || categoryKeys.size > 6) errors.push(`عدد الأقسام ${categoryKeys.size} (المتوقع 4 إلى 6)`);
+  if (data.length < 24 || data.length > 60) errors.push(`عدد المنتجات ${data.length} (المتوقع 24 إلى 60)`);
+  if (categoryKeys.size < 4 || categoryKeys.size > DEMO_MAX_CATEGORIES) errors.push(`عدد الأقسام ${categoryKeys.size} (المتوقع 4 إلى ${DEMO_MAX_CATEGORIES})`);
   for (const r of rows) {
     if (!r.categoryKey || !categoryKeys.has(r.categoryKey)) errors.push(`المنتج ${r.slug}: بلا قسم صالح`);
     if (r.images.some((i) => !/^\/demo\/(fashion|products|editorial)\/[\w.-]+\.webp$/.test(i.url))) errors.push(`المنتج ${r.slug}: صورة خارج public/demo`);
