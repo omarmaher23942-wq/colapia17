@@ -1,7 +1,8 @@
-// catalog.ts — متجر العرض V3 (demo.colapia.com): متجر أحذية واحد كامل، يُبنى بالمسار نفسه الذي يبني به أي تاجر متجره:
+// catalog.ts — متجر العرض V5 (demo.colapia.com): متجر أزياء نسائية واحد كامل ومخصص (stores/demo)، يُبنى بالمسار نفسه
+// الذي يبني به أي تاجر متجره:
 //   • الأقسام: planCategories ثم planCommit (دمج المترادفات وإنشاء الأقسام والمنتجات والتركيبات، نفس ما يفعله اعتماد الاستيراد).
-//   • التصميم: defaultBlueprint ثم applyStarterTemplate("shoes") ثم applyHeroMedia (واجهة تُبنى من صور المنتجات).
-//   • السمات: attributesFor("shoes") و cleanAttributes. جداول المقاسات: قوالب size-guide.
+//   • التصميم: defaultBlueprint ثم applyStarterTemplate("fashion") ثم تصميم «عاجي» وأقسام مخصصة من stores/demo (store_block).
+//   • السمات: attributesFor("fashion") و cleanAttributes. جداول المقاسات: قوالب size-guide.
 // الإضافات الخاصة بالعرض فقط: توزيع مخزون ثابت، تقييمات وأسئلة مُجابة توضيحية، أعمار منتجات. كلها حتمية (بذرة ثابتة).
 //
 // الصدق: كل ادعاء في الواجهة مشتق من سياسات المتجر نفسها (blueprint/facts)، والتقييمات موسومة توضيحية بلا شارة «موثّق»،
@@ -10,9 +11,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { blueprintSchema, type Section, type StoreBlueprint } from "../../src/blueprint/schema";
 import { defaultBlueprint } from "../../src/blueprint/defaults";
-import type { ThemeId } from "../../src/blueprint/themes";
+import { applyTheme, type ThemeId } from "../../src/blueprint/themes";
 import { storeFacts, type StoreFact } from "../../src/blueprint/facts";
-import { applyHeroMedia } from "../../src/lib/design-tweak";
 import { applyCategoryPlan, planCategories } from "../../src/lib/category-merge";
 import { colorFromName } from "../../src/lib/color-names";
 import { defaultShippingZones } from "../../src/lib/egypt";
@@ -26,35 +26,38 @@ import { STARTER_TEMPLATES, applyStarterTemplate } from "../../src/lib/store-tem
 // ─── الثوابت ──────────────────────────────────────────────────────────────
 
 export const DEMO_SUB = "demo";
-export const DEMO_NAME = "كولابيا للأحذية";
+export const DEMO_NAME = "ريحانة للأزياء";
 export const DEMO_MERCHANT_NAME = "Colapia Demo";
 export const DEMO_DEFAULT_EMAIL = "demo@colapia.com";
-export const DEMO_TEMPLATE = "shoes" as const;
-/** تصميم المتجر يأتي من قالب البدء نفسه (midnight-mercury بالبطاقة الزئبقية)، لا من اختيار خاص بالعرض. */
-export const DEMO_THEME: ThemeId = STARTER_TEMPLATES[DEMO_TEMPLATE].theme;
+export const DEMO_TEMPLATE = "fashion" as const;
+/** تصميم «عاجي»: دفء تحريري وأناقة هادئة، الأنسب لأزياء نسائية راقية (القالب نفسه يقترح غيره؛ الاختيار من التصميمات الثمانية). */
+export const DEMO_THEME: ThemeId = "ivory-atelier";
 export const DEMO_NICHE = STARTER_TEMPLATES[DEMO_TEMPLATE].niche;
 export const FREE_SHIPPING_OVER_PIASTERS = 300_000;
 export const RETURN_DAYS = 14;
+export const DEMO_SIZE_NAME = "المقاس";
 export const GENERAL_ETA = "من 2 إلى 5 أيام عمل";
 export const DEMO_COUPON = { code: "DEMO10", percent: 10 } as const;
 /** عدد المنتجات التي تحمل وسم «جديد» (أُضيفت خلال آخر 14 يوماً) عند الزرع. */
 const FRESH_COUNT = 3;
 const DAY = 864e5;
-const HERO_ORIGIN = "https://demo.invalid";
 
 export const DATA_DIR = join(process.cwd(), "scripts/demo/data");
 
 // ─── بيانات الملفات ───────────────────────────────────────────────────────
 
 export type DemoOption = { name: string; values: string[] };
+export type DemoArt = { shape: string; tone: string };
 export type DemoProduct = {
   slug: string; name: string; /** اسم القسم كما يكتبه التاجر؛ يمر بدمج المترادفات قبل الاعتماد. */ category: string; price: number; compareAt: number | null;
-  shortDescription: string; description: string; material?: string; care?: string; tags: string[];
+  shortDescription: string; description: string; material?: string; fit?: string; care?: string; tags: string[];
+  /** حاضر فقط حين صورة المنتج رسم توضيحي بديل (scripts/demo/make-art.ts) لا صورة فوتوغرافية. */
+  art?: DemoArt;
   options: DemoOption[]; stock: number; featured: boolean; isNew: boolean; images: string[]; alt: string[];
 };
 
 export function loadDemoProducts(dir = DATA_DIR): DemoProduct[] {
-  return JSON.parse(readFileSync(join(dir, "shoes.json"), "utf8")) as DemoProduct[];
+  return JSON.parse(readFileSync(join(dir, "fashion.json"), "utf8")) as DemoProduct[];
 }
 
 // ─── عشوائية حتمية (mulberry32): نفس النتائج في كل تشغيل وكل جهاز ───────────
@@ -72,19 +75,25 @@ export function makeRng(seed: number): () => number {
 
 // ─── الألوان والسمات ──────────────────────────────────────────────────────
 
-const HEX: Record<string, string> = { "كونياك": "#9a4f1f", "بني فاتح": "#a67c52", "كاميل": "#c19a6b", "بني": "#6b4423", "كحلي": "#1d2b4f" };
+const HEX: Record<string, string> = {
+  "كونياك": "#9a4f1f", "بني فاتح": "#a67c52", "كاميل": "#c19a6b", "بني": "#7a5233", "كحلي": "#1d2b4f", "جمل": "#c19a6b", "خاكي": "#a39a6a", "وردي بودرة": "#e8c4c4",
+  "زيتي": "#5b6b2f", "عنابي": "#7a1f3d", "بيج": "#d6c7a1", "كريمي": "#f3eee2", "أبيض": "#ffffff", "أسود": "#111111", "رمادي": "#9ca3af", "سماوي": "#a9cfe6",
+  "أزرق جينز": "#4a6fa5", "أخضر": "#2f6b4a",
+};
 export const hexOf = (label: string): string | undefined => HEX[label] ?? colorFromName(label) ?? undefined;
 export const isColorOption = (n: string) => /لون/.test(n);
 export const isSizeOption = (n: string) => /مقاس/.test(n);
 
-const SHOE_ATTRS = attributesFor(DEMO_NICHE);
-export const ATTR_MATERIAL = SHOE_ATTRS.find((a) => a.key === "material")?.label ?? "الخامة";
+const NICHE_ATTRS = attributesFor(DEMO_NICHE);
+export const ATTR_MATERIAL = NICHE_ATTRS.find((a) => a.key === "material")?.label ?? "الخامة";
+export const ATTR_FIT = NICHE_ATTRS.find((a) => a.key === "fit")?.label ?? "القَصّة";
 export const ATTR_CARE = "العناية";
 
-/** سمات المنتج بأسماء نشاط الأحذية نفسها التي يعرضها محرر المنتج، فيجدها التاجر معبأة في اللوحة. */
+/** سمات المنتج بأسماء نشاط الأزياء نفسها التي يعرضها محرر المنتج، فيجدها التاجر معبأة في اللوحة. */
 export function attributesOf(p: DemoProduct): AttrPair[] {
   return cleanAttributes([
     ...(p.material ? [{ label: ATTR_MATERIAL, value: p.material }] : []),
+    ...(p.fit ? [{ label: ATTR_FIT, value: p.fit }] : []),
     ...(p.care ? [{ label: ATTR_CARE, value: p.care }] : []),
   ]);
 }
@@ -168,6 +177,12 @@ function agesInDays(data: DemoProduct[]): Map<string, number> {
 export function buildCatalog(data: DemoProduct[], now: number, storeId = "00000000-0000-4000-8000-0000000000aa", newId: () => string = seqId()): DemoCatalog {
   const merged = applyCategoryPlan(data.map(toCandidate), planCategories(data.map((p) => ({ id: p.slug, category: p.category }))));
   const plan = planCommit({ storeId, candidates: merged, existingCategories: [], existingSlugs: [], tracking: true, newId, sortOffset: { categories: 0, products: 0 } });
+  // ترتيب الأقسام في الواجهة: فساتين فعبايات فبقية الأقسام، بدل ترتيب الدمج (بعدد المنتجات).
+  const orderOf = (name: string) => {
+    const i = CATEGORY_ORDER.indexOf(name);
+    return i < 0 ? CATEGORY_ORDER.length : i;
+  };
+  plan.categories.sort((a, b) => orderOf(a.name) - orderOf(b.name)).forEach((c, k) => (c.sortOrder = k));
   const catById = new Map(plan.categories.map((c) => [c.id, c]));
   const ages = agesInDays(data);
   const rows = data.map((p, i): DemoProductRow => {
@@ -209,12 +224,15 @@ export const fakeCategoryIds = (data: DemoProduct[] = loadDemoProducts()): Recor
 // ─── التقييمات: نصوص عربية واقعية، بلا جنس للمتكلم، وبلا أي ادعاء «موثّق» ──────
 
 const LINES = {
-  pos: ["مريح من أول يوم دون أي ألم", "الشكل أنيق والنعل ثابت", "الجودة واضحة في الخياطة والخامة", "المقاس مطابق للجدول تماماً", "يتنسق مع أكثر من إطلالة", "الخامة ناعمة ولم تسبب أي احتكاك", "شكله في الحقيقة أجمل من الصور", "التشطيب نظيف والجلد بحالة ممتازة"],
-  minor: ["يحتاج يومين ليلين قليلاً", "أضيق قليلاً من المعتاد عند الأصابع", "النعل أقسى قليلاً في البداية"],
-  neg: ["المقاس أصغر من المعتاد", "لم يكن مريحاً في المشي الطويل"],
+  pos: [
+    "القماش ناعم ومريح طوال اليوم", "القصّة أنيقة وتناسب أكثر من مناسبة", "الخياطة نظيفة والتفاصيل متقنة", "المقاس مطابق للجدول تماماً",
+    "اللون في الحقيقة مطابق للصور", "الخامة مريحة ولا تحتاج كيّاً كثيراً", "تنسّق بسهولة مع قطع الخزانة الأخرى", "الشكل في الحقيقة أجمل من الصور",
+  ],
+  minor: ["الأكمام أطول قليلاً من المتوقع", "القماش أخف مما توقعت", "يحتاج كيّاً قبل أول لبس", "الطول أقصر قليلاً من المعتاد"],
+  neg: ["المقاس أصغر من المعتاد", "القماش أرق مما ظهر في الصور"],
 };
-const CLOSERS = ["أنصح به", "يستحق سعره", "تجربة ممتازة بكل المقاييس", "من أفضل ما اشتريت مؤخراً"];
-const ONE_STAR = ["لم يناسبني المنتج، والخامة مختلفة عما توقعت", "المنتج مختلف عن الصور ولم يناسبني"];
+const CLOSERS = ["أنصح بها", "تستحق سعرها", "تجربة ممتازة بكل المقاييس", "من أفضل ما اشتريت مؤخراً"];
+const ONE_STAR = ["لم تناسبني القطعة، والخامة مختلفة عما توقعت", "القطعة مختلفة عن الصور ولم تناسبني"];
 const REVIEWERS = [
   "سارة أ.", "محمد ع.", "منة الله ح.", "أحمد س.", "ياسمين ف.", "كريم ع.", "هبة م.", "مصطفى ر.", "نورهان إ.", "عمر ط.", "دعاء ص.",
   "يوسف ن.", "رنا خ.", "طارق ج.", "ندى ب.", "إسلام ك.", "مريم ل.", "حسام و.", "آية ز.", "شادي ه.", "ملك ي.", "باسم ق.", "فرح د.",
@@ -292,14 +310,14 @@ export function questionsFor(data: DemoProduct[], rows: DemoProductRow[], now: n
     const born = createdAt.get(p.slug)!;
     if (i % 3 !== 1 || now - born < 14 * DAY) return;
     const qs: { q: string; a: string }[] = [];
-    if (p.material) qs.push({ q: "ما خامة هذا الحذاء؟", a: `${p.material}.` });
+    if (p.material) qs.push({ q: "ما خامة هذه القطعة؟", a: `${p.material}.` });
     const size = p.options.find((o) => isSizeOption(o.name));
     if (size && size.values.length > 1) {
       qs.push({
         q: "أي مقاس تنصحون به؟",
-        a: `المقاسات المتاحة: ${size.values.join("، ")}. اختاروا مقاسكم المعتاد، ومن كان بين مقاسين فالأكبر أريح. والاستبدال متاح خلال ${RETURN_DAYS} يوماً من الاستلام إن لم يناسب المقاس.`,
+        a: `المقاسات المتاحة: ${size.values.join("، ")}. اعتمدوا زر «دليل المقاسات» في صفحة القطعة: يقترح المقاس من الطول والوزن. ومن كان بين مقاسين فالأكبر أريح لهذه القصّة. والاستبدال متاح خلال ${RETURN_DAYS} يوماً من الاستلام إن لم يناسب المقاس.`,
       });
-    } else if (p.care) qs.push({ q: "كيف أعتني بالحذاء؟", a: p.care });
+    } else if (p.care) qs.push({ q: "كيف أعتني بالقطعة؟", a: p.care });
     qs.slice(0, 2).forEach((q, k) => {
       const asked = born + (3 + ((i + k) % 7)) * DAY;
       out.push({ slug: p.slug, question: q.q, answer: q.a, askerName: first(REVIEWERS[(i * 7 + k * 3) % REVIEWERS.length]!), createdAt: new Date(asked), answeredAt: new Date(asked + (4 + k) * 3600_000) });
@@ -308,17 +326,53 @@ export function questionsFor(data: DemoProduct[], rows: DemoProductRow[], now: n
   return out;
 }
 
-// ─── دليل المقاسات (جدول واحد للأحذية، من قالب المنصة نفسه) ─────────────────
+// ─── دليل المقاسات: جداول نسائية بالمقاسات S–XL، وجدول للأحذية 36–41 ─────────────
 
-const row = (size: string, cells: string[]) => ({ size, cells, heightFrom: null, heightTo: null, weightFrom: null, weightTo: null });
+type ChartRow = SizeChart["rows"][number];
+const row = (size: string, cells: string[], h: [number, number] | null = null, w: [number, number] | null = null): ChartRow => ({
+  size, cells, heightFrom: h?.[0] ?? null, heightTo: h?.[1] ?? null, weightFrom: w?.[0] ?? null, weightTo: w?.[1] ?? null,
+});
 
-/** الجدول بمعرّفات أقسام المتجر الحقيقية (appliesTo)، ويغطي المقاسات 36–45. */
-export function sizeCharts(categoryIds: Record<string, string>): SizeChart[] {
-  const tpl = SIZE_TEMPLATES.find((t) => t.key === "shoes")!.chart;
+/** أقسام كل جدول بأسماء الأقسام النهائية (تُترجم لمعرّفاتها عند البناء). */
+const CHART_SCOPE = {
+  dresses: ["فساتين", "عبايات", "أطقم"],
+  tops: ["بلوزات وجاكيتات"],
+  bottoms: ["بناطيل وتنانير"],
+  shoes: ["إكسسوارات وأحذية"],
+} as const;
+
+/** الجداول بمعرّفات أقسام المتجر الحقيقية (appliesTo). القياسات بالسنتيمتر، ومدى الطول والوزن يغذّي اقتراح المقاس. */
+export function sizeCharts(categoryIds: Record<string, string>, names: Record<string, string> = {}): SizeChart[] {
+  const ids = (list: readonly string[]) => list.map((n) => categoryIds[names[n] ?? ""]).filter((x): x is string => Boolean(x));
+  const dress = SIZE_TEMPLATES.find((t) => t.key === "dresses")!.chart;
   return [
     {
-      id: "szdemoshoes", ...tpl, name: "مقاسات الأحذية", appliesTo: Object.values(categoryIds),
-      rows: [["36", "23.3"], ["37", "24"], ["38", "24.7"], ["39", "25.3"], ["40", "26"], ["41", "26.7"], ["42", "27.3"], ["43", "28"], ["44", "28.7"], ["45", "29.3"]].map(([s, c]) => row(s!, [c!])),
+      id: "szdemodress", ...dress, name: "مقاسات الفساتين والعبايات والأطقم", appliesTo: ids(CHART_SCOPE.dresses), unit: "سم", columns: ["الصدر", "الوسط", "الورك"],
+      note: "قياسات الجسم لا القطعة. الطول يختلف من قطعة لأخرى ويُذكر في وصفها.",
+      rows: [
+        row("S", ["86", "68", "94"], [155, 163], [47, 56]), row("M", ["92", "74", "100"], [160, 168], [55, 65]),
+        row("L", ["98", "80", "106"], [164, 172], [64, 75]), row("XL", ["104", "86", "112"], [168, 176], [73, 86]),
+      ],
+    },
+    {
+      id: "szdemotops", ...dress, name: "مقاسات البلوزات والجاكيتات", appliesTo: ids(CHART_SCOPE.tops), unit: "سم", columns: ["الصدر", "الكتف", "الطول"],
+      note: "قياس القطعة مفرودة على سطح مستوٍ.",
+      rows: [
+        row("S", ["90", "37", "60"], [155, 163], [47, 56]), row("M", ["96", "38.5", "62"], [160, 168], [55, 65]),
+        row("L", ["102", "40", "64"], [164, 172], [64, 75]), row("XL", ["108", "41.5", "66"], [168, 176], [73, 86]),
+      ],
+    },
+    {
+      id: "szdemobottoms", ...dress, name: "مقاسات البناطيل والتنانير", appliesTo: ids(CHART_SCOPE.bottoms), unit: "سم", columns: ["الوسط", "الورك", "طول الساق"],
+      note: "قياس الجسم للوسط والورك، وطول الساق من الفخذ إلى الكاحل.",
+      rows: [
+        row("S", ["68", "94", "100"], [155, 163], [47, 56]), row("M", ["74", "100", "101"], [160, 168], [55, 65]),
+        row("L", ["80", "106", "102"], [164, 172], [64, 75]), row("XL", ["86", "112", "103"], [168, 176], [73, 86]),
+      ],
+    },
+    {
+      id: "szdemoshoes", ...SIZE_TEMPLATES.find((t) => t.key === "shoes")!.chart, name: "مقاسات الأحذية", appliesTo: ids(CHART_SCOPE.shoes),
+      rows: [["36", "23.3"], ["37", "24"], ["38", "24.7"], ["39", "25.3"], ["40", "26"], ["41", "26.7"]].map(([sz, c]) => row(sz!, [c!])),
     },
   ];
 }
@@ -345,14 +399,14 @@ const cta = (label: string, target: Target, style: "primary" | "secondary" = "pr
 export function faqItems(facts: StoreFact[]): { q: string; a: string }[] {
   const has = (key: string) => facts.some((x) => x.key === key);
   const items: { q: string; a: string }[] = [
-    { q: "هل هذا متجر حقيقي؟", a: "هذا متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء كاملة. يمكن إضافة المنتجات إلى السلة وإتمام الطلب للتجربة، لكن الطلب يُسجَّل تجريبياً فلا يُشحن ولا يُطلب عنه أي مبلغ." },
+    { q: "هل هذا متجر حقيقي؟", a: "هذا متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء كاملة. يمكن إضافة القطع إلى السلة وإتمام الطلب للتجربة، لكن الطلب يُسجَّل تجريبياً فلا يُشحن ولا يُطلب عنه أي مبلغ. بعض صور القطع رسوم توضيحية بدل التصوير." },
     { q: "كيف أطلب؟", a: "باختيار المقاس واللون، ثم «إضافة للسلة»، ثم إكمال بيانات الشحن في صفحة إتمام الطلب." },
-    { q: "كيف أختار المقاس المناسب؟", a: "في صفحة كل حذاء زر «دليل المقاسات»: يعرض الجدول بالمقاسات من 36 إلى 45 مع طول القدم بالسنتيمتر." },
+    { q: "كيف أعرف المقاس المناسب؟", a: "في الصفحة الرئيسية أداة «اعرفوا مقاسكم» تقترح المقاس من الطول والوزن، وفي صفحة كل قطعة زر «دليل المقاسات» بجدول القياسات بالسنتيمتر." },
     { q: "ما مدة التوصيل؟", a: `${GENERAL_ETA} حسب المحافظة، وتظهر المدة المتوقعة لكل محافظة في صفحة إتمام الطلب.` },
   ];
   if (has("cod")) items.push({ q: "هل الدفع عند الاستلام متاح؟", a: "نعم، الدفع نقداً عند استلام الطلب متاح لكل الطلبات." });
-  if (has("inspection")) items.push({ q: "هل يمكن فتح الشحنة قبل الدفع؟", a: "نعم، يمكن فتح الشحنة وفحص المنتج مع المندوب قبل الدفع." });
-  if (has("returns")) items.push({ q: "ما سياسة الاستبدال والاسترجاع؟", a: `الاستبدال والاسترجاع متاحان خلال ${RETURN_DAYS} يوماً من الاستلام، بشرط أن يكون المنتج بحالته الأصلية.` });
+  if (has("inspection")) items.push({ q: "هل يمكن فتح الشحنة قبل الدفع؟", a: "نعم، يمكن فتح الشحنة وفحص القطعة مع المندوب قبل الدفع." });
+  if (has("returns")) items.push({ q: "ما سياسة الاستبدال والاسترجاع؟", a: `الاستبدال والاسترجاع متاحان خلال ${RETURN_DAYS} يوماً من الاستلام، بشرط أن تكون القطعة بحالتها الأصلية.` });
   if (has("free_shipping_over")) items.push({ q: "متى يكون الشحن مجانياً؟", a: `الشحن مجاني لأي طلب قيمته ${formatEgp(FREE_SHIPPING_OVER_PIASTERS)} أو أكثر.` });
   return items;
 }
@@ -376,18 +430,41 @@ export const demoStoreSettings = (now: number) => ({
   prefs: { demo: true },
 });
 
+/** صور ومحتوى الأقسام المخصصة (stores/demo): كلها من ملفات public/demo الموثقة في docs/demo-credits.md. */
+export const DEMO_EDITORIAL = {
+  heroMain: { url: "/demo/editorial/lookbook-3.webp", alt: "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة بين أعمدة بيضاء" },
+  heroSecond: { url: "/demo/editorial/lookbook-2.webp", alt: "ترنش كوت بيج مفتوح فوق توب أبيض وبنطلون بيج" },
+  railDresses: "/demo/editorial/rail-dresses.webp",
+  railBoutique: "/demo/editorial/rail-boutique.webp",
+  bag: "/demo/fashion/green-leather-tote-1.webp",
+  earrings: "/demo/fashion/tortoise-hoop-earrings-1.webp",
+  blazer: "/demo/editorial/hero-side.webp",
+  utility: "/demo/editorial/lookbook-1.webp",
+} as const;
+
+/** غلاف كل قسم في «تسوقوا حسب القسم»: صورة فوتوغرافية متى وُجدت لقسمه، وإلا صورة أول منتج. */
+export const CATEGORY_COVERS: Record<string, string> = {
+  "فساتين": DEMO_EDITORIAL.railDresses,
+  "بلوزات وجاكيتات": DEMO_EDITORIAL.heroSecond.url,
+  "أطقم": DEMO_EDITORIAL.blazer,
+  "إكسسوارات وأحذية": DEMO_EDITORIAL.bag,
+};
+
+/** ترتيب عرض الأقسام (الأكثر تسوقاً أولاً)، وما سواه يتبع بترتيبه. */
+export const CATEGORY_ORDER = ["فساتين", "عبايات", "بلوزات وجاكيتات", "بناطيل وتنانير", "أطقم", "إكسسوارات وأحذية"];
+
 export function buildDemoBlueprint(opts: { storeId: string; email: string; categoryIds: Record<string, string>; productCount: number; data?: DemoProduct[] }): StoreBlueprint {
   const data = opts.data ?? loadDemoProducts();
   const base = defaultBlueprint({
     name: DEMO_NAME,
-    tagline: "أحذية جلد وسويد بمقاسات من 36 إلى 45، في متجر عرض من Colapia",
-    industry: "shoes",
+    tagline: "أزياء نسائية بقصّات هادئة وخامات مريحة، في متجر عرض من Colapia",
+    industry: "fashion",
     email: opts.email,
     inspectionAllowed: true,
     storeId: opts.storeId,
     productCount: opts.productCount,
     hasHeroImages: true,
-    variationSeed: "demo-colapia-v3-shoes",
+    variationSeed: "demo-colapia-v5-women",
     toneOfVoice: "premium_formal",
   });
 
@@ -398,70 +475,93 @@ export function buildDemoBlueprint(opts: { storeId: string; email: string; categ
     shipping: { ...base.shipping, freeOverPiasters: FREE_SHIPPING_OVER_PIASTERS, flatRatePiasters: null, generalEta: GENERAL_ETA, inspectionAllowed: true, pickupEnabled: false, giftEnabled: true, giftWrapPiasters: 0 },
     returns: { ...base.returns, windowDays: RETURN_DAYS, allowExchange: true, allowRefund: true },
   };
-  // قالب البدء للأحذية: التصميم الكامل (منتصف الليل + بطاقات زئبقية) وتركيب الرئيسية.
-  const templated = applyStarterTemplate(policies, DEMO_TEMPLATE);
-  const facts = demoFacts(templated);
+  // قالب البدء للأزياء ثم تصميم «عاجي» كاملاً (الألوان والخطوط والبطاقة والأزرار) بدل ألوان القالب المبهجة.
+  const shell = applyTheme(applyStarterTemplate(policies, DEMO_TEMPLATE), DEMO_THEME);
+  const facts = demoFacts(shell);
   const freeShipping = facts.some((f) => f.key === "free_shipping_over");
 
-  // واجهة تُبنى من صور المنتجات بالمسار نفسه الذي يضغطه التاجر («تلقائي من منتجاتي»).
-  const catalogRows = productRows(data, 0);
-  const heroPicks = catalogRows.filter((r) => r.isFeatured).concat(catalogRows.filter((r) => !r.isFeatured)).slice(0, 4);
-  const withHero = applyHeroMedia(templated, { kind: "auto" }, HERO_ORIGIN, heroPicks.map((r) => ({ url: `${HERO_ORIGIN}${r.images[0]!.url}`, alt: r.images[0]!.alt })));
-  if ("error" in withHero) throw new Error(withHero.error);
-  const shell = withHero.blueprint;
-
-  const home: Section[] = shell.home.flatMap((s): Section[] => {
-    if (s.type === "hero") {
-      return [{
-        ...s,
-        images: s.images.map((i) => ({ ...i, url: i.url.replace(HERO_ORIGIN, "") })),
-        eyebrow: "تشكيلة الموسم",
-        headline: "خطوة واثقة في كل مناسبة",
-        subheadline: "سنيكرز وكاجوال وكعب وبوت وصنادل بجلد وسويد، ودليل مقاسات يقترح المقاس المناسب. متجر عرض لتجربة الشراء كاملة.",
-        primaryCta: cta("تسوقوا الآن", { type: "all_products" }),
-        secondaryCta: cta("وصل حديثاً", { type: "section", sectionId: "new" }, "secondary"),
-      }];
-    }
-    // لا مبيعات حقيقية في متجر العرض، فلا قسم «الأكثر مبيعاً»: مختارات يحددها المتجر.
-    if (s.type === "product_grid" && s.id === "best") return [{ ...s, title: "مختارات المتجر", subtitle: "أحذية اخترناها لكم", source: { type: "featured" } }];
-    if (s.type === "product_grid" && s.id === "new") {
-      return [s, { ...s, id: "sale", background: "muted", variant: "grid", title: "عروض بأسعار مخفّضة", subtitle: "خصومات على السعر الأصلي", source: { type: "on_sale" }, limit: 8 }];
-    }
-    if (s.type === "trust_badges") return [{ ...s, spacing: "compact" }];
-    if (s.type === "testimonials") return [{ ...s, title: "آراء العملاء", subtitle: "تقييمات توضيحية لمتجر العرض، وليست من طلبات حقيقية.", items: [], includeVerifiedReviews: true }];
-    if (s.type === "faq") return [{ ...s, items: faqItems(facts) }];
-    return [s];
+  const cats = demoCategories(data);
+  const catByName = Object.fromEntries(cats.map((c) => [c.name, c.key]));
+  const heroSrc = shell.home.find((s): s is Extract<Section, { type: "hero" }> => s.type === "hero")!;
+  const byId = (id: string) => shell.home.find((s) => s.id === id)!;
+  const block = (id: string, name: string, title: string, props: Record<string, unknown>, background: Section["background"] = "default"): Section => ({
+    id, type: "store_block", enabled: true, spacing: "normal", reveal: "fade", background, variant: "default", name, title, props,
   });
-  const faqAt = home.findIndex((s) => s.type === "faq");
+
+  const home: Section[] = [
+    {
+      ...heroSrc,
+      variant: "editorial",
+      eyebrow: "مجموعة الموسم",
+      headline: "أناقة هادئة لكل يوم",
+      subheadline: "فساتين وعبايات وأطقم بخامات مريحة وقصّات تناسب مختلف المقاسات، مع أداة تقترح مقاسكم من الطول والوزن.",
+      images: [img(DEMO_EDITORIAL.heroMain.url, DEMO_EDITORIAL.heroMain.alt, 0.35), img(DEMO_EDITORIAL.heroSecond.url, DEMO_EDITORIAL.heroSecond.alt, 0.4)],
+      videoUrl: undefined,
+      highlights: [],
+      spotlightProductSlug: "longline-camel-wool-coat",
+      primaryCta: cta("تسوقوا المجموعة", { type: "all_products" }),
+      secondaryCta: cta("شاهدوا الإطلالات", { type: "section", sectionId: "lookbook" }, "secondary"),
+      textAlign: "start",
+      height: "tall",
+      enableKineticTypography: false,
+    },
+    { ...(byId("trust") as Section), spacing: "compact" },
+    block("mosaic", "category-mosaic", "تسوقوا حسب القسم", { covers: CATEGORY_COVERS, order: CATEGORY_ORDER }),
+    { ...(byId("new") as Section), id: "new", variant: "featured_first", title: "وصل حديثاً", subtitle: "أحدث القطع في المتجر", limit: 8 } as Section,
+    block("look", "shop-the-look", "تسوقوا الإطلالة", {
+      image: DEMO_EDITORIAL.heroMain.url, alt: DEMO_EDITORIAL.heroMain.alt,
+      caption: "معطف طويل بلون الجمل فوق طبقات هادئة: قطع تُلبس معاً أو كلٌّ على حدة.",
+      items: [
+        { slug: "longline-camel-wool-coat", role: "المعطف" },
+        { slug: "wide-leg-trousers", role: "البنطلون" },
+        { slug: "green-leather-tote", role: "الحقيبة" },
+      ],
+    }, "muted"),
+    { ...(byId("best") as Section), id: "best", variant: "carousel", title: "مختارات ريحانة", subtitle: "قطع اخترناها لكم من كل الأقسام", source: { type: "featured" }, limit: 10 } as Section,
+    {
+      id: "sale-banner", type: "promo_banner", enabled: true, spacing: "normal", reveal: "fade", background: "default", variant: "wide",
+      items: [{
+        eyebrow: "تخفيضات", title: "قطع مختارة بأسعار مخفّضة", text: `أسعار أقل على قطع من الفساتين والعبايات والأحذية، وكود ${DEMO_COUPON.code} يخفّض ${DEMO_COUPON.percent}% عند إتمام الطلب.`,
+        image: img(DEMO_EDITORIAL.railBoutique, "شماعة متجر بفساتين وبلوزات بدرجات البيج والخوخ والصدأ بجوار نافذة", 0.5),
+        cta: cta("تسوقوا التخفيضات", { type: "section", sectionId: "sale" }), couponCode: DEMO_COUPON.code,
+      }],
+    },
+    { ...(byId("new") as Section), id: "sale", variant: "grid", background: "default", title: "عروض بأسعار مخفّضة", subtitle: "خصومات على السعر الأصلي", source: { type: "on_sale" }, limit: 8 } as Section,
+    block("lookbook", "lookbook", "إطلالات من المجموعة", {
+      looks: [
+        { image: DEMO_EDITORIAL.heroMain.url, alt: DEMO_EDITORIAL.heroMain.alt, title: "معطف الجمل", slug: "longline-camel-wool-coat" },
+        { image: DEMO_EDITORIAL.heroSecond.url, alt: DEMO_EDITORIAL.heroSecond.alt, title: "ترنش الصباح", slug: "belted-trench-coat" },
+        { image: DEMO_EDITORIAL.blazer, alt: "بليزر بلون الجمل فوق توب أبيض وجينز فاتح", title: "بليزر بدرجات الجمل", slug: "camel-blazer-trouser-set" },
+        { image: DEMO_EDITORIAL.utility, alt: "طقم قميص وبنطلون بلون الخاكي", title: "طقم يوم طويل", slug: "khaki-utility-set" },
+      ],
+    }),
+    block("fit", "fit-finder", "اعرفوا مقاسكم", { category: "فساتين" }, "muted"),
+    block("fabric", "fabric-guide", "الخامات في هذه المجموعة", {}),
+    block("voices", "voices", "آراء من التقييمات", { limit: 6 }, "muted"),
+    { ...(byId("faq") as Section), items: faqItems(facts) } as Section,
+  ];
   const about: Section = {
-    id: "about", type: "about", enabled: true, spacing: "normal", reveal: "fade", background: "muted", variant: "split", title: "عن متجر العرض",
-    body: `${DEMO_NAME} متجر عرض أعدّه فريق Colapia ليُظهر شكل المتجر الجاهز ولوحة التحكم: أقسام للأحذية بأغلفتها، ومنتجات بمقاسات وألوان ومخزون، ودليل مقاسات، وتقييمات وأسئلة مُجابة، وتجربة شراء كاملة حتى تأكيد الطلب.\nالمنتجات والصور والتقييمات هنا للعرض فقط، والطلبات تُسجَّل تجريبياً فلا تُشحن ولا يُطلب عنها أي دفع.`,
-    image: img(catalogRows[1]!.images[0]!.url, catalogRows[1]!.images[0]!.alt, 0.5),
+    id: "about", type: "about", enabled: true, spacing: "normal", reveal: "fade", background: "default", variant: "split", title: "عن متجر العرض",
+    body: `${DEMO_NAME} متجر عرض أعدّه فريق Colapia ليُظهر شكل المتجر الجاهز ولوحة التحكم: أقسام لأزياء نسائية بأغلفتها، وقطع بمقاسات وألوان ومخزون، وأداة لاقتراح المقاس، وتقييمات وأسئلة مُجابة، وتجربة شراء كاملة حتى تأكيد الطلب.\nالقطع والأسعار والتقييمات هنا للعرض فقط، وبعض الصور رسوم توضيحية بدل التصوير، والطلبات تُسجَّل تجريبياً فلا تُشحن ولا يُطلب عنها أي دفع.`,
+    image: img(DEMO_EDITORIAL.railDresses, "شماعة بفساتين سوداء وزيتية أمام ستائر كريمية", 0.5),
     stats: [], milestones: [],
   };
-  home.splice(faqAt < 0 ? home.length : faqAt, 0, about);
+  home.push(about);
 
   const bp: StoreBlueprint = {
     ...shell,
     brand: {
       ...shell.brand,
-      description: "متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء ولوحة التحكم. المنتجات والصور للعرض فقط.",
+      description: "متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء ولوحة التحكم. القطع والصور للعرض فقط.",
       voice: "premium_formal",
     },
     header: {
       ...shell.header,
       transparentOnHero: false,
-      announcement: {
-        enabled: true, dismissible: true, rotate: true,
-        items: [
-          { text: "متجر عرض من Colapia: الطلبات هنا تجريبية ولا تُشحن" },
-          ...(freeShipping ? [{ text: `شحن مجاني للطلبات بقيمة ${formatEgp(FREE_SHIPPING_OVER_PIASTERS)} فأكثر`, target: { type: "all_products" as const } }] : []),
-          { text: `كود ${DEMO_COUPON.code} لتجربة الخصم عند إتمام الطلب`, target: { type: "section" as const, sectionId: "sale" } },
-        ],
-      },
-      // القائمة الافتراضية كما هي: الواجهة تضيف أقسام المتجر إليها تلقائياً.
+      // الشريط العلوي (مع إفصاح العرض الدائم) يرسمه stores/demo/slots/Header.tsx.
+      announcement: shell.header.announcement ? { ...shell.header.announcement, enabled: false } : undefined,
     },
-    footer: { ...shell.footer, tagline: "متجر عرض من Colapia: المنتجات للعرض والطلبات تجريبية." },
+    footer: { ...shell.footer, tagline: "متجر عرض من Colapia: القطع للعرض والطلبات تجريبية." },
     conversion: {
       ...shell.conversion,
       // لا رقم واتساب حقيقياً لمتجر العرض، فلا زر واتساب ولا طلب عبر ماسنجر.
@@ -479,12 +579,12 @@ export function buildDemoBlueprint(opts: { storeId: string; email: string; categ
     seo: {
       ...shell.seo,
       title: `${DEMO_NAME}: متجر عرض من Colapia`,
-      description: "تصفحوا متجر أحذية كاملاً كما يراه الزبائن: أقسام ومقاسات وألوان ودليل مقاسات وتجربة شراء تجريبية.",
+      description: "تصفحوا متجر أزياء نسائية كاملاً كما يراه الزبائن: أقسام ومقاسات وألوان وأداة لاقتراح المقاس وتجربة شراء تجريبية.",
       // متجر عرض لا يبيع فعلاً: لا يُفهرس في محركات البحث.
       noIndex: true,
     },
     productPage: { ...shell.productPage, showAttributesTable: true, showReviews: true },
-    sizeGuide: { charts: sizeCharts(opts.categoryIds) },
+    sizeGuide: { charts: sizeCharts(opts.categoryIds, catByName) },
     home,
   };
 
