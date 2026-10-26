@@ -10,6 +10,8 @@ import { useCart, itemKey, lineCap } from "@/store/cart";
 import { useCopy } from "./StoreProvider";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { CartActions } from "./CartActions";
+import { toast } from "sonner";
 import { CartNotices, CartTotals, CrossSell, FreeShippingMeter, useCartLive, useSaveForLater } from "./CartLive";
 import type { CartCheckResult } from "@/server/cart-check";
 
@@ -40,6 +42,12 @@ export function CartLines({
   const setQty = useCart((s) => s.setQty);
   const remove = useCart((s) => s.remove);
   const saveLater = useSaveForLater();
+  const restore = useCart((s) => s.restore);
+  const removeWithUndo = (k: string) => {
+    const it = items.find((x) => itemKey(x) === k);
+    remove(k);
+    if (it) toast(`حُذف «${it.name}»`, { action: { label: "تراجع", onClick: () => restore(it) }, duration: 6000 });
+  };
 
   // خصم الكمية/الطقم لكل سطر من حساب الخادم (السطر المدموج بالمنتج والتركيبة).
   const serverLine = (i: (typeof items)[number]) => {
@@ -88,7 +96,7 @@ export function CartLines({
                 <button type="button" onClick={() => saveLater(k, i.slug)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[11.5px] font-bold opacity-70 transition-opacity hover:opacity-100">
                   <Bookmark className="size-3.5" strokeWidth={SW} aria-hidden="true" /> احفظ لاحقاً
                 </button>
-                <button type="button" onClick={() => remove(k)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[11.5px] font-bold text-danger transition-colors hover:bg-danger/10" aria-label={`حذف ${i.name}`}>
+                <button type="button" onClick={() => removeWithUndo(k)} className="inline-flex h-8 items-center gap-1 rounded-lg px-2 text-[11.5px] font-bold text-danger transition-colors hover:bg-danger/10" aria-label={`حذف ${i.name}`}>
                   <Trash2 strokeWidth={SW} className="size-3.5" aria-hidden="true" /> حذف
                 </button>
               </div>
@@ -164,6 +172,7 @@ export function CartView() {
           <span className="font-mono tabular-nums">{formatEgp(total)}</span>
         </div>
         {blocked ? <p className="text-xs font-bold text-danger">أزيلوا المنتجات غير المتاحة للمتابعة</p> : null}
+        <CartActions totalPiasters={total} />
         <Link href="/checkout" aria-disabled={blocked} className={cn("s-btn h-12 w-full text-sm", blocked && "pointer-events-none opacity-50")}>
           {t("checkout")}
         </Link>

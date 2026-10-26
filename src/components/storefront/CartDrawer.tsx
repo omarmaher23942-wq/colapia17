@@ -11,6 +11,7 @@ import { useCart } from "@/store/cart";
 import { useCopy } from "./StoreProvider";
 import { CartLines } from "./CartView";
 import { CartNotices, CartTotals, CrossSell, FreeShippingMeter, useCartLive } from "./CartLive";
+import { CartActions } from "./CartActions";
 import { SheetDialog } from "./SheetDialog";
 import { formatEgp } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export function CartDrawer() {
           <span className="font-mono text-xl font-black tabular-nums">{formatEgp(total)}</span>
         </div>
         {blocked ? <p className="text-xs font-bold text-danger">أزيلوا المنتجات غير المتاحة للمتابعة</p> : null}
+        <CartActions totalPiasters={total} />
         <Link href="/checkout" onClick={close} aria-disabled={blocked} tabIndex={blocked ? -1 : undefined} className={cn("s-btn h-12 w-full text-sm", blocked && "pointer-events-none opacity-50")}>
           {t("checkout")}
           <ArrowLeft className="size-5" strokeWidth={SW} aria-hidden="true" />
