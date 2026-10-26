@@ -93,7 +93,7 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
   const url = publicStoreUrl(store);
   const p = bp.payments;
   const c = bp.channels;
-  const base = {
+  const base: Omit<SetupData, "recipe"> = {
     store: { id: store.id, name: bp.brand.name, subdomain: store.subdomain, url, host: url.replace(/^https?:\/\//, ""), trialEndsAt: store.trialEndsAt?.toISOString() ?? null },
     onboarding,
     identity: { name: bp.brand.name, primary: bp.theme.palette.primary, fontPair: pairIdFor(bp.theme.fonts.heading, bp.theme.fonts.body), logoUrl: bp.brand.logo?.url ?? null },

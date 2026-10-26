@@ -108,6 +108,7 @@ const ALL: NavSection[] = [
       { label: "إعدادات المتجر", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
       { label: "أسعار الشحن", href: "/dashboard/shipping", icon: Rocket, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "دعوة موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات"] },
+      { label: "تفعيل الموقع", href: "/dashboard/activate", icon: Rocket, hint: "الدفع وربط حساباتكم وحجز الميتنج", keywords: ["activate", "تفعيل", "ربط", "قاعدة", "ميتنج"] },
       { label: "الاشتراك والاستخدام", href: "/dashboard/billing", icon: CreditCard, hint: "الباقة والتجديد والمدفوعات وحدود الاستخدام الشهرية", keywords: ["billing", "فوترة", "اشتراك", "دفع", "تجديد", "usage", "حدود", "استخدام", "حصة"] },
       { label: "طلب تعديل من الفريق", href: "/dashboard/requests", icon: MessageSquarePlus, hint: "اطلبوا من فريقنا تعديلاً في التصميم أو المحتوى", keywords: ["requests", "تعديل", "طلب"] },
     ],
@@ -119,7 +120,7 @@ export const NAV_SECTIONS: NavSection[] = ALL;
 export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 
 /** الصفحات المفتوحة أثناء قفل اللوحة (مجمّد/متوقف): الاشتراك وحده (وملحقه الاستخدام). */
-export const LOCKED_OPEN_HREFS = ["/dashboard/billing"] as const;
+export const LOCKED_OPEN_HREFS = ["/dashboard/billing", "/dashboard/activate"] as const;
 
 /**
  * القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر.

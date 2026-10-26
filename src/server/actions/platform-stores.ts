@@ -2,7 +2,9 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { stores, magicLinks, storeBlueprints, systemEvents, conversations } from "@/db/schema";
+import { stores, magicLinks, merchants, storeBlueprints, systemEvents, conversations } from "@/db/schema";
+import { resetLink, setupLink } from "@/agent/tokens";
+import { passwordFingerprint } from "@/server/auth";
 import { requirePlatformCap } from "@/server/platform-guard";
 import { invalidateStoreCache } from "@/lib/tenant";
 import { clientEnv } from "@/lib/env";
@@ -101,6 +103,19 @@ export async function resendMagicLinkAction(storeId: string) {
     }
   );
   await log(storeId, "إعادة إرسال Magic Link", `platform:${u.id}`);
+}
+
+/**
+ * «أعيدوا إرسال رابط إعداد»: رابط جديد يُنسخ ويرسله الفريق يدوياً. قبل وضع كلمة المرور = رابط الإعداد (14 يوماً)،
+ * وبعدها = رابط إعادة تعيين كلمة المرور (يومان، لمرة واحدة) لمن تعذّر عليه البريد.
+ */
+export async function reissueSetupLinkAction(storeId: string): Promise<{ url: string; kind: "setup" | "reset" } | { error: string }> {
+  const u = await own();
+  const [row] = await db.select({ id: stores.id, merchantId: stores.merchantId, pw: merchants.passwordHash }).from(stores).innerJoin(merchants, eq(merchants.id, stores.merchantId)).where(eq(stores.id, storeId)).limit(1);
+  if (!row) return { error: "المتجر غير موجود" };
+  const out = row.pw ? { url: resetLink(row.merchantId, passwordFingerprint(row.pw)), kind: "reset" as const } : { url: setupLink(row.id), kind: "setup" as const };
+  await log(storeId, out.kind === "setup" ? "توليد رابط إعداد جديد" : "توليد رابط إعادة تعيين كلمة المرور", `platform:${u.id}`);
+  return out;
 }
 
 export async function exportBlueprintAction(storeId: string) {

@@ -7,6 +7,7 @@ import {
   setStoreStatusAction,
   changeSubdomainAction,
   resendMagicLinkAction,
+  reissueSetupLinkAction,
   exportBlueprintAction,
   toggleShowcaseAction,
   softDeleteStoreAction,
@@ -94,6 +95,7 @@ export function StoreAdminActions({
         {!merchantActivated && ["active"].includes(s.status) && (
           <button disabled={p} onClick={() => go(() => resendMagicLinkAction(s.id), "أُرسل الرابط")} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>🔗 إرسال رابط الدخول</button>
         )}
+          <button disabled={p} onClick={() => go(async () => { const r = await reissueSetupLinkAction(s.id); if ("error" in r) throw new Error(r.error); await navigator.clipboard.writeText(r.url); }, "نُسخ الرابط؛ أرسلوه للتاجر")} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>أعيدوا إرسال رابط إعداد</button>
         <button disabled={p} onClick={() => go(() => toggleAcceptingAction(s.id, !s.acceptingOrders), s.acceptingOrders ? "أُوقف الاستقبال" : "أُعيد الاستقبال")} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>{s.acceptingOrders ? "😴 وضع الإجازة" : "🟢 استقبال الطلبات"}</button>
         <button disabled={p} onClick={() => go(() => toggleShowcaseAction(s.id, !s.showcase), "تم")} className={`${B} bg-white/10 hover:bg-white/20 text-white`}>{s.showcase ? "🙈 إخفاء من المعرض" : "🌟 إظهار في المعرض"}</button>
         {hasBlueprint && (

@@ -22,8 +22,8 @@ describe("قائمة لوحة التاجر (V3)", () => {
     expect(areaForPath("/dashboard/usage")).toBe("settings");
   });
   it("القفل لا يترك إلا الاشتراك، حتى لصاحب المتجر", () => {
-    expect(navItemsFor(null, null, true).map((i) => i.href)).toEqual(["/dashboard/billing"]);
-    expect(navItemsFor(OWNER_PERMS, null, true).map((i) => i.href)).toEqual(["/dashboard/billing"]);
+    expect(navItemsFor(null, null, true).map((i) => i.href)).toEqual(["/dashboard/activate", "/dashboard/billing"]);
+    expect(navItemsFor(OWNER_PERMS, null, true).map((i) => i.href)).toEqual(["/dashboard/activate", "/dashboard/billing"]);
     expect(navSectionsFor(null, null, true)).toHaveLength(1);
   });
   it("بلا قفل تظهر كل الصفحات", () => {
