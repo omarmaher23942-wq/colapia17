@@ -133,7 +133,7 @@ export const PATCHES: Patch[] = [
   { path: "src/components/dashboard/settings/SettingsPage.tsx", dropLines: /import \{ SubdomainSection \} from "\.\/SubdomainSection";/, why: "لا نطاق فرعي على المنصة" },
   { path: "src/components/dashboard/settings/SettingsPage.tsx", dropLines: /<SubdomainSection \/>/, why: "لا نطاق فرعي على المنصة" },
   // قائمة اللوحة: بلا صفحات الاشتراك والنطاق والفريق وطلبات الفريق (تخص المنصة وحدها).
-  { path: "src/components/dashboard/nav.ts", dropLines: /href: "\/dashboard\/(store|domain|team|billing|requests)"/, why: "صفحات المنصة" },
+  { path: "src/components/dashboard/nav.ts", dropLines: /href: "\/dashboard\/(store|domain|team|billing|requests|transfer)"/, why: "صفحات المنصة" },
   { path: "src/components/dashboard/nav.ts", find: 'title: "الإعدادات والاشتراك"', replace: 'title: "الإعدادات"', why: "لا اشتراك" },
   { path: "src/components/dashboard/nav.ts", find: "  Wand2,\n  type LucideIcon,", replace: "  Wand2,\n  Plug,\n  type LucideIcon,", why: "أيقونة الربط" },
   {

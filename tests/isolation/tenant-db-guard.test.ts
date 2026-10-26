@@ -58,6 +58,19 @@ describe("tenant data access", () => {
     expect(mixed.filter((f) => !REVIEWED_MIXED.has(f))).toEqual([]);
   });
 
+  it("exposes the platform copy of tenant data only to the transfer machinery", () => {
+    const all = walk(SRC)
+      .map((p) => ({ rel: relative(ROOT, p).split(sep).join("/"), text: readFileSync(p, "utf8") }))
+      .filter((f) => /\bplatformCopyDb\b/.test(f.text))
+      .map((f) => f.rel);
+    expect(all.filter((f) => f !== "src/db/tenant.ts" && !f.startsWith("src/server/transfer/"))).toEqual([]);
+  });
+
+  it("never lets the routing lookup leak a client database URL into logs", () => {
+    const text = readFileSync(join(SRC, "server/transfer/index.ts"), "utf8") + readFileSync(join(SRC, "db/tenant.ts"), "utf8");
+    expect(text).not.toMatch(/log\.\w+\([^)]*\b(databaseUrl|targetUrlEnc|urlEnc|url)\b/);
+  });
+
   it("keeps the reviewed list free of stale entries", () => {
     const mixed = new Set(files.filter((f) => f.text.includes('from "@/db/client"')).map((f) => f.rel));
     expect([...REVIEWED_MIXED].filter((f) => !mixed.has(f))).toEqual([]);

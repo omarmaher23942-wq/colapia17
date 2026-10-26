@@ -64,6 +64,8 @@ export const CONTROL_TABLES = [
   "store_activity",
   "store_change_requests",
   "store_secrets",
+  "store_databases",
+  "store_db_transfers",
 ] as const;
 
 /** جداول تحكم يجوز لبيانات المتجر أن تشير إليها بمفتاح أجنبي (التاجر والمتجر وتصميمه). */
