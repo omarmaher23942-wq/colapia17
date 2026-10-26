@@ -1,8 +1,7 @@
 // /no-store — حساب سجّل الدخول لكن لا متجر مرتبط به. شاشة لطيفة بتبديل الحساب (لا /login: يعيد من له جلسة إلى اللوحة فتدور حلقة).
 import type { Metadata } from "next";
-import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
-import { NoStoreNotice } from "@/components/auth/NoStoreNotice";
-import { switchMerchantAccountAction } from "../login/actions";
+import { AuthNotice, AuthShell, AUTH_BTN } from "@/components/auth/AuthShell";
+import { merchantLogoutAction } from "@/server/actions/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +9,19 @@ export const metadata: Metadata = { title: "لا يوجد متجر مرتبط", 
 
 export default function NoStorePage() {
   return (
-    <main dir="rtl" lang="ar" className="flex min-h-dvh items-center justify-center bg-[#07091a] px-4 py-12 text-[#eaf0ff]">
-      <div className="w-full max-w-md">
-        <div className="mb-6 flex justify-center">
-          <ColapiaLogo size={36} />
-        </div>
-        <NoStoreNotice switchAction={switchMerchantAccountAction.bind(null, "/dashboard")} />
-      </div>
-    </main>
+    <AuthShell>
+      <AuthNotice
+        title="لا يوجد متجر مرتبط بهذا الحساب"
+        action={
+          <form action={merchantLogoutAction}>
+            <button type="submit" className={AUTH_BTN}>
+              الدخول بحساب آخر
+            </button>
+          </form>
+        }
+      >
+        <p>ادخلوا بالبريد الذي سجّلتموه معنا. وإن لم يصلكم رابط إعداد متجركم فراسلونا في المحادثة نفسها.</p>
+      </AuthNotice>
+    </AuthShell>
   );
 }

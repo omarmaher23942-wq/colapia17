@@ -26,6 +26,9 @@ import { readRequestId } from "@/lib/correlation";
 import { clientIp } from "@/lib/client-ip";
 import { log } from "@/lib/logger";
 import { canonicalEmail } from "@/lib/contact";
+import { hashPassword, verifyPassword } from "@/server/passwords";
+import { redis } from "@/lib/redis";
+import { createLockout, type CounterStore } from "@/lib/login-lockout";
 
 const MERCHANT_COOKIE = "clp_m";
 const PLATFORM_COOKIE = "clp_p";
@@ -124,13 +127,6 @@ async function findSession(token: string | undefined, subjectType: SubjectType) 
 
 // ─── التاجر ─────────────────────────────────────────────────────────────────
 
-export type GoogleIdentity = {
-  email: string;
-  name: string;
-  googleId: string;
-  picture?: string;
-};
-
 /** هل لهذا البريد دعوة فريق نشطة في أي متجر (مطابقة بالبريد القانوني)؟ */
 async function hasActiveInvite(email: string): Promise<boolean> {
   const canonical = canonicalEmail(email);
@@ -155,90 +151,6 @@ async function findMerchantByEmail(email: string): Promise<Merchant | null> {
   return m ?? null;
 }
 
-/**
- * يُستدعى من OAuth callback فقط بعد تحقق Google من الهوية والبريد. **لا ينشئ تاجراً جديداً لبريد مجهول**: الدخول لمن أنشأ
- * الوكيل متجره (تطابق البريد القانوني) أو لعضو فريق مدعو. يعيد null إن لم يوجد متجر مرتبط بهذا البريد (فتعرض الواجهة شاشة
- * لطيفة)، وكذلك إن اشترط المستدعي تاجراً بعينه (`expectMerchantId`) ولم يطابق.
- */
-export async function signInMerchantWithGoogle(
-  identity: GoogleIdentity,
-  opts: { expectMerchantId?: string; storeId?: string } = {}
-): Promise<{ merchant: Merchant; isNew: boolean } | null> {
-  const reqId = await readRequestId();
-  const email = identity.email.trim().toLowerCase();
-  const canonical = canonicalEmail(email);
-  const displayName = identity.name?.trim() || email.split("@")[0] || "تاجر جديد";
-
-  const [byGoogle] = await db
-    .select()
-    .from(merchants)
-    .where(eq(merchants.googleId, identity.googleId))
-    .limit(1);
-  const existing = byGoogle ?? (await findMerchantByEmail(email));
-
-  let merchant: Merchant;
-  let isNew = false;
-  const now = new Date();
-
-  if (existing) {
-    // حساب مرتبط بـ Google آخر لا يُستولى عليه بمطابقة البريد.
-    if (existing.googleId && existing.googleId !== identity.googleId) {
-      log.warn("security", "merchant_google_id_mismatch", { reqId, merchantId: existing.id });
-      throw new Error("google_identity_mismatch");
-    }
-    if (opts.expectMerchantId && existing.id !== opts.expectMerchantId) {
-      log.warn("security", "merchant_setup_account_mismatch", { reqId, merchantId: existing.id });
-      return null;
-    }
-    const [updated] = await db
-      .update(merchants)
-      .set({
-        googleId: identity.googleId,
-        // البريد الأصلي (الذي أعطاه التاجر للوكيل) يبقى كما هو؛ نكمل الصيغة القانونية فقط.
-        emailCanonical: existing.emailCanonical ?? canonicalEmail(existing.email ?? email),
-        avatarUrl: existing.avatarUrl ?? identity.picture ?? null,
-        isActivated: true,
-        lastLoginAt: now,
-        updatedAt: now,
-      })
-      .where(eq(merchants.id, existing.id))
-      .returning();
-    if (!updated) throw new Error("merchant_update_failed");
-    merchant = updated;
-  } else {
-    // لا حساب بهذا البريد: مسموح فقط لعضو فريق مدعو؛ غير ذلك لا يُنشأ تاجر (المتجر ينشئه الوكيل أولاً).
-    if (opts.expectMerchantId || !(await hasActiveInvite(email))) {
-      log.info("auth", "merchant_google_no_store", { reqId });
-      return null;
-    }
-    const [created] = await db
-      .insert(merchants)
-      .values({
-        email,
-        emailCanonical: canonical,
-        displayName,
-        googleId: identity.googleId,
-        avatarUrl: identity.picture ?? null,
-        isActivated: true,
-        lastLoginAt: now,
-      })
-      .returning();
-    if (!created) throw new Error("merchant_create_failed");
-    merchant = created;
-    isNew = true;
-  }
-
-  await linkMemberships(merchant.id, email);
-  const token = await createSession("merchant", merchant.id, opts.storeId ?? null);
-  await clearLegacySharedCookie(MERCHANT_COOKIE);
-  await writeCookie(MERCHANT_COOKIE, token);
-  log.info("auth", isNew ? "merchant_signup_ok" : "merchant_login_ok", {
-    reqId,
-    merchantId: merchant.id,
-  });
-  return { merchant, isNew };
-}
-
 /** دعوات فريق المتجر بهذا البريد تُربط بهوية التاجر عند دخوله (Google أو رمز البريد). */
 async function linkMemberships(merchantId: string, email: string) {
   const canonical = canonicalEmail(email);
@@ -257,29 +169,89 @@ async function linkMemberships(merchantId: string, email: string) {
   }
 }
 
+const lockout = createLockout(redis as unknown as CounterStore, "pwf");
+const lockId = (email: string) => canonicalEmail(email);
+// تجزئة وهمية لمعادلة زمن الرد حين لا يوجد حساب بالبريد (فلا يُكشف الفرق بين «لا حساب» و«كلمة خاطئة»).
+const DUMMY_HASH = "00000000000000000000000000000000:310000:0000000000000000000000000000000000000000000000000000000000000000";
+
+export type PasswordLogin = { ok: true; merchantId: string } | { ok: false; reason: "invalid" | "locked" };
+
 /**
- * يبدأ جلسة تاجر لبريد تحقق منه رمز لمرة واحدة (بديل Google لمن لا يملك حساباً). يُسمح فقط لبريد تاجر موجود
- * (صاحب متجر من الاستمارة) أو عضو فريق مدعو؛ لا إنشاء حسابات جديدة من هنا. يعيد null إن لم يكن البريد معروفاً.
+ * دخول صاحب المتجر أو عضو فريقه ببريده وكلمة مروره (لا Google للتجار). قفل مؤقت بعد خمس محاولات خاطئة متتالية على البريد نفسه،
+ * والرد واحد لـ«لا حساب» و«كلمة خاطئة». الجلسة تُنشأ فقط عند النجاح.
  */
-export async function signInMerchantByEmail(rawEmail: string, opts: { storeId?: string } = {}): Promise<{ merchant: Merchant } | null> {
+export async function signInMerchantWithPassword(rawEmail: string, password: string, opts: { storeId?: string } = {}): Promise<PasswordLogin> {
   const email = rawEmail.trim().toLowerCase();
-  const now = new Date();
-  let merchant: Merchant | null | undefined = await findMerchantByEmail(email);
-  if (!merchant) {
-    if (!(await hasActiveInvite(email))) return null;
-    [merchant] = await db.insert(merchants).values({ email, emailCanonical: canonicalEmail(email), displayName: email.split("@")[0] || "عضو فريق", isActivated: true, lastLoginAt: now }).returning();
-    if (!merchant) return null;
-  } else {
-    [merchant] = await db.update(merchants).set({ isActivated: true, emailCanonical: merchant.emailCanonical ?? canonicalEmail(merchant.email ?? email), lastLoginAt: now, updatedAt: now }).where(eq(merchants.id, merchant.id)).returning();
-    if (!merchant) return null;
+  if (await lockout.isLocked(lockId(email))) return { ok: false, reason: "locked" };
+  const merchant = await findMerchantByEmail(email);
+  const good = await verifyPassword(password, merchant?.passwordHash ?? DUMMY_HASH);
+  if (!merchant || !merchant.passwordHash || !good) {
+    const f = await lockout.fail(lockId(email));
+    log.warn("security", "merchant_password_failed", { reqId: await readRequestId() });
+    return f.locked ? { ok: false, reason: "locked" } : { ok: false, reason: "invalid" };
   }
+  await lockout.clear(lockId(email));
+  await startMerchantSession(merchant, email, opts.storeId ?? null);
+  return { ok: true, merchantId: merchant.id };
+}
+
+async function startMerchantSession(merchant: Merchant, email: string, storeId: string | null) {
+  const now = new Date();
+  await db.update(merchants).set({ isActivated: true, emailCanonical: merchant.emailCanonical ?? canonicalEmail(merchant.email ?? email), lastLoginAt: now, updatedAt: now }).where(eq(merchants.id, merchant.id));
   await linkMemberships(merchant.id, email);
-  const token = await createSession("merchant", merchant.id, opts.storeId ?? null);
+  const token = await createSession("merchant", merchant.id, storeId);
   await clearLegacySharedCookie(MERCHANT_COOKIE);
   await writeCookie(MERCHANT_COOKIE, token);
-  log.info("auth", "merchant_login_email_ok", { reqId: await readRequestId(), merchantId: merchant.id });
-  return { merchant };
+  log.info("auth", "merchant_login_password_ok", { reqId: await readRequestId(), merchantId: merchant.id });
 }
+
+/**
+ * أول كلمة مرور من رابط الإعداد: تُضبط مرة واحدة فقط (`password_hash IS NULL` في نفس الـ UPDATE)، ثم تبدأ الجلسة على متجره.
+ * يعيد false إن سبق ضبطها (رابط مستعمل).
+ */
+export async function setFirstPasswordAndSignIn(merchantId: string, password: string, storeId: string): Promise<boolean> {
+  const hash = await hashPassword(password);
+  const [m] = await db
+    .update(merchants)
+    .set({ passwordHash: hash, isActivated: true, updatedAt: new Date() })
+    .where(and(eq(merchants.id, merchantId), isNull(merchants.passwordHash)))
+    .returning();
+  if (!m) return false;
+  await startMerchantSession(m, m.email ?? "", storeId);
+  return true;
+}
+
+/**
+ * كلمة مرور جديدة بعد التحقق من الهوية خارج هذه الدالة (رمز البريد أو رابط إعادة تعيين من الفريق): للتاجر القائم، أو لعضو فريق
+ * مدعو لم يُنشأ له حساب بعد. بريد غير معروف ← null. يمسح قفل المحاولات، وتبدأ جلسة جديدة.
+ */
+export async function resetPasswordAndSignIn(rawEmail: string, password: string): Promise<{ merchantId: string } | null> {
+  const email = rawEmail.trim().toLowerCase();
+  let merchant: Merchant | null | undefined = await findMerchantByEmail(email);
+  const hash = await hashPassword(password);
+  const now = new Date();
+  if (!merchant) {
+    if (!(await hasActiveInvite(email))) return null;
+    [merchant] = await db.insert(merchants).values({ email, emailCanonical: canonicalEmail(email), displayName: email.split("@")[0] || "عضو فريق", passwordHash: hash, isActivated: true, lastLoginAt: now }).returning();
+  } else {
+    [merchant] = await db.update(merchants).set({ passwordHash: hash, isActivated: true, updatedAt: now }).where(eq(merchants.id, merchant.id)).returning();
+  }
+  if (!merchant) return null;
+  await lockout.clear(lockId(email));
+  await startMerchantSession(merchant, email, null);
+  return { merchantId: merchant.id };
+}
+
+/** تغيير كلمة المرور لحساب مسجّل الدخول بعد التحقق من القديمة (الإعدادات). */
+export async function changeMerchantPassword(merchantId: string, current: string, next: string): Promise<boolean> {
+  const [m] = await db.select().from(merchants).where(eq(merchants.id, merchantId)).limit(1);
+  if (!m?.passwordHash || !(await verifyPassword(current, m.passwordHash))) return false;
+  await db.update(merchants).set({ passwordHash: await hashPassword(next), updatedAt: new Date() }).where(eq(merchants.id, merchantId));
+  return true;
+}
+
+/** بصمة كلمة المرور الحالية لرابط إعادة التعيين (يبطل بتغييرها). فارغة إن لم تُضبط بعد. */
+export const passwordFingerprint = (hash: string | null | undefined) => (hash ? hash.slice(-12) : "");
 
 /** كل متاجر التاجر غير المحذوفة (التي يملكها)، الأحدث أولاً. */
 export async function listMerchantStores(merchantId: string): Promise<Store[]> {

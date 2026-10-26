@@ -51,7 +51,8 @@ function YesNo({ value, onChange, yes = "نعم", no = "لا", name }: { value: 
 
 const KEY = (id: string) => `clp-commerce:${id}`;
 
-export function CommerceWizard({ storeId, data, onDone, onBack }: { storeId: string; data: SetupData; onDone: () => void; onBack: () => void }) {
+/** only = أسئلة الوصفة التي تحتاج إجابة (والباقي مؤكَّد مسبقاً)؛ بدونه تظهر الأسئلة الأساسية كلها. الهدية والإلغاء والخصم لا تظهر في الإعداد أبداً (تُضبط لاحقاً من لوحة التحكم). */
+export function CommerceWizard({ storeId, data, only, onDone, onBack }: { storeId: string; data: SetupData; only?: readonly Q[]; onDone: () => void; onBack: () => void }) {
   const p0 = data.payments;
   const [cod, setCod] = useState(p0.cod);
   const [inspection, setInspection] = useState(p0.inspection);
@@ -65,8 +66,8 @@ export function CommerceWizard({ storeId, data, onDone, onBack }: { storeId: str
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const list = useMemo(() => commerceQuestions(cod), [cod]);
-  const q = list[Math.min(idx, list.length - 1)]!;
+  const list = useMemo(() => commerceQuestions(cod).filter((x) => (only ? only.includes(x) : x !== "gift" && x !== "cancel" && x !== "discount")), [cod, only]);
+  const q: Q = list[Math.min(idx, list.length - 1)] ?? "cod";
 
   // الاستئناف من آخر سؤال بلغه التاجر على هذا الجهاز.
   useEffect(() => {
@@ -105,7 +106,7 @@ export function CommerceWizard({ storeId, data, onDone, onBack }: { storeId: str
   async function savePayment(): Promise<boolean> {
     const vfOn = transfer && vf.enabled;
     const ipOn = transfer && ip.enabled;
-    const r = await savePaymentStepAction({ cod, inspection: cod ? inspection : false, codFee: cod ? p0.codFee : 0, vodafone: { ...vf, enabled: vfOn }, instapay: { ...ip, enabled: ipOn } });
+    const r = await savePaymentStepAction({ cod, inspection: cod ? inspection : false, codFee: cod ? p0.codFee : 0, vodafone: { ...vf, enabled: vfOn }, instapay: { ...ip, enabled: ipOn }, ...(q === "inspection" ? { inspectionAnswered: true } : {}) });
     if (!r.ok) {
       setErr(r.error);
       return false;

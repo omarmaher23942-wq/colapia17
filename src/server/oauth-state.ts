@@ -13,13 +13,12 @@ import { secureToken } from "@/lib/ids";
 const NONCE_COOKIE = "clp_oauth_nonce";
 const TTL_SECONDS = 600;
 
-export type OAuthProvider = "merchant" | "platform";
+/** Google لفريق المنصة وحده؛ أصحاب المتاجر يدخلون ببريد وكلمة مرور. */
+export type OAuthProvider = "platform";
 
 export type OAuthStatePayload = {
   provider: OAuthProvider;
   redirectAfter?: string;
-  /** رمز رابط الإعداد (إن بدأ الدخول من صفحة الإعداد): يربط الدخول بمتجر بعينه ويعيد صاحبه لصفحته عند الخطأ. لا بريد هنا أبداً. */
-  setupToken?: string;
 };
 
 type SignedState = OAuthStatePayload & { nonce: string };
@@ -71,12 +70,11 @@ export async function consumeOAuthState(state: string): Promise<OAuthStatePayloa
   try {
     const { payload } = await jwtVerify(state, secretKey());
     const provider = payload.provider;
-    if (provider !== "merchant" && provider !== "platform") return null;
+    if (provider !== "platform") return null;
     if (!cookieNonce || payload.nonce !== cookieNonce) return null;
     return {
       provider,
       redirectAfter: typeof payload.redirectAfter === "string" ? payload.redirectAfter : undefined,
-      setupToken: typeof payload.setupToken === "string" ? payload.setupToken : undefined,
     };
   } catch {
     return null;

@@ -104,11 +104,11 @@ export function TrialCountdownCard({
         </div>
 
         <Link
-          href="/dashboard/billing"
+          href="/dashboard/activate"
           className="group inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-nova to-nova-deep px-4 text-[12.5px] font-black text-white shadow-lg shadow-nova/25 transition hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-nova-2 focus-visible:ring-offset-2 focus-visible:ring-offset-space sm:w-auto"
         >
           <Sparkles className="size-4" strokeWidth={2.25} aria-hidden="true" />
-          تفعيل المتجر ابتداءً من {fmtNum(planPrice)} ج
+          فعّلوا الموقع ابتداءً من {fmtNum(planPrice)} ج
           <ArrowLeft className="size-3.5 transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} aria-hidden="true" />
         </Link>
       </div>

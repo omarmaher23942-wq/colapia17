@@ -83,26 +83,6 @@ export async function updateMerchantProfileAction(
   }
 }
 
-// عند ضغط "استخدام صورة Google" نُصفّر الأفاتار ليعود OAuth القادم بجلبها.
-export async function applyGoogleAvatarAction(): Promise<ActionResult> {
-  const session = await getMerchantSession();
-  if (!session) return { ok: false, error: "انتهت جلستك" };
-
-  try {
-    await db
-      .update(merchants)
-      .set({ avatarUrl: null, updatedAt: new Date() })
-      .where(eq(merchants.id, session.merchantId));
-
-    revalidatePath("/dashboard");
-    revalidatePath("/dashboard/settings");
-    return { ok: true };
-  } catch (err) {
-    unstable_rethrow(err);
-    return { ok: false, error: "تعذر تجهيز استخدام صورة Google" };
-  }
-}
-
 export async function merchantLogoutAction(): Promise<void> {
   await logout("merchant");
   redirect("/");

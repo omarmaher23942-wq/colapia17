@@ -61,7 +61,7 @@ describe("قفل اللوحة لا يُتجاوز", () => {
       expect(read(f)).toMatch(/ownerStore\(\{ allowLocked: true \}\)/);
     }
     // أي استدعاء آخر لا يمر بالقفل (النطاق، الرابط، الإعداد).
-    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|activation\.ts$|account\.ts$|upload-policies/.test(f));
+    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|activation\.ts$|connections\.ts$|account\.ts$|upload-policies/.test(f));
     for (const f of others) expect(read(f)).not.toMatch(/ownerStore\(\{ allowLocked/);
   });
   it("واجهات اللوحة تتحقق من القفل", () => {

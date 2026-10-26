@@ -46,7 +46,7 @@ export const ENTRY_FILES = [
 /** صفحات تخص المنصة داخل مجلدات الدخول: لا تدخل مشروع العميل. */
 export const EXCLUDED_ENTRIES = [
   /^src\/app\/s\/\[store\]\/(admin|account|frozen)\//,
-  /^src\/app\/\(platform\)\/dashboard\/(billing|domain|requests|team|usage|transfer|setup-pending|store|preview|edit|history)\//,
+  /^src\/app\/\(platform\)\/dashboard\/(billing|activate|domain|requests|team|usage|transfer|setup-pending|store|preview|edit|history)\//,
 ];
 
 /**
@@ -71,8 +71,8 @@ export const FORBIDDEN_IN_PROJECT = [
   /^src\/db\/planes\.ts$/,
   /^src\/server\/(platform-guard|platform-|login-code|google-oauth|oauth-state|domains|hosting-grace|qstash-verify|cron-auth|launch-checks|store-purge|store-purge-plan|subdomain-apply|subdomain-hold|claims|monthly-report|outreach|r2)(\.ts|\/)/,
   /^src\/server\/pricing\.ts$/,
-  /^src\/server\/actions\/(platform|agency|data-transfer|change-requests|custom-domain|store-team|merchant-login|subdomain|launch|billing|onboarding-agent)/,
-  /^src\/components\/dashboard\/(requests|domain|team|billing|transfer)\//,
+  /^src\/server\/actions\/(platform|agency|data-transfer|change-requests|custom-domain|store-team|merchant-login|connections|subdomain|launch|billing|onboarding-agent)/,
+  /^src\/components\/dashboard\/(requests|domain|team|billing|transfer|activate)\//,
   /^src\/lib\/(hosting|platform-pricing|usage-limits|trial-countdown|billing-stage|bot-outbound|meta-trace|subdomain-change|custom-domain|change-requests|landing-pricing|sales-funnel)\.ts$/,
 ];
 

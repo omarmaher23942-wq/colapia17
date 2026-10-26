@@ -1,133 +1,136 @@
 "use client";
 
-// بطاقة تسجيل دخول بنمط Linear/Cosmic (E3):
-// - زجاجية، خلفية متوهجة، حواف ناعمة، أيقونة Google حقيقية.
-// - زر واحد موحّد عبر Server Action (E4) — لا onClick يدوي.
-// - حجم اللمس >= 48px (E6)، وaria-busy وقت التحميل.
-// - بدون أي emoji، فقط Lucide Icons (E7).
+// LoginForm — دخول صاحب المتجر وفريقه ببريد وكلمة مرور. «نسيت كلمة المرور»: رمز من 6 أرقام على البريد ثم كلمة جديدة؛
+// وإن تعذّر البريد تُعرض خطوة طلب رابط إعادة التعيين من الفريق. لا Google هنا (يبقى لفريق المنصة في /admin/login).
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
-import { NoStoreNotice } from "@/components/auth/NoStoreNotice";
-import { switchMerchantAccountAction } from "./actions";
-import { GoogleAuthCta } from "@/components/landing/GoogleAuthCta";
-import { EmailCodeLogin } from "./EmailCodeLogin";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { AUTH_BTN, AUTH_CARD, AUTH_INPUT } from "@/components/auth/AuthShell";
+import { PasswordField } from "@/components/auth/PasswordField";
+import { passwordIssues } from "@/lib/password-rules";
+import { passwordLoginAction, requestResetCodeAction, resetPasswordWithCodeAction } from "@/server/actions/merchant-login";
 
-type Variant = "login" | "signup";
+type Mode = "login" | "forgot" | "code";
 
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid_state: "انتهت صلاحية محاولة الدخول أو فُتحت من متصفح آخر. أعيدوا المحاولة من هنا.",
-  missing_params: "لم يكتمل الدخول بحساب Google. أعيدوا المحاولة.",
-  no_email: "لم يشارك Google بريد الحساب معنا. اختاروا حساباً يحتوي بريداً وأعيدوا المحاولة.",
-  email_not_verified: "بريد حساب Google غير مؤكد. أكّدوه في Google أولاً ثم أعيدوا المحاولة.",
-  provider_access_denied: "لم تسمحوا بالوصول إلى بريدكم واسمكم، ونحتاجهما لإكمال الدخول.",
-  google_identity_mismatch: "هذا البريد مرتبط بحساب Google آخر. ادخلوا بالحساب الذي استخدمتموه سابقاً.",
-  unsupported_provider: "تعذّر إتمام الدخول. أعيدوا المحاولة.",
-  server_error: "حدث خطأ مؤقت أثناء الدخول. أعيدوا المحاولة بعد لحظات.",
-  // رموز قديمة قد تصل من روابط محفوظة.
-  google_auth_failed: "تعذّر إتمام الدخول بحساب Google. أعيدوا المحاولة.",
-  oauth_failed: "تعذّر إتمام تسجيل الدخول. أعيدوا المحاولة.",
-  state_mismatch: "انتهت صلاحية الجلسة. أعيدوا المحاولة.",
-  email_unverified: "يرجى تأكيد بريدكم في Google أولاً.",
-  access_denied: "لم تسمحوا بالوصول. نحتاج بريدكم واسمكم للمتابعة.",
-};
+const label = "mb-1.5 block text-[13px] font-bold text-[#c3cdf0]";
 
-export function errorMessage(code: string): string {
-  return ERROR_MESSAGES[code] ?? (code.startsWith("provider_") ? "أوقف Google عملية الدخول. أعيدوا المحاولة." : "حدث خطأ غير متوقع. أعيدوا المحاولة.");
-}
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
+  const router = useRouter();
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<{ tone: "bad" | "info"; text: string } | null>(null);
+  const [pending, start] = useTransition();
 
-export function LoginForm({
-  redirectTo,
-  variant = "login",
-  error,
-}: {
-  redirectTo: string;
-  variant?: Variant;
-  error?: string;
-}) {
-  const isSignup = variant === "signup";
+  const fail = (text: string) => setMsg({ tone: "bad", text });
+  const done = (to?: string) => router.replace(to ?? redirectTo);
+
+  function login(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    start(async () => {
+      const r = await passwordLoginAction(email, pw, redirectTo).catch(() => ({ ok: false as const, error: "انقطع الاتصال، أعيدوا المحاولة." }));
+      if (!r.ok) return fail(r.error);
+      done(r.redirect);
+    });
+  }
+
+  function sendCode(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    start(async () => {
+      const r = await requestResetCodeAction(email).catch(() => ({ ok: false as const, error: "انقطع الاتصال، أعيدوا المحاولة." }));
+      if (!r.ok) return fail(r.error);
+      if (r.manual) return setMsg({ tone: "info", text: "الإرسال بالبريد غير متاح حالياً. راسلوا فريقنا في المحادثة نفسها وسيرسل لكم رابطاً لإعادة تعيين كلمة المرور خلال دقائق." });
+      setMode("code");
+      setMsg({ tone: "info", text: "إن كان البريد مسجلاً لدينا فقد أرسلنا رمزاً من 6 أرقام. تحققوا من صندوق الوارد." });
+    });
+  }
+
+  function reset(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg(null);
+    const issues = passwordIssues(pw, { email });
+    if (issues.length) return fail(`كلمة المرور يجب أن ${issues[0]}`);
+    start(async () => {
+      const r = await resetPasswordWithCodeAction(email, code, pw, redirectTo).catch(() => ({ ok: false as const, error: "انقطع الاتصال، أعيدوا المحاولة." }));
+      if (!r.ok) return fail(r.error);
+      done(r.redirect);
+    });
+  }
+
+  const emailField = (
+    <div>
+      <label htmlFor="login-email" className={label}>
+        البريد الإلكتروني
+      </label>
+      <input id="login-email" type="email" dir="ltr" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className={`${AUTH_INPUT} text-start`} />
+    </div>
+  );
+  const btn = (text: string) => (
+    <button type="submit" disabled={pending} aria-busy={pending} className={AUTH_BTN}>
+      {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
+      {text}
+    </button>
+  );
 
   return (
     <div className="w-full max-w-md">
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.01] p-8 shadow-[0_40px_120px_-40px_rgba(111,134,255,0.35)] backdrop-blur-2xl sm:p-10">
-        {/* توهج علوي ناعم */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 start-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-[#8fa8ff]/25 blur-3xl"
-        />
-
-        {/* الترويسة */}
-        <div className="relative flex flex-col items-center gap-2 text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-[#c3cdf0]/80">
-            {isSignup ? "إنشاء حساب جديد" : "تسجيل الدخول"}
-          </span>
-          <h1 className="mt-3 text-2xl font-black leading-snug text-[#eaf0ff] sm:text-3xl">
-            {isSignup ? "لوحة متجرك" : "دخول لوحة متجرك"}
-          </h1>
-          <p className="max-w-sm text-sm leading-relaxed text-[#c3cdf0]/70">
-            {isSignup
-              ? "سجّلوا الدخول بحساب Google للوصول إلى لوحة المتجر."
-              : "سجّلوا الدخول بحساب Google المرتبط بالبريد الذي كتبتموه في استمارة الطلب، أو برمز يصل إلى البريد نفسه."}
+      <div className={AUTH_CARD}>
+        <div className="text-center">
+          <h1 className="text-2xl font-black leading-snug sm:text-3xl">{mode === "login" ? "دخول لوحة متجركم" : "استعادة كلمة المرور"}</h1>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-[#c3cdf0]/70">
+            {mode === "login" ? "ادخلوا بالبريد وكلمة المرور اللذين اخترتموهما عند إعداد المتجر." : mode === "forgot" ? "اكتبوا بريدكم ونرسل لكم رمزاً لاختيار كلمة مرور جديدة." : "اكتبوا الرمز الذي وصل بريدكم ثم اختاروا كلمة المرور الجديدة."}
           </p>
         </div>
 
-        {/* لا متجر مرتبط بالحساب: شاشة لطيفة بتبديل الحساب */}
-        {error === "no_store" ? <NoStoreNotice className="relative mt-6" switchAction={switchMerchantAccountAction.bind(null, redirectTo)} /> : null}
-
-        {/* رسالة الخطأ */}
-        {error && error !== "no_store" ? (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="relative mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-center text-sm text-red-200"
-          >
-            {errorMessage(error)}
-          </div>
+        {msg ? (
+          <p role={msg.tone === "bad" ? "alert" : "status"} className={`mt-5 rounded-2xl border px-4 py-3 text-center text-[13px] ${msg.tone === "bad" ? "border-red-400/30 bg-red-400/10 text-red-200" : "border-white/10 bg-white/[0.04] text-[#c3cdf0]"}`}>
+            {msg.text}
+          </p>
         ) : null}
 
-        {/* زر Google عبر Server Action */}
-        <div className="relative mt-8">
-          <GoogleAuthCta
-            redirectTo={redirectTo}
-            label="متابعة بحساب Google"
-            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-2xl bg-white text-[15px] font-bold text-[#0b0f1e] transition-all hover:bg-[#eaf0ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07091a] disabled:cursor-not-allowed disabled:opacity-70"
-          />
-        </div>
+        {mode === "login" ? (
+          <form onSubmit={login} className="mt-6 space-y-4" noValidate>
+            {emailField}
+            <PasswordField label="كلمة المرور" value={pw} onChange={setPw} autoComplete="current-password" />
+            {btn("دخول")}
+            <button type="button" onClick={() => { setMsg(null); setMode("forgot"); }} className="mx-auto block min-h-11 text-[13.5px] font-bold text-[#8fa8ff] hover:text-[#eaf0ff]">
+              نسيت كلمة المرور
+            </button>
+          </form>
+        ) : null}
 
-        <div className="relative mt-3">
-          <EmailCodeLogin redirectTo={redirectTo} />
-        </div>
+        {mode === "forgot" ? (
+          <form onSubmit={sendCode} className="mt-6 space-y-4" noValidate>
+            {emailField}
+            {btn("إرسال الرمز")}
+            <button type="button" onClick={() => { setMsg(null); setMode("login"); }} className="mx-auto block min-h-11 text-[13.5px] font-bold text-[#8fa8ff]">
+              العودة للدخول
+            </button>
+          </form>
+        ) : null}
 
-        {/* ملاحظة الخصوصية */}
-        <div className="relative mt-6 flex items-start justify-center gap-2 text-center text-xs leading-relaxed text-[#c3cdf0]/55">
-          <ShieldCheck
-            className="mt-0.5 size-3.5 shrink-0 text-[#8fa8ff]"
-            aria-hidden="true"
-          />
-          <span>
-            نستخدم بريدك واسمك وصورتك فقط. لا نصل إلى أي شيء آخر في حسابك.
-          </span>
-        </div>
+        {mode === "code" ? (
+          <form onSubmit={reset} className="mt-6 space-y-4" noValidate>
+            <div>
+              <label htmlFor="login-code" className={label}>
+                الرمز (6 أرقام)
+              </label>
+              <input id="login-code" dir="ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value)} className={`${AUTH_INPUT} text-center tracking-[0.4em]`} />
+            </div>
+            <PasswordField label="كلمة المرور الجديدة" value={pw} onChange={setPw} autoComplete="new-password" email={email} meter />
+            {btn("حفظ والدخول")}
+            <button type="button" onClick={() => { setMsg(null); setMode("forgot"); }} className="mx-auto block min-h-11 text-[13.5px] font-bold text-[#8fa8ff]">
+              إعادة إرسال الرمز
+            </button>
+          </form>
+        ) : null}
 
-        {/* تبديل بين login/signup */}
-        <div className="relative mt-7 border-t border-white/10 pt-6 text-center text-sm text-[#c3cdf0]/70">
-          {isSignup ? (
-            <>
-              لديك حساب بالفعل؟{" "}
-              <Link
-                href="/login"
-                className="font-semibold text-[#8fa8ff] transition-colors hover:text-[#eaf0ff]"
-              >
-                سجّل الدخول
-              </Link>
-            </>
-          ) : (
-            <>
-              ليس لديكم متجر بعد؟ راسلونا على إنستجرام وسيجهّز لكم المساعد متجركم.
-            </>
-          )}
-        </div>
+        <p className="mt-6 border-t border-white/10 pt-5 text-center text-sm text-[#c3cdf0]/70">لا متجر لديكم بعد؟ راسلونا على إنستجرام وسنجهّز لكم متجراً مخصصاً.</p>
       </div>
-
       <p className="mt-6 text-center text-xs leading-relaxed text-[#c3cdf0]/45">
         بالمتابعة تتم الموافقة على{" "}
         <Link href="/terms" className="underline-offset-4 hover:underline">

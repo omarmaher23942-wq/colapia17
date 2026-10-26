@@ -41,6 +41,12 @@ export async function storeFolderData(subdomain: string): Promise<{ blueprint: u
   return { blueprint: bp?.default ?? null, seed: seed?.default ?? null };
 }
 
+/** تجاوز وصفة الإعداد من مجلد المتجر (يفحصه المستدعي بمخططه)، وnull إن لم يوجد. */
+export async function storeSetupRecipe(subdomain: string): Promise<unknown> {
+  const load = storeEntry(subdomain)?.setupRecipe;
+  return load ? ((await load()).default ?? null) : null;
+}
+
 /** صفحة خاصة بمسارها (a أو a/b)، بأحرف صغيرة كما في أسماء الملفات. */
 export async function loadPage(subdomain: string, path: string) {
   const pages = storeEntry(subdomain)?.pages;

@@ -78,7 +78,7 @@ export function TeamPanel({ storeName, members, activity }: { storeName: string;
         <h1 className="flex items-center gap-2 text-xl font-black text-ink">
           <Users className="size-5 text-nova-2" aria-hidden="true" /> فريق متجر {storeName}
         </h1>
-        <p className="mt-1 text-[13px] text-ink-3">كل عضو يدخل بحساب Google ببريده أو برمز يصله على البريد، ويرى ويعدّل ما يسمح به دوره فقط. الفريق والاشتراك لك وحدك.</p>
+        <p className="mt-1 text-[13px] text-ink-3">كل عضو يدخل ببريده وكلمة مروره (يضعها أول مرة برمز يصله على بريده)، ويرى ويعدّل ما يسمح به دوره فقط. الفريق والاشتراك لك وحدك.</p>
       </header>
 
       <section className="dash-card space-y-4 p-4 sm:p-5">

@@ -20,4 +20,6 @@ export type StoreEntry = {
   /** stores/<slug>/blueprint.json وseed.json إن وُجدا: يزرعهما «جهّز المتجر» في القاعدة بدل المسودة الآلية (agency/provision.ts). */
   blueprint?: () => Promise<{ default: unknown }>;
   seed?: () => Promise<{ default: unknown }>;
+  /** stores/<slug>/setup-recipe.json إن وُجد: تجاوز الفريق لوصفة إعداد التاجر (lib/setup-recipe.ts). */
+  setupRecipe?: () => Promise<{ default: unknown }>;
 };

@@ -13,12 +13,8 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db/client";
 import { platformUsers, stores } from "@/db/schema";
-import { verifyDerivedToken } from "@/agent/tokens";
 import { verifyGoogleCode } from "@/server/google-oauth";
-import {
-  signInMerchantWithGoogle,
-  startPlatformSession,
-} from "@/server/auth";
+import { startPlatformSession } from "@/server/auth";
 import { consumeOAuthState } from "@/server/oauth-state";
 import { readRequestId } from "@/lib/correlation";
 import { log } from "@/lib/logger";
@@ -165,41 +161,6 @@ export async function GET(req: Request) {
       googleId: user.id,
       picture: user.picture,
     };
-
-    // ─── Merchant ───────────────────────────────────────────────────────
-    if (state.provider === "merchant") {
-      // دخول من رابط الإعداد: مقيّد بصاحب ذلك المتجر، ويُختار متجره في الجلسة.
-      let expectMerchantId: string | undefined;
-      let storeId: string | undefined;
-      if (state.setupToken) {
-        const sid = verifyDerivedToken("setup", state.setupToken);
-        const [st] = sid ? await db.select({ id: stores.id, merchantId: stores.merchantId }).from(stores).where(eq(stores.id, sid)).limit(1) : [];
-        if (!st) return failRedirect(req, "invalid_state", ctx);
-        expectMerchantId = st.merchantId;
-        storeId = st.id;
-      }
-      let signed: Awaited<ReturnType<typeof signInMerchantWithGoogle>>;
-      try {
-        signed = await signInMerchantWithGoogle(identity, { expectMerchantId, storeId });
-      } catch (e) {
-        if ((e as Error)?.message === "google_identity_mismatch") return failRedirect(req, "google_identity_mismatch", ctx);
-        throw e;
-      }
-      if (!signed) {
-        // لا متجر مرتبط بهذا الحساب: من الرابط يعود لصفحة الإعداد (تعرض البريد المتوقع مخفياً)، وإلا شاشة الدخول اللطيفة.
-        if (state.setupToken) return NextResponse.redirect(new URL(`/setup?t=${encodeURIComponent(state.setupToken)}&error=wrong_account`, req.url));
-        return failRedirect(req, "no_store", ctx);
-      }
-      const { merchant, isNew } = signed;
-      const to = safeRedirectAfter(state.redirectAfter, "/dashboard");
-      log.info("auth", "oauth_merchant_ok", {
-        reqId,
-        merchantId: merchant.id,
-        isNew,
-        redirectTo: to,
-      });
-      return NextResponse.redirect(new URL(to, req.url));
-    }
 
     // ─── Platform Admin ─────────────────────────────────────────────────
     if (state.provider === "platform") {

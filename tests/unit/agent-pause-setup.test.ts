@@ -31,7 +31,7 @@ describe("رابط الإعداد وتذكيراته", () => {
   it("الرسائل بالجمع وبلا ذكر لتقنيات", () => {
     const m = setupLinkMessage({ storeName: "نور" });
     expect(m.text).toContain("«نور»");
-    expect(m.text).toContain("Google");
+    expect(m.text).toContain("كلمة مرور");
     expect(m.buttonTitle).toBe("إعداد المتجر");
     const r = setupReminderMessage("72h", { storeName: "نور" });
     expect(r.text).toContain("نحذف");

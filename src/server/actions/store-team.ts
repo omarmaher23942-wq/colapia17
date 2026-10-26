@@ -55,7 +55,7 @@ export async function inviteMemberAction(raw: z.input<typeof inviteSchema>): Pro
     headline: `${s.merchant.displayName} دعاك لفريق متجر ${s.store.name}`,
     paragraphs: [
       `دورك: «${STORE_ROLE_LABEL[d.role]}». ستجد في لوحة المتجر ما يسمح به دورك فقط.`,
-      `ادخل بحساب Google المسجّل بهذا البريد (${d.email})، أو اطلب رمز دخول على بريدك من صفحة الدخول.`,
+      `ادخل ببريدك (${d.email}): في المرة الأولى اختر «نسيت كلمة المرور» في صفحة الدخول لتضع كلمة مرورك برمز يصل على بريدك.`,
     ],
     buttons: [{ title: "ادخل لوحة المتجر", url: login }],
   }).catch(() => false);

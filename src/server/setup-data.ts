@@ -9,6 +9,7 @@ import { pairIdFor, parseOnboarding, planFromZones, publishReadiness, templateFr
 import { publicStoreUrl } from "@/lib/utils";
 import { resolveNiche, usesSizeColor } from "@/lib/niche-attributes";
 import { qualityTips, type QualityTip } from "@/lib/store-quality";
+import { recipeFor } from "@/server/setup-recipe-data";
 
 export async function loadBlueprint(storeId: string): Promise<StoreBlueprint | null> {
   const [row] = await db.select().from(storeBlueprints).where(eq(storeBlueprints.storeId, storeId)).limit(1);
@@ -70,7 +71,7 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
   if (!bp) return null;
   const tdb = await getTenantDb(store.id);
   const live = and(eq(products.storeId, store.id), isNull(products.deletedAt));
-  const [[total], [active], [draft], cats, zones, [disc], readiness] = await Promise.all([
+  const [[total], [active], [draft], cats, zones, [disc], readiness, missing] = await Promise.all([
     tdb.select({ n: count() }).from(products).where(live),
     tdb.select({ n: count() }).from(products).where(and(live, eq(products.status, "active"), gt(products.pricePiasters, 0))),
     tdb.select({ n: count() }).from(products).where(and(live, eq(products.status, "draft"))),
@@ -78,6 +79,12 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
     tdb.select().from(shippingZones).where(eq(shippingZones.storeId, store.id)),
     tdb.select({ n: count() }).from(discounts).where(eq(discounts.storeId, store.id)),
     readinessFor(store.id),
+    tdb
+      .select({ id: products.id, name: products.name, images: products.images })
+      .from(products)
+      .where(and(live, sql`(${products.status} = 'draft' or ${products.pricePiasters} <= 0)`))
+      .orderBy(products.sortOrder)
+      .limit(40),
   ]);
   const onboarding = parseOnboarding(store.onboarding);
   const restored = planFromZones(zones, bp.shipping.flatRatePiasters);
@@ -86,11 +93,11 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
   const url = publicStoreUrl(store);
   const p = bp.payments;
   const c = bp.channels;
-  return {
-    store: { id: store.id, name: bp.brand.name, subdomain: store.subdomain, url, host: url.replace(/^https?:\/\//, "") },
+  const base: Omit<SetupData, "recipe"> = {
+    store: { id: store.id, name: bp.brand.name, subdomain: store.subdomain, url, host: url.replace(/^https?:\/\//, ""), trialEndsAt: store.trialEndsAt?.toISOString() ?? null },
     onboarding,
     identity: { name: bp.brand.name, primary: bp.theme.palette.primary, fontPair: pairIdFor(bp.theme.fonts.heading, bp.theme.fonts.body), logoUrl: bp.brand.logo?.url ?? null },
-    products: { total: Number(total?.n ?? 0), active: Number(active?.n ?? 0), drafts: Number(draft?.n ?? 0), categories: cats.map((x) => x.name) },
+    products: { total: Number(total?.n ?? 0), active: Number(active?.n ?? 0), drafts: Number(draft?.n ?? 0), categories: cats.map((x) => x.name), missing: missing.map((m) => ({ id: m.id, name: m.name, image: m.images?.[0]?.url ?? null })) },
     payments: {
       cod: p.cod.enabled,
       inspection: bp.shipping.inspectionAllowed,
@@ -115,4 +122,5 @@ export async function loadSetupData(store: typeof stores.$inferSelect): Promise<
     discounts: Number(disc?.n ?? 0),
     readiness: readiness ? { ok: readiness.ok, items: readiness.items } : { ok: false, items: [] },
   };
+  return { ...base, recipe: await recipeFor(store, base) };
 }

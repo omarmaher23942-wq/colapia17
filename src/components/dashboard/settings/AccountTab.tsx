@@ -1,6 +1,6 @@
 "use client";
 
-// AccountTab — حسابك: الاسم والموبايل، والصورة الشخصية (رفع حقيقي، أو صورة Google)، والخروج،
+// AccountTab — حسابك: الاسم والموبايل، والصورة الشخصية (رفع حقيقي، )، والخروج،
 // وحذف متجر التجربة نهائياً (قبل الدفع).
 import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -8,7 +8,7 @@ import { ImagePlus, Loader2, LogOut, Save, Sparkle, Trash2 } from "lucide-react"
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { isHostedImage } from "@/lib/media-hosts";
-import { updateMerchantProfileAction, applyGoogleAvatarAction, merchantLogoutAction, type ActionResult } from "@/server/actions/auth";
+import { updateMerchantProfileAction, merchantLogoutAction, type ActionResult } from "@/server/actions/auth";
 import { deleteStoreAction, setAvatarAction } from "@/server/actions/account";
 import { useImageUpload } from "@/editor/useImageUpload";
 import { Field, Section, inputCls } from "../product/parts";
@@ -62,7 +62,7 @@ function ProfileCard({ account }: { account: AccountInfo }) {
         <Field label="موبايلك" optional hint="للتواصل معك بخصوص حسابك" error={err("phone")}>
           {(a) => <input {...a} name="phone" type="tel" inputMode="tel" dir="ltr" defaultValue={account.phone ?? ""} placeholder="01xxxxxxxxx" className={cn(inputCls, "font-mono")} />}
         </Field>
-        <Field label="البريد" hint="بريد حساب Google الذي تدخل به">
+        <Field label="البريد" hint="البريد الذي تدخل به">
           {(a) => <input {...a} value={account.email ?? ""} readOnly dir="ltr" className={cn(inputCls, "cursor-default font-mono opacity-70")} />}
         </Field>
         <div className="flex justify-end sm:col-span-2">
@@ -117,21 +117,6 @@ function Avatar({ account }: { account: AccountInfo }) {
             }}
           />
         </label>
-        <button
-          type="button"
-          disabled={working}
-          onClick={async () => {
-            const r = await applyGoogleAvatarAction().catch(() => ({ ok: false as const, error: "انقطع الاتصال" }));
-            if (!r.ok) return void toast.error(r.error ?? "تعذر التنفيذ");
-            setUrl(null);
-            toast.success("تظهر صورة حساب Google من دخولك القادم");
-            router.refresh();
-          }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-edge/10 px-3 text-[12px] font-bold text-ink-2 hover:bg-edge/[0.05] hover:text-ink"
-        >
-          <Sparkle className="size-4" aria-hidden="true" />
-          صورة Google
-        </button>
         {url ? (
           <button type="button" disabled={working} onClick={() => apply(null)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-bad/20 px-3 text-[12px] font-bold text-bad hover:bg-bad/10">
             <Trash2 className="size-4" aria-hidden="true" />

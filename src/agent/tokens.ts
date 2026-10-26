@@ -1,34 +1,17 @@
 import "server-only";
-// tokens.ts — روابط الوكيل السرية المشتقة بـ HMAC من سر المنصة: تُعاد إرسالها دون تخزينها. الشكل «<معرّف المتجر مضغوطاً>.<توقيع>»:
-// المعرّف عشوائي لا يُخمَّن، والتوقيع يمنع اختلاق رابط لمتجر آخر. التحقق يعيد معرّف المتجر.
-import { createHmac, timingSafeEqual } from "node:crypto";
+// tokens.ts — روابط الفريق السرية للتاجر، موقّعة بـ HMAC من سر المنصة وتُعاد توليدها دون تخزين (lib/link-token.ts):
+//  - رابط الإعداد /setup/<رمز> (14 يوماً): يضع فيه صاحب المتجر كلمة مروره لأول مرة ثم يدخل الإعداد.
+//  - رابط إعادة التعيين /login/reset/<رمز> (يومان، لمرة واحدة): يولّده الفريق لمن تعذّر عليه البريد.
 import { env } from "@/lib/env";
+import { issueLinkToken } from "@/lib/link-token";
 
-type Purpose = "setup";
-
-const TOKEN_RE = /^([0-9a-f]{32})\.([A-Za-z0-9_-]{22})$/;
-const sign = (purpose: Purpose, compact: string) => createHmac("sha256", env.AUTH_SECRET).update(`agent:${purpose}:${compact}`).digest("base64url").slice(0, 22);
-
-export function derivedToken(purpose: Purpose, id: string): string {
-  const compact = id.replace(/-/g, "").toLowerCase();
-  return `${compact}.${sign(purpose, compact)}`;
-}
-
-/** معرّف المتجر من الرمز إن كان التوقيع سليماً، وإلا null. */
-export function verifyDerivedToken(purpose: Purpose, token: unknown): string | null {
-  if (typeof token !== "string") return null;
-  const m = TOKEN_RE.exec(token);
-  if (!m) return null;
-  const a = Buffer.from(sign(purpose, m[1]!));
-  const b = Buffer.from(m[2]!);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  const c = m[1]!;
-  return `${c.slice(0, 8)}-${c.slice(8, 12)}-${c.slice(12, 16)}-${c.slice(16, 20)}-${c.slice(20)}`;
-}
+const origin = () => {
+  const root = (env.ROOT_DOMAIN || "").trim();
+  return !root || root.startsWith("localhost") ? "http://localhost:3100" : `https://${root}`;
+};
 
 /** رابط الإعداد الذي يصل التاجر (المنصة على النطاق الرئيسي، لا على نطاق المتجر). */
-export function setupLink(storeId: string): string {
-  const root = (env.ROOT_DOMAIN || "").trim();
-  const origin = !root || root.startsWith("localhost") ? "http://localhost:3100" : `https://${root}`;
-  return `${origin}/setup?t=${derivedToken("setup", storeId)}`;
-}
+export const setupLink = (storeId: string, now = Date.now()) => `${origin()}/setup/${issueLinkToken(env.AUTH_SECRET, "setup", storeId, { now })}`;
+
+/** رابط إعادة تعيين كلمة المرور: يبطل بمجرد تغيير كلمة المرور (البصمة من تجزئتها الحالية). */
+export const resetLink = (merchantId: string, fp: string, now = Date.now()) => `${origin()}/login/reset/${issueLinkToken(env.AUTH_SECRET, "reset", merchantId, { now, fp })}`;

@@ -286,10 +286,10 @@ export function planFromZones(
 
 /** كل ما تحتاجه صفحة الإعداد من الخادم عند الفتح (يُحمّل حياً من بيانات المتجر، لا من مسودة). */
 export type SetupData = {
-  store: { id: string; name: string; subdomain: string; url: string; host: string };
+  store: { id: string; name: string; subdomain: string; url: string; host: string; /** نهاية المعاينة المجانية (ISO) إن بدأ عدّادها. */ trialEndsAt: string | null };
   onboarding: OnboardingState;
   identity: { name: string; primary: string; fontPair: string; logoUrl: string | null };
-  products: { total: number; active: number; drafts: number; categories: string[] };
+  products: { total: number; active: number; drafts: number; categories: string[]; /** منتجات بلا سعر تنتظر تحديده (حتى 40). */ missing: { id: string; name: string; image: string | null }[] };
   payments: {
     cod: boolean;
     inspection: boolean;
@@ -307,6 +307,8 @@ export type SetupData = {
   niche: import("@/lib/niche-attributes").Niche;
   discounts: number;
   readiness: { ok: boolean; items: ReadinessItem[] };
+  /** وصفة الإعداد المخصصة لهذا التاجر (lib/setup-recipe.ts): ما يُؤكَّد بضغطة وما يُسأل عنه وما يُتخطى. */
+  recipe: import("@/lib/setup-recipe").Recipe;
 };
 
 /** يطابق الخط الحالي (heading/body) بأحد الأزواج الجاهزة، وإلا الأول. */
