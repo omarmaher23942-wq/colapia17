@@ -44,6 +44,20 @@ export function CollectionBrowser({
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [dense, setDense] = useState(false);
+  useEffect(() => {
+    try {
+      setDense(localStorage.getItem("clp-dense") === "1");
+    } catch {
+      /* no-op */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("clp-dense", dense ? "1" : "0");
+    } catch {
+      /* no-op */
+    }
+  }, [dense]);
   const [draft, setDraft] = useState(filters);
   const [attr, setAttr] = useState<Record<string, string[]>>({});
   const [draftAttr, setDraftAttr] = useState<Record<string, string[]>>({});

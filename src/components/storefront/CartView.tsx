@@ -76,14 +76,15 @@ export function CartLines({
                 {i.name}
               </Link>
               {i.variantLabel ? <p className="mt-0.5 text-[11px] opacity-70">{i.variantLabel}</p> : null}
+              {typeof i.maxQty === "number" && i.maxQty > 0 && i.maxQty <= 5 ? <p className="mt-0.5 text-[11px] font-bold" style={{ color: "var(--danger, #b91c1c)" }}>متبقي {i.maxQty} فقط</p> : null}
               {off ? <p className="mt-0.5 text-[11px] font-bold text-success">{sl!.reason === "bundle" ? "خصم الطقم" : "خصم الكمية"} · وفّرتم {formatEgp(gross - net)}</p> : null}
               <div className="mt-auto flex flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-2">
                 <div className="flex items-center overflow-hidden rounded-lg border" style={{ borderColor: "var(--border)" }}>
-                  <button type="button" className="grid size-9 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(k, i.qty - 1)} aria-label={`تقليل كمية ${i.name}`}>
+                  <button type="button" className="grid size-10 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(k, i.qty - 1)} aria-label={`تقليل كمية ${i.name}`}>
                     <Minus strokeWidth={SW} className="size-3.5" aria-hidden="true" />
                   </button>
                   <span className="w-8 text-center font-mono text-sm font-bold tabular-nums" aria-live="polite">{i.qty}</span>
-                  <button type="button" className="grid size-9 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(k, i.qty + 1)} disabled={atMax} aria-label={`زيادة كمية ${i.name}`}>
+                  <button type="button" className="grid size-10 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(k, i.qty + 1)} disabled={atMax} aria-label={`زيادة كمية ${i.name}`}>
                     <Plus strokeWidth={SW} className="size-3.5" aria-hidden="true" />
                   </button>
                 </div>

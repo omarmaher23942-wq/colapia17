@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useWishlist } from "@/store/wishlist";
 
 export function WishlistButton({ slug, className, size = "sm" }: { slug: string; className?: string; size?: "sm" | "md" }) {
@@ -21,7 +22,8 @@ export function WishlistButton({ slug, className, size = "sm" }: { slug: string;
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        toggle(slug);
+        const nowSaved = toggle(slug);
+        toast(nowSaved ? "أُضيف إلى المفضلة" : "أُزيل من المفضلة", { action: { label: nowSaved ? "عرض القائمة" : "تراجع", onClick: () => (nowSaved ? window.location.assign("/wishlist") : toggle(slug)) }, duration: 4000 });
       }}
       className={cn(
         "grid place-items-center rounded-full border shadow-sm backdrop-blur transition-transform active:scale-90",

@@ -2,7 +2,8 @@
 
 // OrderExtras — أدوات الزائر بعد الطلب: موعد الوصول المتوقع مع «إضافة للتقويم» (ملف ICS)، نسخ رقم الشحنة،
 // و«تواصلوا مع المتجر بخصوص هذا الطلب» برسالة واتساب جاهزة برقم الطلب.
-import { CalendarPlus, Check, Copy, MessageCircle } from "lucide-react";
+import { CalendarPlus, Check, Copy, MessageCircle, RefreshCw } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { deliveryIcs } from "@/lib/shopper-ui";
 import { waLink } from "@/lib/whatsapp";
@@ -10,7 +11,9 @@ import { waLink } from "@/lib/whatsapp";
 const fmt = (iso: string) => new Intl.DateTimeFormat("ar-EG-u-nu-latn", { weekday: "long", day: "numeric", month: "long", timeZone: "Africa/Cairo" }).format(new Date(iso));
 
 export function OrderExtras({ code, storeName, whatsapp, etaFrom, etaTo, tracking }: { code: string; storeName: string; whatsapp?: string | null; etaFrom?: string | null; etaTo?: string | null; tracking?: string | null }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const wa = waLink(whatsapp, `أهلاً ${storeName}، أستفسر عن طلبي رقم ${code}.`);
 
   const downloadIcs = () => {
@@ -23,7 +26,6 @@ export function OrderExtras({ code, storeName, whatsapp, etaFrom, etaTo, trackin
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   };
 
-  if (!etaFrom && !wa && !tracking) return null;
   return (
     <div className="mt-4 space-y-3 text-start">
       {etaFrom && etaTo ? (
@@ -37,6 +39,18 @@ export function OrderExtras({ code, storeName, whatsapp, etaFrom, etaTo, trackin
         </div>
       ) : null}
       <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={() => router.refresh()} className="inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-bold" style={{ borderColor: "var(--border)" }}>
+          <RefreshCw className="size-4" aria-hidden="true" /> تحديث الحالة
+        </button>
+        <button
+          type="button"
+          onClick={() => navigator.clipboard?.writeText(code).then(() => (setCodeCopied(true), setTimeout(() => setCodeCopied(false), 1500))).catch(() => undefined)}
+          className="inline-flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-bold"
+          style={{ borderColor: "var(--border)" }}
+        >
+          {codeCopied ? <Check className="size-4" aria-hidden="true" /> : <Copy className="size-4" aria-hidden="true" />}
+          {codeCopied ? "تم النسخ" : "نسخ رقم الطلب"}
+        </button>
         {tracking ? (
           <button
             type="button"

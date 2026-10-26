@@ -43,6 +43,17 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
   const [added, setAdded] = useState(false);
   const [missing, setMissing] = useState(false);
 
+  // خيار له قيمة واحدة متاحة فقط (مقاس وحيد مثلاً) يُختار تلقائياً: خطوة أقل قبل الشراء.
+  useEffect(() => {
+    setSel((cur) =>
+      cur.map((v, i) => {
+        if (v) return v;
+        const vals = [...new Set(p.variants.filter((x) => x.isAvailable).map((x) => x.optionValues[i]).filter((x): x is string => Boolean(x)))];
+        return vals.length === 1 ? vals[0]! : v;
+      })
+    );
+  }, [p.variants]);
+
   const variant = useMemo(() => p.variants.find((v) => v.optionValues.every((val, i) => val === sel[i])), [p.variants, sel]);
   const needsVariant = p.optionNames.length > 0 && !variant;
   const basePrice = variant?.pricePiasters ?? p.pricePiasters;

@@ -167,6 +167,11 @@ export function CheckoutForm({
     if (code) setF((x) => (x.discountCode ? x : { ...x, discountCode: code }));
   }, [subdomain]);
 
+  /** تحقق فوري عند مغادرة الحقل (لا قبل الكتابة): الاسم والموبايل والعنوان. */
+  const blurCheck = (k: "name" | "phone" | "address") => {
+    const e = validateCheckout({ ...f, altPhone: "", governorate: "x" }, { requireProof: false });
+    setErrors((cur) => ({ ...cur, [k]: e[k] }));
+  };
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     setF((s) => ({ ...s, [k]: v }));
     setErrors((e) => (e[k as keyof typeof e] ? { ...e, [k]: undefined } : e));
@@ -200,6 +205,9 @@ export function CheckoutForm({
     draftRestored.current = true;
     try {
       const d = sanitizeDraft(JSON.parse(sessionStorage.getItem(draftKey) ?? "null"));
+      // المحافظة التي اختارها الزائر في صفحة المنتج (موعد التوصيل) تسبق الحقل الفارغ.
+      const g = localStorage.getItem(`clp:gov:${subdomain}`);
+      if (g && !d.governorate && (zones.length === 0 || zones.some((z) => z.code === g))) d.governorate = g;
       if (Object.keys(d).length) setF((x) => ({ ...x, ...Object.fromEntries(Object.entries(d).filter(([k]) => !(x as Record<string, string>)[k])) }));
     } catch {
       /* no-op */
@@ -475,10 +483,10 @@ export function CheckoutForm({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field id="co-name" label="الاسم بالكامل" error={err("name")}>
-                <input {...bind("name")} className={F} placeholder="الاسم الثلاثي" autoComplete="name" value={f.name} onChange={(e) => set("name", e.target.value)} maxLength={60} />
+                <input {...bind("name")} className={F} placeholder="الاسم الثلاثي" autoComplete="name" value={f.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.name && blurCheck("name")} maxLength={60} />
               </Field>
               <Field id="co-phone" label="رقم الموبايل" error={err("phone")} hint={phoneNorm ? "رقم صحيح ✓" : undefined}>
-                <input {...bind("phone")} className={F} dir="ltr" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={f.phone} onChange={(e) => set("phone", formatPhoneLive(e.target.value))} maxLength={14} />
+                <input {...bind("phone")} className={F} dir="ltr" inputMode="tel" autoComplete="tel" placeholder="01012345678" value={f.phone} onChange={(e) => set("phone", formatPhoneLive(e.target.value))} onBlur={() => f.phone && blurCheck("phone")} maxLength={14} />
               </Field>
               <Field id="co-governorate" label="المحافظة" error={err("governorate")}>
                 <select {...bind("governorate")} className={F} autoComplete="address-level1" value={f.governorate} onChange={(e) => { set("governorate", e.target.value); set("city", ""); }}>
@@ -494,7 +502,7 @@ export function CheckoutForm({
               </Field>
               <div className="sm:col-span-2">
                 <Field id="co-address" label="العنوان بالتفصيل" error={err("address")} hint="اسم الشارع ورقم العمارة والدور والشقة">
-                  <textarea {...bind("address")} className={cn(F, "min-h-[84px] resize-y")} autoComplete="street-address" value={f.address} onChange={(e) => set("address", e.target.value)} maxLength={300} />
+                  <textarea {...bind("address")} className={cn(F, "min-h-[84px] resize-y")} autoComplete="street-address" value={f.address} onChange={(e) => set("address", e.target.value)} onBlur={() => f.address && blurCheck("address")} maxLength={300} />
                 </Field>
               </div>
               <Field id="co-landmark" label="أقرب معلم" optional>

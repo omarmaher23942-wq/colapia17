@@ -14,6 +14,7 @@ import { RecentlyViewed } from "@/components/storefront/RecentlyViewed";
 import { ProductReviews } from "@/components/storefront/product/ProductReviews";
 import { ProductQuestions } from "@/components/storefront/product/ProductQuestions";
 import { ProductViewTracker } from "@/components/storefront/product/ProductViewTracker";
+import { FreeShippingHint, PdpAnchors } from "@/components/storefront/product/PdpExtras";
 import { ProductInfoPanel } from "@/components/storefront/product/ProductInfoPanel";
 import { ReadMore } from "@/components/storefront/product/ReadMore";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
@@ -157,12 +158,21 @@ export default async function ProductPage({ params }: P) {
           )}
 
           <ProductPurchase product={p} zones={zones} />
+          <FreeShippingHint pricePiasters={p.pricePiasters} />
 
+          <PdpAnchors
+            items={[
+              ...(p.description ? [{ id: "desc-title", label: "الوصف" }] : []),
+              ...(bp.productPage.showAttributesTable !== false && specs.length ? [{ id: "specs-title", label: "المواصفات" }] : []),
+              ...(bp.productPage.showReviews && stats.count ? [{ id: "reviews-title", label: "التقييمات" }] : []),
+              ...(answered.length ? [{ id: "qa-title", label: "الأسئلة" }] : []),
+            ]}
+          />
           <ProductInfoPanel />
 
           {p.description && (
             <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
-              <h2 className="mb-3 font-heading text-lg font-black">الوصف</h2>
+              <h2 id="desc-title" className="mb-3 font-heading text-lg font-black">الوصف</h2>
               <ReadMore>
                 <Markdown text={p.description} className="prose-ar text-sm opacity-85" />
               </ReadMore>
