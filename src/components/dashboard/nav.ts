@@ -5,6 +5,7 @@ import {
   CircleHelp,
   ClipboardList,
   CreditCard,
+  DatabaseZap,
   FileSpreadsheet,
   FolderTree,
   Globe,
@@ -107,6 +108,7 @@ const ALL: NavSection[] = [
     items: [
       { label: "إعدادات المتجر", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
       { label: "أسعار الشحن", href: "/dashboard/shipping", icon: Rocket, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
+      { label: "نقل البيانات", href: "/dashboard/transfer", icon: DatabaseZap, hint: "نقل بيانات المتجر إلى قاعدة Neon الخاصة بكم", keywords: ["transfer", "نقل", "قاعدة", "بيانات", "neon"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "دعوة موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات"] },
       { label: "الاشتراك والاستخدام", href: "/dashboard/billing", icon: CreditCard, hint: "الباقة والتجديد والمدفوعات وحدود الاستخدام الشهرية", keywords: ["billing", "فوترة", "اشتراك", "دفع", "تجديد", "usage", "حدود", "استخدام", "حصة"] },
       { label: "طلب تعديل من الفريق", href: "/dashboard/requests", icon: MessageSquarePlus, hint: "اطلبوا من فريقنا تعديلاً في التصميم أو المحتوى", keywords: ["requests", "تعديل", "طلب"] },

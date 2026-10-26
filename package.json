@@ -21,6 +21,7 @@
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm run stores:check && npm run test",
     "stores:registry": "tsx scripts/stores/registry.ts",
+    "transfer:embed": "tsx --require ./scripts/dev/no-server-only.cjs scripts/transfer-embed.ts",
     "stores:check": "tsx scripts/stores/registry.ts --check && tsx scripts/stores/guard.ts",
     "delivery:check": "tsx --require ./scripts/dev/no-server-only.cjs scripts/store-template.ts --out ../delivery-check --folder nova --check",
     "delivery:migrations": "tsx --require ./scripts/dev/no-server-only.cjs scripts/delivery-migrations.ts",

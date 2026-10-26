@@ -4,6 +4,7 @@ import { isAuthorizedCron } from "@/server/cron-auth";
 import { and, asc, eq, inArray, isNotNull, lt, or } from "drizzle-orm";
 import { db } from "@/db/client";
 import { scheduledJobs } from "@/db/schema";
+import { purgeExpiredPlatformCopies } from "@/server/transfer";
 import { runJob } from "@/lifecycle/run";
 import { JOB_KINDS, type JobKind } from "@/lifecycle/scheduler";
 
@@ -27,6 +28,9 @@ export async function GET(req: Request) {
   }
   // نبضة لمركز جاهزية الإطلاق: آخر تشغيل فعلي للمهمة المجدولة (تكشف جدولاً متوقفاً).
   await redis.set("ops:last:sweep", new Date().toISOString(), { ex: 14 * 86400 }).catch(() => {});
+
+  // نسخ المنصة لمتاجر نُقلت بياناتها وانتهت مهلة الرجوع (7 أيام).
+  await purgeExpiredPlatformCopies().catch((e) => console.error("[ops/sweep] platform copy purge failed", e));
 
   let jobs: (typeof scheduledJobs.$inferSelect)[] = [];
   try {
