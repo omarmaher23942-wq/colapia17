@@ -46,7 +46,7 @@ export const ENTRY_FILES = [
 /** صفحات تخص المنصة داخل مجلدات الدخول: لا تدخل مشروع العميل. */
 export const EXCLUDED_ENTRIES = [
   /^src\/app\/s\/\[store\]\/(admin|account|frozen)\//,
-  /^src\/app\/\(platform\)\/dashboard\/(billing|domain|requests|team|usage|transfer|setup-pending|store|preview)\//,
+  /^src\/app\/\(platform\)\/dashboard\/(billing|domain|requests|team|usage|transfer|setup-pending|store|preview|edit|history)\//,
 ];
 
 /**

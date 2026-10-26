@@ -76,7 +76,8 @@ export const ASSIGNABLE_ROLES = PLATFORM_ROLES.filter((r) => r !== "owner");
 /** صفحات لوحة الوكالة وما تحتاجه كل صفحة (مصدر واحد للقائمة الجانبية وحراسة الصفحات). */
 export const ADMIN_PAGES = {
   "/admin": "stores.manage", // غير المديرين يُحوَّلون إلى المحادثات (لوحة القيادة فيها أرقام مالية)
-  "/admin/changes": null, // طلبات تعديل التجار (المنفّذ يرى المسند إليه)
+  "/admin/requests": null, // لوحة الإنتاج (المنفّذ يرى المسند إليه فقط)
+  "/admin/edits": "requests.assign", // صندوق طلبات التعديل بعد التسليم
   "/admin/conversations": "conversations",
   "/admin/conversations/delivery": "conversations",
   "/admin/payments": "payments.decide",

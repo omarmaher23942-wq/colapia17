@@ -12,13 +12,16 @@ function walk(dir: string): string[] {
 
 // no-access: صفحة الرفض نفسها. store/[id]: تعرض متجراً يملكه التاجر فقط (شرط stores.merchant_id في الاستعلام).
 // setup-pending: وجهة تحويل موظف متجر قيد الإعداد (لا تستدعي requireStoreArea لأنه هو من يحوّل إليها).
-const PUBLIC_PAGES = ["no-access", "store/[id]", "setup-pending"];
+const PUBLIC_PAGES = ["no-access", "store/[id]", "setup-pending", "edit", "history"];
 
 describe("فرض صلاحيات فريق التاجر", () => {
   it("كل page.tsx تحت dashboard تستدعي requireStoreArea", () => {
     const pages = walk("src/app/(platform)/dashboard").filter((f) => f.endsWith("page.tsx") && !PUBLIC_PAGES.some((p) => f.includes(`/${p}/`)) && !/onboarding/.test(f));
     const missing = pages.filter((f) => !/requireStoreArea\(/.test(readFileSync(f, "utf8")));
     expect(missing).toEqual([]);
+  });
+  it("صفحات بوابة العميل تستدعي requireClientPortal", () => {
+    for (const f of ["edit", "history"]) expect(readFileSync(`src/app/(platform)/dashboard/${f}/page.tsx`, "utf8")).toMatch(/requireClientPortal\(/);
   });
   it("إجراءات التاجر لا تستخدم جلسة المتجر الخام بلا صلاحية", () => {
     const actions = walk("src/server/actions").filter((f) => f.endsWith(".ts"));

@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { orderStatusEnum, paymentMethodEnum, paymentStatusEnum, discountTypeEnum } from "./enums";
 import { stores } from "./stores";
 import { products, productVariants } from "./catalog";
+import { editRequests, storeRequests } from "./agency";
 
 export type DiscountScope = { productIds?: string[]; categoryIds?: string[] };
 export type DiscountRule =
@@ -206,11 +207,17 @@ export const platformPayments = pgTable(
   "platform_payments",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    storeId: uuid("store_id").notNull().references(() => stores.id, { onDelete: "cascade" }),
+    /** المتجر المستضاف (متجر العرض أو دفعات V3 القديمة). null لدفعات المشاريع المسلَّمة (V4). */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** V4: طلب المشروع الذي تغطيه الدفعة (kind = project) أو يتبعه التعديل المدفوع (kind = edit). */
+    requestId: uuid("request_id").references(() => storeRequests.id, { onDelete: "cascade" }),
+    /** V4: طلب التعديل برسوم الذي تغطيه الدفعة (kind = edit). */
+    editRequestId: uuid("edit_request_id").references(() => editRequests.id, { onDelete: "cascade" }),
     method: paymentMethodEnum("method").notNull(),
     amountPiasters: integer("amount_piasters").notNull(),
-    // setup = الباقة الأولى (البناء + مدة الباقة)، renewal = تجديد بمدة يختارها التاجر.
-    kind: text("kind").$type<"setup" | "renewal">().notNull().default("setup"),
+    // V4: project = حجز مشروع (الدائرة الذهبية أو العادي)، edit = رسوم تعديل بعد التسليم.
+    // setup/renewal قيم قديمة لنموذج الاستضافة (V3) تبقى مقروءة في السجل ولا تُكتب بعد الآن.
+    kind: text("kind").$type<"setup" | "renewal" | "project" | "edit">().notNull().default("project"),
     /** standard = باقة عادية، golden = الدائرة الذهبية (يُعدّ بها عدد المقاعد). */
     plan: text("plan").$type<"standard" | "golden">().notNull().default("standard"),
     /** مدة الاستضافة التي تغطيها الدفعة بالأشهر (null في الدفعات القديمة = 12). */
@@ -234,7 +241,11 @@ export const platformPayments = pgTable(
   (t) => [
     index("platform_payments_status_idx").on(t.status),
     index("platform_payments_store_idx").on(t.storeId),
+    index("platform_payments_request_idx").on(t.requestId),
     uniqueIndex("platform_payments_store_under_review_uq").on(t.storeId).where(sql`status = 'under_review'`),
+    // دفعة واحدة قيد المراجعة لكل حجز، ولكل تعديل برسوم.
+    uniqueIndex("platform_payments_request_under_review_uq").on(t.requestId).where(sql`status = 'under_review' AND kind = 'project'`),
+    uniqueIndex("platform_payments_edit_under_review_uq").on(t.editRequestId).where(sql`status = 'under_review' AND kind = 'edit'`),
   ]
 );
 

@@ -30,3 +30,17 @@ export function nextCairoDay(day: { y: number; m: number; d: number }): { y: num
   const t = new Date(Date.UTC(day.y, day.m - 1, day.d + 1));
   return { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
 }
+
+/** بداية الشهر الحالي بتوقيت القاهرة (منتصف ليل اليوم الأول بالإزاحة الفعلية صيفاً أو شتاءً). */
+export function cairoMonthStart(now = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit" }).formatToParts(now);
+  const y = Number(parts.find((p) => p.type === "year")!.value);
+  const m = Number(parts.find((p) => p.type === "month")!.value);
+  const utcMidnight = Date.UTC(y, m - 1, 1);
+  // نجرّب الإزاحتين (تغيّر التوقيت قد يقع داخل الشهر) ونختار ما يطابق منتصف الليل فعلاً.
+  for (const off of [cairoOffsetMinutes(new Date(utcMidnight)), cairoOffsetMinutes(new Date(utcMidnight - 3 * 3_600_000))]) {
+    const t = utcMidnight - off * 60_000;
+    if (cairoOffsetMinutes(new Date(t)) === off) return new Date(t);
+  }
+  return new Date(utcMidnight - 120 * 60_000);
+}

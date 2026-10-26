@@ -21,7 +21,6 @@ const REVIEWED_MIXED = new Set([
   "src/server/actions/marketing.ts",
   "src/server/actions/size-guide.ts", // الـ Blueprint (تحكم) + التحقق من أقسام المتجر (بيانات)
   // التقرير الشهري: قائمة المتاجر وبريد أصحابها من قاعدة المنصة، والأرقام من بيانات كل متجر.
-  "src/server/monthly-report.ts",
   "src/app/(platform)/(dash)/admin/page.tsx",
   "src/app/(platform)/(dash)/admin/stores/[id]/page.tsx",
   "src/app/(platform)/dashboard/content/page.tsx",

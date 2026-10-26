@@ -32,6 +32,7 @@ export const CONTROL_TABLES = [
   "merchants",
   "sessions",
   "platform_reviews",
+  "edit_requests",
   "stores",
   "store_blueprints",
   "store_snapshots",

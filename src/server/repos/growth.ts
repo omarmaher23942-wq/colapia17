@@ -3,7 +3,7 @@
 import "server-only";
 import { sql } from "drizzle-orm";
 import { getTenantDb } from "@/db/tenant";
-import { cairoMonthStart } from "@/lib/change-requests";
+import { cairoMonthStart } from "@/lib/cairo-time";
 import { goalPace, monthKey, netProfit, readGoalPrefs, roas, weeklyRecommendations, type Pace, type Recommendation } from "@/lib/sales-goal";
 import { periodTotals, profitEstimate } from "@/server/repos/overview";
 

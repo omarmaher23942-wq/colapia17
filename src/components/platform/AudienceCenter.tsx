@@ -34,7 +34,7 @@ const PRESETS: { label: string; subject: string; headline: string; body: string;
     headline: "متجرك مستنيك",
     body: "أهلاً {name}،\n\nمتجر «{store}» شغال الآن. فعّله بالباقة (تشمل سنة استضافة كاملة علينا)، ويفتح لزباينك فوراً، من غير أي عمولة على مبيعاتك.",
     buttonTitle: "فعّل متجري",
-    buttonUrl: "https://colapia.com/dashboard/billing",
+    buttonUrl: "https://colapia.com/dashboard",
   },
   {
     label: "خبر جديد",

@@ -8,8 +8,8 @@ import { decidePaymentAction } from "@/server/actions/platform-payments";
 const SW = 1.75;
 
 const REASONS = [
-  "المبلغ غير مطابق لسعر الباقة أو التجديد المعلن",
-  "الرقم المُحوَّل إليه غير صحيح (ليس رقم المنصة الرسمي)",
+  "المبلغ غير مطابق للسعر المطلوب",
+  "الرقم المُحوَّل إليه غير صحيح (ليس رقم Colapia الرسمي)",
   "صورة الإيصال غير واضحة أو ناقصة التاريخ والرقم",
   "نفس صورة الإيصال استُخدمت في تحويل سابق",
   "لا يوجد رقم مرجعي للعملية للتأكد من وصولها",
@@ -25,13 +25,13 @@ export function PaymentDecision({ id, suggested }: { id: string; suggested?: str
       try {
         await decidePaymentAction(id, decision, reasonNote);
         if (decision === "confirm") {
-          toast.success("تم تأكيد الدفع وتفعيل المتجر 🎉");
+          toast.success("تم تأكيد الدفع وانتقل الطلب إلى الإنتاج");
         } else {
-          toast.success("تم رفض الدفعة وإبلاغ التاجر بالسبب.");
+          toast.success("تم رفض الدفعة وإبلاغ العميل بالسبب.");
         }
         setRejecting(false);
-      } catch (e: any) {
-        toast.error(e?.message || "حدث خطأ في معالجة الدفعة");
+      } catch (e) {
+        toast.error(e instanceof Error && e.message ? e.message : "حدث خطأ في معالجة الدفعة");
       }
     });
 
@@ -40,7 +40,7 @@ export function PaymentDecision({ id, suggested }: { id: string; suggested?: str
       <div className="space-y-3 rounded-2xl border border-rose-500/40 bg-rose-500/10 p-4">
         <p className="text-xs font-bold text-rose-200 flex items-center gap-1.5">
           <AlertTriangle className="size-4" strokeWidth={SW} />
-          اختر سبب الرفض لإبلاغ التاجر:
+          اختر سبب الرفض لإبلاغ العميل:
         </p>
         <select
           className="w-full rounded-xl border border-rose-500/30 bg-[#07091a] p-3 text-xs font-bold text-white outline-none focus:border-rose-400"
@@ -80,7 +80,7 @@ export function PaymentDecision({ id, suggested }: { id: string; suggested?: str
         className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-emerald-400 to-emerald-500 py-3 text-xs font-black text-[#07091a] shadow-lg hover:brightness-110 active:scale-95 disabled:opacity-50 transition-all"
       >
         {pending ? <Loader2 className="size-4.5 animate-spin" /> : <CheckCircle2 className="size-4.5" />}
-        <span>تأكيد التحويل وتفعيل المتجر</span>
+        <span>تأكيد التحويل وبدء الإنتاج</span>
       </button>
 
       <button

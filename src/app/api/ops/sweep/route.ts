@@ -69,6 +69,11 @@ export async function GET(req: Request) {
 
   for (const job of jobs) {
     if (Date.now() - started > BUDGET_MS) break;
+    if (!isKind(job.kind) && job.kind.startsWith("hosting.")) {
+      await db.update(scheduledJobs).set({ status: "cancelled" }).where(eq(scheduledJobs.id, job.id)).catch(() => {});
+      skipped++;
+      continue;
+    }
     if (!job.storeId || !isKind(job.kind)) {
       skipped++;
       continue;
