@@ -1,0 +1,981 @@
+{
+  "schemaVersion": 1,
+  "variationSeed": "demo-colapia-v5-women",
+  "brand": {
+    "name": "ريحانة للأزياء",
+    "tagline": "أزياء نسائية بقصّات هادئة وخامات مريحة، في متجر عرض من Colapia",
+    "description": "متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء ولوحة التحكم. القطع والصور للعرض فقط.",
+    "voice": "premium_formal",
+    "industry": "fashion"
+  },
+  "theme": {
+    "mode": "light",
+    "palette": {
+      "primary": "#1f1b16",
+      "primaryForeground": "#ffffff",
+      "secondary": "#efe7da",
+      "secondaryForeground": "#1f1b16",
+      "accent": "#8a6a3f",
+      "accentForeground": "#ffffff",
+      "background": "#f7f2ea",
+      "foreground": "#1f1b16",
+      "muted": "#efe7da",
+      "mutedForeground": "#5f554a",
+      "card": "#fffdf9",
+      "cardForeground": "#1f1b16",
+      "border": "#e2d8c7",
+      "success": "#11803a",
+      "warning": "#b45309",
+      "danger": "#d82323"
+    },
+    "darkPalette": {
+      "primary": "#e9dcc6",
+      "primaryForeground": "#000000",
+      "secondary": "#29241c",
+      "secondaryForeground": "#f3ece0",
+      "accent": "#c9a46e",
+      "accentForeground": "#000000",
+      "background": "#17140f",
+      "foreground": "#f3ece0",
+      "muted": "#29241c",
+      "mutedForeground": "#b7ab98",
+      "card": "#1f1b15",
+      "cardForeground": "#f3ece0",
+      "border": "#3a3328",
+      "success": "#16a34a",
+      "warning": "#cc5e0a",
+      "danger": "#e14646"
+    },
+    "fonts": {
+      "heading": "el_messiri",
+      "body": "almarai",
+      "baseSize": 16
+    },
+    "radius": "sm",
+    "buttonStyle": "solid",
+    "shadow": "soft",
+    "motion": "subtle",
+    "productCardStyle": "bordered",
+    "imageRatio": "square",
+    "backgroundPattern": "none",
+    "imageBackground": "none",
+    "background": {
+      "kind": "solid",
+      "color": "#f7f2ea",
+      "texture": "grain"
+    },
+    "darkBackground": {
+      "kind": "solid",
+      "color": "#17140f",
+      "texture": "grain"
+    }
+  },
+  "design": {
+    "theme": "ivory-atelier",
+    "cardStyle": "simple",
+    "concept": "",
+    "mood": "",
+    "layout": {
+      "container": "normal",
+      "density": "airy",
+      "headingAlign": "center"
+    },
+    "type": {
+      "headingWeight": 800,
+      "headingTracking": -0.01,
+      "headingScale": 1,
+      "bodyLeading": 1.75
+    },
+    "shape": {
+      "card": 6,
+      "button": 4,
+      "input": 6,
+      "image": 4,
+      "chip": 999
+    },
+    "surface": {
+      "background": "solid",
+      "rhythm": "alternate",
+      "divider": "line",
+      "grain": false
+    },
+    "elevation": {
+      "level": 0,
+      "border": 1
+    },
+    "card": {
+      "ratio": "tall",
+      "fit": "cover",
+      "imagePad": 0,
+      "imageBg": "muted",
+      "align": "start",
+      "priceStyle": "plain",
+      "hover": "zoom",
+      "badge": "pill",
+      "showCategory": false,
+      "quickAdd": "icon"
+    },
+    "button": {
+      "fill": "solid",
+      "weight": 800,
+      "size": "md"
+    },
+    "icon": {
+      "stroke": 1.75,
+      "frame": "squircle",
+      "tone": "primary"
+    },
+    "heading": {
+      "style": "ornament"
+    },
+    "header": {
+      "surface": "solid",
+      "logoSize": "md"
+    },
+    "motion": {
+      "level": "calm",
+      "depth": false
+    }
+  },
+  "copy": {},
+  "locale": {
+    "language": "ar",
+    "country": "EG",
+    "currency": "EGP",
+    "timezone": "Africa/Cairo"
+  },
+  "header": {
+    "variant": "classic",
+    "sticky": true,
+    "transparentOnHero": false,
+    "showSearch": true,
+    "nav": [
+      {
+        "label": "الرئيسية",
+        "target": {
+          "type": "home"
+        }
+      },
+      {
+        "label": "كل المنتجات",
+        "target": {
+          "type": "all_products"
+        }
+      },
+      {
+        "label": "تواصل معنا",
+        "target": {
+          "type": "contact"
+        }
+      }
+    ],
+    "showCategoriesMenu": true,
+    "bottomBar": true
+  },
+  "footer": {
+    "variant": "rich",
+    "tagline": "متجر عرض من Colapia: القطع للعرض والطلبات تجريبية.",
+    "showPaymentIcons": true,
+    "showChannels": true,
+    "showPoweredBy": true
+  },
+  "channels": {
+    "email": "demo@colapia.com"
+  },
+  "home": [
+    {
+      "id": "hero",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "hero",
+      "variant": "editorial",
+      "eyebrow": "مجموعة الموسم",
+      "headline": "أناقة هادئة لكل يوم",
+      "subheadline": "فساتين وعبايات وأطقم بخامات مريحة وقصّات تناسب مختلف المقاسات، مع أداة تقترح مقاسكم من الطول والوزن.",
+      "images": [
+        {
+          "url": "/demo/editorial/lookbook-3.webp",
+          "alt": "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة بين أعمدة بيضاء",
+          "focalX": 0.5,
+          "focalY": 0.35
+        },
+        {
+          "url": "/demo/editorial/lookbook-2.webp",
+          "alt": "ترنش كوت بيج مفتوح فوق توب أبيض وبنطلون بيج",
+          "focalX": 0.5,
+          "focalY": 0.4
+        }
+      ],
+      "primaryCta": {
+        "label": "تسوقوا المجموعة",
+        "target": {
+          "type": "all_products"
+        },
+        "style": "primary"
+      },
+      "secondaryCta": {
+        "label": "شاهدوا الإطلالات",
+        "target": {
+          "type": "section",
+          "sectionId": "lookbook"
+        },
+        "style": "secondary"
+      },
+      "highlights": [],
+      "spotlightProductSlug": "longline-camel-wool-coat",
+      "overlayOpacity": 0.35,
+      "textAlign": "start",
+      "height": "tall",
+      "autoplayMs": 5000,
+      "enableParallax": false,
+      "enableKineticTypography": false,
+      "enableAmbientGlow": false
+    },
+    {
+      "id": "trust",
+      "enabled": true,
+      "spacing": "compact",
+      "background": "default",
+      "reveal": "fade",
+      "type": "trust_badges",
+      "variant": "row",
+      "items": [
+        {
+          "icon": "banknote",
+          "title": "الدفع عند الاستلام",
+          "text": "الدفع نقداً عند وصول الطلب",
+          "fact": "cod"
+        },
+        {
+          "icon": "eye",
+          "title": "معاينة قبل الدفع",
+          "text": "فتح الشحنة وفحص المنتج قبل الدفع",
+          "fact": "inspection"
+        },
+        {
+          "icon": "rotate-ccw",
+          "title": "استبدال واسترجاع",
+          "text": "وفق سياسة المتجر",
+          "fact": "returns"
+        },
+        {
+          "icon": "gift",
+          "title": "شحن مجاني",
+          "text": "على الطلبات التي تبلغ حداً معيناً",
+          "fact": "free_shipping_over"
+        },
+        {
+          "icon": "map-pin",
+          "title": "شحن لكل المحافظات",
+          "text": "التوصيل إلى باب المنزل",
+          "fact": "nationwide"
+        },
+        {
+          "icon": "message-circle",
+          "title": "رد سريع على واتساب",
+          "text": "للاستفسار قبل الطلب وبعده",
+          "fact": "whatsapp"
+        }
+      ]
+    },
+    {
+      "id": "mosaic",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "category-mosaic",
+      "title": "تسوقوا حسب القسم",
+      "props": {
+        "covers": {
+          "فساتين": "/demo/editorial/rail-dresses.webp",
+          "بلوزات وجاكيتات": "/demo/editorial/lookbook-2.webp",
+          "أطقم": "/demo/editorial/hero-side.webp",
+          "إكسسوارات وأحذية": "/demo/fashion/green-leather-tote-1.webp"
+        },
+        "order": [
+          "فساتين",
+          "عبايات",
+          "بلوزات وجاكيتات",
+          "بناطيل وتنانير",
+          "أطقم",
+          "إكسسوارات وأحذية"
+        ]
+      }
+    },
+    {
+      "id": "new",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "product_grid",
+      "variant": "featured_first",
+      "title": "وصل حديثاً",
+      "subtitle": "أحدث القطع في المتجر",
+      "source": {
+        "type": "newest"
+      },
+      "limit": 8,
+      "columnsMobile": 2,
+      "columnsDesktop": 4,
+      "showViewAll": true,
+      "quickAdd": true
+    },
+    {
+      "id": "look",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "shop-the-look",
+      "title": "تسوقوا الإطلالة",
+      "props": {
+        "image": "/demo/editorial/lookbook-3.webp",
+        "alt": "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة بين أعمدة بيضاء",
+        "caption": "معطف طويل بلون الجمل فوق طبقات هادئة: قطع تُلبس معاً أو كلٌّ على حدة.",
+        "items": [
+          {
+            "slug": "longline-camel-wool-coat",
+            "role": "المعطف"
+          },
+          {
+            "slug": "wide-leg-trousers",
+            "role": "البنطلون"
+          },
+          {
+            "slug": "green-leather-tote",
+            "role": "الحقيبة"
+          }
+        ]
+      }
+    },
+    {
+      "id": "best",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "type": "product_grid",
+      "variant": "carousel",
+      "title": "مختارات ريحانة",
+      "subtitle": "قطع اخترناها لكم من كل الأقسام",
+      "source": {
+        "type": "featured"
+      },
+      "limit": 10,
+      "columnsMobile": 2,
+      "columnsDesktop": 4,
+      "showViewAll": true,
+      "quickAdd": true
+    },
+    {
+      "id": "sale-banner",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "promo_banner",
+      "variant": "wide",
+      "items": [
+        {
+          "eyebrow": "تخفيضات",
+          "title": "قطع مختارة بأسعار مخفّضة",
+          "text": "أسعار أقل على قطع من الفساتين والعبايات والأحذية، وكود DEMO10 يخفّض 10% عند إتمام الطلب.",
+          "image": {
+            "url": "/demo/editorial/rail-boutique.webp",
+            "alt": "شماعة متجر بفساتين وبلوزات بدرجات البيج والخوخ والصدأ بجوار نافذة",
+            "focalX": 0.5,
+            "focalY": 0.5
+          },
+          "cta": {
+            "label": "تسوقوا التخفيضات",
+            "target": {
+              "type": "section",
+              "sectionId": "sale"
+            },
+            "style": "primary"
+          },
+          "couponCode": "DEMO10"
+        }
+      ]
+    },
+    {
+      "id": "sale",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "product_grid",
+      "variant": "grid",
+      "title": "عروض بأسعار مخفّضة",
+      "subtitle": "خصومات على السعر الأصلي",
+      "source": {
+        "type": "on_sale"
+      },
+      "limit": 8,
+      "columnsMobile": 2,
+      "columnsDesktop": 4,
+      "showViewAll": true,
+      "quickAdd": true
+    },
+    {
+      "id": "lookbook",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "lookbook",
+      "title": "إطلالات من المجموعة",
+      "props": {
+        "looks": [
+          {
+            "image": "/demo/editorial/lookbook-3.webp",
+            "alt": "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة بين أعمدة بيضاء",
+            "title": "معطف الجمل",
+            "slug": "longline-camel-wool-coat"
+          },
+          {
+            "image": "/demo/editorial/lookbook-2.webp",
+            "alt": "ترنش كوت بيج مفتوح فوق توب أبيض وبنطلون بيج",
+            "title": "ترنش الصباح",
+            "slug": "belted-trench-coat"
+          },
+          {
+            "image": "/demo/editorial/hero-side.webp",
+            "alt": "بليزر بلون الجمل فوق توب أبيض وجينز فاتح",
+            "title": "بليزر بدرجات الجمل",
+            "slug": "camel-blazer-trouser-set"
+          },
+          {
+            "image": "/demo/editorial/lookbook-1.webp",
+            "alt": "طقم قميص وبنطلون بلون الخاكي",
+            "title": "طقم يوم طويل",
+            "slug": "khaki-utility-set"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fit",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "fit-finder",
+      "title": "اعرفوا مقاسكم",
+      "props": {
+        "category": "فساتين"
+      }
+    },
+    {
+      "id": "fabric",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "fabric-guide",
+      "title": "الخامات في هذه المجموعة",
+      "props": {}
+    },
+    {
+      "id": "voices",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "muted",
+      "reveal": "fade",
+      "type": "store_block",
+      "variant": "default",
+      "name": "voices",
+      "title": "آراء من التقييمات",
+      "props": {
+        "limit": 6
+      }
+    },
+    {
+      "id": "faq",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "faq",
+      "variant": "accordion",
+      "title": "أسئلة شائعة",
+      "items": [
+        {
+          "q": "هل هذا متجر حقيقي؟",
+          "a": "هذا متجر عرض من Colapia يوضح شكل المتجر الجاهز وتجربة الشراء كاملة. يمكن إضافة القطع إلى السلة وإتمام الطلب للتجربة، لكن الطلب يُسجَّل تجريبياً فلا يُشحن ولا يُطلب عنه أي مبلغ. بعض صور القطع رسوم توضيحية بدل التصوير."
+        },
+        {
+          "q": "كيف أطلب؟",
+          "a": "باختيار المقاس واللون، ثم «إضافة للسلة»، ثم إكمال بيانات الشحن في صفحة إتمام الطلب."
+        },
+        {
+          "q": "كيف أعرف المقاس المناسب؟",
+          "a": "في الصفحة الرئيسية أداة «اعرفوا مقاسكم» تقترح المقاس من الطول والوزن، وفي صفحة كل قطعة زر «دليل المقاسات» بجدول القياسات بالسنتيمتر."
+        },
+        {
+          "q": "ما مدة التوصيل؟",
+          "a": "من 2 إلى 5 أيام عمل حسب المحافظة، وتظهر المدة المتوقعة لكل محافظة في صفحة إتمام الطلب."
+        },
+        {
+          "q": "هل الدفع عند الاستلام متاح؟",
+          "a": "نعم، الدفع نقداً عند استلام الطلب متاح لكل الطلبات."
+        },
+        {
+          "q": "هل يمكن فتح الشحنة قبل الدفع؟",
+          "a": "نعم، يمكن فتح الشحنة وفحص القطعة مع المندوب قبل الدفع."
+        },
+        {
+          "q": "ما سياسة الاستبدال والاسترجاع؟",
+          "a": "الاستبدال والاسترجاع متاحان خلال 14 يوماً من الاستلام، بشرط أن تكون القطعة بحالتها الأصلية."
+        },
+        {
+          "q": "متى يكون الشحن مجانياً؟",
+          "a": "الشحن مجاني لأي طلب قيمته 3,000 ج.م أو أكثر."
+        }
+      ]
+    },
+    {
+      "id": "about",
+      "enabled": true,
+      "spacing": "normal",
+      "background": "default",
+      "reveal": "fade",
+      "type": "about",
+      "variant": "split",
+      "title": "عن متجر العرض",
+      "body": "ريحانة للأزياء متجر عرض أعدّه فريق Colapia ليُظهر شكل المتجر الجاهز ولوحة التحكم: أقسام لأزياء نسائية بأغلفتها، وقطع بمقاسات وألوان ومخزون، وأداة لاقتراح المقاس، وتقييمات وأسئلة مُجابة، وتجربة شراء كاملة حتى تأكيد الطلب.\nالقطع والأسعار والتقييمات هنا للعرض فقط، وبعض الصور رسوم توضيحية بدل التصوير، والطلبات تُسجَّل تجريبياً فلا تُشحن ولا يُطلب عنها أي دفع.",
+      "image": {
+        "url": "/demo/editorial/rail-dresses.webp",
+        "alt": "شماعة بفساتين سوداء وزيتية أمام ستائر كريمية",
+        "focalX": 0.5,
+        "focalY": 0.5
+      },
+      "stats": [],
+      "milestones": []
+    }
+  ],
+  "productPage": {
+    "layout": "gallery_left",
+    "showSku": false,
+    "showAttributesTable": true,
+    "showReviews": true,
+    "showShareButtons": true,
+    "extraSections": []
+  },
+  "conversion": {
+    "stickyAddToCart": true,
+    "buyNowButton": true,
+    "freeShippingBar": {
+      "enabled": true,
+      "thresholdPiasters": 300000
+    },
+    "lowStockAlert": {
+      "enabled": true,
+      "threshold": 5
+    },
+    "socialProofToasts": {
+      "enabled": false,
+      "minOrdersToShow": 5,
+      "lookbackHours": 72
+    },
+    "liveViewers": false,
+    "exitIntentOffer": {
+      "enabled": false,
+      "title": "خصم خاص على الطلب الأول",
+      "text": "استخدموا الكود للحصول على خصم",
+      "showOncePerDays": 3
+    },
+    "productTrustRow": [],
+    "deliveryEstimate": true,
+    "recommendations": {
+      "frequentlyBoughtTogether": true,
+      "completeTheLook": true,
+      "recentlyViewed": true,
+      "cartUpsell": true
+    },
+    "expressCheckout": true,
+    "rememberCustomer": true,
+    "messengerOrderButton": false,
+    "whatsappButton": false,
+    "showSavings": true,
+    "cartDrawer": true,
+    "shareButtons": true,
+    "ambientSound": false,
+    "cursorFollower": false,
+    "liveActivityBar": false,
+    "kineticTypography": false,
+    "viewTransitions": false,
+    "smartImageSequence": false,
+    "quickViewModal": true,
+    "stockPulseIndicator": false,
+    "product360Viewer": false,
+    "productARPreview": false,
+    "imageZoomLens": true,
+    "videoThumbs": true,
+    "multiLayerParallax": false,
+    "ambientBackdrop": false,
+    "scrollLinkedStory": false,
+    "comparisonBar": false,
+    "wishlistEnabled": true,
+    "voiceNavigation": false,
+    "aiSearch": true
+  },
+  "payments": {
+    "cod": {
+      "enabled": true,
+      "note": "معاينة الشحنة مع المندوب قبل الدفع متاحة"
+    },
+    "vodafoneCash": {
+      "enabled": false
+    },
+    "instapay": {
+      "enabled": false
+    },
+    "requireTransferProof": true,
+    "transferInstructions": "حوّلوا المبلغ إلى الرقم الظاهر، ثم ارفعوا صورة التحويل واكتبوا الرقم المحوَّل منه، وسنؤكد الطلب فوراً."
+  },
+  "shipping": {
+    "freeOverPiasters": 300000,
+    "flatRatePiasters": null,
+    "generalEta": "من 2 إلى 5 أيام عمل",
+    "pickupEnabled": false,
+    "inspectionAllowed": true,
+    "giftEnabled": true,
+    "giftWrapPiasters": 0
+  },
+  "returns": {
+    "windowDays": 14,
+    "allowExchange": true,
+    "allowRefund": true,
+    "returnShippingPaidBy": "customer",
+    "refundDays": 7,
+    "conditions": [],
+    "defectPolicy": "replace_or_refund",
+    "defectReportHours": 48,
+    "defectShippingByStore": true,
+    "allowCustomerCancel": false
+  },
+  "checkout": {
+    "fields": {
+      "altPhone": "optional",
+      "city": "optional",
+      "landmark": "optional",
+      "notes": "optional",
+      "email": "hidden"
+    },
+    "customFields": [],
+    "minOrderPiasters": null,
+    "termsCheckbox": false,
+    "successMessage": "تم تسجيل الطلب التجريبي. هذا متجر عرض، فلن يُشحن الطلب ولن يُطلب أي دفع."
+  },
+  "orderMessages": {
+    "confirmed": "أهلاً {name}، تم تأكيد طلبكم {code} بإجمالي {total}. موعد الوصول المتوقع: {eta}. شكراً لثقتكم في {store}.",
+    "shipped": "خرج طلبكم {code} مع شركة الشحن وسيصل قريباً. رقم الشحنة: {tracking}",
+    "delivered": "نتمنى أن يكون طلبكم {code} قد نال إعجابكم. يسعدنا تقييم التجربة: {review_link}",
+    "abandoned": "أهلاً {name}، لاحظنا أن {items} لا يزال في السلة. هل تحتاجون مساعدة لإتمام الطلب؟"
+  },
+  "invoice": {
+    "showLogo": true,
+    "footerNote": "متجر عرض: فاتورة توضيحية لطلب تجريبي",
+    "showQr": true,
+    "paperSize": "A5",
+    "showPrices": true
+  },
+  "customCss": "",
+  "pages": [],
+  "seo": {
+    "title": "ريحانة للأزياء: متجر عرض من Colapia",
+    "description": "تصفحوا متجر أزياء نسائية كاملاً كما يراه الزبائن: أقسام ومقاسات وألوان وأداة لاقتراح المقاس وتجربة شراء تجريبية.",
+    "noIndex": true
+  },
+  "campaigns": [],
+  "inventory": {
+    "tracking": true
+  },
+  "sizeGuide": {
+    "charts": [
+      {
+        "id": "szdemodress",
+        "name": "مقاسات الفساتين والعبايات والأطقم",
+        "appliesTo": [
+          "00000000-0000-4000-8000-000000000001",
+          "00000000-0000-4000-8000-000000000002",
+          "00000000-0000-4000-8000-000000000005"
+        ],
+        "unit": "سم",
+        "columns": [
+          "الصدر",
+          "الوسط",
+          "الورك"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "cells": [
+              "86",
+              "68",
+              "94"
+            ],
+            "heightFrom": 155,
+            "heightTo": 163,
+            "weightFrom": 47,
+            "weightTo": 56
+          },
+          {
+            "size": "M",
+            "cells": [
+              "92",
+              "74",
+              "100"
+            ],
+            "heightFrom": 160,
+            "heightTo": 168,
+            "weightFrom": 55,
+            "weightTo": 65
+          },
+          {
+            "size": "L",
+            "cells": [
+              "98",
+              "80",
+              "106"
+            ],
+            "heightFrom": 164,
+            "heightTo": 172,
+            "weightFrom": 64,
+            "weightTo": 75
+          },
+          {
+            "size": "XL",
+            "cells": [
+              "104",
+              "86",
+              "112"
+            ],
+            "heightFrom": 168,
+            "heightTo": 176,
+            "weightFrom": 73,
+            "weightTo": 86
+          }
+        ],
+        "note": "قياسات الجسم لا القطعة. الطول يختلف من قطعة لأخرى ويُذكر في وصفها."
+      },
+      {
+        "id": "szdemotops",
+        "name": "مقاسات البلوزات والجاكيتات",
+        "appliesTo": [
+          "00000000-0000-4000-8000-000000000003"
+        ],
+        "unit": "سم",
+        "columns": [
+          "الصدر",
+          "الكتف",
+          "الطول"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "cells": [
+              "90",
+              "37",
+              "60"
+            ],
+            "heightFrom": 155,
+            "heightTo": 163,
+            "weightFrom": 47,
+            "weightTo": 56
+          },
+          {
+            "size": "M",
+            "cells": [
+              "96",
+              "38.5",
+              "62"
+            ],
+            "heightFrom": 160,
+            "heightTo": 168,
+            "weightFrom": 55,
+            "weightTo": 65
+          },
+          {
+            "size": "L",
+            "cells": [
+              "102",
+              "40",
+              "64"
+            ],
+            "heightFrom": 164,
+            "heightTo": 172,
+            "weightFrom": 64,
+            "weightTo": 75
+          },
+          {
+            "size": "XL",
+            "cells": [
+              "108",
+              "41.5",
+              "66"
+            ],
+            "heightFrom": 168,
+            "heightTo": 176,
+            "weightFrom": 73,
+            "weightTo": 86
+          }
+        ],
+        "note": "قياس القطعة مفرودة على سطح مستوٍ."
+      },
+      {
+        "id": "szdemobottoms",
+        "name": "مقاسات البناطيل والتنانير",
+        "appliesTo": [
+          "00000000-0000-4000-8000-000000000004"
+        ],
+        "unit": "سم",
+        "columns": [
+          "الوسط",
+          "الورك",
+          "طول الساق"
+        ],
+        "rows": [
+          {
+            "size": "S",
+            "cells": [
+              "68",
+              "94",
+              "100"
+            ],
+            "heightFrom": 155,
+            "heightTo": 163,
+            "weightFrom": 47,
+            "weightTo": 56
+          },
+          {
+            "size": "M",
+            "cells": [
+              "74",
+              "100",
+              "101"
+            ],
+            "heightFrom": 160,
+            "heightTo": 168,
+            "weightFrom": 55,
+            "weightTo": 65
+          },
+          {
+            "size": "L",
+            "cells": [
+              "80",
+              "106",
+              "102"
+            ],
+            "heightFrom": 164,
+            "heightTo": 172,
+            "weightFrom": 64,
+            "weightTo": 75
+          },
+          {
+            "size": "XL",
+            "cells": [
+              "86",
+              "112",
+              "103"
+            ],
+            "heightFrom": 168,
+            "heightTo": 176,
+            "weightFrom": 73,
+            "weightTo": 86
+          }
+        ],
+        "note": "قياس الجسم للوسط والورك، وطول الساق من الفخذ إلى الكاحل."
+      },
+      {
+        "id": "szdemoshoes",
+        "name": "مقاسات الأحذية",
+        "appliesTo": [
+          "00000000-0000-4000-8000-000000000006"
+        ],
+        "unit": "سم",
+        "columns": [
+          "طول القدم"
+        ],
+        "rows": [
+          {
+            "size": "36",
+            "cells": [
+              "23.3"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "37",
+            "cells": [
+              "24"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "38",
+            "cells": [
+              "24.7"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "39",
+            "cells": [
+              "25.3"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "40",
+            "cells": [
+              "26"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          },
+          {
+            "size": "41",
+            "cells": [
+              "26.7"
+            ],
+            "heightFrom": null,
+            "heightTo": null,
+            "weightFrom": null,
+            "weightTo": null
+          }
+        ],
+        "note": "طول القدم من الكعب لأطول إصبع، والقدم على الأرض."
+      }
+    ]
+  }
+}
