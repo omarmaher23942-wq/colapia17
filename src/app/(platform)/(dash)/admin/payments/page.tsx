@@ -1,18 +1,14 @@
-import { DEFAULT_PLANS, monthsLabel } from "@/lib/platform-pricing";
-
 import Link from "next/link";
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { CheckCircle2, XCircle, Wallet, ExternalLink, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
 import { db } from "@/db/client";
-import { platformPayments, stores, merchants } from "@/db/schema";
+import { editRequests, platformPayments, storeRequests } from "@/db/schema";
 import { formatEgp } from "@/lib/money";
 import { PaymentDecision } from "@/components/platform/PaymentDecision";
 import { RevokePayment } from "@/components/platform/RevokePayment";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { cn } from "@/lib/utils";
 import { requirePlatformPage } from "@/server/platform-guard";
-
-const TIER_NAME: Record<string, string> = Object.fromEntries(DEFAULT_PLANS.map((p) => [p.id, `باقة ${p.name}`]));
 
 export const dynamic = "force-dynamic";
 
@@ -36,33 +32,28 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
       pId: platformPayments.id,
       pAmount: platformPayments.amountPiasters,
       pKind: platformPayments.kind,
-      pCoupon: platformPayments.coupon,
       pPlan: platformPayments.plan,
-      pMonths: platformPayments.months,
-      pTier: platformPayments.tier,
       pMethod: platformPayments.method,
       pSenderPhone: platformPayments.senderPhone,
       pScreenshotUrl: platformPayments.screenshotUrl,
       pStatus: platformPayments.status,
-      pReviewedBy: platformPayments.reviewedBy,
       pReviewNote: platformPayments.reviewNote,
       pAiVerification: platformPayments.aiVerification,
       pCreatedAt: platformPayments.createdAt,
-      sId: stores.id,
-      sName: stores.name,
-      sSubdomain: stores.subdomain,
-      mName: merchants.displayName,
+      rId: storeRequests.id,
+      rName: storeRequests.storeName,
+      rCode: storeRequests.code,
+      rEmail: storeRequests.email,
+      rProduction: storeRequests.production,
+      eTitle: editRequests.title,
+      eCode: editRequests.code,
+      eEmail: editRequests.clientEmail,
+      eRequestId: editRequests.requestId,
     })
     .from(platformPayments)
-    .leftJoin(stores, eq(stores.id, platformPayments.storeId))
-    .leftJoin(merchants, eq(merchants.id, stores.merchantId))
-    .where(
-      view === "pending"
-        ? eq(platformPayments.status, "under_review")
-        : view === "auto"
-          ? and(eq(platformPayments.status, "confirmed"), isNull(platformPayments.reviewedBy))
-          : undefined
-    )
+    .leftJoin(storeRequests, eq(storeRequests.id, platformPayments.requestId))
+    .leftJoin(editRequests, eq(editRequests.id, platformPayments.editRequestId))
+    .where(view === "pending" ? eq(platformPayments.status, "under_review") : view === "confirmed" ? eq(platformPayments.status, "confirmed") : undefined)
     .orderBy(desc(platformPayments.createdAt))
     .limit(100);
 
@@ -77,7 +68,7 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
             تدقيق التحويلات المالية
           </h1>
           <p className="mt-1 text-xs text-[#c3cdf0]/70">
-            الذكاء الاصطناعي يقرأ الإيصالات ويقارن المبالغ، وتأكيد التفعيل (أو تمديد الاستضافة سنة) بضغطة زر منك.
+            فحص آلي يقرأ الإيصالات ويقارن المبالغ، والقرار لك: تأكيد الحجز يُدخل المشروع الإنتاج ويُنقص عدّاد الدائرة الذهبية، وتأكيد رسوم التعديل يبدأ تنفيذه.
           </p>
         </div>
 
@@ -85,8 +76,8 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
           <Link href="?view=pending" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "pending" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
             بانتظار المراجعة ({rows.filter((r) => r.pStatus === "under_review").length})
           </Link>
-          <Link href="?view=auto" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "auto" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
-            قُبلت آلياً (قديماً)
+          <Link href="?view=confirmed" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "confirmed" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
+            المؤكدة
           </Link>
           <Link href="?view=all" className={cn("rounded-lg px-4 py-2 text-xs font-bold transition-all", view === "all" ? "bg-[#6f86ff] text-[#07091a] shadow-md" : "text-slate-400 hover:text-white")}>
             سجل التحويلات
@@ -115,20 +106,20 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
 
                 <div className="min-w-0 flex-1 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <Link href={r.sId ? `/admin/stores/${r.sId}` : "#"} className="text-lg font-black text-white hover:text-[#8fa8ff] block truncate">
-                        {r.sName || "متجر غير معروف"}
+                    <div className="min-w-0">
+                      <Link href={r.pKind === "edit" && r.eRequestId ? `/admin/edits?request=${r.eRequestId}` : r.rId ? `/admin/requests/${r.rId}` : "#"} className="block truncate text-lg font-black text-white hover:text-[#8fa8ff]">
+                        {r.pKind === "edit" ? r.eTitle || "طلب تعديل" : r.rName || "حجز"}
                       </Link>
-                      <p className="text-xs text-[#8d97c4] font-mono mt-0.5" dir="ltr">{r.sSubdomain ? `${r.sSubdomain}.colapia.com` : "—"}</p>
+                      <p className="mt-0.5 font-mono text-xs text-[#8d97c4]" dir="ltr">{r.pKind === "edit" ? r.eCode : r.rCode}</p>
                     </div>
-                    <span className="rounded-xl bg-emerald-500/20 text-emerald-300 px-3 py-1.5 text-sm font-black font-mono border border-emerald-500/30 shadow-sm">
-                      {r.pKind === "renewal" ? "تجديد · " : r.pPlan === "golden" ? `دفعة أولى بالدائرة الذهبية${r.pCoupon ? ` (${r.pCoupon})` : ""} · ` : "دفعة أولى · "}{r.pTier ? `${TIER_NAME[r.pTier] ?? r.pTier} · ` : ""}{r.pMonths ? `${monthsLabel(r.pMonths)} · ` : ""}
+                    <span className="rounded-xl border border-emerald-500/30 bg-emerald-500/20 px-3 py-1.5 font-mono text-sm font-black text-emerald-300 shadow-sm">
+                      {r.pKind === "edit" ? "رسوم تعديل · " : r.pKind === "project" ? (r.pPlan === "golden" ? "الدائرة الذهبية · " : "حجز عادي · ") : "دفعة قديمة · "}
                       {formatEgp(r.pAmount)}
                     </span>
                   </div>
 
-                  <div className="rounded-xl bg-[#07091a] p-3 text-xs space-y-1.5 text-slate-300 border border-white/5">
-                    <p className="flex justify-between"><span className="text-slate-500">التاجر:</span> <b>{r.mName || "غير مسجل"}</b></p>
+                  <div className="space-y-1.5 rounded-xl border border-white/5 bg-[#07091a] p-3 text-xs text-slate-300">
+                    <p className="flex justify-between"><span className="text-slate-500">العميل:</span> <b dir="ltr">{r.pKind === "edit" ? r.eEmail : r.rEmail || "—"}</b></p>
                     <p className="flex justify-between"><span className="text-slate-500">الوسيلة:</span> <b>{r.pMethod === "vodafone_cash" ? "فودافون كاش" : "إنستاباي"}</b></p>
                     <p className="flex justify-between"><span className="text-slate-500">رقم التحويل:</span> <b dir="ltr" className="font-mono text-[#8fa8ff]">{r.pSenderPhone || "غير مسجل"}</b></p>
                     <p className="flex justify-between"><span className="text-slate-500">الوقت:</span> <span className="font-mono text-[10px]">{safeDateStr(r.pCreatedAt)}</span></p>
@@ -156,18 +147,16 @@ export default async function PaymentsReviewPage({ searchParams }: { searchParam
                   <PaymentDecision id={r.pId} suggested={rec} />
                 </div>
               ) : (
-                <div className="border-t border-white/10 pt-3 text-xs font-bold flex justify-center">
-                  {r.pStatus === "confirmed" && !r.pReviewedBy ? (
+                <div className="flex justify-center border-t border-white/10 pt-3 text-xs font-bold">
+                  {r.pStatus === "confirmed" ? (
                     <div className="flex w-full flex-wrap items-center justify-between gap-3">
-                      <span className="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-300">
-                        <ShieldCheck className="size-4" /> قُبل فورياً آلياً{r.pReviewNote ? ` · ${r.pReviewNote}` : ""}
+                      <span className="flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-emerald-400">
+                        <CheckCircle2 className="size-4" /> {r.pKind === "edit" ? "تم التأكيد وبدأ التعديل" : "تم التأكيد وانتقل المشروع إلى الإنتاج"}
                       </span>
-                      <RevokePayment id={r.pId} />
+                      {(r.pKind === "project" && r.rProduction === "new") || r.pKind === "edit" ? <RevokePayment id={r.pId} /> : null}
                     </div>
-                  ) : r.pStatus === "confirmed" ? (
-                    <span className="text-emerald-400 flex items-center gap-1.5 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/20"><CheckCircle2 className="size-4" /> تم التأكيد وتفعيل المتجر</span>
                   ) : (
-                    <span className="text-rose-400 flex items-center gap-1.5 bg-rose-500/10 px-4 py-2 rounded-xl border border-rose-500/20"><XCircle className="size-4" /> تم الرفض وإبلاغ التاجر بالسبب</span>
+                    <span className="flex items-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-rose-400"><XCircle className="size-4" /> رُفضت وأُبلغ العميل بالسبب{r.pReviewNote ? `: ${r.pReviewNote}` : ""}</span>
                   )}
                 </div>
               )}

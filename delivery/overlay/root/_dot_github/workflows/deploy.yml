@@ -1,0 +1,23 @@
+# نشر تلقائي على Cloudflare Workers عند كل دفع إلى main. اختياري: يُغني عنه ربط Workers Builds من لوحة Cloudflare.
+# أضيفوا في GitHub ← Settings ← Secrets and variables ← Actions: CLOUDFLARE_API_TOKEN وCLOUDFLARE_ACCOUNT_ID.
+name: Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npx opennextjs-cloudflare build
+      - run: npx opennextjs-cloudflare deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

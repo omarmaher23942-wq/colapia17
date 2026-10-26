@@ -17,6 +17,7 @@ import {
   Mail,
   BadgeDollarSign,
   MessageSquarePlus,
+  Inbox,
   Rocket,
   PackageCheck,
   type LucideIcon,
@@ -29,7 +30,8 @@ import {
   platformPayments,
   stores,
   platformReviews,
-  storeChangeRequests,
+  storeRequests,
+  editRequests,
 } from "@/db/schema";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { can, canSeePage, isPlatformRole, ROLE_INFO, type AdminPage } from "@/agency/roles";
@@ -39,7 +41,8 @@ const SW = 1.75;
 
 const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
-  ["/admin/changes", "طلبات التعديل", MessageSquarePlus],
+  ["/admin/requests", "المشاريع", Inbox],
+  ["/admin/edits", "طلبات التعديل", MessageSquarePlus],
   ["/admin/conversations", "المحادثات", MessagesSquare],
   ["/admin/conversations/delivery", "بانتظار التسليم", PackageCheck],
   ["/admin/payments", "التحويلات", Wallet],
@@ -48,7 +51,7 @@ const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin/audience", "الجمهور والبريد", Mail],
   ["/admin/stores", "المتاجر", Store],
   ["/admin/costs", "التكاليف", Activity],
-  ["/admin/pricing", "الأسعار والمدد", BadgeDollarSign],
+  ["/admin/pricing", "الأسعار", BadgeDollarSign],
   ["/admin/flags", "الإعدادات", SlidersHorizontal],
   ["/admin/launch", "جاهزية الإطلاق", Rocket],
   ["/admin/team", "الفريق", Users],
@@ -75,7 +78,7 @@ export default async function PlatformAdminLayout({
   const h = await headers();
   const path = (h.get("x-pathname") ?? "").toLowerCase();
 
-  const [reviewRows, payRows, unreadRows, reviewsPendingRows, openChangeRows] =
+  const [reviewRows, payRows, unreadRows, reviewsPendingRows, openEditRows, newRequestRows] =
     await Promise.all([
       db
         // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد (بانتظار تسليمكم اليدوي).
@@ -102,8 +105,13 @@ export default async function PlatformAdminLayout({
         .catch(() => [{ c: 0 }]),
       db
         .select({ c: sql<number>`count(*)`.mapWith(Number) })
-        .from(storeChangeRequests)
-        .where(eq(storeChangeRequests.status, "open"))
+        .from(editRequests)
+        .where(inArray(editRequests.status, ["new", "in_progress"]))
+        .catch(() => [{ c: 0 }]),
+      db
+        .select({ c: sql<number>`count(*)`.mapWith(Number) })
+        .from(storeRequests)
+        .where(and(eq(storeRequests.status, "submitted"), eq(storeRequests.production, "new")))
         .catch(() => [{ c: 0 }]),
     ]);
 
@@ -112,7 +120,8 @@ export default async function PlatformAdminLayout({
     "/admin/conversations": unreadRows[0]?.unread ?? 0,
     "/admin/conversations/delivery": reviewRows[0]?.review ?? 0,
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
-    "/admin/changes": openChangeRows[0]?.c ?? 0,
+    "/admin/edits": openEditRows[0]?.c ?? 0,
+    "/admin/requests": newRequestRows[0]?.c ?? 0,
   };
 
   // القائمة حسب الدور (الخادم يحرس كل صفحة بنفسه؛ هذا لإخفاء ما لا يخصه فقط).

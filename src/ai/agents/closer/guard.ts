@@ -153,19 +153,33 @@ export function ungroundedSeats(reply: string, seatsLeft: number | null, seatsTo
   return [...found].filter((n) => n !== seatsLeft && n !== seatsTotal);
 }
 
-/** وعود ممنوعة في مسار V4: تجربة مجانية، تعديل مجاني، اشتراك أو باقة شهرية، أو نسبة الأمر لأدوات بدل الفريق. الروابط تُستثنى قبل الفحص. */
+/**
+ * وعود ممنوعة في مسار V5: طلب دفع أو رابط حجز (الدفع بعد الإعجاب وعبر رابط الإعداد لا من المحادثة)، استضافة أو باقة أو اشتراك شهري،
+ * تعديل مجاني، معاينة لا تساوي 24 ساعة، أسماء أدوات، أو نسبة الأمر للذكاء الاصطناعي بدل الفريق. الروابط تُستثنى قبل الفحص.
+ */
 const BANNED_CLAIMS: { re: RegExp; why: string }[] = [
-  { re: /تجربة\s*(?:مجاني|مجانية|لمدة|24)/, why: "التجربة المجانية" },
+  { re: /(?:^|[\s،.:؛])(?:ادفعوا|ادفع|حوّلوا|حولوا|سدّدوا|سددوا)(?![؀-ۿ])|رابط\s+(?:الدفع|الحجز)|صفحة\s+(?:الدفع|الحجز)|إيصال\s+(?:التحويل|الدفع)/, why: "طلب دفع أو رابط حجز (لا دفع من المحادثة)" },
   { re: /(?:تعديل|تعديلات)\s+مجاني/, why: "التعديل المجاني" },
-  { re: /(?:باقة|باقات|استضافة)\s+شهري/, why: "الباقات أو الاستضافة الشهرية" },
+  { re: /(?:باقة|باقات)\s+شهري|اشتراك\s+شهري|رسوم\s+(?:اشتراك|استضافة)/, why: "الباقات أو الاشتراك الشهري" },
+  { re: /استضاف/, why: "الاستضافة" },
   { re: /\b(?:groq|neon|cloudflare|vercel|imagekit|gemini|openai|chatgpt|claude|anthropic|llama)\b/i, why: "أسماء أدوات ومزوّدين" },
   { re: /الذكاء\s+الاصطناعي\s+(?:يبني|يكتب|يصمم|يصمّم|سيبني|سيكتب|سيصمم)/, why: "نسبة العمل للذكاء الاصطناعي" },
 ];
 
+/** مدة معاينة مذكورة غير 24 ساعة («معاينة 7 أيام»، «تجربة 48 ساعة»، «تجربة مجانية لمدة أسبوع»). */
+const PREVIEW_DURATION = /(?:معاينة|تجربة)[^.\n؟!]{0,30}?(\d+)\s*(ساعة|ساعات|يوم|أيام|ايام|شهر|أشهر)|(?:معاينة|تجربة)[^.\n؟!]{0,30}?(أسبوع|اسبوع|شهر)/g;
+
 /** سبب الوعد الممنوع في الرد (أو null). */
 export function bannedClaim(reply: string): string | null {
   const t = reply.replace(/https?:\/\/\S+/gi, " ").replace(/\b[a-z0-9-]+(?:\.[a-z0-9-]+)+\b/gi, " ");
-  return BANNED_CLAIMS.find((b) => b.re.test(t))?.why ?? null;
+  const hit = BANNED_CLAIMS.find((b) => b.re.test(t))?.why;
+  if (hit) return hit;
+  for (const m of toLatinDigits(t).matchAll(PREVIEW_DURATION)) {
+    const n = Number(m[1]);
+    const unit = m[2] ?? "";
+    if (m[3] || !(n === 24 && /^ساع/.test(unit))) return "مدة معاينة غير 24 ساعة";
+  }
+  return null;
 }
 
 /** مضيفات الروابط في الرد التي ليست من مضيفاتنا المسموحة (روابط وأسماء نطاقات صريحة). */
@@ -180,7 +194,7 @@ export function foreignHosts(reply: string, allowedHosts: string[]): string[] {
   return [...hosts].filter((h) => !ok.some((a) => h === a || h.endsWith(`.${a}`)));
 }
 
-const LEAK_MARKERS = ["closer.v4", "حالة هذه المحادثة", "حقائق Colapia", "أنت مستشار مبيعات في Colapia", "system prompt", "golden_link", "other_service", "close_done", "requestHuman"];
+const LEAK_MARKERS = ["closer.v5", "حالة هذه المحادثة", "حقائق Colapia", "أنت مستشار مبيعات في Colapia", "system prompt", "build_request", "other_service", "requestHuman", "declined"];
 
 /** الرد يكشف تعليمات النظام أو أسماء حقول الأداة. */
 export function leaksInstructions(reply: string): boolean {

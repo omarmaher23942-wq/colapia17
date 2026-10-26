@@ -8,11 +8,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { blueprintSchema, type Section, type StoreBlueprint } from "../../src/blueprint/schema";
 import { groundedItems } from "../../src/blueprint/facts";
-import { cardStyleOf } from "../../src/blueprint/themes";
 import { cleanAttributes } from "../../src/lib/niche-attributes";
 import { chartFor } from "../../src/lib/size-guide";
 import {
-  ATTR_CARE, ATTR_MATERIAL, DEMO_NICHE, DEMO_THEME, buildDemoBlueprint, demoAssetPaths, demoCategories, demoFacts, fakeCategoryIds, hexOf, isColorOption, isSizeOption,
+  ATTR_CARE, ATTR_FIT, ATTR_MATERIAL, DEMO_NICHE, DEMO_THEME, buildDemoBlueprint, demoAssetPaths, demoCategories, demoFacts, fakeCategoryIds, hexOf, isColorOption, isSizeOption,
   loadDemoProducts, productRows, questionsFor, ratingTotals, reviewsFor, variantsOf,
   type DemoProduct, type DemoProductRow, type DemoVariant,
 } from "./catalog";
@@ -34,7 +33,10 @@ function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: stri
     const at = `المنتج ${p.slug}`;
     if (slugs.has(p.slug)) errors.push(`${at}: الرابط مكرر`);
     slugs.add(p.slug);
-    if (p.options.length === 0 || !p.options.some((o) => isSizeOption(o.name)) || !p.options.some((o) => isColorOption(o.name))) errors.push(`${at}: يلزم خيار مقاس ولون`);
+    // الحقائب والأوشحة والحلي بلا مقاس؛ كل ما عداها (ملابس وأحذية) بمقاس ولون.
+    const noSize = p.tags.some((t) => ["حقائب", "أوشحة", "حلي"].includes(t));
+    if (!p.options.some((o) => isColorOption(o.name)) || (!noSize && !p.options.some((o) => isSizeOption(o.name)))) errors.push(`${at}: يلزم خيار لون${noSize ? "" : " ومقاس"}`);
+    if (p.art && !existsSync(join(process.cwd(), "public", p.images[0] ?? "x"))) errors.push(`${at}: الصورة البديلة غير مولَّدة (npx tsx scripts/demo/make-art.ts)`);
     if (!Number.isInteger(p.price) || p.price <= 0) errors.push(`${at}: سعر غير صالح`);
     if (p.compareAt !== null && p.compareAt <= p.price) errors.push(`${at}: السعر المشطوب لا يزيد على السعر`);
     if (!p.images.length) errors.push(`${at}: بلا صور`);
@@ -44,16 +46,17 @@ function checkProducts(data: DemoProduct[], rows: DemoProductRow[], errors: stri
       if (isColorOption(o.name)) for (const v of o.values) if (!HEX_RE.test(hexOf(v) ?? "")) errors.push(`${at}: لا لون HEX للقيمة «${v}»`);
     }
   }
-  // نشاط واحد فقط: كل المنتجات أحذية، ومجموعة أقسام فرعية قليلة ومتماسكة (نتيجة دمج المترادفات).
-  if (DEMO_NICHE !== "shoes") errors.push("نشاط متجر العرض يجب أن يكون الأحذية");
+  // نشاط واحد فقط: أزياء نسائية، ومجموعة أقسام قليلة ومتماسكة (نتيجة دمج المترادفات).
+  if (DEMO_NICHE !== "fashion") errors.push("نشاط متجر العرض يجب أن يكون الأزياء");
+  if (data.length < 24 || data.length > 30) errors.push(`عدد المنتجات ${data.length} (المتوقع 24 إلى 30)`);
   if (categoryKeys.size < 4 || categoryKeys.size > 6) errors.push(`عدد الأقسام ${categoryKeys.size} (المتوقع 4 إلى 6)`);
   for (const r of rows) {
     if (!r.categoryKey || !categoryKeys.has(r.categoryKey)) errors.push(`المنتج ${r.slug}: بلا قسم صالح`);
-    if (r.images.some((i) => !/^\/demo\/products\/[\w.-]+\.webp$/.test(i.url))) errors.push(`المنتج ${r.slug}: صورة ليست من public/demo/products`);
+    if (r.images.some((i) => !/^\/demo\/(fashion|products|editorial)\/[\w.-]+\.webp$/.test(i.url))) errors.push(`المنتج ${r.slug}: صورة خارج public/demo`);
   }
   for (const k of categoryKeys) if (!rows.some((r) => r.categoryKey === k)) errors.push(`القسم ${k} بلا منتجات`);
 
-  const allowed = new Set([ATTR_MATERIAL, ATTR_CARE]);
+  const allowed = new Set([ATTR_MATERIAL, ATTR_FIT, ATTR_CARE]);
   for (const r of rows) {
     if (!sameJson(cleanAttributes(r.attributes), r.attributes)) errors.push(`سمات ${r.slug} تتغير عند الحفظ من اللوحة (طول أو تكرار)`);
     for (const a of r.attributes) {
@@ -103,12 +106,14 @@ function checkBlueprint(bp: StoreBlueprint, data: DemoProduct[], errors: string[
   const parsed = blueprintSchema.safeParse(bp);
   if (!parsed.success) errors.push(`Blueprint غير صالح: ${JSON.stringify(parsed.error.issues.slice(0, 3))}`);
   if (bp.design.theme !== DEMO_THEME) errors.push(`التصميم ${bp.design.theme} بدل ${DEMO_THEME}`);
-  if (cardStyleOf(bp) !== "mercury") errors.push("بطاقات المنتجات ليست زئبقية");
 
   const ids = bp.home.map((s) => s.id);
   if (new Set(ids).size !== ids.length) errors.push("معرّفات أقسام الرئيسية مكررة");
   const hero = bp.home[0];
-  if (!hero || hero.type !== "hero" || hero.videoUrl || hero.images.length < 3 || hero.images.some((i) => !i.url.startsWith("/demo/products/"))) errors.push("الواجهة يجب أن تُبنى من صور منتجات الأحذية (لا فيديو أزياء غير مطابق)");
+  if (!hero || hero.type !== "hero" || hero.variant !== "editorial" || hero.videoUrl || hero.images.length < 2 || hero.images.some((i) => !i.url.startsWith("/demo/editorial/"))) errors.push("واجهة الديمو تحريرية بصورتين من public/demo/editorial (بلا فيديو)");
+  // كل قسم مخصص (store_block) له ملف في stores/demo/blocks، وكل استبدال قسم نواة موجود فعلاً.
+  for (const s of bp.home) if (s.type === "store_block" && !existsSync(join(process.cwd(), "stores/demo/blocks", `${s.name}.tsx`))) errors.push(`القسم المخصص ${s.name} بلا ملف في stores/demo/blocks`);
+  for (const f of ["store.json", "theme.css", "slots/Header.tsx", "slots/Footer.tsx", "sections/hero.tsx", "blueprint.json", "seed.json", "DELIVERY.md"]) if (!existsSync(join(process.cwd(), "stores/demo", f))) errors.push(`stores/demo/${f} غير موجود`);
 
   const slugs = new Set(data.map((p) => p.slug));
   const cats = new Set(demoCategories(data).map((c) => c.key));
@@ -137,6 +142,7 @@ function checkBlueprint(bp: StoreBlueprint, data: DemoProduct[], errors: string[
       if (s.source.type === "best_sellers") errors.push(`القسم ${s.id}: «الأكثر مبيعاً» بلا مبيعات حقيقية في متجر العرض`);
     }
     if (s.type === "testimonials" && (!s.includeVerifiedReviews || s.items.length)) errors.push("الآراء يجب أن تأتي من صفوف التقييمات وحدها");
+    if (s.type === "store_block" && s.name === "voices" && Object.keys(s.props).some((k) => k !== "limit")) errors.push("قسم الآراء يقرأ صفوف التقييمات وحدها (لا نصوص مكتوبة)");
   }
 
   // الصدق: كل سؤال شائع وكل شارة تمر بفحص حقائق المتجر كما هي عند العرض.
@@ -178,10 +184,10 @@ function checkAssets(paths: string[], root: string, errors: string[]) {
   const credits = existsSync(join(root, "docs/demo-credits.md")) ? readFileSync(join(root, "docs/demo-credits.md"), "utf8") : "";
   if (!credits) errors.push("docs/demo-credits.md غير موجود");
   for (const p of paths) {
-    if (!/^\/demo\/(editorial|media|products)\/[\w.-]+$/.test(p)) errors.push(`مسار ملف غير متوقع: ${p}`);
+    if (!/^\/demo\/(editorial|media|products|fashion)\/[\w.-]+$/.test(p)) errors.push(`مسار ملف غير متوقع: ${p}`);
     if (!existsSync(join(root, "public", p))) errors.push(`ملف غير موجود في public: ${p}`);
     const file = p.split("/").pop()!;
-    const credited = p.startsWith("/demo/products/")
+    const credited = p.startsWith("/demo/products/") || p.startsWith("/demo/fashion/")
       ? credits.includes(`\`${file}\``)
       : p.startsWith("/demo/media/")
         ? credits.includes(`public/demo/media/${file.replace(/(-\d+)?\.\w+$/, "")}.mp4`)

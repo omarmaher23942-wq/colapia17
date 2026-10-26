@@ -13,12 +13,9 @@ import { StoreRiskAuditCard } from "@/components/platform/StoreRiskAuditCard";
 import { getBlueprint } from "@/lib/tenant";
 import { requirePlatformPage } from "@/server/platform-guard";
 import { can } from "@/agency/roles";
-import { usageSummary } from "@/server/usage";
 import { emailLog } from "@/server/repos/email-log";
 import { EmailLog } from "@/components/platform/EmailLog";
-import { fmtStorage, monthsLabel } from "@/lib/platform-pricing";
-import { cairoMonthStart } from "@/lib/change-requests";
-import type { Meter } from "@/lib/usage-limits";
+import { cairoMonthStart } from "@/lib/cairo-time";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +29,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
   const [s] = await db.select().from(stores).where(eq(stores.id, id));
   if (!s) notFound();
 
-  const [[m], [o], pays, snaps, events, bp, aiUse, usage, emails, [aiMonth]] = await Promise.all([
+  const [[m], [o], pays, snaps, events, bp, aiUse, emails, [aiMonth]] = await Promise.all([
     db.select().from(merchants).where(eq(merchants.id, s.merchantId)),
     (await getTenantDb(id)).select({ n: sql<number>`count(*)`.mapWith(Number), v: sql<number>`coalesce(sum(total_piasters),0)`.mapWith(Number) }).from(orders).where(eq(orders.storeId, id)),
     db.select().from(platformPayments).where(eq(platformPayments.storeId, id)).orderBy(desc(platformPayments.createdAt)),
@@ -52,7 +49,6 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
       .where(eq(aiCalls.storeId, id))
       .groupBy(aiCalls.purpose)
       .orderBy(sql`sum(${aiCalls.tokensIn} + ${aiCalls.tokensOut}) desc`),
-    usageSummary(id).catch(() => null),
     emailLog({ storeId: id, limit: 40 }),
     db
       .select({ calls: sql<number>`count(*)`.mapWith(Number), tokens: sql<number>`coalesce(sum(${aiCalls.tokensIn} + ${aiCalls.tokensOut}),0)`.mapWith(Number) })
@@ -86,7 +82,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
             snapshots={snaps}
           />
           
-          {ownerView && usage ? <CostCard usage={usage} aiMonth={aiMonth ?? { calls: 0, tokens: 0 }} aiTotal={aiTotal} /> : null}
+          {ownerView ? <CostCard aiMonth={aiMonth ?? { calls: 0, tokens: 0 }} aiTotal={aiTotal} /> : null}
 
           <EmailLog rows={emails} title="البريد المُرسل لهذا المتجر" empty="لم تُرسل أي رسالة بريد لهذا المتجر بعد." />
 
@@ -167,9 +163,7 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
                     <div>
                       <p className="font-bold text-white">{formatEgp(p.amountPiasters)}</p>
                       <p className="text-[10px] text-slate-400">
-                        {p.kind === "renewal" ? "تجديد" : "دفعة أولى"}
-                        {p.tier ? ` · ${p.tier}` : ""}
-                        {p.months ? ` · ${monthsLabel(p.months)}` : ""}
+                        {p.kind === "renewal" ? "تجديد (قديم)" : p.kind === "edit" ? "رسوم تعديل" : p.kind === "project" ? "حجز مشروع" : "دفعة أولى (قديم)"}
                         {p.plan === "golden" ? " · الدائرة الذهبية" : ""} · {p.method}
                       </p>
                     </div>
@@ -186,68 +180,18 @@ export default async function StoreDetailPage({ params }: { params: Promise<{ id
     </div>
   );
 }
-function MeterRow({ label, m, format }: { label: string; m: Meter; format?: (n: number) => string }) {
-  const f = format ?? ((n: number) => n.toLocaleString("en-US"));
-  return (
-    <li className="space-y-1">
-      <div className="flex items-baseline justify-between gap-2 text-xs">
-        <span className="font-bold text-slate-300">{label}</span>
-        <span className={`tabular-nums ${m.tone === "bad" ? "text-rose-300" : m.tone === "warn" ? "text-amber-300" : "text-slate-400"}`}>
-          {f(m.used)} / {f(m.limit)}
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${m.tone === "bad" ? "bg-rose-400" : m.tone === "warn" ? "bg-amber-300" : "bg-[#8fa8ff]"}`} style={{ width: `${m.pct}%` }} />
-      </div>
-    </li>
-  );
-}
-
-/** مؤشر تكلفة المتجر (للمالك وحده): الاستهلاك الفعلي لما يكلّف المنصة، أمام حدود باقته. */
-function CostCard({
-  usage,
-  aiMonth,
-  aiTotal,
-}: {
-  usage: Awaited<ReturnType<typeof usageSummary>>;
-  aiMonth: { calls: number; tokens: number };
-  aiTotal: { calls: number; failed: number; tokens: number };
-}) {
+/** مؤشر تكلفة المتجر (للمالك وحده): الاستهلاك الفعلي للذكاء الاصطناعي من السجل، بلا أسعار مفترضة. */
+function CostCard({ aiMonth, aiTotal }: { aiMonth: { calls: number; tokens: number }; aiTotal: { calls: number; failed: number; tokens: number } }) {
   return (
     <section aria-labelledby="cost-h" className="rounded-3xl border border-amber-300/20 bg-amber-300/[0.04] p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-2">
-        <h2 id="cost-h" className="text-sm font-black text-white">
-          مؤشر التكلفة (للمالك فقط)
-        </h2>
-        <span className="rounded-lg bg-white/10 px-2 py-1 text-[11px] font-black text-white">
-          {usage.isTrial ? "تجربة بحدود " : "باقة "}
-          {usage.planName}
-        </span>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div>
-          <p className="text-[11px] font-bold text-slate-400">ذكاء اصطناعي هذا الشهر</p>
-          <p className="text-xl font-black tabular-nums text-white">{aiMonth.calls.toLocaleString("en-US")}</p>
-          <p className="text-[11px] text-slate-500">{aiMonth.tokens.toLocaleString("en-US")} توكن · الإجمالي {aiTotal.calls.toLocaleString("en-US")}</p>
-        </div>
-        <div>
-          <p className="text-[11px] font-bold text-slate-400">المساحة المستخدمة</p>
-          <p className="text-xl font-black tabular-nums text-white">{fmtStorage(usage.storage.used)}</p>
-          <p className="text-[11px] text-slate-500">{usage.storageMeasured ? "مقروءة من مساحة الملفات" : "تقدير من عدّاد الرفع"} · {usage.videos.used} فيديو</p>
-        </div>
-        <div>
-          <p className="text-[11px] font-bold text-slate-400">المنتجات</p>
-          <p className="text-xl font-black tabular-nums text-white">{usage.products.used.toLocaleString("en-US")}</p>
-          <p className="text-[11px] text-slate-500">فريق: {usage.team.used} · بحث بالصورة: {usage.visualSearch.used}</p>
-        </div>
-      </div>
-      <ul className="mt-4 space-y-2.5">
-        <MeterRow label="العمليات التلقائية (الشهر)" m={usage.ai} />
-        <MeterRow label="المساحة" m={usage.storage} format={fmtStorage} />
-        <MeterRow label="الفيديوهات" m={usage.videos} />
-        <MeterRow label="المنتجات" m={usage.products} />
-        <MeterRow label="البحث بالصورة (الشهر)" m={usage.visualSearch} />
-      </ul>
+      <h2 id="cost-h" className="mb-3 border-b border-white/5 pb-2 text-sm font-black text-white">
+        مؤشر التكلفة (للمالك فقط)
+      </h2>
+      <p className="text-[11px] font-bold text-slate-400">ذكاء اصطناعي هذا الشهر</p>
+      <p className="text-xl font-black tabular-nums text-white">{aiMonth.calls.toLocaleString("en-US")}</p>
+      <p className="text-[11px] text-slate-500">
+        {aiMonth.tokens.toLocaleString("en-US")} توكن · الإجمالي منذ الإنشاء {aiTotal.calls.toLocaleString("en-US")} استدعاء
+      </p>
     </section>
   );
 }

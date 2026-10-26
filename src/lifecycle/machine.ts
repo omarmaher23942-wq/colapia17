@@ -42,7 +42,6 @@ export const canTransition = (from: StoreStatus, to: StoreStatus) => TRANSITIONS
 
 const TRIAL_KINDS: JobKind[] = ["trial.reminder_6h", "trial.reminder_20h", "trial.freeze", "trial.last_chance", "trial.purge"];
 const DOOM_KINDS: JobKind[] = ["doom.reminder_12h", "doom.reminder_1h", "doom.purge"];
-const HOSTING_KINDS: JobKind[] = ["hosting.reminder_30d", "hosting.reminder_7d", "hosting.reminder_1d", "hosting.expired", "hosting.paused"];
 
 const SETUP_KINDS: JobKind[] = JOB_KINDS.filter((k) => k.startsWith("setup."));
 
@@ -53,7 +52,6 @@ const CANCEL_ON_ENTER: Partial<Record<StoreStatus, readonly JobKind[]>> = {
   trial: SETUP_KINDS,
   active: [...TRIAL_KINDS, ...DOOM_KINDS, "payment.invite"],
   // إلغاء تفعيل (active → frozen): لا تذكيرات تجديد لمتجر غير مدفوع.
-  frozen: HOSTING_KINDS,
   deleted: JOB_KINDS,
 };
 

@@ -57,11 +57,11 @@ describe("قفل اللوحة لا يُتجاوز", () => {
   });
   it("ownerStore يقفل صاحب المتجر إلا الاشتراك والحساب (allowLocked)", () => {
     expect(read("src/server/merchant-guard.ts")).toMatch(/!opts\.allowLocked && \(await storeLock/);
-    for (const f of ["src/server/actions/platform.ts", "src/server/actions/account.ts", "src/server/upload-policies.ts"]) {
+    for (const f of ["src/server/actions/activation.ts", "src/server/actions/account.ts", "src/server/upload-policies.ts"]) {
       expect(read(f)).toMatch(/ownerStore\(\{ allowLocked: true \}\)/);
     }
     // أي استدعاء آخر لا يمر بالقفل (النطاق، الرابط، الإعداد).
-    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|platform\.ts$|account\.ts$|upload-policies/.test(f));
+    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|activation\.ts$|account\.ts$|upload-policies/.test(f));
     for (const f of others) expect(read(f)).not.toMatch(/ownerStore\(\{ allowLocked/);
   });
   it("واجهات اللوحة تتحقق من القفل", () => {
@@ -77,13 +77,13 @@ describe("إغلاق الوكيل بعد الموافقة", () => {
   });
   it("الإغلاق لا يتوقف على نجاح إرسال رسالة الإغلاق", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
-    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*goldenDoneMessage[^\n]*\)\) \{\s*await closeAfterLink/);
-    expect(r).toMatch(/await closeAfterLink\(channel, conv, merged\.lead\)/);
+    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*buildRequestMessage[^\n]*\)\) \{\s*await closeAfterRequest/);
+    expect(r).toMatch(/await closeAfterRequest\(channel, conv, lead, created/);
   });
-  it("مسار الخدمة الأخرى لا يصدر رابط حجز ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
+  it("مسار الخدمة الأخرى لا ينشئ طلب بناء ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
     expect(r).toMatch(/flag: OTHER_SERVICE_FLAG/);
-    expect(read("src/ai/agents/closer/review.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
+    expect(read("src/agent/build-request.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
   });
   it("تغيير المرحلة اليدوي لا يوقظ وكيلاً مغلقاً", () => {
     const c = read("src/server/actions/platform-conv.ts");

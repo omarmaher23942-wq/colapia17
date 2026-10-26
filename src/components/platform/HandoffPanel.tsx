@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { Check, CheckCircle2, Copy, Mail, PackageCheck, Send } from "lucide-react";
 import { markSetupDeliveredAction, sendHandoffMessageAction, sendSetupLinkNowAction } from "@/server/actions/platform-conv";
 
-export type HandoffMsg = { kind: "setup" | "login" | "ready"; title: string; text: string };
+import type { HandoffKind } from "@/agent/handoff-messages";
+export type HandoffMsg = { kind: HandoffKind; title: string; text: string };
 
 export type HandoffInfo = {
   storeId: string;

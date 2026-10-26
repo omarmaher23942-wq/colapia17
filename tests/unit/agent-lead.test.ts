@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  goldenGate,
-  goldenPrefill,
   groundLeadInput,
   leadStatus,
   mergeLead,
@@ -107,24 +105,18 @@ describe("دمج البيانات", () => {
   });
 });
 
-describe("حالة الجمع وبوابة رابط الحجز", () => {
+describe("حالة الجمع", () => {
   it("الترتيب ثابت والخاطئ يظهر منفصلاً", () => {
     const s = leadStatus({ storeName: "نور" }, { email: "bad" });
     expect(s.collected).toEqual(["storeName"]);
-    expect(s.missing).toEqual(["niche", "instagram", "whatsapp", "email", "styleNotes"]);
+    expect(s.missing).toEqual(["niche", "instagram", "products", "styleNotes", "selling", "whatsapp", "email"]);
     expect(s.invalid).toEqual(["email"]);
   });
 
-  it("الإلزامي لرابط الحجز اسم المتجر والبريد فقط", () => {
-    expect(goldenGate(full)).toEqual({ ok: true, missing: [] });
-    expect(goldenGate({ storeName: "نور" })).toEqual({ ok: false, missing: ["email"] });
-    expect(goldenGate({ email: "a@gmail.com" })).toEqual({ ok: false, missing: ["storeName"] });
-    expect(goldenGate({}).missing).toEqual(["storeName", "email"]);
-  });
-
-  it("التعبئة المسبقة بما جُمع فقط، وميول التصميم تُحفظ مقصوصة التحقق", () => {
-    const m = mergeLead({}, { storeName: "نور", styleNotes: "ألوان ترابية وطابع هادئ", email: "a@gmail.com" });
-    expect(goldenPrefill(m.lead)).toEqual({ storeName: "نور", email: "a@gmail.com", styleNotes: "ألوان ترابية وطابع هادئ" });
+  it("إجابات V5 (المنتجات والبيع) تُحفظ مقصوصة التحقق، وميول التصميم كذلك", () => {
+    const m = mergeLead({}, { storeName: "نور", styleNotes: "ألوان ترابية وطابع هادئ", products: "صور على الموبايل", selling: "دفع عند الاستلام والشحن 60 ج", email: "a@gmail.com" });
+    expect(m.lead).toMatchObject({ products: "صور على الموبايل", selling: "دفع عند الاستلام والشحن 60 ج", styleNotes: "ألوان ترابية وطابع هادئ" });
+    expect(mergeLead({}, { products: ".." }).invalid.products).toBe("..");
     expect(validateStyleNotes("..")).toBeNull();
     expect(validateStyleNotes("س".repeat(301))).toBeNull();
   });

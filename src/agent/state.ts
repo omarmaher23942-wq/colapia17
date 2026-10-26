@@ -1,15 +1,17 @@
-// state.ts — «حالة المحادثة» التي تُلحق بتعليمات الوكيل في كل دور (خالص ومختبَر): ما جُمع وما نقص، وضع العرض والمقاعد الحقيقية،
-// وهل أُرسل رابط الحجز، وهل صُنّفت المحادثة «خدمة أخرى». أرقام وحقائق فقط؛ القرارات كلها للنموذج.
-import { goldenGate, leadStatus, type Lead, type LeadInvalid, type LeadKey } from "./lead";
-import { seatsPhrase } from "./golden-messages";
+// state.ts — «حالة المحادثة» التي تُلحق بتعليمات الوكيل في كل دور (خالص ومختبَر): ما جُمع من إجابات الأسئلة الخمسة وما لم يُغطَّ،
+// وضع العرض والمقاعد الحقيقية، وهل أُنشئ طلب البناء، وهل صُنّفت المحادثة «خدمة أخرى». أرقام وحقائق فقط؛ القرارات كلها للنموذج.
+import { AREAS, AREA_LABEL, areaCovered, openAreas, seatsPhrase, type Area } from "./build-request";
+import { leadStatus, type Lead, type LeadInvalid, type LeadKey } from "./lead";
 
 const LABEL: Record<LeadKey, string> = {
-  storeName: "اسم المتجر",
+  storeName: "اسم البراند",
   niche: "النشاط",
   instagram: "حساب إنستجرام",
+  products: "المنتجات",
+  styleNotes: "الشكل المفضل",
+  selling: "البيع والتوصيل",
   whatsapp: "واتساب",
   email: "البريد الإلكتروني",
-  styleNotes: "ميوله في التصميم",
 };
 
 export type StateInput = {
@@ -17,13 +19,15 @@ export type StateInput = {
   channel: "messenger" | "instagram";
   lead: Lead;
   invalid: LeadInvalid;
+  /** مجالات رفض العميل الإجابة عنها. */
+  declined: readonly Area[];
   summary: string;
   /** تقدير سابق لمن يكتب (صاحب القرار أو مشرف الصفحة). */
   speaker?: "owner" | "moderator" | "unknown";
   /** الدائرة الذهبية: متاحة الآن؟ والمقاعد الحقيقية الباقية من الإجمالي. */
   offer: { golden: boolean; seatsLeft: number; seatsTotal: number };
-  /** منذ كم دقيقة أُرسل رابط الحجز (null = لم يُرسل). */
-  linkSentMinutesAgo: number | null;
+  /** أُنشئ طلب بناء لهذه المحادثة. */
+  requested: boolean;
   /** صُنّفت المحادثة «خدمة أخرى» وأُبلغ المالك. */
   otherService: boolean;
   /** ساعات الصمت قبل هذه الرسالة (null = محادثة جديدة). */
@@ -37,28 +41,33 @@ const ago = (min: number) => (min < 60 ? `${Math.max(1, Math.round(min))} دقي
 
 export function stateBlock(i: StateInput): string {
   const st = leadStatus(i.lead, i.invalid);
-  const gate = goldenGate(i.lead);
   const lines: string[] = ["", "# حالة هذه المحادثة (للعلم، لا تذكرها في ردك):"];
   lines.push(`- ردودك السابقة: ${i.replies}${i.replies === 0 ? " (هذا أول رد)" : " (لا ترحب ولا تعرّف بنفسك مجدداً)"}. القناة: ${i.channel === "instagram" ? "إنستجرام" : "ماسنجر"}.`);
   if (i.idleHours !== null && i.idleHours >= 6) lines.push(`- عاد بعد انقطاع نحو ${ago(i.idleHours * 60)}: استأنف من حيث وقفتم بلا إعادة تعريف.`);
 
   if (i.otherService) {
-    lines.push("- هذه المحادثة صُنّفت «خدمة أخرى غير المتجر» وأُبلغ المالك وهو من يرد. لا تطلب دفعاً ولا ترسل رابط حجز؛ جاوب بإيجاز وبلطف أن الفريق سيتواصل معهم. وإن غيّر رأيه وطلب متجراً إلكترونياً فاطلب موظفاً (requestHuman) ليكمل معه.");
+    lines.push("- هذه المحادثة صُنّفت «خدمة أخرى غير المتجر» وأُبلغ المالك وهو من يرد. لا تتحدث عن سعر؛ جاوب بإيجاز وبلطف أن الفريق سيتواصل معهم. وإن غيّر رأيه وطلب متجراً إلكترونياً فاطلب موظفاً (requestHuman) ليكمل معه.");
+  } else if (i.requested) {
+    lines.push("- أُنشئ طلب البناء لهذه المحادثة وأُرسلت رسالة الإغلاق. لا تنشئ طلباً آخر؛ جاوب باختصار عن أي سؤال والفريق سيتابع.");
   } else if (i.offer.golden) {
-    lines.push(`- الدائرة الذهبية متاحة، والباقي فعلاً ${seatsPhrase(i.offer.seatsLeft)} من ${i.offer.seatsTotal} (العدد حقيقي من النظام، لا تذكر غيره).`);
+    lines.push(`- الدائرة الذهبية متاحة، والباقي فعلاً ${seatsPhrase(i.offer.seatsLeft)} من ${i.offer.seatsTotal} (العدد حقيقي من النظام، لا تذكر غيره). السعر لا يُعرض إلا عند السؤال عنه أو عند الإغلاق.`);
   } else {
-    lines.push("- مقاعد الدائرة الذهبية انتهت: لا تذكرها ولا تذكر عدّاداً أو ندرة. لمن يريد متجراً اعرض السعر العادي من الحقائق، وبالرابط نفسه (action = golden_link).");
+    lines.push("- مقاعد الدائرة الذهبية انتهت: لا تذكرها ولا تذكر عدّاداً أو ندرة. السعر العادي من الحقائق، ولا يُعرض إلا عند السؤال عنه أو عند الإغلاق.");
   }
 
   lines.push(st.collected.length ? `- جُمع وتحقق منه الكود: ${st.collected.map((k) => `${LABEL[k]} «${flat(i.lead[k])}»`).join("، ")}` : "- لم يُجمع شيء بعد.");
-  if (!i.otherService) {
-    lines.push(gate.ok ? "- البيانات الإلزامية لرابط الحجز مكتملة (اسم المتجر والبريد)." : `- ينقص قبل رابط الحجز (إلزامي): ${gate.missing.map((k) => LABEL[k]).join("، ")}.`);
-    const optional = st.missing.filter((k) => !gate.missing.includes(k as never));
-    if (optional.length) lines.push(`- اختياري لم يُذكر بعد: ${optional.map((k) => LABEL[k]).join("، ")}.`);
+  if (!i.otherService && !i.requested) {
+    const open = openAreas(i.lead, i.declined);
+    const done = AREAS.filter((a) => areaCovered(a, i.lead) || i.declined.includes(a));
+    if (done.length) lines.push(`- المجالات المغطاة أو المرفوضة: ${done.map((a) => AREA_LABEL[a]).join("؛ ")}.`);
+    lines.push(
+      open.length
+        ? `- لم يُغطَّ بعد: ${open.map((a) => AREA_LABEL[a]).join("؛ ")}. اسأل عنها بطبيعية، سؤالاً أو اثنين في الرد الواحد، دون إعادة ما قاله.`
+        : "- كل المجالات الخمسة مغطاة أو مرفوضة: إن لم يبقَ ما يضيفه العميل فنفّذ action = \"build_request\" الآن."
+    );
   }
   if (st.invalid.length) lines.push(`- قيم أرسلها ولم تُقبل (اطلب تصحيحها بلطف دون لوم): ${st.invalid.map((k) => `${LABEL[k]} («${flat(i.invalid[k])}» غير صالح)`).join("، ")}`);
 
-  lines.push(i.linkSentMinutesAgo === null ? "- رابط الحجز: لم يُرسل بعد." : `- رابط الحجز: أُرسل منذ ${ago(i.linkSentMinutesAgo)}${i.linkSentMinutesAgo < 3 ? " (لا تعد إرساله الآن)" : ""}.`);
   if (i.speaker === "moderator") lines.push("- من يكتب يبدو مشرفاً على الصفحة لا صاحب القرار.");
   else if (i.speaker === "owner") lines.push("- من يكتب صاحب القرار.");
   lines.push(

@@ -35,19 +35,29 @@ export function handoffMail(i: { name?: string | null; channel: string; reason: 
   };
 }
 
-/** العميل فهم الخطوات بعد رابط الحجز: أُغلق الوكيل وصارت المحادثة للمالك. */
-export function doneMail(i: { name?: string | null; channel: string; lead: Lead }): OwnerMail {
+/** طلب بناء متجر جديد من المحادثة: أُغلق الوكيل وصارت المحادثة للمالك، والفريق يبني ثم يرسل رابط الإعداد. */
+export function buildRequestMail(i: { name?: string | null; channel: string; lead: Lead; code: string; golden: boolean; windowHours: number }): OwnerMail {
   const person = who(i.name, i.lead.instagram);
   const store = i.lead.storeName ?? "متجر جديد";
-  const info = [i.lead.niche && `النشاط: ${i.lead.niche}`, `المتجر: ${store}`, i.lead.email && `البريد: ${i.lead.email}`, i.lead.whatsapp && `واتساب: ${i.lead.whatsapp}`].filter(Boolean).join(" · ");
+  const clip = (s: string | undefined) => (s ? oneLine(s, 220) : "");
+  const info = [
+    i.lead.niche && `النشاط: ${i.lead.niche}`,
+    i.lead.products && `المنتجات: ${clip(i.lead.products)}`,
+    i.lead.styleNotes && `الشكل: ${clip(i.lead.styleNotes)}`,
+    i.lead.selling && `البيع والتوصيل: ${clip(i.lead.selling)}`,
+    i.lead.email && `البريد: ${i.lead.email}`,
+    i.lead.whatsapp && `واتساب: ${i.lead.whatsapp}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
   return {
-    subject: `عميل استلم رابط الحجز: ${store}`,
-    headline: "عميل فهم الخطوات والمحادثة الآن لكم",
+    subject: `طلب بناء جديد: ${store} (${i.code})`,
+    headline: "طلب بناء جديد من المحادثة",
     paragraphs: [
-      `${person} على ${channelName(i.channel)} استلم رابط الحجز وأكد فهمه للخطوات.`,
+      `${person} على ${channelName(i.channel)} أكمل الأسئلة وطلب أن يجهز الفريق متجره المخصص مجاناً. الطلب ${i.code}، والعرض: ${i.golden ? "الدائرة الذهبية" : "السعر العادي"}.`,
       info,
-      "أُغلق الوكيل في هذه المحادثة. حين يصل طلب الدفع راجعوه في صفحة المدفوعات وأكّدوه ليبدأ التجهيز.",
-    ],
-    adminNote: `${person} استلم رابط الحجز لـ«${store}» وأُغلق الوكيل: بانتظار الدفع وتأكيدكم.`,
+      `وُعد برابط الإعداد خلال ${i.windowHours} ساعة تقريباً، ولم يُطلب منه أي دفع. أُغلق الوكيل في هذه المحادثة، وبعد أن يجهز الفريق المتجر أرسلوا له رسالة «رابط الإعداد جاهز» من صفحة المحادثة.`,
+    ].filter(Boolean),
+    adminNote: `طلب بناء جديد ${i.code}: «${store}» من ${person}. وُعد برابط الإعداد خلال ${i.windowHours} ساعة.`,
   };
 }

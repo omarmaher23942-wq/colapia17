@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { canMoveReturn, creditFor, returnMessage } from "@/lib/returns";
+import { allowedNumbers, filterHonest, isHonest, type StudioFacts } from "@/lib/studio";
 import { codAmountEgp, courierFromName, courierTable, trackingUrl, COURIERS, COURIER_INFO, type ShipOrder } from "@/lib/courier-export";
 import { aggregatePick } from "@/lib/pick-list";
 import { reconcileCod, SETTLED_TAG } from "@/lib/cod-reconcile";
 import { planBulkEdit, type BulkRow } from "@/lib/bulk-edit";
 import { goalPace, monthKey, netProfit, readGoalPrefs, roas, weeklyRecommendations, withAdSpend, withGoal } from "@/lib/sales-goal";
-import { meter, nextResetLabel, storePlanId, upgradeFor, upgradeHint } from "@/lib/usage-limits";
-import { DEFAULT_PRICING } from "@/lib/platform-pricing";
 
 const order = (over: Partial<ShipOrder> = {}): ShipOrder => ({
   code: "CLP-1",
@@ -130,35 +130,6 @@ describe("هدف المبيعات وصافي الربح", () => {
     expect(r.map((x) => x.key)).toEqual(["viewed", "sizes", "source"]);
   });
 });
-
-describe("حدود الاستخدام", () => {
-  it("باقة المتجر: المدفوع بباقته، والقديم بلا باقة معروفة = النمو، وغير المدفوع بحدود التجربة (النمو)", () => {
-    expect(storePlanId({ status: "active", plan: "pro" })).toEqual({ planId: "pro", isTrial: false });
-    expect(storePlanId({ status: "active", plan: "golden" })).toEqual({ planId: "growth", isTrial: false });
-    expect(storePlanId({ status: "active", plan: "launch", prefs: { planId: "basic" } })).toEqual({ planId: "basic", isTrial: false });
-    expect(storePlanId({ status: "trial", plan: "basic" })).toEqual({ planId: "growth", isTrial: true });
-    expect(storePlanId({ status: "frozen" }).isTrial).toBe(true);
-  });
-  it("تلميح الترقية: أول باقة أعلى تتيح أكثر، ولا تلميح في الأعلى", () => {
-    expect(upgradeFor(DEFAULT_PRICING, "basic", "products")?.id).toBe("growth");
-    expect(upgradeFor(DEFAULT_PRICING, "basic", "customDomain")?.id).toBe("growth");
-    expect(upgradeFor(DEFAULT_PRICING, "pro", "products")).toBeNull();
-    expect(upgradeHint(DEFAULT_PRICING, "basic", "products")).toContain("2,000");
-    expect(upgradeHint(DEFAULT_PRICING, "pro", "aiPerMonth")).toBe("");
-  });
-  it("العدّاد ودرجة اللون", () => {
-    expect(meter(50, 100).tone).toBe("ok");
-    expect(meter(85, 100).tone).toBe("warn");
-    expect(meter(120, 100)).toMatchObject({ pct: 100, tone: "bad", remaining: 0 });
-  });
-  it("تاريخ التجدد", () => {
-    expect(nextResetLabel(new Date("2026-10-17T10:00:00Z"))).toBe("1 نوفمبر");
-    expect(nextResetLabel(new Date("2026-12-17T10:00:00Z"))).toBe("1 يناير");
-  });
-});
-
-import { canMoveReturn, creditFor, returnMessage } from "@/lib/returns";
-import { allowedNumbers, filterHonest, isHonest, type StudioFacts } from "@/lib/studio";
 
 describe("طابور الاستبدال", () => {
   it("الانتقالات المسموحة فقط", () => {

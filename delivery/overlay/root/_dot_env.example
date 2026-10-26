@@ -1,0 +1,28 @@
+# نموذج المتغيرات (قيم وهمية). لا ترفعوا ملف .env الحقيقي إلى GitHub أبداً.
+# على Cloudflare: Workers & Pages ← مشروعكم ← Settings ← Variables and Secrets (أضيفوها هناك كما هي).
+# محلياً: انسخوا هذا الملف إلى .dev.vars (للتشغيل عبر wrangler) أو .env.local (لـ npm run dev).
+
+# ── مطلوب ─────────────────────────────────────────────
+# قاعدة البيانات (Neon): من Dashboard ← Connect ← انسخوا رابط الاتصال الكامل (يبدأ بـ postgresql://).
+DATABASE_URL=postgresql://user:password@ep-example-123456.eu-central-1.aws.neon.tech/neondb?sslmode=require
+# رابط موقعكم العام كما يفتحه الزوار (بلا / في الآخر). ضعوه بعد ربط النطاق، ويُستخدم في الروابط والخريطة.
+APP_URL=https://example.com
+
+# ── الصور (ImageKit) ───────────────────────────────────
+# من imagekit.io ← Developer options ← API keys (المفتاح الخاص) و URL endpoint.
+IMAGEKIT_PRIVATE_KEY=private_example_key_0000000000000000
+IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_imagekit_id
+
+# ── الميزات الذكية (اختياري) ──────────────────────────
+# من console.groq.com/keys. بدونه تتعطل قراءة الصور والأوصاف الذكية فقط، ويعمل المتجر واللوحة كاملين.
+# يمكن أيضاً إدخاله لاحقاً من لوحة التحكم ← الربط والمفاتيح.
+GROQ_API_KEY=gsk_example_example_example_example
+
+# ── اختياري ───────────────────────────────────────────
+# بريد إشعارات الطلبات للتاجر (Resend). بدونه لا تُرسل رسائل بريد، والإشعارات داخل اللوحة تعمل.
+RESEND_API_KEY=
+EMAIL_FROM=
+# رمز يشترطه صفحة /setup قبل إنشاء حساب المالك (يُنصح به إن نُشر الموقع قبل إتمام الإعداد).
+SETUP_CODE=
+# سر توقيع الكوكيز. إن تُرك فارغاً يُشتق ثابتاً من رابط القاعدة.
+AUTH_SECRET=

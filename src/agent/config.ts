@@ -1,5 +1,5 @@
 // config.ts — إعداد وكيل الرسائل (خالص، بلا خادم). يُضبط من /admin/flags ← «agent».
-// مثال: { "setupDelayMinutes": 30, "setupDays": 14, "dailyStoreCap": 40, "handoffPauseHours": 3, "demoUrl": "" }
+// مثال: { "setupDelayMinutes": 30, "setupDays": 14, "dailyStoreCap": 40, "handoffPauseHours": 3, "buildWindowHours": 48, "demoUrl": "" }
 
 export type AgentConfig = {
   /** دقائق الانتظار بين إنشاء المتجر وإرسال رابط الإعداد. 0 = فوراً. */
@@ -10,6 +10,8 @@ export type AgentConfig = {
   dailyStoreCap: number;
   /** مدة إيقاف الوكيل بعد طلب الموظف (ساعات). */
   handoffPauseHours: number;
+  /** المدة التي يعد بها الوكيل لوصول رابط الإعداد بعد طلب البناء (ساعات). */
+  buildWindowHours: number;
   /** رابط المتجر التجريبي. فارغ = demo.<النطاق الرئيسي>. */
   demoUrl: string;
 };
@@ -21,6 +23,7 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   setupDays: 14,
   dailyStoreCap: 40,
   handoffPauseHours: 3,
+  buildWindowHours: 48,
   demoUrl: "",
 };
 
@@ -39,6 +42,7 @@ export function agentConfigFrom(raw: unknown): AgentConfig {
     setupDays: int(c.setupDays, d.setupDays, 2, 60),
     dailyStoreCap: int(c.dailyStoreCap, d.dailyStoreCap, 1, 1000),
     handoffPauseHours: int(c.handoffPauseHours, d.handoffPauseHours, 1, 72),
+    buildWindowHours: int(c.buildWindowHours, d.buildWindowHours, 2, 240),
     demoUrl: /^https:\/\/[^\s]+$/.test(demo) ? demo.replace(/\/+$/, "") : "",
   };
 }
