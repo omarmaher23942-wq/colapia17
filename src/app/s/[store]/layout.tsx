@@ -22,6 +22,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { PromoFromLink } from "@/components/storefront/PromoFromLink";
 import { ConversionWidgets } from "@/components/storefront/ConversionWidgets";
 import { Analytics } from "@/components/storefront/Analytics";
+import { StoreChrome } from "@/components/storefront/StoreChrome";
 import { StorePixels } from "@/components/storefront/StorePixels";
 import { trackingFrom } from "@/lib/tracking";
 import { FrozenGate } from "@/components/storefront/FrozenGate";
@@ -191,6 +192,9 @@ export default async function StoreLayout({ children, params }: Props) {
           data-motion={bp.design.motion.level}
           data-depth={bp.design.motion.depth ? "on" : "off"}
         >
+          <a href="#main-content" className="sr-only z-[70] rounded-lg px-4 py-2 text-sm font-black focus:not-sr-only focus:fixed focus:start-3 focus:top-3" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
+            تخطي إلى المحتوى
+          </a>
           <CardFx style={cardStyle} />
           {teamPreview ? (
             <p role="status" className="fixed bottom-3 start-3 z-[60] rounded-full bg-amber-400 px-3 py-1.5 text-[12px] font-bold text-amber-950 shadow-lg" data-team-preview>
@@ -206,7 +210,7 @@ export default async function StoreLayout({ children, params }: Props) {
           {bp.header.announcement ? <AnnouncementBar ann={bp.header.announcement} /> : null}
           {HeaderSlot ? <HeaderSlot kit={kit} core={coreHeader} /> : coreHeader}
 
-          <main className="flex-1">{children}</main>
+          <main id="main-content" tabIndex={-1} className="flex-1 outline-none">{children}</main>
 
           {FooterSlot ? <FooterSlot kit={kit} core={coreFooter} /> : coreFooter}
 
@@ -221,6 +225,7 @@ export default async function StoreLayout({ children, params }: Props) {
           />
           <PromoFromLink subdomain={store.subdomain} />
           <ConversionWidgets />
+          <StoreChrome />
           {/* بكسلات التاجر لا تعمل في معاينة الفريق (لا نلوّث إحصاءات إعلاناته بزياراتنا). */}
           {teamPreview ? null : <StorePixels ids={trackingFrom(bp.seo)} />}
           <Analytics storeId={store.id} />

@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ total: 0, active: 0 }, { headers: { "Cache-Control": "no-store" } });
   const rows = await listDeviceOrders(store.id, device, 50);
   return NextResponse.json(
-    { total: rows.length, active: rows.filter((r) => ACTIVE.has(r.status)).length },
+    { total: rows.length, active: rows.filter((r) => ACTIVE.has(r.status)).length, orders: rows.slice(0, 20).map((r) => ({ code: r.code, status: r.status })) },
     { headers: { "Cache-Control": "no-store" } }
   );
 }
