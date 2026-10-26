@@ -4,46 +4,17 @@ import { publicStoreUrl } from "@/lib/utils";
 import { storeVisibility } from "@/lib/store-visibility";
 import { hostingState } from "@/lib/hosting";
 import { getStoreBySubdomain } from "@/lib/tenant";
+import { platformRobots } from "@/lib/platform-seo";
+import { storeRobots } from "@/lib/seo-robots";
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
   const h = await headers();
   const sub = h.get("x-store-subdomain");
 
-  if (!sub) {
-    return {
-      rules: {
-        userAgent: "*",
-        allow: "/",
-        // /start غير محجوب هنا عمداً: كاشف روابط ميتا يحترم robots.txt، فحجبه يمنع بطاقة المعاينة في رسائل إنستجرام. الصفحة نفسها noindex.
-        disallow: ["/admin/", "/dashboard/", "/api/", "/follow/"],
-      },
-      sitemap: `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}/sitemap.xml`,
-    };
-  }
+  // نطاق المنصة: قواعد وخريطة من lib/platform-seo.ts (تسمح لزواحف الذكاء الاصطناعي صراحةً).
+  if (!sub) return platformRobots();
 
   const store = await getStoreBySubdomain(sub);
-  const allow = store && storeVisibility(store, hostingState(store)).indexable;
-
-  return {
-    rules: allow
-      ? {
-          userAgent: "*",
-          allow: "/",
-          disallow: [
-            "/admin/",
-            "/cart",
-            "/checkout",
-            "/track",
-            "/confirm",
-            "/review",
-            "/go/",
-            "/api/",
-          ],
-        }
-      : {
-          userAgent: "*",
-          disallow: "/",
-        },
-    sitemap: allow && store ? publicStoreUrl(store, "/sitemap.xml") : undefined,
-  };
+  const indexable = !!store && storeVisibility(store, hostingState(store)).indexable;
+  return storeRobots({ indexable, sitemapUrl: indexable && store ? publicStoreUrl(store, "/sitemap.xml") : undefined });
 }

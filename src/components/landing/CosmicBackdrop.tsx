@@ -1,6 +1,4 @@
-// خلفية كونية ثابتة خلف كامل الصفحة: توهجات بنفسجية/فضية هادئة + نجوم خفيفة.
-"use client";
-
+// خلفية كونية ثابتة خلف كامل الصفحة: توهجات هادئة + نجوم خفيفة (زخرفية بلا تفاعل، فتُرسم على الخادم).
 export function CosmicBackdrop() {
   return (
     <div aria-hidden="true" className="land-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-[#07091a]">

@@ -12,7 +12,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Colapia", template: "%s | Colapia" },
-  description: "فريق Colapia يبني متجرك الإلكتروني ويستضيفه: تجربة مجانية قبل الدفع، وبلا عمولة على مبيعاتك.",
+  description: "Colapia (كولابيا) وكالة برمجيات تبني مواقع ومتاجر إلكترونية وأنظمة لكل نشاط، وتسلّم الكود كاملاً لعملائها.",
   applicationName: "Colapia",
   authors: [{ name: "Colapia" }],
   icons: {

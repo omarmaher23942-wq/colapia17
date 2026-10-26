@@ -168,7 +168,7 @@ export function LaunchBoard({ groups, failures }: { groups: CheckGroup[]; failur
             <div className="space-y-1.5">
               <p dir="auto" className="whitespace-pre-line break-words text-[14px] font-bold text-emerald-100">{agent.reply || "رد فارغ"}</p>
               <p className="text-[12px] text-[#8d97c4]">
-                <span dir="ltr" className="font-mono">{agent.provider}</span> · {agent.ms}ms · {agent.confirmCreate ? "سيبدأ إنشاء المتجر" : "لا يبدأ إنشاء متجر"}{agent.leadFound ? ` · بيانات التقطها: ${agent.leadFound}` : ""}
+                <span dir="ltr" className="font-mono">{agent.provider}</span> · {agent.ms}ms · {agent.confirmCreate ? "سيرسل رابط الحجز" : "لا يرسل رابط حجز"}{agent.leadFound ? ` · بيانات التقطها: ${agent.leadFound}` : ""}
               </p>
             </div>
           ) : (

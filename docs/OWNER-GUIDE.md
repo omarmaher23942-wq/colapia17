@@ -174,3 +174,43 @@ npm run db:migrate
 
 ## 10) مراجع
 `docs/V3-PLAN.md` الخطة والقرارات · `docs/NEON-MOVE.md` نقل قاعدة البيانات · `CLAUDE.md` السجل الحي · `docs/deploy-cloudflare.md` الاستضافة · `docs/meta-agent.md` وكيل الرسائل · `docs/OWNER-DM-MESSAGES.md` رسائل التواصل اليدوي · محلياً: `bash scripts/dev/preview.sh dev`.
+
+---
+
+## 11) قائمة الكيان: كيف تتعرف محركات البحث والمساعدات على Colapia (مرة واحدة ثم صيانة)
+
+**الهدف:** أن يظهر اسم **Colapia | كولابيا** بالمعنى نفسه في كل مكان على الإنترنت، فتربطه محركات البحث ومساعدات الذكاء الاصطناعي بكيان واحد واضح: «وكالة تصميم وبرمجة مواقع ومتاجر وأنظمة». الموقع نفسه جاهز (عنوان وبيانات منظمة وllms.txt وrobots وsitemap)؛ الباقي حسابات تفتحونها أنتم.
+
+**1) قاعدة الاتساق (الأهم):** استخدموا حرفياً في كل منصة:
+- **الاسم:** `Colapia | كولابيا`
+- **الوصف القصير:** `Colapia (كولابيا) وكالة تصميم وبرمجة تبني مواقع ومتاجر إلكترونية وتطبيقات ويب وأنظمة لكل نشاط، وتسلّم الكود كاملاً للعميل.`
+- **الرابط:** `https://colapia.com` · **البريد:** `support@colapia.com` · **الشعار:** `https://colapia.com/logo.png`
+
+**2) الملفات الشخصية للكيان** (افتحوا ما تستطيعون، وكلها بالاسم والوصف أعلاه ورابط الموقع):
+| المنصة | ملاحظة |
+|---|---|
+| **Google Business Profile** | نوع النشاط «وكالة تطوير مواقع» أو «شركة برمجيات»، ونشاط خدمي بلا عنوان ظاهر إن لم يكن لكم مقر، ورابط الموقع، وساعات الرد. يحتاج تحقق (مكالمة أو رمز). |
+| **LinkedIn (صفحة شركة)** | أهم مصدر تثق به مساعدات الذكاء الاصطناعي لكيانات الشركات. |
+| **Behance** و/أو **Dribbble** | عرض أعمال Qima ومتجر العرض بلقطات حقيقية. |
+| **GitHub (منظمة أو حساب عام)** | اسم العرض `Colapia`، والوصف نفسه، ومستودع واحد عام صغير على الأقل (README عن الوكالة). |
+| **إنستجرام / فيسبوك / تيك توك / يوتيوب** | الاسم نفسه، والرابط في السيرة، وإنستجرام موجود وهو `https://www.instagram.com/colapia/`. |
+| **Crunchbase / ويكي بيانات** (اختياري) | صفحة قصيرة للشركة بمصادر. ويكي بيانات يحتاج مصادر مستقلة، فلا تتعجلوه. |
+
+**3) ربطها بالموقع (sameAs):** بعد فتح كل حساب أضيفوا رابطه في `src/lib/landing-content.ts` داخل `BRAND.sameAs` (الحالي: إنستجرام فقط)، وحدّثوا `PLATFORM_LAST_MODIFIED` في `src/lib/platform-seo.ts`، ثم انشروا. تظهر الروابط تلقائياً في بيانات `Organization` و`ProfessionalService` وفي llms.txt. **لا تضيفوا رابطاً لحساب لم تفتحوه بعد.**
+
+**4) Google Search Console (مرة واحدة):**
+1. https://search.google.com/search-console ← «إضافة موقع» ← نوع **Domain** وأدخلوا `colapia.com`.
+2. أضيفوا سجل **TXT** الذي يعرضه لكم في DNS (Cloudflare ← DNS)، ثم اضغطوا «تحقق».
+3. من «Sitemaps» أرسلوا `https://colapia.com/sitemap.xml`.
+4. من «فحص الرابط» اطلبوا فهرسة `/` و`/about` و`/work`.
+5. راجعوا تقرير «Pages» و«Core Web Vitals» بعد أسبوعين.
+
+**5) Bing Webmaster Tools (مرة واحدة، ويغذي ChatGPT وكثيراً من المساعدات):**
+1. https://www.bing.com/webmasters ← «Import from Google Search Console» (أسرع طريق، يستورد التحقق والخريطة).
+2. أو أضيفوا الموقع وتحققوا بسجل CNAME/TXT في DNS، ثم أرسلوا `https://colapia.com/sitemap.xml`.
+
+**6) IndexNow (إشعار فوري بالتحديث):** مفتاحه جاهز في `public/<المفتاح>.txt` ومعرّف في `INDEXNOW_KEY`. بعد أي نشر يغيّر صفحات المنصة شغّلوا: `npx tsx scripts/seo/indexnow-ping.ts` (يُشعر Bing وYandex وغيرهما بالصفحات من خريطة الموقع نفسها).
+
+**7) فحص النشر:** `npx tsx scripts/seo-audit.ts --live https://colapia.com` يتحقق من العنوان وcanonical وhreflang وOpen Graph وJSON-LD وllms.txt وrobots وsitemap وملف IndexNow على الموقع الحي. ويمكن التأكد يدوياً من `https://colapia.com/llms.txt` و`/llms-full.txt` و`/robots.txt`.
+
+**8) صيانة شهرية قصيرة:** أضيفوا عملاً جديداً (لقطة حقيقية + سطران) إلى `WORKS` في `src/lib/landing-content.ts` فيظهر في الهبوط و/work وllms.txt والبيانات المنظمة معاً، وانشروا ثم شغّلوا IndexNow. لا تكتبوا اقتباساً حرفياً من عميل إلا بنصه وإذنه.

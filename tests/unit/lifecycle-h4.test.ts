@@ -69,7 +69,8 @@ describe("سلامة نقاط الدخول العامة (فحص مصدر)", () =
   });
   it("الوكيل لا يعالج رسالة بلا حراسة المخرج", () => {
     const rt = readFileSync("src/ai/agents/closer/runtime.ts", "utf8");
-    expect(rt).toMatch(/replyProblem\(turn\.reply/);
+    expect(rt).toMatch(/reviewTurn\(turn/);
+    expect(readFileSync("src/ai/agents/closer/review.ts", "utf8")).toMatch(/replyProblem\(turn\.reply/);
     expect(rt).toMatch(/isStaleBatch/);
   });
 });

@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  decideCreate,
+  goldenGate,
+  goldenPrefill,
   groundLeadInput,
-  isLeadComplete,
   leadStatus,
   mergeLead,
   parseInstagramHandle,
   validateEmail,
   validateNiche,
   validateStoreName,
+  validateStyleNotes,
   validateWhatsapp,
   type Lead,
 } from "@/agent/lead";
@@ -106,24 +107,25 @@ describe("دمج البيانات", () => {
   });
 });
 
-describe("حالة الجمع وقرار الإنشاء", () => {
-  it("الترتيب الثابت: النشاط ثم الاسم ثم البريد ثم واتساب", () => {
+describe("حالة الجمع وبوابة رابط الحجز", () => {
+  it("الترتيب ثابت والخاطئ يظهر منفصلاً", () => {
     const s = leadStatus({ storeName: "نور" }, { email: "bad" });
     expect(s.collected).toEqual(["storeName"]);
-    expect(s.missing).toEqual(["niche", "email", "whatsapp"]);
+    expect(s.missing).toEqual(["niche", "instagram", "whatsapp", "email", "styleNotes"]);
     expect(s.invalid).toEqual(["email"]);
   });
 
-  it("الاكتمال يشترط الحقول الأربعة", () => {
-    expect(isLeadComplete(full)).toBe(true);
-    expect(isLeadComplete({ ...full, whatsapp: undefined })).toBe(false);
+  it("الإلزامي لرابط الحجز اسم المتجر والبريد فقط", () => {
+    expect(goldenGate(full)).toEqual({ ok: true, missing: [] });
+    expect(goldenGate({ storeName: "نور" })).toEqual({ ok: false, missing: ["email"] });
+    expect(goldenGate({ email: "a@gmail.com" })).toEqual({ ok: false, missing: ["storeName"] });
+    expect(goldenGate({}).missing).toEqual(["storeName", "email"]);
   });
 
-  it("الإنشاء بالكود: كامل + موافقة، ولا إنشاء لمتجر موجود", () => {
-    expect(decideCreate({ lead: full, confirmCreate: true, explicitStart: false, storeExists: false })).toBe("create");
-    expect(decideCreate({ lead: full, confirmCreate: false, explicitStart: true, storeExists: false })).toBe("create");
-    expect(decideCreate({ lead: full, confirmCreate: false, explicitStart: false, storeExists: false })).toBe("wait_confirm");
-    expect(decideCreate({ lead: { ...full, email: undefined }, confirmCreate: true, explicitStart: true, storeExists: false })).toBe("wait_complete");
-    expect(decideCreate({ lead: full, confirmCreate: true, explicitStart: true, storeExists: true })).toBe("exists");
+  it("التعبئة المسبقة بما جُمع فقط، وميول التصميم تُحفظ مقصوصة التحقق", () => {
+    const m = mergeLead({}, { storeName: "نور", styleNotes: "ألوان ترابية وطابع هادئ", email: "a@gmail.com" });
+    expect(goldenPrefill(m.lead)).toEqual({ storeName: "نور", email: "a@gmail.com", styleNotes: "ألوان ترابية وطابع هادئ" });
+    expect(validateStyleNotes("..")).toBeNull();
+    expect(validateStyleNotes("س".repeat(301))).toBeNull();
   });
 });

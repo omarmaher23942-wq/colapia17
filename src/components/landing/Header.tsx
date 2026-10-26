@@ -1,32 +1,32 @@
 "use client";
 
-// هيدر لاصق للهبوط: روابط أقسام، تبديل الوضع، زر البدء الرئيسي، وزر ثانوي يتبع الجلسة
-// (لوحة التحكم لمن لديه جلسة، وإلا تسجيل الدخول). قائمة الموبايل <dialog> أصلي (إغلاق بـ Esc والنقر خارجها).
+// هيدر لاصق لصفحات المنصة العامة: روابط أقسام (تعمل من أي صفحة بمسار /#)، تبديل الوضع، زر البدء الرئيسي، وزر ثانوي يتبع
+// الجلسة (لوحة التحكم لمن لديه جلسة، وإلا تسجيل الدخول). قائمة الموبايل <dialog> أصلي (إغلاق بـ Esc والنقر خارجها).
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X, LayoutDashboard, LogIn, Instagram } from "lucide-react";
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
+import { BRAND } from "@/lib/landing-content";
 import { CTA_GHOST, CTA_PRIMARY } from "./shared";
 import { ThemeToggle } from "./ThemeToggle";
 import type { SessionState } from "./types";
 
 const NAV = [
-  { href: "#how", label: "كيف يعمل" },
-  { href: "#themes", label: "التصميمات" },
-  { href: "#dashboard", label: "لوحة التحكم" },
-  { href: "#features", label: "المميزات" },
-  { href: "#pricing", label: "الباقات" },
-  { href: "#faq", label: "الأسئلة" },
+  { href: "/#services", label: "الخدمات" },
+  { href: "/#process", label: "كيف نعمل" },
+  { href: "/#work", label: "أعمالنا" },
+  { href: "/about", label: "من نحن" },
+  { href: "/#faq", label: "الأسئلة" },
 ];
 
-const LOGIN_URL = "/login";
+const LOGIN_URL = "/login?redirect=/dashboard";
 const DASHBOARD_URL = "/dashboard";
 // مقاسات موحدة لأزرار الهيدر (أصغر من أزرار الأقسام).
 const BTN = "min-h-11 !px-5 !py-2.5 !text-sm";
 const LINK =
   "rounded-lg px-2 py-1.5 text-sm font-medium text-[#c3cdf0]/80 transition-colors hover:text-[#eaf0ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]";
 
-export function Header({ session, igUrl }: { session: SessionState; igUrl: string }) {
+export function Header({ session }: { session: SessionState }) {
   const [scrolled, setScrolled] = useState(false);
   const dlg = useRef<HTMLDialogElement>(null);
   const isMerchant = session === "merchant";
@@ -48,23 +48,23 @@ export function Header({ session, igUrl }: { session: SessionState; igUrl: strin
     </Link>
   );
   const Primary = ({ onClick, full }: { onClick?: () => void; full?: boolean }) => (
-    <a href={igUrl} target="_blank" rel="noopener noreferrer" onClick={onClick} className={`${CTA_PRIMARY} ${BTN} ${full ? "w-full" : ""}`}>
-      <Instagram className="size-4" aria-hidden="true" /> ابدأوا متجركم
+    <a href={BRAND.igDm} target="_blank" rel="noopener noreferrer" onClick={onClick} className={`${CTA_PRIMARY} ${BTN} ${full ? "w-full" : ""}`}>
+      <Instagram className="size-4" aria-hidden="true" /> ابدأوا مشروعكم
     </a>
   );
 
   return (
     <header className={`sticky top-0 z-50 w-full transition-colors duration-300 ${scrolled ? "border-b border-white/10 bg-[#07091a]/80 backdrop-blur-xl" : "bg-transparent"}`}>
       <div className="container-x flex h-16 items-center justify-between gap-3 sm:h-20">
-        <Link href="/" aria-label="الصفحة الرئيسية - Colapia" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]">
+        <Link href="/" aria-label="الصفحة الرئيسية - Colapia كولابيا" className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]">
           <ColapiaLogo size={34} priority />
         </Link>
 
         <nav aria-label="التنقل الرئيسي" className="hidden items-center gap-3 lg:flex xl:gap-5">
           {NAV.map((item) => (
-            <a key={item.href} href={item.href} className={LINK}>
+            <Link key={item.href} href={item.href} className={LINK}>
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
 
@@ -110,14 +110,14 @@ export function Header({ session, igUrl }: { session: SessionState; igUrl: strin
           </div>
           <nav aria-label="التنقل في الموبايل" className="flex flex-col gap-1">
             {NAV.map((item) => (
-              <a
+              <Link
                 key={item.href}
                 href={item.href}
                 onClick={closeMenu}
                 className="min-h-11 rounded-xl px-3 py-3 text-base font-medium text-[#eaf0ff]/90 hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8fa8ff]"
               >
                 {item.label}
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-4">

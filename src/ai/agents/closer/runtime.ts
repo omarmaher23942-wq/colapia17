@@ -1,11 +1,11 @@
 import "server-only";
-// runtime.ts — وكيل الرسائل V3 على إنستجرام وفيسبوك: مستشار مبيعات يقنع ويجمع بيانات العميل بلطف، والكود وحده يتحقق منها
-// ويقرر إنشاء المتجر (agent/create-store). النموذج يقترح (lead, confirmCreate, speaker)، والكود يقرر. بعد الإنشاء يرسل الكود
-// رسالة التأكيد النهائية ثم **يغلق الوكيل نفسه نهائياً في المحادثة** (botPaused بلا موعد، memory.closedBy = "agent_done")
-// ويحوّلها للمالك (إشعار + بريد)، والتسليم يدوي برسائل جاهزة في صفحة المحادثة؛ لا يُرسل رابط الإعداد آلياً.
+// runtime.ts — وكيل الرسائل V4 على إنستجرام وفيسبوك: مستشار مبيعات بالذكاء الاصطناعي وحده يحاور بحرية داخل إطار مهني (prompt.ts).
+// لا قواعد لغوية ولا قرارات حوار في الكود: النموذج يقرر ماذا يقول ومتى يطلب فعلاً (golden_link، other_service، close_done، ignore،
+// أو requestHuman)، والكود يتحقق من الشروط البيانية والرقمية فقط (review.ts) وينفذ:
+//  - golden_link: يصدر رابط صفحة الحجز (golden/link) ويرسله مع سطر العدّاد والخطوات بكلمات ثابتة.
+//  - other_service: يعلّم المحادثة «خدمة أخرى»، يبلّغ المالك (بريد + لوحة)، ويوقف الوكيل بانتظار رده؛ لا دفع ولا رابط حجز.
+//  - close_done: بعد رابط الحجز وتأكيد العميل فهمه يرسل موعد بدء التجهيز ويغلق الوكيل نفسه (closedBy = agent_done) ويحوّل للمالك.
 // لا ردود جاهزة عند تعذر الذكاء الاصطناعي: صمت + تنبيه للمالك. طلب موظف يوقف الوكيل مؤقتاً (يعود وحده) ويُنبَّه المالك فوراً.
-import { currentPricing, goldenStatus } from "@/server/pricing";
-import { agentPricingFacts } from "@/lib/platform-pricing";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ModelMessage } from "ai";
 import { db } from "@/db/client";
@@ -15,23 +15,21 @@ import { trace } from "@/lib/meta-trace";
 import { aiText } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
-import { env } from "@/lib/env";
 import { redis } from "@/lib/redis";
-import { getOwnerAlertEmails } from "@/lib/env";
-import { sendEmail } from "@/lib/email";
-import { notifyAdmin } from "@/ai/lifecycle/notify";
-import { alertAgentDegraded, alertAgentSilent } from "./alerts";
-import { parseCloserTurn, type CloserTurn } from "./turn";
-import { allowedPriceNumbers, capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView, replyProblem, type ReplyCtx } from "./guard";
-import { AI_MAX_REPEAT_WINDOW, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
-import { agentConfig, demoUrl } from "@/agent/settings";
-import { CREATE_ACK, START_QUICK_REPLY, decideCreate, groundLeadInput, isLeadComplete, mergeLead, type Lead, type LeadInvalid } from "@/agent/lead";
+import { issueGoldenLink } from "@/golden/link";
+import { alertAgentDegraded, alertAgentDone, alertAgentSilent, alertHandoff, alertOtherService } from "./alerts";
+import { agentFacts, type AgentFacts } from "./facts";
+import { parseCloserTurn, type CloserTurn, type Speaker } from "./turn";
+import { capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView } from "./guard";
+import { HISTORY_LIMIT, MAX_MESSAGES_PER_HOUR, RATE_NOTICE } from "./policy";
+import { reviewTurn, type ActionCtx } from "./review";
+import { agentConfig } from "@/agent/settings";
+import { goldenGate, goldenPrefill, groundLeadInput, mergeLead, type Lead, type LeadInvalid } from "@/agent/lead";
+import { goldenDoneMessage, goldenLinkMessage } from "@/agent/golden-messages";
+import { OTHER_SERVICE_FLAG, briefOf, isOtherService } from "@/agent/other-service";
 import { stateBlock } from "@/agent/state";
-import { detectMentions, goldenLine, plansLine, renewalLine } from "@/agent/offers";
 import { handoffUntil, pauseState } from "@/agent/pause";
-import { createStoreFromConversation } from "@/agent/create-store";
 import { patchMemory } from "@/agent/memory";
-import { appendDmImages, rehostDmImages, MAX_DM_IMAGES } from "@/agent/attachments";
 
 type Channel = "messenger" | "instagram";
 type InboundAttachment = { type: string; url?: string };
@@ -45,47 +43,28 @@ type Inbound = {
   referral?: Referral;
 };
 type Conv = typeof conversations.$inferSelect;
-type Speaker = "owner" | "moderator" | "unknown";
-type Mem = Record<string, unknown> & { lead?: Lead; leadInvalid?: LeadInvalid; summary?: string; igUsername?: string; mentions?: { demo?: boolean; golden?: boolean }; attribution?: unknown; handoffBy?: string; speaker?: Speaker; closedBy?: string };
-
+type Mem = Record<string, unknown> & {
+  lead?: Lead;
+  leadInvalid?: LeadInvalid;
+  summary?: string;
+  igUsername?: string;
+  speaker?: Speaker;
+  closedBy?: string;
+  flag?: string;
+  golden?: { linkAt?: string };
+};
 
 const AI_ATTEMPT_MS = 9_000;
-const AI_BUDGET_MS = 24_000; // كل النماذج تُجرَّب ضمن هذا الحد الكلي (المعالجة داخل after() محدودة بنحو 30 ث)
-const HISTORY_LIMIT = 30;
+const AI_BUDGET_MS = 24_000; // ميزانية استدعاء واحد عبر كل النماذج (المعالجة داخل after() محدودة بنحو 30 ث)
+const TURN_BUDGET_MS = 40_000; // ميزانية الدور كله بمحاولاته التصحيحية
+const MIN_RETRY_MS = 7_000;
+const MAX_RETRIES = 2;
 
 const memOf = (c: Conv): Mem => ((c.memory as Mem | null) ?? {}) as Mem;
-
-async function interpolateVars(): Promise<{ vars: Record<string, string>; goldenAvailable: boolean; goldenPrice: number; demoHost: string; replyCtx: ReplyCtx }> {
-  const [pricing, golden, demo] = await Promise.all([currentPricing(), goldenStatus().catch(() => null), demoUrl()]);
-  const available = Boolean(golden?.available);
-  let host = demo;
-  try {
-    host = new URL(demo).host;
-  } catch {
-    /* يبقى الرابط كما هو */
-  }
-  const legacy = () => [`${plansLine(pricing)}.`, `${renewalLine(pricing)}.`, available && golden ? goldenLine(pricing.golden, golden.seatsLeft, pricing.regularPrice) : ""].filter(Boolean).join(" ");
-  let pricingFacts = "";
-  try {
-    // تعذر قراءة المقاعد: لا نعرض الدائرة الذهبية (أفضل من وعد بمقعد قد لا يوجد).
-    pricingFacts = agentPricingFacts(pricing, golden ? golden.confirmed : pricing.golden.seats);
-  } catch {
-    pricingFacts = legacy();
-  }
-  const facts = pricingFacts || legacy();
-  return {
-    vars: {
-      trialHours: "0",
-      pricingFacts: facts,
-      demoUrl: demo,
-    },
-    goldenAvailable: available,
-    goldenPrice: pricing.golden.price,
-    demoHost: host,
-    // ما يُسمح للرد بذكره: نطاقاتنا والرابط التجريبي فقط، وأسعار الحقائق ومجاميعها الطبيعية فقط.
-    replyCtx: { allowedHosts: [host, env.ROOT_DOMAIN, "colapia.com"], allowedPrices: allowedPriceNumbers(pricing, facts), facts },
-  };
-}
+const minutesSince = (iso: string | undefined, now: number): number | null => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? Math.max(0, (now - t) / 60_000) : null;
+};
 
 type Row = { role: string; text: string | null; at: Date };
 
@@ -106,32 +85,24 @@ function modelHistory(rows: Row[]): ModelMessage[] {
 }
 
 /** دور واحد مع النموذج: JSON صارم. ناتج بلا reply صالح يُرفض فيُجرَّب النموذج التالي (لا يصل نص خام للعميل أبداً). */
-async function converse(system: string, msgs: ModelMessage[], conversationId?: string): Promise<{ turn: CloserTurn; provider: string }> {
+async function converse(system: string, msgs: ModelMessage[], conversationId: string | undefined, budgetMs = AI_BUDGET_MS): Promise<{ turn: CloserTurn; provider: string }> {
   const instruction = `${system}\n\nأخرج JSON فقط بلا Markdown ولا أي نص خارجه.`;
-  const r = await aiText("chat", { system: instruction, messages: msgs, temperature: 0.7, maxTokens: 1600, timeoutMs: AI_ATTEMPT_MS, budgetMs: AI_BUDGET_MS, accept: (t) => parseCloserTurn(t) !== null }, { purpose: "closer", conversationId });
+  const r = await aiText("chat", { system: instruction, messages: msgs, temperature: 0.7, maxTokens: 1600, timeoutMs: AI_ATTEMPT_MS, budgetMs, accept: (t) => parseCloserTurn(t) !== null }, { purpose: "closer", conversationId });
   const turn = parseCloserTurn(r.text);
   if (!turn) throw new Error("no valid reply from model");
   return { turn, provider: r.provider };
 }
 
-const norm = (s: string) => s.replace(/\s+/g, " ").trim();
-
-/** صور المحادثة: الأصل يُستبدل برابط مُعاد الاستضافة حين ينجح، ويبقى الأصل في السجل إن فشل. */
-async function ingestAttachments(conv: Conv, batch: Inbound[]): Promise<{ batch: Inbound[]; hosted: string[] }> {
-  const imageUrls = batch.flatMap((m) => m.attachments.filter((a) => a.type === "image" && typeof a.url === "string").map((a) => a.url as string));
-  if (!imageUrls.length) return { batch, hosted: [] };
-  const existing = (memOf(conv).lead?.assets ?? []).length;
-  const room = Math.max(0, MAX_DM_IMAGES - existing);
-  const hosted = room ? await rehostDmImages(imageUrls.slice(0, room), conv.id).catch(() => []) : [];
-  const map = new Map(imageUrls.slice(0, hosted.length).map((u, i) => [u, hosted[i]!] as const));
-  return { batch: batch.map((m) => ({ ...m, attachments: m.attachments.map((a) => (a.url && map.has(a.url) ? { ...a, url: map.get(a.url)! } : a)) })), hosted };
+/** التعليمات الكاملة لدور: الإطار الثابت بحقائقه الحية + حالة المحادثة. */
+async function systemFor(facts: AgentFacts, state: Parameters<typeof stateBlock>[0]): Promise<string> {
+  return (await getPrompt("closer.v4", facts.vars)) + stateBlock(state);
 }
 
-export async function handleInbound(channel: Channel, senderId: string, batch0: Inbound[]) {
+export async function handleInbound(channel: Channel, senderId: string, batch: Inbound[]) {
   const botOn = (await isOn("bot.enabled")) && (channel !== "instagram" || (await isOn("bot.instagram")));
 
   // إعادة تسليم متأخرة (أقدم من نافذة الرد): لا رد، فقط أثر.
-  if (isStaleBatch(batch0.map((m) => m.timestamp))) {
+  if (isStaleBatch(batch.map((m) => m.timestamp))) {
     await trace("skip", `stale: رسائل أقدم من ${Math.round(STALE_INBOUND_MS / 3600_000)} ساعة، لا يُرد عليها`);
     return;
   }
@@ -139,25 +110,15 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   const conv0 = await getOrCreateConversation(channel, senderId);
   if (!conv0) return;
   let conv: Conv = conv0;
+  const previousUserAt = conv0.lastUserMessageAt;
 
   if (botOn) await metaApi.seen(channel, senderId);
 
   // مصدر الإعلان (أول لمسة تُحفظ، وآخر لمسة تُحدَّث).
-  const referral = batch0.find((m) => m.referral)?.referral;
+  const referral = batch.find((m) => m.referral)?.referral;
   if (referral) {
     const prev = (memOf(conv).attribution ?? null) as { first?: unknown } | null;
     await patchMemory(conv.id, { attribution: { first: prev?.first ?? { ...referral, at: new Date().toISOString() }, last: { ...referral, at: new Date().toISOString() } } }).catch(() => {});
-  }
-
-  // صور المنتجات: تُعاد استضافتها وتُحفظ في الذاكرة (ثم في المتجر متى وُجد).
-  const { batch, hosted } = await ingestAttachments(conv, batch0);
-  if (hosted.length) {
-    const lead = memOf(conv).lead ?? {};
-    const assets = [...new Set([...(lead.assets ?? []), ...hosted])].slice(0, MAX_DM_IMAGES);
-    await patchMemory(conv.id, { lead: { ...lead, assets } }).catch(() => {});
-    // نسخة المحادثة المحلية تتبع ما كُتب، حتى لا يمحو دمج البيانات لاحقاً روابط الصور المحفوظة.
-    conv = { ...conv, memory: { ...memOf(conv), lead: { ...lead, assets } } };
-    if (conv.storeId) await appendDmImages(conv.storeId, hosted).catch(() => {});
   }
 
   // سجل inbound messages.
@@ -195,7 +156,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
   // إيقاف الوكيل في هذه المحادثة: دائم، أو مؤقت ينتهي وحده فيعود.
   const ps = pauseState(conv);
   if (ps === "paused") {
-    await trace("skip", `paused: ${conv.profileName ?? senderId} (إيقاف مقصود من الفريق أو تحويل لموظف)`);
+    await trace("skip", `paused: ${conv.profileName ?? senderId} (إيقاف مقصود من الفريق أو تحويل لموظف أو إغلاق)`);
     return;
   }
   if (ps === "expired") {
@@ -233,50 +194,61 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
     }
   }
 
-  const [cfgVars, rows, cfg] = await Promise.all([interpolateVars(), recentRows(conv.id), agentConfig()]);
-  const assistantTexts = rows.filter((r) => r.role !== "user").map((r) => norm(r.text ?? ""));
-  const userHistory = rows.filter((r) => r.role === "user").map((r) => r.text ?? "");
-  const lastQuick = batch.map((m) => m.quickReply).filter(Boolean).pop();
-  const explicitStart = lastQuick === START_QUICK_REPLY;
-
   await metaApi.typing(channel, senderId, true);
 
+  const started = Date.now();
   const lead0: Lead = mem.lead ?? {};
-  const prevMentions = detectMentions(assistantTexts, { demoHost: cfgVars.demoHost, goldenPrice: cfgVars.goldenPrice });
-  const mentions = { demo: prevMentions.demo || Boolean(mem.mentions?.demo), golden: prevMentions.golden || Boolean(mem.mentions?.golden) };
+  const otherService = isOtherService(mem);
+  const linkSentAt = mem.golden?.linkAt ? Date.parse(mem.golden.linkAt) : NaN;
+  const profileInstagram = channel === "instagram" ? (mem.igUsername ?? null) : null;
 
   let turn: CloserTurn;
+  let merged: { lead: Lead; invalid: LeadInvalid };
+  let facts: AgentFacts;
+  let cfg: Awaited<ReturnType<typeof agentConfig>>;
   try {
-    const system =
-      (await getPrompt("closer.v3", cfgVars.vars)) +
-      stateBlock({
-        replies: assistantTexts.length,
-        channel,
-        lead: lead0,
-        invalid: mem.leadInvalid ?? {},
-        mentions,
-        storeExists: Boolean(conv.storeId),
-        imagesReceived: (lead0.assets ?? []).length,
-        summary: typeof mem.summary === "string" ? mem.summary : "",
-        goldenAvailable: cfgVars.goldenAvailable,
-        speaker: mem.speaker,
-      });
+    const [f, rows, c] = await Promise.all([agentFacts(), recentRows(conv.id), agentConfig()]);
+    facts = f;
+    cfg = c;
+    const assistantTexts = rows.filter((r) => r.role !== "user").map((r) => r.text ?? "");
+    const userHistory = rows.filter((r) => r.role === "user").map((r) => r.text ?? "");
+    const mergeFrom = (t: CloserTurn) => mergeLead(lead0, groundLeadInput(t.lead, [...userHistory, ...userTexts]), { profileInstagram, prevInvalid: mem.leadInvalid });
+    const actionCtx = (m: { lead: Lead }): ActionCtx => ({ lead: m.lead, otherService, linkSentAt: Number.isFinite(linkSentAt) ? linkSentAt : null, now: Date.now() });
+
+    const system = await systemFor(facts, {
+      replies: assistantTexts.length,
+      channel,
+      lead: lead0,
+      invalid: mem.leadInvalid ?? {},
+      summary: typeof mem.summary === "string" ? mem.summary : "",
+      speaker: mem.speaker,
+      offer: facts.offer,
+      linkSentMinutesAgo: minutesSince(mem.golden?.linkAt, Date.now()),
+      otherService,
+      idleHours: previousUserAt ? Math.max(0, (Date.now() - previousUserAt.getTime()) / 3_600_000) : null,
+    });
     const history = modelHistory(rows);
     ({ turn } = await converse(system, history, conv.id));
-    // حراسة المخرج: رابط غريب أو سعر/خصم خارج الحقائق أو تسريب تعليمات ← محاولة ثانية بتنبيه، فإن تكرر صمت وتنبيه للمالك.
-    const problem = replyProblem(turn.reply, cfgVars.replyCtx);
-    if (problem) {
-      await trace("reply-rejected", problem.slice(0, 120));
-      ({ turn } = await converse(system + `\n- تنبيه: ${problem}`, history, conv.id));
-      const again = replyProblem(turn.reply, cfgVars.replyCtx);
-      if (again) throw new Error(`reply rejected by guard: ${again}`);
-    }
-    // نفس رد سبق حرفياً (نموذج متعثر): محاولة ثانية بتنبيه صريح، فإن تكرر لا نرسله.
-    if (!turn.requestHuman && assistantTexts.slice(-AI_MAX_REPEAT_WINDOW).includes(norm(turn.reply))) {
-      ({ turn } = await converse(system + `\n- تنبيه: ردك السابق كان بنفس هذا النص حرفياً. أجب بما هو جديد ومفيد، لا تكرر.`, history, conv.id));
-      if (assistantTexts.slice(-AI_MAX_REPEAT_WINDOW).includes(norm(turn.reply))) throw new Error("repeated reply");
-      const afterRetry = replyProblem(turn.reply, cfgVars.replyCtx);
-      if (afterRetry) throw new Error(`reply rejected by guard: ${afterRetry}`);
+    merged = mergeFrom(turn);
+
+    // مراجعة الدور: حراسة المخرج + شروط الفعل + التكرار الحرفي ← محاولات تصحيحية بملاحظة صريحة ضمن ميزانية الدور.
+    const notes: string[] = [];
+    for (let attempt = 0; ; attempt++) {
+      const review = reviewTurn(turn, { replyCtx: facts.replyCtx, recentAssistant: assistantTexts, action: actionCtx(merged) });
+      if (!review) break;
+      await trace(review.kind === "action" ? "action-denied" : "reply-rejected", review.note.slice(0, 120));
+      const left = TURN_BUDGET_MS - (Date.now() - started);
+      if (attempt >= MAX_RETRIES || left < MIN_RETRY_MS) {
+        // الفعل المرفوض يُخفَّض إلى حوار عادي؛ أي مشكلة أخرى لا تصل للعميل أبداً.
+        if (review.kind === "action") {
+          turn = { ...turn, action: "none" };
+          break;
+        }
+        throw new Error(`reply rejected by review (${review.kind}): ${review.note}`);
+      }
+      notes.push(review.note);
+      ({ turn } = await converse(system + notes.map((n) => `\n- تنبيه: ${n}`).join(""), history, conv.id, Math.min(AI_BUDGET_MS, left)));
+      merged = mergeFrom(turn);
     }
   } catch (err) {
     // لا ردود احتياطية جاهزة (قرار المالك): الصمت أفضل من رد غبي. المحادثة تبقى «غير مقروءة» للفريق ويصل المالك تنبيه بالسبب.
@@ -288,61 +260,29 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
     return;
   }
 
-  // دمج البيانات: الكود يتحقق، ولا يُقبل بريد أو رقم لم يكتبه العميل فعلاً.
-  const grounded = groundLeadInput(turn.lead, [...userHistory, ...userTexts]);
-  const merged = mergeLead(lead0, grounded, { profileInstagram: channel === "instagram" ? (mem.igUsername ?? null) : null, prevInvalid: mem.leadInvalid });
-  const newMentions = detectMentions([turn.reply], { demoHost: cfgVars.demoHost, goldenPrice: cfgVars.goldenPrice });
   // من يكتب: آخر تقدير واضح يبقى (unknown لا يمحو تقديراً سابقاً).
   const speaker: Speaker = turn.speaker !== "unknown" ? turn.speaker : (mem.speaker ?? "unknown");
-  await patchMemory(conv.id, {
-    lead: merged.lead,
-    leadInvalid: merged.invalid,
-    mentions: { demo: mentions.demo || newMentions.demo, golden: mentions.golden || newMentions.golden },
-    speaker,
-    ...(turn.memory ? { summary: turn.memory } : {}),
-  }).catch(() => {});
-
-  // الوكيل رأى أن الموقف يحتاج إنساناً.
-  if (turn.requestHuman) {
-    if (await sendIfStillActive(channel, senderId, conv, turn.reply)) await handoffToHuman(channel, conv, turn.requestHuman, cfg.handoffPauseHours);
-    await metaApi.typing(channel, senderId, false);
-    return;
-  }
-
-  // V3: لا إعادة إرسال آلية لرابط الإعداد (المالك يسلّم يدوياً). طلب الرابط بعد الإنشاء يصل الفريق تنبيهاً.
-  if (turn.resendLink && conv.storeId) {
-    await notifyAdmin(`عميل يطلب رابط إعداد متجره من المحادثة: ${conv.profileName ?? "عميل"}. أرسلوه من صفحة المحادثة.`, { conversationId: conv.id, storeId: conv.storeId }).catch(() => {});
-  }
-
-  // البدء يحتاج صاحب القرار: موافقة مشرف الصفحة لا تنشئ متجراً (يطلب الوكيل حضور صاحب القرار).
-  const decision0 = decideCreate({ lead: merged.lead, confirmCreate: turn.confirmCreate, explicitStart, storeExists: Boolean(conv.storeId) });
-  const decision = decision0 === "create" && speaker === "moderator" && !explicitStart ? "wait_confirm" : decision0;
+  await patchMemory(conv.id, { lead: merged.lead, leadInvalid: merged.invalid, speaker, ...(turn.memory ? { summary: turn.memory } : {}) }).catch(() => {});
 
   try {
-    if (decision === "create") {
-      const r = await createStoreFromConversation(conv.id);
-      await trace("create", r.status);
-      if (r.status === "created" || r.status === "exists") {
-        // يُغلق الوكيل نفسه في كل الأحوال (حتى لو أوقفه الفريق لحظة الإرسال): وإلا عاد بعد انتهاء إيقاف مؤقت يرد على عميل وافق.
-        await sendIfStillActive(channel, senderId, conv, CREATE_ACK, "building");
-        await closeAfterAgreement(channel, conv, r.storeId, merged.lead, r.status === "created" ? "created" : "exists");
-      } else if (r.status === "setup_open") {
-        await sendIfStillActive(channel, senderId, conv, "عندنا بالفعل متجر قيد التجهيز مسجّل بنفس البريد، وسيتابع الفريق معكم هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.");
-        await closeAfterAgreement(channel, conv, r.storeId, merged.lead, "setup_open");
-      } else if (r.status === "capped") {
-        if (await sendIfStillActive(channel, senderId, conv, "الطلبات كثيرة اليوم، وسيتواصل معكم أحد الفريق قريباً لإكمال تجهيز متجركم.")) await handoffToHuman(channel, conv, "بلغ السقف اليومي لإنشاء المتاجر آلياً", cfg.handoffPauseHours);
-      } else if (r.status === "busy") {
-        await trace("skip", "create busy: دور آخر ينشئ المتجر الآن");
-      } else {
-        await sendIfStillActive(channel, senderId, conv, "حدث خلل بسيط أثناء تجهيز المتجر، وسيتابع معكم أحد الفريق خلال وقت قصير.");
-        await handoffToHuman(channel, conv, `فشل إنشاء المتجر: ${"error" in r ? r.error : r.status}`, cfg.handoffPauseHours);
-      }
+    if (turn.action === "ignore") {
+      await trace("ignored", `${channel} …${String(senderId).slice(-4)}: رسالة لا تستحق رداً`);
+    } else if (turn.requestHuman) {
+      // الوكيل رأى أن الموقف يحتاج إنساناً.
+      if (await sendIfStillActive(channel, senderId, conv, turn.reply)) await handoffToHuman(channel, conv, turn.requestHuman, cfg.handoffPauseHours);
+    } else if (turn.action === "golden_link") {
+      await sendGoldenLink(channel, senderId, conv, turn.reply, merged.lead, facts, cfg.handoffPauseHours);
+    } else if (turn.action === "other_service") {
+      await sendIfStillActive(channel, senderId, conv, turn.reply);
+      await escalateOtherService(channel, conv, briefOf(turn.brief, turn.memory || (typeof mem.summary === "string" ? mem.summary : "")), merged.lead, mem.igUsername);
+    } else if (turn.action === "close_done") {
+      // يُغلق الوكيل نفسه في كل الأحوال (حتى لو أوقفه الفريق لحظة الإرسال): وإلا عاد بعد انتهاء إيقاف مؤقت يرد على عميل أنهى الخطوات.
+      await sendIfStillActive(channel, senderId, conv, goldenDoneMessage(turn.reply));
+      await closeAfterLink(channel, conv, merged.lead);
     } else {
-      // البيانات كاملة ولم يُؤكَّد البدء بعد: زر سريع يجعل الموافقة ضغطة واحدة.
-      const offerStart = decision === "wait_confirm" && isLeadComplete(merged.lead);
-      await sendIfStillActive(channel, senderId, conv, turn.reply, conv.stage === "greeting" ? "discovery" : undefined, offerStart ? [START_QUICK_REPLY] : undefined);
+      await sendIfStillActive(channel, senderId, conv, turn.reply, conv.stage === "greeting" ? "discovery" : undefined);
     }
-    await trace("reply-sent", `${channel} …${String(senderId).slice(-4)}`);
+    await trace("reply-sent", `${channel} …${String(senderId).slice(-4)} action=${turn.action}`);
   } catch (e) {
     const why = String((e as Error)?.message ?? e);
     await silent("send", `الذكاء الاصطناعي كتب الرد لكن إرساله إلى Meta فشل: ${why}. الغالب رمز الصفحة أو صلاحية instagram_manage_messages.`);
@@ -353,14 +293,13 @@ export async function handleInbound(channel: Channel, senderId: string, batch0: 
 /**
  * يرسل الرد بعد إعادة قراءة حالة الإيقاف (قد يوقف الفريق المحادثة أثناء تفكير النموذج). يعيد false إن كانت موقوفة فلا يُرسل شيء.
  */
-async function sendIfStillActive(channel: Channel, senderId: string, conv: Conv, text: string, stage?: Conv["stage"], quick?: string[]): Promise<boolean> {
+async function sendIfStillActive(channel: Channel, senderId: string, conv: Conv, text: string, stage?: Conv["stage"]): Promise<boolean> {
   const [fresh] = await db.select({ botPaused: conversations.botPaused, until: conversations.botPausedUntil }).from(conversations).where(eq(conversations.id, conv.id)).limit(1);
   if (fresh && pauseState({ botPaused: fresh.botPaused, botPausedUntil: fresh.until }) === "paused") {
     await trace("skip", "paused-before-send: أوقف الفريق المحادثة قبل الإرسال");
     return false;
   }
-  if (quick?.length) await metaApi.quickReplies(channel, senderId, text, quick);
-  else await metaApi.text(channel, senderId, text);
+  await metaApi.text(channel, senderId, text);
   await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text });
   await db
     .update(conversations)
@@ -370,21 +309,23 @@ async function sendIfStillActive(channel: Channel, senderId: string, conv: Conv,
 }
 
 /**
- * تجربة كاملة للوكيل بلا إرسال ولا حفظ: نفس البرومبت ونفس المخطط الصارم ونفس سلسلة النماذج، فيظهر لمركز الجاهزية ما كان
- * سيرد به على رسالة حقيقية (أو سبب العجز بنص خطأ كل نموذج).
+ * يصدر رابط صفحة الحجز ويرسله: مقدمة النموذج ثم الرابط وسطر العدّاد (للذهبية فقط) والخطوات بكلمات ثابتة. السعر العادي بلا صياغة ذهبية
+ * حين تنتهي المقاعد. تعذر إصدار الرابط = اعتذار قصير وتحويل لموظف بدل وعد لا يتحقق.
  */
-export async function probeAgent(text: string): Promise<{ ok: true; reply: string; confirmCreate: boolean; leadFound: string; provider: string; ms: number } | { ok: false; error: string }> {
-  const t0 = Date.now();
+async function sendGoldenLink(channel: Channel, senderId: string, conv: Conv, intro: string, lead: Lead, facts: AgentFacts, pauseHours: number) {
+  let link: string;
   try {
-    const v = await interpolateVars();
-    const system =
-      (await getPrompt("closer.v3", v.vars)) +
-      stateBlock({ replies: 0, channel: "instagram", lead: {}, invalid: {}, mentions: { demo: false, golden: false }, storeExists: false, imagesReceived: 0, summary: "", goldenAvailable: v.goldenAvailable });
-    const { turn, provider } = await converse(system, [{ role: "user", content: text.slice(0, 300) }]);
-    const found = Object.entries(turn.lead).filter(([, x]) => x).map(([k]) => k).join("، ");
-    return { ok: true, reply: turn.reply || (turn.requestHuman ? `(حوّل لموظف) ${turn.requestHuman}` : ""), confirmCreate: turn.confirmCreate, leadFound: found, provider, ms: Date.now() - t0 };
+    link = await issueGoldenLink({ conversationId: conv.id, prefill: goldenPrefill(lead) });
   } catch (e) {
-    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 700) };
+    const why = String((e as Error)?.message ?? e).slice(0, 160);
+    await trace("link-failed", why);
+    if (await sendIfStillActive(channel, senderId, conv, "حدث خلل بسيط أثناء تجهيز رابط الحجز، وسيتواصل معكم أحد الفريق بالرابط خلال وقت قصير.")) await handoffToHuman(channel, conv, `تعذر إصدار رابط الحجز: ${why}`, pauseHours);
+    return;
+  }
+  const { offer } = facts;
+  const text = goldenLinkMessage(intro, { link, golden: offer.golden, seatsLeft: offer.seatsLeft, seatsTotal: offer.seatsTotal, price: offer.price, regular: offer.regular });
+  if (await sendIfStillActive(channel, senderId, conv, text, "link_sent")) {
+    await patchMemory(conv.id, { golden: { linkAt: new Date().toISOString(), link, golden: offer.golden, seatsLeft: offer.seatsLeft } }).catch(() => {});
   }
 }
 
@@ -400,70 +341,64 @@ async function recentRows(conversationId: string): Promise<Row[]> {
 }
 
 /**
- * يوقف الوكيل في المحادثة مؤقتاً (يعود وحده بعد المدة) ويبلّغ الفريق: إشعار في اللوحة + بريد فوري للمالك (مرة كل 30 دقيقة
- * لكل محادثة). الرد على العميل يُرسل قبل هذه الدالة.
+ * تجربة كاملة للوكيل بلا إرسال ولا حفظ: نفس البرومبت ونفس المخطط الصارم ونفس سلسلة النماذج، فيظهر لمركز الجاهزية ما كان
+ * سيرد به على رسالة حقيقية (أو سبب العجز بنص خطأ كل نموذج). `confirmCreate` يعني هنا أنه سيرسل رابط الحجز.
  */
-async function handoffToHuman(channel: Channel, conv: Conv, reason: string, pauseHours: number) {
-  const until = handoffUntil(pauseHours);
-  await db
-    .update(conversations)
-    .set({ botPaused: true, botPausedUntil: until, stage: "human", unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() })
-    .where(eq(conversations.id, conv.id));
-  await patchMemory(conv.id, { handoffBy: "ai", handoffAt: new Date().toISOString(), handoffReason: reason.slice(0, 200) }).catch(() => {});
-  await trace("handoff", reason.slice(0, 120));
-  await notifyAdmin(`محادثة تحتاج موظفاً بشرياً (${channel}): ${reason.slice(0, 160)}`, { conversationId: conv.id });
-  const first = await redis.set(`agent:handoff-mail:${conv.id}`, 1, { nx: true, ex: 1800 }).catch(() => "OK");
-  const to = getOwnerAlertEmails();
-  if (first && to.length) {
-    const origin = env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`;
-    await sendEmail({
-      to,
-      subject: "عميل يطلب التحدث مع موظف",
-      headline: "محادثة تنتظر موظفاً",
-      paragraphs: [`${conv.profileName ?? "عميل"} على ${channel === "instagram" ? "إنستجرام" : "ماسنجر"}: ${reason.slice(0, 200)}`, `أوقفنا الوكيل في هذه المحادثة لمدة ${pauseHours} ساعات ثم يعود وحده، أو استأنفوه فوراً من صفحة المحادثة.`],
-      buttons: [{ title: "افتحوا المحادثة", url: `${origin}/admin/conversations?id=${conv.id}` }],
-    }).catch(() => {});
+export async function probeAgent(text: string): Promise<{ ok: true; reply: string; confirmCreate: boolean; leadFound: string; provider: string; ms: number } | { ok: false; error: string }> {
+  const t0 = Date.now();
+  try {
+    const facts = await agentFacts();
+    const system = await systemFor(facts, { replies: 0, channel: "instagram", lead: {}, invalid: {}, summary: "", offer: facts.offer, linkSentMinutesAgo: null, otherService: false, idleHours: null });
+    const { turn, provider } = await converse(system, [{ role: "user", content: text.slice(0, 300) }], undefined);
+    const found = Object.entries(turn.lead).filter(([, x]) => x).map(([k]) => k).join("، ");
+    const reply = turn.reply || (turn.requestHuman ? `(حوّل لموظف) ${turn.requestHuman}` : turn.action === "ignore" ? "(تجاهل الرسالة)" : "");
+    return { ok: true, reply, confirmCreate: turn.action === "golden_link", leadFound: found, provider, ms: Date.now() - t0 };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 700) };
   }
 }
 
 /**
- * بعد موافقة العميل وإنشاء متجره: يغلق الوكيل نفسه في هذه المحادثة نهائياً (لا يعود إلا باستئناف يدوي من الفريق)، ويحوّلها
- * للمالك: إشعار في /admin/conversations وبريد فوري على عناوين التنبيه، مع رابط المحادثة وقائمة «بانتظار التسليم».
+ * يوقف الوكيل في المحادثة مؤقتاً (يعود وحده بعد المدة) ويبلّغ الفريق: إشعار في اللوحة + بريد فوري للمالك (مرة كل 30 دقيقة
+ * لكل محادثة). الرد على العميل يُرسل قبل هذه الدالة.
  */
-async function closeAfterAgreement(channel: Channel, conv: Conv, storeId: string, lead: Lead, how: "created" | "exists" | "setup_open") {
+async function handoffToHuman(channel: Channel, conv: Conv, reason: string, pauseHours: number) {
   await db
     .update(conversations)
-    .set({
-      botPaused: true,
-      botPausedUntil: null,
-      stage: "handoff",
-      ...(conv.storeId ? {} : { storeId }),
-      unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`,
-      updatedAt: new Date(),
-    })
+    .set({ botPaused: true, botPausedUntil: handoffUntil(pauseHours), stage: "human", unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() })
+    .where(eq(conversations.id, conv.id));
+  await patchMemory(conv.id, { handoffBy: "ai", handoffAt: new Date().toISOString(), handoffReason: reason.slice(0, 200) }).catch(() => {});
+  await trace("handoff", reason.slice(0, 120));
+  await alertHandoff({ conversationId: conv.id, name: conv.profileName, channel, reason, pauseHours });
+}
+
+/**
+ * «خدمة أخرى غير المتجر»: يعلّم المحادثة في ذاكرتها (شارة وفلتر في /admin/conversations)، يوقف الوكيل إيقافاً دائماً بانتظار رد المالك،
+ * ويبلّغه ببريد وإشعار لوحة مع ملخص الطلب. لا دفع ولا رابط حجز في هذا المسار أبداً.
+ */
+async function escalateOtherService(channel: Channel, conv: Conv, brief: string, lead: Lead, igUsername?: string) {
+  await db
+    .update(conversations)
+    .set({ botPaused: true, botPausedUntil: null, stage: "human", unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() })
+    .where(eq(conversations.id, conv.id));
+  const at = new Date().toISOString();
+  await patchMemory(conv.id, { flag: OTHER_SERVICE_FLAG, otherService: { brief, at }, handoffBy: "other_service", handoffAt: at }).catch(() => {});
+  await trace("other-service", brief.slice(0, 120));
+  await alertOtherService({ conversationId: conv.id, name: conv.profileName, channel, igUsername, brief, lead });
+}
+
+/**
+ * بعد رابط الحجز وتأكيد العميل فهمه للخطوات: يغلق الوكيل نفسه في هذه المحادثة نهائياً (لا يعود إلا باستئناف يدوي من الفريق)،
+ * ويحوّلها للمالك: إشعار في /admin/conversations وبريد فوري مع رابط المحادثة والمدفوعات.
+ */
+async function closeAfterLink(channel: Channel, conv: Conv, lead: Lead) {
+  await db
+    .update(conversations)
+    .set({ botPaused: true, botPausedUntil: null, stage: "handoff", unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() })
     .where(eq(conversations.id, conv.id));
   await patchMemory(conv.id, { closedBy: "agent_done", closedAt: new Date().toISOString(), handoffBy: "agent_done" }).catch(() => {});
-  await trace("closed", `agent_done: ${how} (محادثة …${conv.id.slice(-4)})`);
-  const who = conv.profileName ?? "عميل";
-  const store = lead.storeName ?? "متجر جديد";
-  await notifyAdmin(`وافق ${who} وأُغلق الوكيل في المحادثة: «${store}» بانتظار التسليم. انسخوا رسالة الإعداد من صفحة المحادثة.`, { conversationId: conv.id, storeId }).catch(() => {});
-  const to = getOwnerAlertEmails();
-  if (!to.length) return;
-  const origin = env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`;
-  await sendEmail({
-    to,
-    subject: `متجر جديد بانتظار التسليم: ${store}`,
-    headline: "عميل وافق، والمحادثة الآن لكم",
-    paragraphs: [
-      `${who} على ${channel === "instagram" ? "إنستجرام" : "ماسنجر"} وافق على البدء${how === "setup_open" ? " (له متجر قيد الإعداد بنفس البريد)" : ""}.`,
-      [lead.niche && `النشاط: ${lead.niche}`, `المتجر: ${store}`, lead.email && `البريد: ${lead.email}`, lead.whatsapp && `واتساب: ${lead.whatsapp}`, lead.instagram && `إنستجرام: @${lead.instagram}`].filter(Boolean).join(" · "),
-      "أُغلق الوكيل في هذه المحادثة نهائياً، ولن يُرسل رابط الإعداد آلياً. في صفحة المحادثة رسائل جاهزة للنسخ (رابط الإعداد وطريقة الدخول ورابط المتجر) وزر إرسالها عبر الرسائل مباشرة.",
-    ],
-    buttons: [
-      { title: "افتحوا المحادثة", url: `${origin}/admin/conversations?id=${conv.id}` },
-      { title: "بانتظار التسليم", url: `${origin}/admin/conversations/delivery` },
-    ],
-  }).catch(() => {});
+  await trace("closed", `agent_done (محادثة …${conv.id.slice(-4)})`);
+  await alertAgentDone({ conversationId: conv.id, name: conv.profileName, channel, lead });
 }
 
 async function getOrCreateConversation(channel: Channel, senderId: string): Promise<Conv | undefined> {

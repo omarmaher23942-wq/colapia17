@@ -28,7 +28,7 @@ import { FrozenGate } from "@/components/storefront/FrozenGate";
 import { hostingState } from "@/lib/hosting";
 import { storeVisibility, gateShowsName } from "@/lib/store-visibility";
 import { OwnerFirstImpressionBanner } from "@/components/storefront/OwnerFirstImpressionBanner";
-import { listVisibleCategories } from "@/server/repos/catalog";
+import { loadCategories } from "@/server/seo-data";
 import { notFound } from "next/navigation";
 import { createStoreKit } from "@/stores-kit/server";
 import { loadSlot, storeTheme } from "@/stores/resolve";
@@ -50,7 +50,9 @@ export async function generateMetadata({
   const store = await getStoreBySubdomain(sub);
   if (!store) return { robots: { index: false, follow: false } };
   const bp = await getBlueprintOrNull(store.id);
-  const meta = storeMetadata(store, bp ? truthfulBlueprint(bp, await getStoreFacts(store.id, bp)) : null);
+  const facts = bp ? await getStoreFacts(store.id, bp) : undefined;
+  const cats = bp ? await loadCategories(store.id).catch(() => []) : [];
+  const meta = storeMetadata(store, bp ? truthfulBlueprint(bp, facts ?? []) : null, { categoryNames: cats.filter((c) => c.productCount > 0).map((c) => c.name), facts });
   // أيقونة التبويب تتبع شعار المتجر: رقم إصدار من رابط الشعار يُجبر المتصفح على جلب الجديدة فور تغييره
   // (المتصفحات تحتفظ بالأيقونة القديمة طويلاً لنفس الرابط).
   const mark = bp?.brand.favicon ?? bp?.brand.logo?.url ?? "";
@@ -111,7 +113,7 @@ export default async function StoreLayout({ children, params }: Props) {
   // من هنا، status إما trial | active
   const [rawBp, categories] = await Promise.all([
     getBlueprintOrNull(store.id),
-    listVisibleCategories(store.id),
+    loadCategories(store.id),
   ]);
 
   // دفاع أخير: لو الـ blueprint غير موجود لأي سبب (بيانات تالفة).
@@ -137,7 +139,7 @@ export default async function StoreLayout({ children, params }: Props) {
       footer={bp.footer}
       brand={bp.brand}
       channels={bp.channels}
-      pages={allPolicyPages(bp)}
+      pages={allPolicyPages(bp, facts)}
       payments={bp.payments}
       categories={navCategories}
       facts={facts}
