@@ -1,5 +1,5 @@
 import "server-only";
-// login-code.ts — رمز دخول لمرة واحدة على البريد (بديل Google لصاحب المتجر وفريقه). 6 أرقام، صالح 10 دقائق، 5
+// login-code.ts — رمز لمرة واحدة على البريد لإعادة تعيين كلمة المرور (لا يدخل بذاته؛ تُضبط بعده كلمة جديدة). 6 أرقام، صالح 10 دقائق، 5
 // محاولات، يُخزَّن تجزئته فقط في Redis. لا يُرسل إلا لبريد معروف (تاجر أو عضو فريق مدعو)، والرد واحد دائماً حتى لا
 // تكشف الصفحة أي البُرد مسجّلة.
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { merchants, storeMembers } from "@/db/schema";
 import { redis } from "@/lib/redis";
 import { env } from "@/lib/env";
-import { sendEmail } from "@/lib/email";
+import { resendKey, sendEmail } from "@/lib/email";
 import { canonicalEmail } from "@/lib/contact";
 
 const TTL_S = 600;
@@ -17,6 +17,9 @@ const h = (v: string) => createHash("sha256").update(`${env.AUTH_SECRET}:${v}`).
 const key = (email: string) => `lc:${h(email).slice(0, 32)}`;
 // عدّاد المحاولات ذرّي (INCR) في مفتاح مستقل: الطلبات المتوازية لا تتجاوز الحد.
 const triesKey = (email: string) => `lcn:${h(email).slice(0, 32)}`;
+
+/** هل يستطيع الخادم إرسال البريد أصلاً؟ إن لم يستطع تعرض الواجهة إعادة التعيين بمساعدة الفريق. */
+export const emailDeliveryOn = () => Boolean(resendKey());
 
 export const normalizeLoginEmail = (raw: string) => raw.trim().toLowerCase();
 
@@ -37,9 +40,9 @@ export async function sendLoginCode(email: string): Promise<boolean> {
   await redis.del(triesKey(email));
   return sendEmail({
     to: email,
-    subject: `رمز دخول لوحة متجرك: ${code}`,
-    headline: "رمز الدخول",
-    paragraphs: [`رمزك: ${code}`, "صالح 10 دقائق لمرة واحدة. لو لم تطلبه تجاهل هذه الرسالة؛ لا أحد يستطيع الدخول بدونه."],
+    subject: `رمز إعادة تعيين كلمة مرور لوحة متجركم: ${code}`,
+    headline: "رمز إعادة التعيين",
+    paragraphs: [`رمزكم: ${code}`, "صالح 10 دقائق لمرة واحدة. إن لم تطلبوه فتجاهلوا هذه الرسالة؛ لا يتغير شيء بدونه."],
   }).catch(() => false);
 }
 

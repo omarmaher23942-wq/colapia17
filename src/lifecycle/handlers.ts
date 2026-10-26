@@ -162,7 +162,8 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
   },
 
   "trial.freeze": async (s) => {
-    if (s.status !== "trial") return { skip: s.status };
+    // «setup» أيضاً: العدّاد يبدأ عند أول فتح لرابط الإعداد، فقد تنتهي المهلة قبل أن يكمل التاجر الإعداد.
+    if (s.status !== "trial" && s.status !== "setup") return { skip: s.status };
     if (s.doomAt) return { skip: "doom_controls" };
     if (await postponeIfReviewing(s, "trial.freeze")) return { postponed: true };
     const now = new Date();
@@ -171,7 +172,7 @@ export const HANDLERS: Record<JobKind, (s: Store) => Promise<unknown>> = {
     const r = await transition({
       storeId: s.id,
       to: "frozen",
-      from: ["trial"],
+      from: ["trial", "setup"],
       actor: "timer",
       set: { frozenAt: now, purgeAt },
       reason: "trial_ended",

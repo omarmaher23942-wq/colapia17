@@ -16,11 +16,12 @@ export type StoreStatus = Store["status"];
  */
 export const TRANSITIONS: Record<StoreStatus, readonly StoreStatus[]> = {
   // V2: أنشأه الوكيل ← إكمال الإعداد يبدأ التجربة، أو حذف.
-  setup: ["trial", "deleted"],
+  // V5: الفريق يسلّم المتجر إلى setup (بانتظار رابط الإعداد)؛ العدّاد يبدأ عند أول فتح للرابط، فقد ينتهي قبل إكمال الإعداد (frozen).
+  setup: ["trial", "frozen", "deleted"],
   intake: ["pending_review", "building", "deleted"],
   pending_review: ["building", "deleted"],
-  building: ["review", "trial", "deleted"],
-  review: ["trial", "building", "deleted"],
+  building: ["review", "setup", "trial", "deleted"],
+  review: ["setup", "trial", "building", "deleted"],
   trial: ["frozen", "active", "suspended", "deleted"],
   frozen: ["active", "trial", "deleted"],
   // active → frozen: إلغاء تفعيل قُبل آلياً ثم تبيّن عند المراجعة أنه غير صحيح.

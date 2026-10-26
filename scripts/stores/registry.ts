@@ -12,6 +12,7 @@
 //   pages/<name>.tsx        صفحة جديدة على /<name> (ومجلدات فرعية: pages/a/b.tsx = /a/b)
 //   blueprint.json          الواجهة والأقسام والنصوص (تُفحص بمخطط النواة، وكل store_block فيها يجب أن يكون له ملف)
 //   seed.json               الأقسام والمنتجات الأولى (src/stores/seed.ts)
+//   setup-recipe.json       تجاوز اختياري لوصفة إعداد التاجر (src/lib/setup-recipe.ts: خطوات تُخفى أو تُؤكَّد أو تُسأل)
 //   (blueprint.json وseed.json يدخلان السجل كملفين يُحمّلان عند الطلب، فيزرعهما «جهّز المتجر» على الإنتاج بدل المسودة الآلية.)
 // أي ملف في هذه المجلدات لا يطابق القواعد يوقف التوليد برسالة واضحة، فلا يصل خطأ تسمية إلى الإنتاج صامتاً.
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -19,6 +20,7 @@ import { join, relative } from "node:path";
 import { z } from "zod";
 import { blueprintSchema, sectionSchema } from "../../src/blueprint/schema";
 import { storeSeedSchema } from "../../src/stores/seed";
+import { setupRecipeOverrideSchema } from "../../src/lib/setup-recipe";
 
 const ROOT = process.cwd();
 const STORES_DIR = join(ROOT, "stores");
@@ -161,6 +163,14 @@ function scanStore(slug: string): Found | null {
       const seed = storeSeedSchema.safeParse(raw);
       if (!seed.success) issues("seed.json", seed.error.issues);
       else data.push(["seed", `../../${rel(join(dir, "seed.json"))}`]);
+    }
+  }
+  if (existsSync(join(dir, "setup-recipe.json"))) {
+    const raw = readJson("setup-recipe.json");
+    if (raw !== undefined) {
+      const rec = setupRecipeOverrideSchema.safeParse(raw);
+      if (!rec.success) issues("setup-recipe.json", rec.error.issues);
+      else data.push(["setupRecipe", `../../${rel(join(dir, "setup-recipe.json"))}`]);
     }
   }
 

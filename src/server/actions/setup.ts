@@ -160,12 +160,35 @@ export async function saveNicheAction(raw: unknown): Promise<Ok | Fail> {
   return { ok: true };
 }
 
+// ─── منتجات أضافها الفريق وتنتظر سعركم ───────────────────────────────────────
+
+const priceInput = z.object({ productId: z.string().uuid(), price: z.coerce.number().positive("اكتبوا سعراً أكبر من صفر").max(1_000_000, "السعر كبير جداً") });
+
+/** سعر منتج بلا سعر (أضافه الفريق): يُحفظ فيظهر في المتجر. لا يلمس غيره من حقوله. */
+export async function setProductPriceAction(raw: unknown): Promise<Ok | Fail> {
+  const s = await storeFor("products");
+  if (!s) return { ok: false, error: SESSION_ERR };
+  const p = priceInput.safeParse(raw);
+  if (!p.success) return { ok: false, error: p.error.issues[0]?.message ?? "بيانات غير صالحة" };
+  const tdb = await getTenantDb(s.storeId);
+  const r = await tdb
+    .update(products)
+    .set({ pricePiasters: Math.round(p.data.price * 100), status: "active", updatedAt: new Date() })
+    .where(and(eq(products.id, p.data.productId), eq(products.storeId, s.storeId), isNull(products.deletedAt)))
+    .returning({ id: products.id });
+  if (!r.length) return { ok: false, error: "المنتج غير موجود" };
+  await invalidateStoreCache(s.store);
+  return { ok: true };
+}
+
 // ─── 3) الدفع ────────────────────────────────────────────────────────────────
 
 const paymentInput = z.object({
   cod: z.boolean(),
   inspection: z.boolean(),
   codFee: z.coerce.number().min(0, "الرسوم لا تقل عن صفر").max(500, "الرسوم 500 جنيه على الأكثر"),
+  /** يُرسل true مع سؤال المعاينة وحده: يثبّت أن القرار إجابة صريحة فلا يُسأل التاجر عنه ثانية. */
+  inspectionAnswered: z.boolean().optional(),
   vodafone: z.object({ enabled: z.boolean(), number: z.string().max(40), holder: z.string().max(80) }),
   instapay: z.object({ enabled: z.boolean(), target: z.string().max(120), holder: z.string().max(80) }),
 });
@@ -203,7 +226,7 @@ export async function savePaymentStepAction(raw: unknown): Promise<Ok | (Fail & 
   const fee = d.cod ? Math.round(d.codFee * 100) : 0;
   const tdb = await getTenantDb(s.storeId);
   await tdb.update(shippingZones).set({ codExtraPiasters: fee }).where(eq(shippingZones.storeId, s.storeId));
-  await patchOnboarding(s.storeId, { codFee: fee });
+  await patchOnboarding(s.storeId, d.inspectionAnswered ? { codFee: fee, inspectionAnswered: true } : { codFee: fee });
   await invalidateStoreCache(s.store);
   return { ok: true };
 }
