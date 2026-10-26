@@ -4,9 +4,8 @@
 import { stripEmoji } from "@/lib/emoji";
 import { canonicalEmail, normalizeEgyptianPhone, normalizeEmail } from "@/lib/contact";
 import { normalizeDigits } from "@/lib/phone";
-import type { GoldenPrefill } from "@/golden/link";
 
-export type LeadKey = "niche" | "storeName" | "email" | "whatsapp" | "instagram" | "styleNotes";
+export type LeadKey = "niche" | "storeName" | "email" | "whatsapp" | "instagram" | "styleNotes" | "products" | "selling";
 
 export type Lead = {
   niche?: string;
@@ -19,6 +18,10 @@ export type Lead = {
   instagram?: string;
   /** ميوله في التصميم (ألوان، طابع، أمثلة يحبها) كما قالها. */
   styleNotes?: string;
+  /** أين منتجاتهم وكيف يصلنا محتواها (صور على الموبايل، صفحة جاهزة، ملف) كما قالوه. */
+  products?: string;
+  /** الدفع والتوصيل: وسائل الدفع، المحافظات، الشحن، المعاينة، كما قالوها. */
+  selling?: string;
 };
 
 /** ما اقترحه النموذج في هذا الدور (غير موثوق). */
@@ -28,11 +31,7 @@ export type LeadInput = Partial<Record<LeadKey, unknown>>;
 export type LeadInvalid = Partial<Record<LeadKey, string>>;
 
 /** الحقول بترتيب العرض في «حالة المحادثة». */
-export const LEAD_KEYS: readonly LeadKey[] = ["storeName", "niche", "instagram", "whatsapp", "email", "styleNotes"];
-
-/** الحد الأدنى قبل إصدار رابط الحجز: اسم المتجر والبريد (منه يدخل صاحب المتجر لوحته). الباقي تكمله صفحة الحجز. */
-export const GOLDEN_REQUIRED = ["storeName", "email"] as const;
-export type GoldenRequired = (typeof GOLDEN_REQUIRED)[number];
+export const LEAD_KEYS: readonly LeadKey[] = ["storeName", "niche", "instagram", "products", "styleNotes", "selling", "whatsapp", "email"];
 
 const squeeze = (v: unknown): string => stripEmoji(typeof v === "string" ? v : "").replace(/\s+/g, " ").trim();
 
@@ -46,6 +45,12 @@ export function validateStoreName(raw: unknown): string | null {
 export function validateNiche(raw: unknown): string | null {
   const s = squeeze(raw);
   return s.length >= 3 && s.length <= 120 && /\p{L}/u.test(s) ? s : null;
+}
+
+/** نص حر بإجابة (منتجات، بيع وتوصيل): من 3 إلى 500 حرف وفيه حرف. */
+export function validateAnswerText(raw: unknown): string | null {
+  const s = squeeze(raw);
+  return s.length >= 3 && s.length <= 500 && /\p{L}/u.test(s) ? s : null;
 }
 
 /** ميول التصميم: من 3 إلى 300 حرف وفيها حرف. */
@@ -112,7 +117,7 @@ export function mergeLead(
   const inc = incoming ?? {};
   const has = (v: unknown) => typeof v === "string" && v.trim() !== "";
 
-  const text = (key: "niche" | "storeName" | "styleNotes", check: (raw: unknown) => string | null) => {
+  const text = (key: "niche" | "storeName" | "styleNotes" | "products" | "selling", check: (raw: unknown) => string | null) => {
     if (!has(inc[key])) return;
     const v = check(inc[key]);
     if (v) {
@@ -123,6 +128,8 @@ export function mergeLead(
   text("niche", validateNiche);
   text("storeName", validateStoreName);
   text("styleNotes", validateStyleNotes);
+  text("products", validateAnswerText);
+  text("selling", validateAnswerText);
 
   if (has(inc.email)) {
     const v = validateEmail(inc.email);
@@ -159,22 +166,4 @@ export function leadStatus(lead: Lead, invalid: LeadInvalid = {}): { collected: 
     missing: LEAD_KEYS.filter((k) => !lead[k]),
     invalid: LEAD_KEYS.filter((k) => Boolean(invalid[k]) && !lead[k]),
   };
-}
-
-/** هل تكفي البيانات لإصدار رابط الحجز؟ والناقص من الحقول الإلزامية. */
-export function goldenGate(lead: Lead): { ok: boolean; missing: GoldenRequired[] } {
-  const missing = GOLDEN_REQUIRED.filter((k) => !lead[k]);
-  return { ok: missing.length === 0, missing };
-}
-
-/** التعبئة المسبقة لصفحة الحجز: ما جُمع فقط، بلا حقول فارغة. */
-export function goldenPrefill(lead: Lead): GoldenPrefill {
-  const out: GoldenPrefill = {};
-  if (lead.storeName) out.storeName = lead.storeName;
-  if (lead.niche) out.niche = lead.niche;
-  if (lead.instagram) out.instagram = lead.instagram;
-  if (lead.whatsapp) out.whatsapp = lead.whatsapp;
-  if (lead.email) out.email = lead.email;
-  if (lead.styleNotes) out.styleNotes = lead.styleNotes;
-  return out;
 }
