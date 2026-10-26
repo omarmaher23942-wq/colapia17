@@ -5,6 +5,7 @@ import { requireStore } from "@/lib/tenant";
 import { searchProducts, listVisibleCategories } from "@/server/repos/catalog";
 import { fetchProductsForSource } from "@/blueprint/section-data";
 import { ProductCard, type ProductCardProduct } from "@/components/storefront/ProductCard";
+import { SearchResults } from "@/components/storefront/SearchResults";
 import { OpenVisualSearchButton } from "@/components/storefront/OpenVisualSearchButton";
 import { arCount, NOUN } from "@/lib/format";
 
@@ -35,16 +36,11 @@ export default async function SearchPage({ params, searchParams }: { params: Pro
       {q ? <h1 className="mb-6 font-heading text-xl font-black">{rows.length ? `نتائج «${q}» (${arCount(rows.length, NOUN.product)})` : `لا نتائج لـ «${q}»`}</h1> : <h1 className="mb-6 font-heading text-xl font-black">ابحثوا في المتجر</h1>}
 
       {rows.length ? (
-        <ul className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {rows.map((p) => (
-            <li key={p.id}>
-              <ProductCard product={p as unknown as ProductCardProduct} />
-            </li>
-          ))}
-        </ul>
+        <SearchResults rows={rows as unknown as ProductCardProduct[]} query={q} />
       ) : (
         <div className="space-y-10">
           {q ? <p className="opacity-75">جرّبوا كلمة أقصر أو مختلفة، أو تصفحوا الأقسام والمنتجات الأكثر طلباً أدناه.</p> : null}
+          {q ? <SearchResults rows={[]} query={q} /> : null}
           {cats.length ? (
             <div>
               <h2 className="mb-3 text-sm font-black">الأقسام</h2>

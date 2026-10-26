@@ -14,6 +14,9 @@ import { governorateName } from "@/lib/egypt";
 import { prettyPhone } from "@/lib/phone";
 import { TransferProof } from "@/components/storefront/TransferProof";
 import { OrderActions } from "@/components/storefront/OrderActions";
+import { OrderExtras } from "@/components/storefront/OrderExtras";
+import { deliveryZones } from "@/server/repos/catalog";
+import { addDeliveryDays } from "@/lib/checkout-form";
 import { OrderTimeline } from "@/components/storefront/OrderTimeline";
 import { BrandIcon } from "@/components/storefront/brand-icons";
 import { waLink } from "@/lib/whatsapp";
@@ -87,6 +90,10 @@ export default async function OrderPage({ params, searchParams }: Props) {
   const kinds = returnKindsAllowed(bp.returns);
   const win = returnWindow(o, bp.returns.windowDays);
   const hidePrices = Boolean(o.gift?.hidePrices);
+  // موعد الوصول التقديري من مدة محافظة الطلب في جدول الشحن (لا يُعرض لمغلق أو بلا مدة).
+  const zone = closed || o.status === "delivered" ? null : (await deliveryZones(store.id)).find((z) => z.governorate === o.governorate);
+  const etaFrom = zone ? addDeliveryDays(o.createdAt, Math.max(1, zone.min)).toISOString() : null;
+  const etaTo = zone ? addDeliveryDays(o.createdAt, Math.max(zone.min, zone.max, 1)).toISOString() : null;
 
   return (
     <div className="container-x max-w-2xl py-10 text-center sm:py-12">
@@ -116,6 +123,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
       <div className="surface mt-8 p-5 text-start sm:p-6">
         <h2 className="mb-4 text-lg">حالة الطلب</h2>
         <OrderTimeline status={o.status} history={o.statusHistory} createdAt={o.createdAt} courier={o.courierName} tracking={o.trackingNumber} />
+        <OrderExtras code={o.code} storeName={bp.brand.name || store.name} whatsapp={waHref ? null : bp.channels.whatsappNumber} etaFrom={etaFrom} etaTo={etaTo} tracking={o.trackingNumber} />
         {o.cancelRequestedAt && !closed ? <p className="mt-2 rounded-xl bg-muted p-3 text-sm font-bold">تم إرسال طلب الإلغاء، وسيتواصل معكم المتجر.</p> : null}
       </div>
 

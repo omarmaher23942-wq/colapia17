@@ -28,7 +28,7 @@ export function RecentlyViewed({ currentSlug }: { currentSlug: string }) {
     const key = `clp-recent2:${storeId}`;
     const prev = read(key).filter((x) => x !== currentSlug);
     try {
-      localStorage.setItem(key, JSON.stringify([currentSlug, ...prev].slice(0, MAX_ITEMS)));
+      if (currentSlug) localStorage.setItem(key, JSON.stringify([currentSlug, ...prev].slice(0, MAX_ITEMS)));
     } catch {
       // التخزين معطّل في التصفح الخاص: الميزة اختيارية.
     }

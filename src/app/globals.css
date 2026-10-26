@@ -714,3 +714,23 @@ html[data-sticky-bar="1"] [data-wa-fab] { opacity: 0; pointer-events: none; tran
 
 /* مساحة للشريط السفلي على الموبايل (القيمة 0 حين لا يوجد) */
 .storefront { padding-bottom: var(--clp-bottom-offset, 0px); }
+
+/* ───────── المتجر حسب الجهاز (موبايل صغير/كبير، تابلت، آيباد، لابتوب، مكتب) ───────── */
+/* عناوين الروابط الداخلية (#reviews-title…) لا تختفي تحت الرأس اللاصق. */
+.storefront { scroll-padding-top: 5rem; }
+/* شاشات عريضة: عرض أوسع للمحتوى بدل شريط ضيق وسط مساحة فارغة. */
+@media (min-width: 1536px) { .storefront .container-x { max-width: 90rem; } }
+@media (min-width: 1920px) { .storefront .container-x { max-width: 100rem; } }
+/* موبايل صغير (≤360px): حشو أقل وبطاقات أكثف حتى لا تضيق الأسعار. */
+@media (max-width: 360px) { .storefront .container-x { padding-inline: 0.75rem; } .storefront .s-card { border-radius: calc(var(--radius, 12px) * .85); } }
+/* تابلت/آيباد عمودي (768–1023): تباعد وهدف لمس مريح دون تكبير مفرط. */
+@media (min-width: 768px) and (max-width: 1023px) { .storefront .container-x { padding-inline: 1.5rem; } }
+/* أجهزة اللمس: أهداف ≥44px لعناصر الإدخال، وبلا تأثيرات تحويم لاصقة. */
+@media (pointer: coarse) { .storefront .s-input, .storefront select, .storefront input:not([type="checkbox"]):not([type="radio"]) { min-height: 44px; } }
+@media (hover: none) { .storefront [data-tilt] { transform: none !important; } }
+/* هاتف أفقي: الشريط السفلي والملصقات أقصر حتى لا تغطي المحتوى. */
+@media (orientation: landscape) and (max-height: 480px) { .storefront { --clp-bottom-offset: 0px !important; } .storefront .s-header { position: static; } }
+/* حركة أقل: لا تمرير ناعم ولا حركات إظهار. */
+@media (prefers-reduced-motion: reduce) { .storefront { scroll-behavior: auto; } .storefront .s-stagger > * { animation: none !important; } }
+/* إتاحة: حلقة تركيز واضحة لكل عنصر تفاعلي في المتجر. */
+.storefront :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

@@ -2,7 +2,7 @@
 
 // CollectionBrowser — صفحة منتجات (قسم أو الكل): عدد النتائج، ترتيب، فلاتر في درج، شرائح الأقسام الفرعية، كثافة العرض،
 // و«تحميل المزيد» يضيف إلى القائمة نفسها بدل صفحة جديدة. حالة الفلاتر كلها في الرابط (قابل للمشاركة والرجوع).
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, LayoutGrid, Loader2, SlidersHorizontal, Square, X } from "lucide-react";
@@ -44,6 +44,20 @@ export function CollectionBrowser({
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [dense, setDense] = useState(false);
+  useEffect(() => {
+    try {
+      setDense(localStorage.getItem("clp-dense") === "1");
+    } catch {
+      /* no-op */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem("clp-dense", dense ? "1" : "0");
+    } catch {
+      /* no-op */
+    }
+  }, [dense]);
   const [draft, setDraft] = useState(filters);
   const [attr, setAttr] = useState<Record<string, string[]>>({});
   const [draftAttr, setDraftAttr] = useState<Record<string, string[]>>({});
@@ -82,6 +96,59 @@ export function CollectionBrowser({
       setRows((cur) => [...cur, ...(r.rows as ProductCardProduct[]).filter((n) => !cur.some((c) => c.id === n.id))]);
     });
 
+  // رجوع من صفحة منتج: تُستعاد القائمة بالعدد الذي كان محمّلاً وموضع التمرير (لا بداية القائمة من جديد).
+  const memoKey = `clp-coll:${subdomain}:${basePath}?${query}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    let memo: { n: number; y: number } | null = null;
+    try {
+      memo = JSON.parse(sessionStorage.getItem(memoKey) ?? "null");
+    } catch {
+      memo = null;
+    }
+    if (!memo || !(memo.n > 0)) return;
+    const target = memo;
+    (async () => {
+      let acc = rows;
+      while (acc.length < Math.min(target.n, total, MAX_CLIENT_ROWS)) {
+        const r = await loadMoreCollectionAction({ subdomain, category: categorySlug, query, offset: acc.length });
+        const fresh = (r.rows as ProductCardProduct[]).filter((n) => !acc.some((c) => c.id === n.id));
+        if (!fresh.length) break;
+        acc = [...acc, ...fresh];
+      }
+      if (acc.length > rows.length) setRows(acc);
+      requestAnimationFrame(() => window.scrollTo({ top: target.y }));
+    })().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const save = () => {
+      try {
+        sessionStorage.setItem(memoKey, JSON.stringify({ n: rows.length, y: Math.round(window.scrollY) }));
+      } catch {
+        /* no-op */
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
+  }, [memoKey, rows.length]);
+
+  // تحميل تلقائي عند الاقتراب من نهاية القائمة (الزر يبقى بديلاً للوحة المفاتيح ولمن عطّل الحركة).
+  const sentinel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || rows.length >= total || attrCount || pending || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((e) => e[0]?.isIntersecting && more(), { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows.length, total, attrCount, pending]);
+
   const chips: { key: string; label: string; clear: CollectionFilters }[] = [];
   if (filters.min !== null || filters.max !== null) chips.push({ key: "price", label: `السعر ${filters.min !== null ? Math.round(filters.min / 100) : 0} - ${filters.max !== null ? Math.round(filters.max / 100) : "∞"}`, clear: { ...filters, min: null, max: null } });
   for (const s of filters.sizes) chips.push({ key: `s-${s}`, label: `المقاس ${s}`, clear: { ...filters, sizes: filters.sizes.filter((x) => x !== s) } });
@@ -107,7 +174,7 @@ export function CollectionBrowser({
         </nav>
       ) : null}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="sticky top-0 z-30 -mx-4 mb-3 flex flex-wrap items-center gap-2 px-4 py-2" style={{ background: "color-mix(in srgb, var(--background) 94%, transparent)", backdropFilter: "blur(8px)" }}>
         {true ? (
           <button
             type="button"
@@ -177,7 +244,7 @@ export function CollectionBrowser({
       ) : null}
 
       {visible.length ? (
-        <ul className={cn("s-stagger grid gap-3 sm:gap-4", dense ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 lg:grid-cols-4")}>
+        <ul className={cn("s-stagger grid gap-3 sm:gap-4", dense ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5")}>
           {visible.map((p, i) => (
             <li key={p.id}>
               <ProductCard product={p} priority={i < 4} />
@@ -196,7 +263,7 @@ export function CollectionBrowser({
       )}
 
       {rows.length < total && !attrCount ? (
-        <div className="mt-8 text-center">
+        <div ref={sentinel} className="mt-8 text-center">
           <p className="mb-3 text-sm opacity-70">
             تم عرض {rows.length} من {total}
           </p>

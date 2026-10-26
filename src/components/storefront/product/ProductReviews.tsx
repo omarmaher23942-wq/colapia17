@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { arCount, NOUN } from "@/lib/format";
 import { moreReviewsAction } from "@/server/actions/product-page";
 import { ImageLightbox } from "./ImageLightbox";
+import { arrangeReviews, recommendPercent, reviewPhotos, type ReviewFilter, type ReviewSort } from "@/lib/shopper-ui";
 
 export type ReviewRow = {
   id: string;
@@ -26,9 +27,32 @@ export function ProductReviews({ subdomain, productId, initial, stats }: { subdo
   const [rows, setRows] = useState(initial);
   const [done, setDone] = useState(initial.length >= stats.count);
   const [pending, start] = useTransition();
+  const [sort, setSort] = useState<ReviewSort>("newest");
+  const [filter, setFilter] = useState<ReviewFilter>({ stars: null, withPhotos: false });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [box, setBox] = useState<{ urls: string[]; i: number } | null>(null);
   if (!stats.count) return null;
 
+  // الفرز والتصفية يحتاجان كل التقييمات: تُجلب البقية مرة واحدة عند أول استخدام (حتى 200).
+  const loadAll = () =>
+    start(async () => {
+      let acc = rows;
+      while (acc.length < stats.count && acc.length < 200) {
+        const next = await moreReviewsAction({ subdomain, productId, offset: acc.length });
+        const fresh = next.filter((n) => !acc.some((x) => x.id === n.id));
+        if (!fresh.length) break;
+        acc = [...acc, ...fresh];
+      }
+      setRows(acc);
+      setDone(true);
+    });
+  const change = (fn: () => void) => {
+    fn();
+    if (!done) loadAll();
+  };
+  const shown = arrangeReviews(rows, sort, filter);
+  const photos = reviewPhotos(rows);
+  const rec = recommendPercent(stats.dist);
   const max = Math.max(1, ...[5, 4, 3, 2, 1].map((n) => stats.dist[n] ?? 0));
   const more = () =>
     start(async () => {
@@ -50,6 +74,7 @@ export function ProductReviews({ subdomain, productId, initial, stats }: { subdo
           </div>
           <Stars value={stats.avg} />
           <p className="text-xs opacity-70">بناءً على {arCount(stats.count, NOUN.review)}</p>
+          {rec !== null ? <p className="text-[13px] font-bold">{rec}% من المشترين يوصون بهذا المنتج</p> : null}
           <ul className="space-y-1.5">
             {[5, 4, 3, 2, 1].map((n) => (
               <li key={n} className="flex items-center gap-2 text-xs">
@@ -65,8 +90,42 @@ export function ProductReviews({ subdomain, productId, initial, stats }: { subdo
         </div>
 
         <div>
+          {photos.length ? (
+            <div className="mb-4">
+              <p className="mb-2 text-[13px] font-bold">صور من العملاء</p>
+              <div className="hide-scrollbar flex gap-2 overflow-x-auto">
+                {photos.map((u, k) => (
+                  <button key={u} type="button" onClick={() => setBox({ urls: photos, i: k })} className="shrink-0 overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2" aria-label={`فتح صورة العميل ${k + 1}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={u} alt="" loading="lazy" className="size-20 object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {stats.count > 3 ? (
+            <div className="mb-4 flex flex-wrap items-center gap-2" role="group" aria-label="فرز التقييمات وتصفيتها">
+              <select value={sort} onChange={(e) => change(() => setSort(e.target.value as ReviewSort))} aria-label="ترتيب التقييمات" className="s-input h-10 rounded-xl border bg-transparent px-3 text-[13px] font-bold" style={{ borderColor: "var(--border)" }}>
+                <option value="newest">الأحدث</option>
+                <option value="highest">الأعلى تقييماً</option>
+                <option value="lowest">الأدنى تقييماً</option>
+              </select>
+              {[5, 4, 3, 2, 1].filter((n) => (stats.dist[n] ?? 0) > 0).map((n) => (
+                <button key={n} type="button" aria-pressed={filter.stars === n} onClick={() => change(() => setFilter((f) => ({ ...f, stars: f.stars === n ? null : n })))} className={cn("inline-flex h-10 items-center gap-1 rounded-full border px-3 text-[13px] font-bold", filter.stars === n && "border-[var(--primary)] text-[var(--primary)]")} style={filter.stars === n ? undefined : { borderColor: "var(--border)" }}>
+                  {n} <Star className="size-3 fill-current" aria-hidden="true" />
+                </button>
+              ))}
+              {photos.length ? (
+                <button type="button" aria-pressed={filter.withPhotos} onClick={() => change(() => setFilter((f) => ({ ...f, withPhotos: !f.withPhotos })))} className={cn("inline-flex h-10 items-center rounded-full border px-3 text-[13px] font-bold", filter.withPhotos && "border-[var(--primary)] text-[var(--primary)]")} style={filter.withPhotos ? undefined : { borderColor: "var(--border)" }}>
+                  مع صور
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {pending && !done ? <p className="mb-3 text-[13px] opacity-70" aria-live="polite">جارٍ تحميل التقييمات…</p> : null}
+          {!shown.length ? <p className="rounded-2xl border p-5 text-sm opacity-75" style={{ borderColor: "var(--border)" }}>لا تقييمات بهذه التصفية.</p> : null}
           <ul className="space-y-4">
-            {rows.map((r) => (
+            {shown.map((r) => (
               <li key={r.id} className="rounded-2xl border p-5" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5">
@@ -87,7 +146,16 @@ export function ProductReviews({ subdomain, productId, initial, stats }: { subdo
                     <Stars value={r.rating} small />
                   </div>
                 </div>
-                {r.body ? <p className="mt-3 text-sm leading-7 opacity-85">{r.body}</p> : null}
+                {r.body ? (
+                  <div className="mt-3">
+                    <p className={cn("text-sm leading-7 opacity-85", !expanded.has(r.id) && "line-clamp-4")}>{r.body}</p>
+                    {r.body.length > 220 && !expanded.has(r.id) ? (
+                      <button type="button" onClick={() => setExpanded((e) => new Set(e).add(r.id))} className="mt-1 text-[13px] font-bold underline underline-offset-4">
+                        اقرأ المزيد
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
                 {r.imageUrls?.length ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {r.imageUrls.slice(0, 4).map((u, k) => (
@@ -101,7 +169,7 @@ export function ProductReviews({ subdomain, productId, initial, stats }: { subdo
               </li>
             ))}
           </ul>
-          {!done ? (
+          {!done && sort === "newest" && !filter.stars && !filter.withPhotos ? (
             <button type="button" onClick={more} disabled={pending} className="s-btn-ghost mt-5 h-11 w-full sm:w-auto sm:px-8">
               {pending ? <Loader2 className="size-4 animate-spin" aria-hidden="true" /> : null}
               <span>المزيد من التقييمات</span>

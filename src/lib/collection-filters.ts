@@ -7,6 +7,8 @@ export const SORTS = [
   ["newest", "الأحدث"],
   ["price_asc", "السعر: من الأقل"],
   ["price_desc", "السعر: من الأعلى"],
+  ["rating", "الأعلى تقييماً"],
+  ["discount", "الأكبر خصماً"],
 ] as const;
 export type SortKey = (typeof SORTS)[number][0];
 

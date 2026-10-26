@@ -14,6 +14,9 @@ import { RecentlyViewed } from "@/components/storefront/RecentlyViewed";
 import { ProductReviews } from "@/components/storefront/product/ProductReviews";
 import { ProductQuestions } from "@/components/storefront/product/ProductQuestions";
 import { ProductViewTracker } from "@/components/storefront/product/ProductViewTracker";
+import { FreeShippingHint, PdpAnchors } from "@/components/storefront/product/PdpExtras";
+import { ProductInfoPanel } from "@/components/storefront/product/ProductInfoPanel";
+import { ReadMore } from "@/components/storefront/product/ReadMore";
 import { ShareButton } from "@/components/storefront/product/ShareButton";
 import { ProductCompare, type CompareItem } from "@/components/storefront/product/ProductCompare";
 import { productSpecs } from "@/components/storefront/product/specs";
@@ -111,10 +114,10 @@ export default async function ProductPage({ params }: P) {
           </span>
         ))}
       </nav>
-      <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "lg:grid-cols-2")}>
+      <div className={cn("grid gap-8 md:gap-10", bp.productPage.layout !== "gallery_stacked" && "md:grid-cols-2")}>
         
         {/* المعرض لاصق على الحاسوب والمعلومات تتمرر بجانبه (تخطيط تحريري)؛ على الجوال المعرض أولاً. */}
-        <div className={cn("space-y-4", bp.productPage.layout !== "gallery_stacked" && "lg:sticky lg:top-24 lg:self-start")}>
+        <div className={cn("space-y-4", bp.productPage.layout !== "gallery_stacked" && "md:sticky md:top-24 md:self-start")}>
           <ProductGallery images={p.images} videos={p.videos} name={p.name} immersive={bp.productPage.layout === "immersive"} />
         </div>
 
@@ -148,16 +151,31 @@ export default async function ProductPage({ params }: P) {
             </div>
           )}
 
+          {p.orderCount >= 5 ? <p className="mt-2 text-xs font-bold opacity-75">طُلب ضمن {arCount(p.orderCount, NOUN.order)} حتى الآن</p> : null}
+
           {p.shortDescription && (
             <p className="mt-3 text-sm leading-relaxed opacity-80">{p.shortDescription}</p>
           )}
 
           <ProductPurchase product={p} zones={zones} />
+          <FreeShippingHint pricePiasters={p.pricePiasters} />
+
+          <PdpAnchors
+            items={[
+              ...(p.description ? [{ id: "desc-title", label: "الوصف" }] : []),
+              ...(bp.productPage.showAttributesTable !== false && specs.length ? [{ id: "specs-title", label: "المواصفات" }] : []),
+              ...(bp.productPage.showReviews && stats.count ? [{ id: "reviews-title", label: "التقييمات" }] : []),
+              ...(answered.length ? [{ id: "qa-title", label: "الأسئلة" }] : []),
+            ]}
+          />
+          <ProductInfoPanel />
 
           {p.description && (
             <div className="mt-8 border-t pt-6" style={{ borderColor: "var(--border)" }}>
-              <h2 className="mb-3 font-heading text-lg font-black">الوصف</h2>
-              <Markdown text={p.description} className="prose-ar text-sm opacity-85" />
+              <h2 id="desc-title" className="mb-3 font-heading text-lg font-black">الوصف</h2>
+              <ReadMore>
+                <Markdown text={p.description} className="prose-ar text-sm opacity-85" />
+              </ReadMore>
             </div>
           )}
 

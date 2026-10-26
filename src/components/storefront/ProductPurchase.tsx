@@ -43,6 +43,17 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
   const [added, setAdded] = useState(false);
   const [missing, setMissing] = useState(false);
 
+  // خيار له قيمة واحدة متاحة فقط (مقاس وحيد مثلاً) يُختار تلقائياً: خطوة أقل قبل الشراء.
+  useEffect(() => {
+    setSel((cur) =>
+      cur.map((v, i) => {
+        if (v) return v;
+        const vals = [...new Set(p.variants.filter((x) => x.isAvailable).map((x) => x.optionValues[i]).filter((x): x is string => Boolean(x)))];
+        return vals.length === 1 ? vals[0]! : v;
+      })
+    );
+  }, [p.variants]);
+
   const variant = useMemo(() => p.variants.find((v) => v.optionValues.every((val, i) => val === sel[i])), [p.variants, sel]);
   const needsVariant = p.optionNames.length > 0 && !variant;
   const basePrice = variant?.pricePiasters ?? p.pricePiasters;
@@ -277,9 +288,18 @@ export function ProductPurchase({ product: p, zones = [] }: { product: PurchaseP
           <button type="button" className="grid size-11 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(Math.max(1, qty - 1))} aria-label="تقليل الكمية" disabled={qty <= 1}>
             <Minus className="size-3.5" aria-hidden="true" />
           </button>
-          <span className="w-12 text-center text-sm font-black tabular-nums" aria-live="polite">
-            {qty}
-          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="الكمية"
+            value={qty}
+            onChange={(e) => {
+              const n = Number(e.target.value.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/\D/g, ""));
+              if (Number.isFinite(n) && n > 0) setQty(Math.min(n, maxQty));
+            }}
+            onFocus={(e) => e.currentTarget.select()}
+            className="h-11 w-12 bg-transparent text-center text-sm font-black tabular-nums outline-none focus-visible:ring-2"
+          />
           <button type="button" className="grid size-11 place-items-center transition-colors hover:bg-[var(--muted)] disabled:opacity-40" onClick={() => setQty(Math.min(qty + 1, maxQty))} aria-label="زيادة الكمية" disabled={qty >= maxQty}>
             <Plus className="size-3.5" aria-hidden="true" />
           </button>

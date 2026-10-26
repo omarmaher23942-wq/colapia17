@@ -47,6 +47,9 @@ type CartState = {
 
   add: (item: Omit<CartItem, "qty">, qty?: number) => void;
   remove: (key: string) => void;
+  /** يعيد سطراً حُذف (للتراجع) بلا تتبّع إضافة ولا فتح الدرج، ويعيد التفريغ كاملاً بـ restoreAll. */
+  restore: (item: CartItem) => void;
+  restoreAll: (items: CartItem[]) => void;
   setQty: (key: string, qty: number) => void;
   clear: () => void;
   /** يطابق السلة مع ما قاله الخادم: سعر جديد أو كمية متاحة أقل، أو إزالة سطر لم يعد متاحاً. */
@@ -150,6 +153,15 @@ function createCartStore(storeId: string) {
 
         remove: (k) =>
           set((s) => ({ items: s.items.filter((i) => itemKey(i) !== k) })),
+
+        restore: (item) =>
+          set((s) => {
+            const k = itemKey(item);
+            if (s.items.some((i) => itemKey(i) === k) || s.items.length >= MAX_LINES) return s;
+            const qty = clampQty(item.qty, lineCap(item));
+            return qty > 0 ? { items: [...s.items, { ...item, qty }] } : s;
+          }),
+        restoreAll: (items) => set((s) => (s.items.length ? s : { items: sanitizeItems(items) })),
 
         setQty: (k, qty) =>
           set((s) => ({

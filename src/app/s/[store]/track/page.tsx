@@ -7,6 +7,8 @@ import { requireStore } from "@/lib/tenant";
 import { getOrderByCode, getOrderByCodeAndPhone, listDeviceOrders } from "@/server/repos/orders";
 import { currentDeviceId, hasOrderAccess } from "@/lib/order-access";
 import { formatEgp } from "@/lib/money";
+import { OrderExtras } from "@/components/storefront/OrderExtras";
+import { getBlueprint } from "@/lib/tenant";
 import { OrderTimeline } from "@/components/storefront/OrderTimeline";
 import { AutoRefresh } from "@/components/storefront/AutoRefresh";
 import { allow, clientIp } from "@/lib/ratelimit";
@@ -47,6 +49,7 @@ export default async function TrackPage({ params, searchParams }: Props) {
   let missing = one(sp.e) === "notfound";
   let o: Order = null;
 
+  const bp = await getBlueprint(store.id);
   const device = await currentDeviceId();
   const mine = device ? await listDeviceOrders(store.id, device) : [];
 
@@ -129,6 +132,8 @@ export default async function TrackPage({ params, searchParams }: Props) {
           <div className="mt-5">
             <OrderTimeline status={o.status} history={o.statusHistory} createdAt={o.createdAt} courier={o.courierName} tracking={o.trackingNumber} />
           </div>
+
+          <OrderExtras code={o.code} storeName={bp.brand.name || store.name} whatsapp={bp.channels.whatsappNumber} tracking={o.trackingNumber} />
 
           <ul className="mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="منتجات الطلب">
             {o.items.map((it) => (
