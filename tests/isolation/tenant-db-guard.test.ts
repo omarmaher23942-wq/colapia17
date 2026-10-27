@@ -17,6 +17,7 @@ const TENANT_QUERY = new RegExp(
 );
 
 const REVIEWED_MIXED = new Set([
+  "src/agency/provision.ts", // تجهيز متجر من طلب: صف المتجر في قاعدة المنصة ثم الكتالوج عبر getTenantDb (مراجَع)
   // التسويق: الـ Blueprint من قاعدة المنصة، والتحقق من وجهة الحملة وكودها من بيانات المتجر.
   "src/server/actions/marketing.ts",
   "src/server/actions/size-guide.ts", // الـ Blueprint (تحكم) + التحقق من أقسام المتجر (بيانات)
