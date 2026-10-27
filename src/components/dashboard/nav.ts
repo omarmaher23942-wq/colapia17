@@ -1,7 +1,10 @@
 // nav.ts — خريطة صفحات لوحة التاجر: مصدر واحد للقائمة الجانبية ولوحة الأوامر (Ctrl/⌘+K) والشريط السفلي.
 // البنية (V3): اليوم، الطلبات، المنتجات، العملاء، التسويق، المتجر وشكله، الإعدادات والاشتراك. كل رابط له مجال صلاحية في lib/store-perms.ts.
 import {
+  Archive,
   BarChart3,
+  Boxes,
+  TrendingUp,
   CircleHelp,
   ClipboardList,
   CreditCard,
@@ -56,7 +59,9 @@ const ALL: NavSection[] = [
     title: "اليوم",
     items: [
       { label: "اليوم", href: "/dashboard", icon: LayoutDashboard, exact: true, hint: "مهام اليوم وأداء المتجر وهدف الشهر", keywords: ["home", "الرئيسية", "نظرة عامة", "ملخص", "هدف", "اليوم"] },
-      { label: "التحليلات", href: "/dashboard/analytics", icon: BarChart3, hint: "المبيعات والزيارات ومراحل الشراء", keywords: ["analytics", "احصائيات", "تقارير"] },
+      { label: "التحليلات", href: "/dashboard/analytics", icon: BarChart3, notUnder: ["/dashboard/analytics/products", "/dashboard/analytics/inventory"], hint: "المبيعات والزيارات ومراحل الشراء", keywords: ["analytics", "احصائيات", "تقارير"] },
+      { label: "تقرير المنتجات", href: "/dashboard/analytics/products", icon: TrendingUp, hint: "ربحية كل منتج والمبيعات بحسب القسم والقناة والعملاء العائدون", keywords: ["ربح", "هامش", "profit", "تقرير", "قنوات", "اقسام"] },
+      { label: "تقرير المخزون", href: "/dashboard/analytics/inventory", icon: Boxes, hint: "قيمة المخزون وأيام التغطية والمنتجات الراكدة", keywords: ["مخزون", "راكد", "inventory", "قيمة", "تغطية"] },
       { label: "رابط متجري", href: "/dashboard/store", icon: Store, hint: "رابط المتجر وحالته ورمز QR وخطوات وضعه في البايو ورسائل جاهزة للعملاء", keywords: ["store", "رابط", "qr", "بايو", "bio", "رسائل", "متجري"] },
     ],
   },
@@ -107,6 +112,7 @@ const ALL: NavSection[] = [
     title: "الإعدادات والاشتراك",
     items: [
       { label: "إعدادات المتجر", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
+      { label: "النسخ الاحتياطي والتصدير", href: "/dashboard/settings/data", icon: Archive, hint: "نسخة كاملة من بيانات المتجر وتصدير Excel", keywords: ["backup", "نسخة", "احتياطي", "تصدير", "export", "بيانات"] },
       { label: "أسعار الشحن", href: "/dashboard/shipping", icon: Rocket, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
       { label: "نقل البيانات", href: "/dashboard/transfer", icon: DatabaseZap, hint: "نقل بيانات المتجر إلى قاعدة Neon الخاصة بكم", keywords: ["transfer", "نقل", "قاعدة", "بيانات", "neon"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "دعوة موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات"] },
