@@ -197,6 +197,11 @@ describe("حالة المحادثة المُلحقة بالتعليمات", () =
     expect(b).not.toContain("لم يُغطَّ بعد");
     expect(b).not.toContain("والباقي فعلاً");
   });
+  it("أصل المحادثة: فريقنا بدأ برسالة تواصل، أو المحاور جاء بنفسه، أو غير معروف", () => {
+    expect(stateBlock({ ...base, origin: "us" })).toContain("فريقنا هو من بدأ");
+    expect(stateBlock({ ...base, origin: "them" })).toContain("بدأ المحادثة بنفسه");
+    expect(stateBlock(base)).toContain("يصلح في الحالتين");
+  });
   it("العودة بعد انقطاع تُذكر بالساعات أو الأيام، والقصير لا", () => {
     expect(stateBlock({ ...base, idleHours: 30 })).toContain("نحو 30 ساعة");
     expect(stateBlock({ ...base, idleHours: 72 })).toContain("نحو 3 أيام");

@@ -214,8 +214,11 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     const declinedOf = (t: CloserTurn): Area[] => [...new Set([...declined0, ...parseDeclined(t.declined)])];
     const actionCtx = (m: { lead: Lead }, t: CloserTurn): ActionCtx => ({ lead: m.lead, declined: declinedOf(t), otherService, alreadyRequested: requested });
 
+    const firstUser = rows.findIndex((r) => r.role === "user");
+    const origin = rows.length && rows.length < HISTORY_LIMIT ? (firstUser === 0 ? "them" : firstUser > 0 ? "us" : undefined) : undefined;
     const system = await systemFor(facts, {
-      replies: assistantTexts.length,
+      replies: rows.filter((r) => r.role === "assistant").length,
+      origin,
       channel,
       lead: lead0,
       invalid: mem.leadInvalid ?? {},
