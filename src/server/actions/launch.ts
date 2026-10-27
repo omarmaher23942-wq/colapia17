@@ -123,3 +123,19 @@ export async function resumeAllAgentAction(): Promise<{ ok: true; count: number 
     .returning({ id: conversations.id });
   return { ok: true, count: rows.length };
 }
+
+/**
+ * إعادة زرع متجر العرض demo.colapia.com بآخر بيانات الكتالوج (31 منتجاً بصور موثقة). يحذف متجر العرض وحده ويعيد بناءه
+ * (scripts/demo/seed-core.ts). للمالك فقط. زمن التنفيذ بضع ثوانٍ.
+ */
+export async function reseedDemoAction(): Promise<{ ok: true; summary: string } | { ok: false; error: string }> {
+  await requirePlatformCap("settings");
+  try {
+    const { seedDemo } = await import("../../../scripts/demo/seed-core");
+    const { DEMO_DEFAULT_EMAIL } = await import("../../../scripts/demo/catalog");
+    const r = await seedDemo(process.env.DEMO_MERCHANT_EMAIL?.trim().toLowerCase() || DEMO_DEFAULT_EMAIL);
+    return { ok: true, summary: `${r.products} منتجاً، ${r.variants} تركيبة، ${r.reviews} تقييماً، ${r.questions} سؤالاً` };
+  } catch (e) {
+    return { ok: false, error: String((e as Error)?.message ?? e).slice(0, 300) };
+  }
+}

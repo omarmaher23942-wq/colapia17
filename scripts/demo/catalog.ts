@@ -8,6 +8,7 @@
 // الصدق: كل ادعاء في الواجهة مشتق من سياسات المتجر نفسها (blueprint/facts)، والتقييمات موسومة توضيحية بلا شارة «موثّق»،
 // وشريط الإعلانات وصفحة «عن المتجر» وصفحتا الدفع والطلب تقول إنه متجر عرض لا يشحن ولا يطلب دفعاً.
 import { readFileSync } from "node:fs";
+import fashionJson from "./data/fashion.json";
 import { join } from "node:path";
 import { blueprintSchema, type Section, type StoreBlueprint } from "../../src/blueprint/schema";
 import { defaultBlueprint } from "../../src/blueprint/defaults";
@@ -56,7 +57,9 @@ export type DemoProduct = {
   options: DemoOption[]; stock: number; featured: boolean; isNew: boolean; images: string[]; alt: string[];
 };
 
-export function loadDemoProducts(dir = DATA_DIR): DemoProduct[] {
+export function loadDemoProducts(dir?: string): DemoProduct[] {
+  // بلا مجلد مخصص: البيانات مضمَّنة وقت البناء (تعمل داخل العامل بلا قرص). مع مجلد: قراءة من القرص (اختبارات).
+  if (!dir) return fashionJson as unknown as DemoProduct[];
   return JSON.parse(readFileSync(join(dir, "fashion.json"), "utf8")) as DemoProduct[];
 }
 
