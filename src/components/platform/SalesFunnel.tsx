@@ -32,7 +32,7 @@ export function SalesFunnel({ counts, range, golden }: { counts: FunnelCounts; r
       <Steps steps={main} />
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Stat label="إيراد الباقات" value={formatEgp(counts.revenue)} note={counts.renewals ? `${n(counts.renewals)} تجديد أيضاً` : "بلا تجديدات في الفترة"} />
+        <Stat label="إيراد المشاريع" value={formatEgp(counts.revenue)} note={counts.renewals ? `${n(counts.renewals)} تعديل مدفوع أيضاً` : "بلا تجديدات في الفترة"} />
         <Stat label="إكمال الإعداد" value={setupRate === null ? "—" : `${setupRate}%`} note={counts.created ? `${n(counts.setupDone)} من ${n(counts.created)} متجراً أنشأه الوكيل في الفترة` : "لم يُنشأ متجر في الفترة"} />
         <Link href="/admin/pricing" className="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4 transition hover:bg-amber-400/10">
           <p className="flex items-center gap-1.5 text-xs font-bold text-amber-200">

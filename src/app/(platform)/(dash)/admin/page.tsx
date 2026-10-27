@@ -5,7 +5,7 @@ import { sql, gte, eq, and, inArray } from "drizzle-orm";
 import { MessagesSquare, Wallet, Store, TrendingUp, Flame, Mail } from "lucide-react";
 import { db } from "@/db/client";
 import { groupStoresByTenantDb } from "@/db/tenant";
-import { stores, conversations, platformPayments, orders, merchants } from "@/db/schema";
+import { stores, conversations, platformPayments, orders, merchants, storeRequests, editRequests } from "@/db/schema";
 import { formatEgp } from "@/lib/money";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
 import { BroadcastEmailForm } from "@/components/platform/BroadcastEmailForm";
@@ -60,11 +60,19 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
     .where(eq(stores.status, "setup"))
     .catch(() => [{ open: 0, stale: 0 }]);
 
-  // اشتراكات تنتهي خلال 30 يوماً (المتاجر المفعّلة فقط).
-  const [renewals] = await db
+  // ما ينتظر عملك الآن: طلبات البناء (حسب حالة الإنتاج) والتعديلات المفتوحة.
+  const [work] = await db
+    .select({
+      toBuild: sql<number>`count(*) filter (where ${storeRequests.production} in ('new','assigned','building'))`.mapWith(Number),
+      inReview: sql<number>`count(*) filter (where ${storeRequests.production} in ('review','ready'))`.mapWith(Number),
+    })
+    .from(storeRequests)
+    .where(eq(storeRequests.status, "submitted"))
+    .catch(() => [{ toBuild: 0, inReview: 0 }]);
+  const [edits] = await db
     .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(stores)
-    .where(and(eq(stores.status, "active"), gte(stores.hostingExpiresAt, new Date()), sql`${stores.hostingExpiresAt} < now() + interval '30 days'`))
+    .from(editRequests)
+    .where(eq(editRequests.status, "new"))
     .catch(() => [{ n: 0 }]);
 
   const countFor = (st: string) => byStatus.find((x) => x.status === st)?.c ?? 0;
@@ -102,16 +110,16 @@ export default async function AdminCommandCenter({ searchParams }: { searchParam
       {/* 4 KPIs */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <KpiCard href="/admin/payments" label="إيرادات المنصة (30 يوماً)" value={formatEgp(rev?.egp ?? 0)} note={`${rev?.pending ?? 0} تحويل معلق`} tone="emerald" icon={Wallet} />
-        <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} تجربة · ${inPipeline} قيد الإعداد`} tone="blue" icon={Store} />
+        <KpiCard href="/admin/stores" label="المتاجر النشطة" value={String(countFor("active"))} note={`${countFor("trial")} معاينة جارية · ${inPipeline} قيد الإعداد`} tone="blue" icon={Store} />
         <KpiCard href="/admin/conversations" label="المحادثات والليدز" value={String(conv?.total ?? 0)} note={`${conv?.hot ?? 0} تاجر مهتم جداً`} noteIcon={Flame} tone="violet" icon={MessagesSquare} />
         <KpiCard label="GMV (مبيعات التجار)" value={formatEgp(gmv?.v ?? 0)} note={`${gmv?.n ?? 0} طلب تم تنفيذه`} tone="emerald" icon={TrendingUp} />
       </div>
 
-      {/* مسار المتجر من المحادثة إلى الاشتراك */}
+      {/* ما ينتظر عملك: بناء، مراجعة، تعديلات، مقاعد */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KpiCard href="/admin/stores" label="قيد الإعداد" value={String(inPipeline)} note={setups && setups.stale > 0 ? `${setups.stale} تجاوزت 3 أيام` : "عند أصحابها"} tone="blue" icon={Store} />
-        <KpiCard href="/admin/stores" label="في التجربة" value={String(countFor("trial"))} note={`${countFor("frozen")} متوقفة بانتظار الدفع`} tone="violet" icon={Store} />
-        <KpiCard href="/admin/stores" label="تجديدات خلال 30 يوماً" value={String(renewals?.n ?? 0)} note="اشتراكات تنتهي قريباً" tone="emerald" icon={Wallet} />
+        <KpiCard href="/admin/requests" label="طلبات بناء بانتظار البناء" value={String(work?.toBuild ?? 0)} note="جديد أو مُسند أو قيد البناء" tone="blue" icon={Store} />
+        <KpiCard href="/admin/requests" label="جاهزة للمراجعة أو التسليم" value={String(work?.inReview ?? 0)} note="بعد مراجعتها ترسل رابط الإعداد" tone="violet" icon={Store} />
+        <KpiCard href="/admin/edits" label="طلبات تعديل مفتوحة" value={String(edits?.n ?? 0)} note="من بوابة العملاء" tone="emerald" icon={Wallet} />
         <KpiCard href="/admin/pricing" label="مقاعد الدائرة الذهبية" value={`${golden.confirmed + golden.underReview}/${golden.seats}`} note={golden.enabled ? "العرض مفعّل" : "العرض متوقف"} tone="violet" icon={Flame} />
       </div>
 
