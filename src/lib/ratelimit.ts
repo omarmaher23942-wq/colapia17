@@ -30,6 +30,8 @@ export const limits = {
   search: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60, "1 m"), prefix: "rl:search" }),
   /** ربط النطاق الخاص وفحصه: 6 كل 10 دقائق لكل متجر. */
   domain: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(6, "10 m"), prefix: "rl:own" }),
+  /** تقارير أخطاء المتصفح وقياسات الأداء: 30 كل 10 دقائق لكل عنوان. */
+  report: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "10 m"), prefix: "rl:report" }),
   // إعادة تصميم المتجر بالذكاء الاصطناعي: 6 مرات في اليوم لكل متجر.
   redesign: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(6, "1 d"), prefix: "rl:redesign" }),
 };
