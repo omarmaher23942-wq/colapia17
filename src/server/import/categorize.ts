@@ -6,7 +6,7 @@ import { z } from "zod";
 import { aiObject } from "@/ai/providers";
 import { mergeAiAssignment, MAX_CATEGORIES, planCategories, type CategoryItem } from "@/lib/category-merge";
 import { NICHE_LABEL, type Niche } from "@/lib/niche-attributes";
-import { checkAiQuota, recordAi } from "@/server/usage";
+import { checkAiQuota, recordAi } from "@/server/ai-guard";
 
 export type CategorizeInput = { id: string; name: string; category: string };
 export type CategorizeResult = { assign: Record<string, string>; categories: string[]; usedAi: boolean };
