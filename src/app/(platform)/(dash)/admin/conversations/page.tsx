@@ -11,6 +11,10 @@ import { OTHER_SERVICE_FLAG, isOtherService } from "@/agent/other-service";
 import { BUILD_REQUEST_FLAG } from "@/agent/build-request";
 import { ConversationView } from "@/components/platform/ConversationView";
 import { AutoRefresh } from "@/components/platform/AutoRefresh";
+import { CONV_FILTERS, CONV_FILTER_LABEL, countFilters, isConvFilter, likeEscape, matchesFilter, followUpAt, assigneeOf, type ConvFilter } from "@/agency/conv-filters";
+import { parseReplies, SAVED_REPLIES_KEY } from "@/agency/saved-replies";
+import { getFlag } from "@/lib/flags";
+import { shortAgo } from "@/lib/locale";
 import { requirePlatformPage } from "@/server/platform-guard";
 
 export const dynamic = "force-dynamic";
@@ -51,19 +55,29 @@ function attributionText(memory: unknown): string | null {
   return [a.adTitle, a.adId && `إعلان ${a.adId}`, a.source, a.type, a.ref].filter(Boolean).join(" · ") || null;
 }
 
-export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ id?: string; stage?: string; q?: string }> }) {
-  await requirePlatformPage({ cap: "conversations" });
-  const { id, stage = "", q = "" } = await searchParams;
+export default async function ConversationsPage({ searchParams }: { searchParams: Promise<{ id?: string; stage?: string; q?: string; filter?: string }> }) {
+  const me = await requirePlatformPage({ cap: "conversations" });
+  const { id, stage = "", q = "", filter: rawFilter } = await searchParams;
+  const filter: ConvFilter = isConvFilter(rawFilter) ? rawFilter : "all";
+  const now = Date.now();
+  const needle = q.trim().slice(0, 80);
+  const like = `%${likeEscape(needle)}%`;
+  // البحث: الاسم، وكل ما جمعه الوكيل (البريد، واتساب، إنستجرام، اسم المتجر)، والمتجر المرتبط، ونص الرسائل.
+  const searchSql = needle
+    ? sql`(${conversations.profileName} ilike ${like} or ${conversations.memory}::text ilike ${like} or ${stores.name} ilike ${like} or exists (select 1 from ${messages} m where m.conversation_id = ${conversations.id} and m.text ilike ${like}))`
+    : undefined;
 
   const list = await db
     .select({ c: conversations, storeName: stores.name, storeStatus: stores.status })
     .from(conversations)
     .leftJoin(stores, eq(stores.id, conversations.storeId))
-    .where(stage ? (flagFilter(stage) ?? eq(conversations.stage, stage as any)) : undefined)
+    .where(and(stage ? (flagFilter(stage) ?? eq(conversations.stage, stage as any)) : undefined, searchSql))
     .orderBy(desc(conversations.updatedAt))
-    .limit(150);
+    .limit(400);
 
-  const filtered = q ? list.filter((x) => (x.c.profileName ?? "").includes(q) || (x.storeName ?? "").includes(q)) : list;
+  const ctx = { now, me: me.id };
+  const counts = countFilters(list.map((x) => x.c), ctx);
+  const filtered = filter === "all" ? list : list.filter((x) => matchesFilter(x.c, filter, ctx));
   const active = id ? filtered.find((x) => x.c.id === id) ?? list.find((x) => x.c.id === id) : filtered[0];
 
   const [msgs, storeRow, stats, waiting] = await Promise.all([
@@ -93,11 +107,8 @@ export default async function ConversationsPage({ searchParams }: { searchParams
     await db.update(conversations).set({ unreadForAdmin: 0 }).where(eq(conversations.id, active.c.id));
   }
 
-  const ago = (d: Date | null) => {
-    if (!d) return "";
-    const m = Math.round((Date.now() - d.getTime()) / 6e4);
-    return m < 60 ? `${m} د` : m < 1440 ? `${Math.round(m / 60)} س` : `${Math.round(m / 1440)} ي`;
-  };
+  const ago = (d: Date | null) => shortAgo(d, now);
+  const replies = parseReplies((await getFlag(SAVED_REPLIES_KEY)).config);
 
   return (
     <div className="flex flex-col h-[calc(100dvh-6rem)] space-y-4" dir="rtl">
@@ -146,8 +157,9 @@ export default async function ConversationsPage({ searchParams }: { searchParams
           <div className="p-3 border-b border-white/10 space-y-3">
             <form className="relative">
               <Search className="absolute end-3 top-1/2 size-4 -translate-y-1/2 text-slate-500" />
-              <input name="q" defaultValue={q} placeholder="بحث بالاسم أو المتجر..." className="w-full rounded-xl border border-white/10 bg-[#07091a] px-3 pe-9 py-2.5 text-xs text-white outline-none focus:border-[#8fa8ff]" />
+              <input name="q" defaultValue={q} placeholder="بحث بالاسم أو البريد أو الرقم أو نص الرسائل..." aria-label="بحث في المحادثات" className="w-full rounded-xl border border-white/10 bg-[#07091a] px-3 pe-9 py-2.5 text-xs text-white outline-none focus:border-[#8fa8ff]" />
               <input type="hidden" name="stage" value={stage} />
+              <input type="hidden" name="filter" value={filter} />
             </form>
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
               {FILTERS.map((s) => (
@@ -156,11 +168,20 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                 </Link>
               ))}
             </div>
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1" role="group" aria-label="تصفية المحادثات">
+              {CONV_FILTERS.map((f) => (
+                <Link key={f} href={`/admin/conversations?filter=${f}&stage=${stage}&q=${encodeURIComponent(q)}`} aria-current={filter === f ? "true" : undefined} className={`flex shrink-0 items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors ${filter === f ? "border-emerald-300/60 bg-emerald-500/15 text-white" : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>
+                  {CONV_FILTER_LABEL[f]}
+                  {f !== "all" && counts[f] > 0 ? <span className="rounded-full bg-white/10 px-1.5 font-mono text-[10px]">{counts[f]}</span> : null}
+                </Link>
+              ))}
+            </div>
+            <a href={`/admin/conversations/export?filter=${filter}&stage=${stage}&q=${encodeURIComponent(q)}`} className="inline-block text-[11px] font-bold text-[#8fa8ff] hover:underline" download>تصدير القائمة (CSV)</a>
           </div>
 
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {filtered.map(({ c, storeName }) => (
-              <Link key={c.id} href={`/admin/conversations?id=${c.id}&stage=${stage}&q=${q}`} className={`block rounded-xl p-3 transition-colors ${active?.c.id === c.id ? "bg-[#6f86ff]/15 border border-[#8fa8ff]/30" : "hover:bg-white/5 border border-transparent"}`}>
+              <Link key={c.id} href={`/admin/conversations?id=${c.id}&stage=${stage}&filter=${filter}&q=${encodeURIComponent(q)}`} className={`block rounded-xl p-3 transition-colors ${active?.c.id === c.id ? "bg-[#6f86ff]/15 border border-[#8fa8ff]/30" : "hover:bg-white/5 border border-transparent"}`}>
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <span className="truncate text-sm font-black text-white flex items-center gap-1.5">
                     {c.botPaused ? <User className="size-3.5 text-amber-400" /> : <Bot className="size-3.5 text-[#8fa8ff]" />}
@@ -222,6 +243,14 @@ export default async function ConversationsPage({ searchParams }: { searchParams
                     }
                   : null,
               speaker: activeMemory.speaker === "owner" || activeMemory.speaker === "moderator" ? activeMemory.speaker : null,
+            }}
+            replies={replies}
+            tools={{
+              id: active.c.id,
+              assigneeName: ((active.c.memory as { assigneeName?: unknown } | null)?.assigneeName as string | undefined) ?? null,
+              mine: assigneeOf(active.c) === me.id,
+              followUpAt: followUpAt(active.c)?.toISOString() ?? null,
+              notes: (((active.c.memory as { notes?: unknown } | null)?.notes as { by: string; at: string; text: string }[] | undefined) ?? []).slice().reverse(),
             }}
             msgs={msgs.map((m) => ({
               id: m.id, role: m.role, text: m.text, atts: m.attachments, at: m.createdAt.toISOString(),

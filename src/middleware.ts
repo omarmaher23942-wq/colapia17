@@ -139,7 +139,7 @@ function previewStore(req: NextRequest): { sub: string | null; response?: NextRe
   return { sub: chosen };
 }
 
-export async function middleware(req: NextRequest) {
+async function route(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
   let sub = extractSubdomain(host);
   const url = req.nextUrl.clone();
@@ -238,6 +238,14 @@ export async function middleware(req: NextRequest) {
 
   url.pathname = `/s/${sub}${pathname === "/" ? "" : pathname}`;
   return NextResponse.rewrite(url, { request: { headers } });
+}
+
+/** يضيف معرّف الطلب إلى الاستجابة ليراه من يبلّغ عن مشكلة (يظهر أيضاً في صفحات الخطأ وسجلات الخادم). */
+export async function middleware(req: NextRequest) {
+  const res = await route(req);
+  const id = res.headers.get(`x-middleware-request-${REQ_ID_HEADER}`);
+  if (id && isWellFormedRequestId(id)) res.headers.set(REQ_ID_HEADER, id);
+  return res;
 }
 
 export const config = {

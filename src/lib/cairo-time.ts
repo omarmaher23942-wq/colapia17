@@ -1,8 +1,9 @@
+import { activeMarket } from "./locale";
 // cairo-time.ts — توقيت القاهرة بلا مكتبة: الإزاحة الفعلية (صيفاً/شتاءً) وتحويل ساعة الحائط إلى لحظة UTC.
 
 /** إزاحة القاهرة عن UTC بالدقائق في لحظة معينة (120 شتاءً و180 صيفاً). */
 export function cairoOffsetMinutes(at: Date): number {
-  const name = new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", timeZoneName: "longOffset" })
+  const name = new Intl.DateTimeFormat("en-US", { timeZone: activeMarket().timezone, timeZoneName: "longOffset" })
     .formatToParts(at)
     .find((p) => p.type === "timeZoneName")?.value;
   const m = /GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(name ?? "");
@@ -12,7 +13,7 @@ export function cairoOffsetMinutes(at: Date): number {
 
 /** تاريخ اليوم في القاهرة (سنة، شهر 1–12، يوم) للحظة معينة. */
 export function cairoDate(at: Date): { y: number; m: number; d: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(at);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: activeMarket().timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(at);
   const v = (t: string) => Number(parts.find((p) => p.type === t)!.value);
   return { y: v("year"), m: v("month"), d: v("day") };
 }
@@ -33,7 +34,7 @@ export function nextCairoDay(day: { y: number; m: number; d: number }): { y: num
 
 /** بداية الشهر الحالي بتوقيت القاهرة (منتصف ليل اليوم الأول بالإزاحة الفعلية صيفاً أو شتاءً). */
 export function cairoMonthStart(now = new Date()): Date {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit" }).formatToParts(now);
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: activeMarket().timezone, year: "numeric", month: "2-digit" }).formatToParts(now);
   const y = Number(parts.find((p) => p.type === "year")!.value);
   const m = Number(parts.find((p) => p.type === "month")!.value);
   const utcMidnight = Date.UTC(y, m - 1, 1);

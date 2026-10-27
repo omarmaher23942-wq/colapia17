@@ -7,6 +7,7 @@
 import type { Metadata, Viewport } from "next";
 import { ThemeProvider } from "next-themes";
 import { AppToaster } from "@/components/AppToaster";
+import { ErrorReporter } from "@/components/ErrorReporter";
 import { fontVariables } from "@/lib/fonts";
 import "./globals.css";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {children}
           <AppToaster />
+          <ErrorReporter />
         </ThemeProvider>
       </body>
     </html>

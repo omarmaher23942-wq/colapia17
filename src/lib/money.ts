@@ -1,3 +1,4 @@
+import { activeMarket } from "./locale";
 /** كل الأموال تُخزن بالقروش (integer). 1 جنيه = 100 قرش. */
 const finite = (n: unknown) => (typeof n === "number" && Number.isFinite(n) ? n : 0);
 
@@ -11,7 +12,7 @@ const FMT_FRAC = new Intl.NumberFormat("ar-EG", { minimumFractionDigits: 2, maxi
 export function formatEgp(piasters: number, opts: { withSymbol?: boolean } = {}) {
   const p = Math.round(finite(piasters));
   const formatted = (p % 100 !== 0 ? FMT_FRAC : FMT_INT).format(p / 100);
-  return opts.withSymbol === false ? formatted : `${formatted} ج.م`;
+  return opts.withSymbol === false ? formatted : `${formatted} ${activeMarket().currency.symbol}`;
 }
 
 /** نسبة التوفير لعرض "وفّر 30%" */

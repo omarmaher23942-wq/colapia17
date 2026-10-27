@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import { systemEvents } from "@/db/schema";
 import type { SystemEventCategory, SystemEventLevel } from "@/db/schema";
 import { newRequestId } from "./correlation";
+import { formatLogLine, redact } from "./log-format";
 
 export type LogContext = {
   reqId?: string;
@@ -65,24 +66,18 @@ async function emit(
   err?: unknown
 ): Promise<void> {
   const reqId = ctx.reqId ?? newRequestId();
-  const tag =
-    `[${category}] ${event}` +
-    ` req=${reqId}` +
-    ` m=${ctx.merchantId ?? "-"}` +
-    ` s=${ctx.storeId ?? "-"}` +
-    ` c=${ctx.conversationId ?? "-"}` +
-    ` ss=${ctx.sessionId ?? "-"}` +
-    ` u=${ctx.userId ?? "-"}`;
-
-  // stdout أولاً — كي لا نخسر الحدث لو فشل DB.
-  const payload = message ? `${tag} :: ${message}` : tag;
-  if (level === "error" || level === "fatal") {
-    console.error(payload, err ?? "");
-  } else if (level === "warn") {
-    console.warn(payload, err ?? "");
-  } else {
-    console.log(payload);
-  }
+  // سطر JSON واحد بمعرّف الطلب وبلا أسرار؛ يُطبع أولاً كي لا نخسر الحدث لو فشلت القاعدة.
+  const payload = formatLogLine({
+    level,
+    scope: category,
+    event,
+    reqId,
+    message,
+    ctx: { merchantId: ctx.merchantId, storeId: ctx.storeId, conversationId: ctx.conversationId, sessionId: ctx.sessionId, userId: ctx.userId, step: ctx.step, ...(pickData(ctx) ?? {}), ...(err ? { err: serializeError(err) } : {}) },
+  });
+  if (level === "error" || level === "fatal") console.error(payload);
+  else if (level === "warn") console.warn(payload);
+  else console.log(payload);
 
   // لا نُثقل قاعدة البيانات بـ debug.
   if (level === "debug") return;
@@ -106,8 +101,8 @@ async function emit(
         sessionId: ctx.sessionId ?? null,
         userId: ctx.userId ?? null,
         step: ctx.step ?? null,
-        extra: pickData(ctx),
-        error: serializeError(err),
+        extra: redact(pickData(ctx)),
+        error: redact(serializeError(err)),
       },
     });
   } catch (e) {

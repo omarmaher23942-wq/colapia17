@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Pause, Play, Brain, Send, Sparkles, Activity, Mic, MessageSquare, ClipboardList, ShieldCheck, Database, AlertTriangle, Store } from "lucide-react";
+import { ConvTools, type ConvToolsData } from "@/components/platform/ConvTools";
+import { RepliesPicker } from "@/components/platform/RepliesPicker";
+import type { SavedReply } from "@/agency/saved-replies";
 import { pauseConversationAction, resumeConversationAction, humanReplyAction, summarizeLeadAction, setStageAction } from "@/server/actions/platform-conv";
 import { HandoffPanel, type HandoffInfo } from "./HandoffPanel";
 import { PAUSE_CHOICES, PAUSE_LABEL, type PauseChoice } from "@/agent/pause";
@@ -59,13 +62,6 @@ type Conv = {
   speaker: "owner" | "moderator" | "unknown" | null;
 };
 
-const CANNED = [
-  "أهلاً بكم، معكم فريق Colapia، ونسعد بالإجابة عن أي سؤال.",
-  "تمام، سنراجع الموضوع ونرد عليكم خلال دقائق.",
-  "الفريق يجهّز متجركم الآن، وسيصلكم رابط الإعداد هنا خلال يوم إلى 4 أيام عمل كحد أقصى، وغالباً أسرع.",
-  "إن كان لديكم أي سؤال عن لوحة التحكم فاكتبوه هنا، وسنشرح لكم خطوة بخطوة.",
-  "لا توجد أي عمولة على مبيعاتكم، والأسعار الحالية كاملة في صفحة الاشتراك داخل لوحة التحكم.",
-];
 
 const STAGES = ["greeting", "discovery", "persuasion", "trial_offer", "brief", "products", "proof", "policies", "summary", "human", "lost"];
 
@@ -107,7 +103,7 @@ function GlassCard({ icon: Icon, title, aside, children }: any) {
   );
 }
 
-export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
+export function ConversationView({ conv, msgs, replies, tools }: { conv: Conv; msgs: Msg[]; replies: SavedReply[]; tools: ConvToolsData }) {
   const [text, setText] = useState("");
   const [p, start] = useTransition();
   const [sum, setSum] = useState<string | null>(null);
@@ -309,19 +305,11 @@ export function ConversationView({ conv, msgs }: { conv: Conv; msgs: Msg[] }) {
         )}
       </div>
 
+      {tab === "chat" && <ConvTools data={tools} />}
+
       {tab === "chat" && (
         <div className="border-t border-white/10 bg-[#0b0f2a] p-4">
-          <div className="mb-3 flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-            {CANNED.map((c) => (
-              <button
-                key={c}
-                onClick={() => setText(c)}
-                className="shrink-0 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] font-bold text-[#c3cdf0] hover:bg-white/10 hover:text-white transition-colors"
-              >
-                {c.slice(0, 40)}...
-              </button>
-            ))}
-          </div>
+          <RepliesPicker initial={replies} vars={{ name: conv.name, store: conv.storeName }} onPick={setText} />
           <form className="flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(); }}>
             <textarea
               rows={1}
