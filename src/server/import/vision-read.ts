@@ -6,7 +6,7 @@ import { z } from "zod";
 import { aiObject } from "@/ai/providers";
 import { attributesFor, cleanAttributes, NICHE_LABEL, type AttrPair, type Niche } from "@/lib/niche-attributes";
 import { normalizeColor } from "@/lib/import-candidates";
-import { checkAiQuota, recordAi } from "@/server/usage";
+import { checkAiQuota, recordAi } from "@/server/ai-guard";
 import { fetchRemoteImage } from "@/server/remote-image";
 
 export type PhotoRead = { name: string; color: string; category: string; description: string; attributes: AttrPair[] };

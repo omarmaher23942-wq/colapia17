@@ -6,13 +6,15 @@ import {
   aiProductsSchema,
   candidateFromAi,
   candidatesFromTable,
+  IMPORT_MAX_CANDIDATES,
   mergeCandidates,
   normalizeCandidate,
   parseProductEntry,
   unifyCategories,
   type Candidate,
 } from "@/lib/import-candidates";
-import { checkAiQuota, recordAi } from "@/server/usage";
+import { checkAiQuota, recordAi } from "@/server/ai-guard";
+import { candidatesFromPlatform, PLATFORM_LABEL } from "@/lib/platform-import";
 import { fetchRemoteImage } from "@/server/remote-image";
 
 export type AnalyzeResult = { ok: true; candidates: Candidate[]; usedAi: boolean; notice?: string } | { ok: false; error: string };
@@ -165,6 +167,12 @@ export async function analyzePdf(storeId: string, bytes: Uint8Array): Promise<An
 
 /** جدول (xlsx/csv) ← مرشّحون بلا استدعاء ذكي: العناوين العربية والإنجليزية تُقرأ مباشرة. */
 export function analyzeTable(table: string[][]): AnalyzeResult {
+  // ملف تصدير من منصة معروفة (Shopify، WooCommerce، سلة، زد): قراءة بأعمدتها الأصلية.
+  const plat = candidatesFromPlatform(table);
+  if (plat && plat.candidates.length) {
+    const cut = plat.candidates.length > IMPORT_MAX_CANDIDATES;
+    return { ok: true, candidates: unifyCategories(plat.candidates.slice(0, IMPORT_MAX_CANDIDATES)), usedAi: false, notice: `تعرّفنا على ملف تصدير ${PLATFORM_LABEL[plat.platform]}.${cut ? ` قرأنا أول ${IMPORT_MAX_CANDIDATES} منتج فقط، فارفعوا الباقي في دفعة ثانية.` : ""}` };
+  }
   const { candidates, truncated } = candidatesFromTable(table);
   if (!candidates.length) return { ok: false, error: "لم نجد منتجات في الجدول. تأكدوا أن الصف الأول عناوين مثل: اسم المنتج، السعر." };
   return { ok: true, candidates: unifyCategories(candidates), usedAi: false, notice: truncated ? "قرأنا أول 200 منتج فقط. ارفعوا الباقي في دفعة ثانية." : undefined };

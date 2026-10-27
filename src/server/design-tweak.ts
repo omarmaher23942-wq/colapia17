@@ -21,7 +21,7 @@ import {
   type PreviewTokens,
 } from "@/lib/design-tweak";
 import { diffBlueprint } from "@/lib/blueprint-patch";
-import { checkAiQuota, recordAi } from "@/server/usage";
+import { checkAiQuota, recordAi } from "@/server/ai-guard";
 import { saveBlueprintAction } from "@/server/actions/blueprint";
 
 /** الأجزاء التي يحق لمحرر الوصف تعديلها. أي تغيير خارجها (دفع، شحن، سياسات بيانات) يُرفض بالكامل. */

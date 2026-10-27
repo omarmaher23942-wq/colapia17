@@ -10,7 +10,7 @@ import { getTenantDb } from "@/db/tenant";
 import { categories, products } from "@/db/schema";
 import { storeFor } from "@/server/merchant-guard";
 import { aiObject } from "@/ai/providers";
-import { checkAiQuota, recordAi } from "@/server/usage";
+import { checkAiQuota, recordAi } from "@/server/ai-guard";
 import { getBlueprint, invalidateStoreCache } from "@/lib/tenant";
 import { getStoreFacts } from "@/server/repos/facts";
 import { publicStoreUrl } from "@/lib/utils";
