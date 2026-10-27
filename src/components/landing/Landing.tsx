@@ -4,6 +4,8 @@
 import Link from "next/link";
 import {
   AppWindow,
+  Bot,
+  Wrench,
   ArrowLeft,
   CalendarCheck,
   Check,
@@ -34,6 +36,8 @@ const SERVICE_ICON: Record<ServiceId, LucideIcon> = {
   dashboards: LayoutDashboard,
   webapps: AppWindow,
   landing: Megaphone,
+  agents: Bot,
+  custom: Wrench,
 };
 
 const WHY_ICON: Record<WhyId, LucideIcon> = { ownership: KeyRound, speed: Timer, quality: ShieldCheck, support: LifeBuoy };
@@ -47,12 +51,20 @@ export function Landing({ session, origin }: { session: SessionState; origin: st
         <div className="land-rise flex flex-col items-start gap-6">
           <Eyebrow>Colapia · كولابيا — وكالة تصميم وبرمجة</Eyebrow>
           <h1 className="text-[2.25rem] font-black leading-[1.15] tracking-tight sm:text-5xl lg:text-[3.5rem]">
-            نبني لنشاطكم
+            أي نظام يحتاجه نشاطكم
             <br />
-            <span className="land-gradient-text">موقعاً أو متجراً أو نظاماً</span> يعمل بإتقان
+            <span className="land-gradient-text">نبنيه ونسلّمه لكم</span> بكوده وملكيته
           </h1>
           <p className="max-w-xl text-base leading-8 text-[#c3cdf0]/85 sm:text-lg">{DEFINITION}</p>
           <Ctas session={session} />
+          <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-bold text-[#c3cdf0]/80" aria-label="ما يميزنا">
+            {["الكود ملككم بالكامل", "دعم حتى يعمل على حساباتكم", "بلا التزامات دورية علينا", "أعمال حقيقية: Qima"].map((t) => (
+              <li key={t} className="flex items-center gap-1.5">
+                <Check className="size-4 text-emerald-400" aria-hidden="true" />
+                {t}
+              </li>
+            ))}
+          </ul>
         </div>
 
         <aside aria-label="ما تستلمونه" className="land-card rounded-[2rem] p-6 sm:p-8">
@@ -96,7 +108,7 @@ export function Landing({ session, origin }: { session: SessionState; origin: st
       {/* ─── كيف نعمل ─── */}
       <section id="process" className="scroll-mt-24 border-y border-white/5 bg-gradient-to-b from-transparent via-[#0b1030]/60 to-transparent py-20 sm:py-28">
         <div className="container-x">
-          <Heading eyebrow="كيف نعمل" title="ثلاث خطوات من الفكرة إلى التسليم" />
+          <Heading eyebrow="كيف نعمل" title="من الفكرة إلى نظام يعمل باسمكم" />
           <ol className="mt-14 grid gap-4 md:grid-cols-3">
             {STEPS.map((s, i) => {
               const Icon = STEP_ICON[i] ?? Code2;
