@@ -219,6 +219,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     const system = await systemFor(facts, {
       replies: rows.filter((r) => r.role === "assistant").length,
       origin,
+      openingText: origin === "us" ? rows[0]?.text ?? "" : undefined,
       channel,
       lead: lead0,
       invalid: mem.leadInvalid ?? {},

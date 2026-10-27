@@ -23,12 +23,17 @@ export function describeInbound(text: string | undefined, attachments: { type: s
   const types = new Set(attachments.map((a) => a.type));
   if (types.has("audio")) return "[رسالة صوتية]";
   if (types.has("video")) return "[فيديو]";
-  if (types.has("image")) return "[صورة]";
+  if (types.has("image")) {
+    const n = attachments.filter((a) => a.type === "image").length;
+    return n > 1 ? `[صور: ${n}]` : "[صورة]";
+  }
   return "[مرفق]";
 }
 
+const IMAGE_NOTE = "(أرسل صورة أو أكثر وهي محفوظة وستصل الفريق مع طلبه. لا تقل أبداً إنك لا تستطيع رؤيتها ولا تطلب منه إعادة إرسالها أو كتابتها نصاً. أكّد باقتضاب أن الفريق استلمها، ثم تابع الخطوة التالية في الحوار)";
+
 const MARKER_NOTE: Record<string, string> = {
-  "[صورة]": "(أرسل صورة لا تستطيع رؤيتها: اشكره بإيجاز واطلب أن يكتب ما يريده نصاً، ولا تعد بشيء بخصوصها)",
+  "[صورة]": IMAGE_NOTE,
   "[رسالة صوتية]": "(أرسل رسالة صوتية لا تستطيع سماعها: اطلب بلطف أن يكتب ما يريده نصاً)",
   "[فيديو]": "(أرسل فيديو لا تستطيع مشاهدته: اطلب بلطف أن يكتب ما يريده نصاً)",
   "[مرفق]": "(أرسل ملفاً أو ملصقاً لا تستطيع قراءته: اطلب بلطف أن يكتب ما يريده نصاً)",
@@ -38,6 +43,7 @@ const MARKER_NOTE: Record<string, string> = {
 export function modelView(role: "user" | "assistant", text: string): string {
   const t = text.trim();
   if (role === "user" && MARKER_NOTE[t]) return MARKER_NOTE[t]!;
+  if (role === "user" && /^\[صور: \d+\]$/.test(t)) return IMAGE_NOTE;
   return capText(t, MAX_MODEL_TEXT);
 }
 

@@ -163,7 +163,7 @@ describe("صدق النصوص وقواعد المالك للهبوط", () => {
   });
 
   it("رابط البدء هو محادثة إنستجرام الفعلية، وصورة Qima موجودة فعلاً في public", () => {
-    expect(BRAND.igDm).toBe("https://ig.me/colapia");
+    expect(BRAND.igDm).toBe("https://ig.me/m/colapia");
     for (const w of WORKS) if (w.image) expect(existsSync(`public${w.image.src}`)).toBe(true);
   });
 });

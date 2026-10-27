@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "الصورة لازم تكون JPG أو PNG أو WEBP وأصغر من 2 ميجا." }, { status: 400 });
   }
   try {
-    const r = await runVisualSearch(store.id, new Uint8Array(await file.arrayBuffer()), file.type);
+    const r = await runVisualSearch(store.id, new Uint8Array(await file.arrayBuffer()), file.type, `https://${req.headers.get("host") ?? new URL(req.url).host}`);
     return NextResponse.json(r, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[visual-search] failed", store.id, e);

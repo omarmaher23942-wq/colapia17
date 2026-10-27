@@ -5,6 +5,9 @@
 // ملف خالص (بلا React ولا خادم) ليُختبر ويُستخدم من سكربت التدقيق.
 
 /** الأسماء والروابط الثابتة للكيان. الرابط الجذري يُشتق من NEXT_PUBLIC_ROOT_DOMAIN في platform-seo.ts. */
+/** اسم حساب Colapia على إنستجرام (بلا @). يُضبط من NEXT_PUBLIC_IG_HANDLE وقت البناء، والافتراضي «colapia». */
+export const IG_HANDLE = (process.env.NEXT_PUBLIC_IG_HANDLE ?? "colapia").replace(/^@/, "").trim() || "colapia";
+
 export const BRAND = {
   name: "Colapia",
   nameAr: "كولابيا",
@@ -16,9 +19,9 @@ export const BRAND = {
   country: "EG",
   countryName: "Egypt",
   /** رابط المحادثة المباشرة على إنستجرام (زر البدء في كل صفحة). */
-  igDm: "https://ig.me/colapia",
+  igDm: `https://ig.me/m/${IG_HANDLE}`,
   /** حساب إنستجرام العام (sameAs). أضيفوا بقية الحسابات الرسمية هنا فور فتحها. */
-  sameAs: ["https://www.instagram.com/colapia/"],
+  sameAs: [`https://www.instagram.com/${IG_HANDLE}/`],
 } as const;
 
 export const QIMA_URL = "https://qima-ten.vercel.app";
@@ -182,7 +185,7 @@ export const FAQ: Faq[] = [
   },
   {
     q: "كيف أبدأ مشروعاً مع Colapia؟",
-    a: "راسلونا على إنستجرام عبر ig.me/colapia واشرحوا فكرتكم باختصار. نرد عليكم ونسأل عما يلزم، ثم نبني لكم نموذجاً تعاينونه مجاناً قبل أي دفع.",
+    a: `راسلونا على إنستجرام عبر ig.me/m/${IG_HANDLE} واشرحوا فكرتكم باختصار. نرد عليكم ونسأل عما يلزم، ثم نبني لكم نموذجاً تعاينونه مجاناً قبل أي دفع.`,
   },
   {
     q: "هل أملك الكود بعد التسليم؟",

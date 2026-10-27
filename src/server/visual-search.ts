@@ -46,7 +46,9 @@ async function reserve(storeId: string): Promise<boolean> {
   return n === 0 || n <= limit;
 }
 
-async function catalog(storeId: string): Promise<(CatalogItem & { slug: string; pricePiasters: number; compareAtPiasters: number | null })[]> {
+const absoluteImage = (u: string, origin: string): string | null => (/^https:\/\//.test(u) ? u : u.startsWith("/") && /^https:\/\//.test(origin) ? `${origin}${u}` : null);
+
+async function catalog(storeId: string, origin: string): Promise<(CatalogItem & { slug: string; pricePiasters: number; compareAtPiasters: number | null })[]> {
   const db = await getTenantDb(storeId);
   const rows = await db
     .select({
@@ -73,7 +75,8 @@ async function catalog(storeId: string): Promise<(CatalogItem & { slug: string; 
     name: r.name,
     text: [r.short, r.category, r.tags.join(" "), r.search].filter(Boolean).join(" "),
     // صورة عامة فقط (https): المقارنة البصرية تفتح الرابط، ورابط نسبي أو داخلي يُسقط الطلب.
-    image: /^https:\/\//.test(r.images[0]?.url ?? "") ? r.images[0]!.url : null,
+    // رابط نسبي (/demo/…) يُحوَّل لمطلق على نطاق المتجر نفسه، فمتاجر الصور المحلية تعمل أيضاً.
+    image: absoluteImage(r.images[0]?.url ?? "", origin),
     orderCount: r.orderCount,
     pricePiasters: r.pricePiasters,
     compareAtPiasters: r.compareAtPiasters,
@@ -105,8 +108,8 @@ const asItem = (i: CatalogItem & { slug: string; pricePiasters: number; compareA
 });
 
 
-export async function runVisualSearch(storeId: string, image: Uint8Array, mime: string): Promise<VisualResult> {
-  const items = await catalog(storeId);
+export async function runVisualSearch(storeId: string, image: Uint8Array, mime: string, origin = ""): Promise<VisualResult> {
+  const items = await catalog(storeId, origin);
   const empty: VisualResult = { status: "none", match: null, similar: [], seen: null };
   if (!items.some((i) => i.image)) return empty;
   if (!(await reserve(storeId))) return { ...empty, status: "limit" };

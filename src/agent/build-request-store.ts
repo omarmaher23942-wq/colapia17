@@ -4,6 +4,7 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { storeRequestEvents, storeRequests } from "@/db/schema/agency";
+import { messages } from "@/db/schema";
 import { newRequestCode, secureToken, sha256 } from "@/lib/ids";
 import { buildRequestData, type Area } from "./build-request";
 import type { Lead } from "./lead";
@@ -27,7 +28,11 @@ export async function createBuildRequest(i: { conversationId: string; lead: Lead
   const found = await existingFor(i.conversationId);
   if (found) return { ...found, existed: true };
 
-  const data = buildRequestData({ lead: i.lead, declined: i.declined, offer: i.offer, notes: i.summary });
+  // صور أرسلها العميل في المحادثة (منتجات/شعار): تُحفظ روابطها مع الطلب ليجدها الفريق (روابط Meta مؤقتة، فتُنزَّل سريعاً).
+  const imgRows = await db.select({ a: messages.attachments }).from(messages).where(and(eq(messages.conversationId, i.conversationId), eq(messages.role, "user"))).catch(() => []);
+  const images = imgRows.flatMap((r) => r.a).filter((a) => a.type === "image" && /^https:\/\//.test(a.url)).map((a) => a.url).slice(0, 30);
+  const base = buildRequestData({ lead: i.lead, declined: i.declined, offer: i.offer, notes: i.summary });
+  const data = images.length ? { ...base, agentImages: images } : base;
   const draftTokenHash = await sha256(secureToken());
   const now = new Date();
   // تصادم نادر في الكود القصير: محاولات قليلة بكود جديد.
