@@ -30,7 +30,7 @@ jobs:
       - name: فحص الأنواع
         run: npx tsc --noEmit
       - name: ESLint
-        run: npx next lint --quiet
+        run: npm run lint
       - name: مشروع التسليم (توليد + فحص أنواع)
         run: npm run delivery:check
       - name: الاختبارات
