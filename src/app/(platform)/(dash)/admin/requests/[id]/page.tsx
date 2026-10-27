@@ -12,6 +12,8 @@ import { productionSla } from "@/agency/settings";
 import { accountUrl } from "@/agency/client-notify";
 import { deliveryMessage } from "@/agent/handoff-messages";
 import { clientStatus } from "@/agency/status";
+import { ProvisionPanel } from "@/components/platform/requests/ProvisionPanel";
+import { isBuildData } from "@/agency/provision-plan";
 import { ProductionPanel } from "@/components/platform/requests/ProductionPanel";
 import { CopyButton, ProjectLinks } from "@/components/platform/requests/ProjectLinks";
 import { fmtEgp, freeEditDeadline } from "@/lib/platform-pricing";
@@ -129,6 +131,14 @@ export default async function RequestPage({ params }: { params: Promise<{ id: st
           ))}
         </ul>
       </section>
+
+      {row.status === "submitted" && isBuildData(row.data) && (can(role, "requests.deliver") || (row.builderId === me.id && can(role, "requests.work"))) ? (
+        <section className={card}>
+          <h2 className="mb-1 text-sm font-black">التجهيز ورابط الإعداد</h2>
+          <p className="mb-3 text-[12.5px] leading-6 text-[#8d97c4]">ينشئ متجر معاينة مخفياً بحالة «إعداد» بلا عدّاد؛ يبدأ العدّاد عند أول فتح للرابط.</p>
+          <ProvisionPanel id={row.id} provisioned={Boolean(row.storeId)} suggestedSlug={row.slug} />
+        </section>
+      ) : null}
 
       {row.status === "submitted" ? (
         <section className={card}>
