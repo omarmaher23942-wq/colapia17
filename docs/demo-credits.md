@@ -110,33 +110,14 @@
 | كاب شتوي رمادي بحافة سوداء | `winter-baseball-cap-grey-2.webp` | https://dfcdn.defacto.com.tr/1000/U9363AZ_26WN_GR2_02_01.jpg |
 | قبعة تريكو سوداء بحافة مطوية | `black-cuffed-knit-beanie-1.webp` | https://dfcdn.defacto.com.tr/1000/R7545AZ_26WN_BK27_01_01.jpg |
 | قبعة تريكو سوداء بحافة مطوية | `black-cuffed-knit-beanie-2.webp` | https://dfcdn.defacto.com.tr/1000/R7545AZ_26WN_BK27_02_01.jpg |
+| تيشيرت أسود بطبعة رقم 98 | `black-98-print-tee-1.webp` | https://dfcdn.defacto.com.tr/1000/I9592AX_26AU_BK81_01_01.jpg |
+| تيشيرت أسود بطبعة رقم 98 | `black-98-print-tee-2.webp` | https://dfcdn.defacto.com.tr/1000/I9592AX_26AU_BK81_02_01.jpg |
+| توب دانتيل أسود بياقة عالية | `black-lace-mandarin-top-1.webp` | https://dfcdn.defacto.com.tr/1000/I9565AX_26AU_BK81_01_01.jpg |
+| توب دانتيل أسود بياقة عالية | `black-lace-mandarin-top-2.webp` | https://dfcdn.defacto.com.tr/1000/I9565AX_26AU_BK81_01_02.jpg |
+| توب دانتيل أسود بياقة عالية | `black-lace-mandarin-top-3.webp` | https://dfcdn.defacto.com.tr/1000/I9565AX_26AU_BK81_02_02.jpg |
+| تيشيرت أزرق بعبارة مطبوعة | `blue-slogan-long-sleeve-tee-1.webp` | https://dfcdn.defacto.com.tr/1000/I9583AX_26AU_BE89_01_01.jpg |
+| تيشيرت أزرق بعبارة مطبوعة | `blue-slogan-long-sleeve-tee-2.webp` | https://dfcdn.defacto.com.tr/1000/I9583AX_26AU_BE89_01_02.jpg |
+| تيشيرت أزرق بعبارة مطبوعة | `blue-slogan-long-sleeve-tee-3.webp` | https://dfcdn.defacto.com.tr/1000/I9583AX_26AU_BE89_02_02.jpg |
 
 الملفات التي تُحذف عند إزالتها: كل `public/demo/fashion/<slug>-N.webp` للأرقام المذكورة أعلاه (الأسماء `striped-polo-collar-pullover`، `burgundy-striped-crew-pullover`، `thick-high-collar-sweatshirt`، `pointed-hem-knit-skirt`، `wide-straight-fleece-trousers`، `mock-neck-short-sleeve-knit-top`، `flared-sleeve-modest-tunic`، `white-slim-long-sleeve-top`، `red-draped-side-long-sleeve-top`، `lace-high-neck-puff-sleeve-top`، `leopard-print-faux-fur-jacket`، `red-crossover-collar-jacket`، `striped-two-piece-pyjama-set`، `plush-wrap-collar-robe`، `knit-shoulder-wrap-tie`، `soft-fringe-scarf-beige`، `dark-brown-fringe-scarf`، `winter-baseball-cap-grey`، `black-cuffed-knit-beanie`)، ثم إزالة المنتجات نفسها من `scripts/demo/data/fashion.json` وتشغيل `npx tsx scripts/demo/export-store-files.ts`. الأوامر: `git rm public/demo/fashion/{striped-polo-collar-pullover-*.webp,burgundy-striped-crew-pullover-*.webp,thick-high-collar-sweatshirt-*.webp,pointed-hem-knit-skirt-*.webp,wide-straight-fleece-trousers-*.webp,mock-neck-short-sleeve-knit-top-*.webp,flared-sleeve-modest-tunic-*.webp,white-slim-long-sleeve-top-*.webp,red-draped-side-long-sleeve-top-*.webp,lace-high-neck-puff-sleeve-top-*.webp,leopard-print-faux-fur-jacket-*.webp,red-crossover-collar-jacket-*.webp,striped-two-piece-pyjama-set-*.webp,plush-wrap-collar-robe-*.webp,knit-shoulder-wrap-tie-*.webp,soft-fringe-scarf-beige-*.webp,dark-brown-fringe-scarf-*.webp,winter-baseball-cap-grey-*.webp,black-cuffed-knit-beanie-*.webp}`.
 <!-- owner-catalogue:end -->
-
-### رسوم توضيحية بديلة (مولَّدة بالكود، بلا مصدر خارجي)
-
-رسمها `scripts/demo/make-art.ts` من حقل `art` في `scripts/demo/data/fashion.json`. الاستبدال بصورة حقيقية: ضعوا ملفاً بالاسم نفسه (WebP، 900×1200) وأزيلوا حقل `art` من المنتج.
-
-| المنتج | الملف |
-|---|---|
-| فستان ساتان ميدي بياقة V | `satin-midi-dress-1.webp` |
-| فستان سهرة مخمل بأكمام طويلة | `velvet-evening-dress-1.webp` |
-| فستان كتان بحزام | `linen-belted-dress-1.webp` |
-| فستان ماكسي شيفون بطبعة زهور | `chiffon-floral-maxi-1.webp` |
-| فستان قميص بخصر مرن | `belted-shirt-dress-1.webp` |
-| عباية كريب سوداء بأكمام واسعة | `black-crepe-abaya-1.webp` |
-| عباية مفتوحة كتان | `linen-open-abaya-1.webp` |
-| عباية بتطريز عند الأكمام | `embroidered-sleeve-abaya-1.webp` |
-| إسدال صلاة قطن بقطعتين | `cotton-prayer-set-1.webp` |
-| بلوزة ساتان بأكمام منفوخة | `puff-sleeve-satin-blouse-1.webp` |
-| قميص كتان أوفر سايز | `oversize-linen-shirt-1.webp` |
-| توب محبوك بقصّة ضيقة | `ribbed-knit-top-1.webp` |
-| كارديجان صوف بأزرار | `button-wool-cardigan-1.webp` |
-| بنطلون قماش واسع بخصر عالٍ | `wide-leg-trousers-1.webp` |
-| جينز مستقيم بخصر عالٍ | `high-waist-straight-jeans-1.webp` |
-| تنورة بليسيه ميدي | `pleated-midi-skirt-1.webp` |
-| بنطلون كتان بخصر مرن | `linen-drawstring-trousers-1.webp` |
-| طقم محبوك: كارديجان وتنورة | `knit-cardigan-skirt-set-1.webp` |
-| طقم منزلي قطن ناعم | `soft-cotton-lounge-set-1.webp` |
-| وشاح حرير بطبعة هندسية | `geometric-silk-scarf-1.webp` |

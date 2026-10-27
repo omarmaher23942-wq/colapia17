@@ -43,8 +43,8 @@ describe("متجر العرض V3", () => {
     const cat = buildCatalog(data, NOW);
     expect(cat.rows.every((r) => r.categoryId && cat.categories.some((c) => c.id === r.categoryId))).toBe(true);
     expect(cat.rows.every((r) => r.attributes.some((a) => a.label === "الخامة"))).toBe(true);
-    // ما له صورة بديلة يحمل حقل art، وما سواه صور فوتوغرافية موثقة.
-    expect(data.filter((p) => p.art).length).toBeGreaterThan(0);
+    // لا صور بديلة مرسومة: كل منتج بصور فوتوغرافية موثقة.
+    expect(data.filter((p) => p.art).length).toBe(0);
   });
 
   it("تصميم «عاجي» بواجهة تحريرية وأقسام مخصصة من stores/demo", () => {
@@ -73,7 +73,7 @@ describe("متجر العرض V3", () => {
     const { readFileSync } = await import("node:fs");
     const seed = JSON.parse(readFileSync("stores/demo/seed.json", "utf8")) as { products: unknown[]; categories: unknown[] };
     expect(seed.products).toHaveLength(loadDemoProducts().length);
-    expect(seed.categories).toHaveLength(8);
+    expect(seed.categories).toHaveLength(6);
     const bp = JSON.parse(readFileSync("stores/demo/blueprint.json", "utf8"));
     expect(blueprintSchema.safeParse(bp).success).toBe(true);
   });

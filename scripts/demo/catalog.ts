@@ -338,7 +338,7 @@ const row = (size: string, cells: string[], h: [number, number] | null = null, w
 
 /** أقسام كل جدول بأسماء الأقسام النهائية (تُترجم لمعرّفاتها عند البناء). */
 const CHART_SCOPE = {
-  dresses: ["فساتين", "عبايات", "أطقم وملابس منزلية"],
+  dresses: ["أطقم وملابس منزلية"],
   tops: ["بلوزات وتونيكات", "بلوفرات وتريكو", "جواكت ومعاطف"],
   bottoms: ["بناطيل وتنانير"],
   shoes: ["إكسسوارات وأحذية"],
@@ -350,7 +350,7 @@ export function sizeCharts(categoryIds: Record<string, string>, names: Record<st
   const dress = SIZE_TEMPLATES.find((t) => t.key === "dresses")!.chart;
   return [
     {
-      id: "szdemodress", ...dress, name: "مقاسات الفساتين والعبايات والأطقم", appliesTo: ids(CHART_SCOPE.dresses), unit: "سم", columns: ["الصدر", "الوسط", "الورك"],
+      id: "szdemodress", ...dress, name: "مقاسات الأطقم والملابس المنزلية", appliesTo: ids(CHART_SCOPE.dresses), unit: "سم", columns: ["الصدر", "الوسط", "الورك"],
       note: "قياسات الجسم لا القطعة. الطول يختلف من قطعة لأخرى ويُذكر في وصفها.",
       rows: [
         row("S", ["86", "68", "94"], [155, 163], [47, 56]), row("M", ["92", "74", "100"], [160, 168], [55, 65]),
@@ -447,14 +447,13 @@ export const DEMO_EDITORIAL = {
 
 /** غلاف كل قسم في «تسوقوا حسب القسم»: صورة فوتوغرافية متى وُجدت لقسمه، وإلا صورة أول منتج. */
 export const CATEGORY_COVERS: Record<string, string> = {
-  "فساتين": DEMO_EDITORIAL.railDresses,
   "جواكت ومعاطف": DEMO_EDITORIAL.heroSecond.url,
   "أطقم وملابس منزلية": DEMO_EDITORIAL.blazer,
   "إكسسوارات وأحذية": DEMO_EDITORIAL.bag,
 };
 
 /** ترتيب عرض الأقسام (الأكثر تسوقاً أولاً)، وما سواه يتبع بترتيبه. */
-export const CATEGORY_ORDER = ["فساتين", "عبايات", "بلوزات وتونيكات", "بلوفرات وتريكو", "جواكت ومعاطف", "بناطيل وتنانير", "أطقم وملابس منزلية", "إكسسوارات وأحذية"];
+export const CATEGORY_ORDER = ["بلوزات وتونيكات", "بلوفرات وتريكو", "جواكت ومعاطف", "بناطيل وتنانير", "أطقم وملابس منزلية", "إكسسوارات وأحذية"];
 /** سقف أقسام الديمو: ثمانية أقسام لكتالوج بنحو خمسين منتجاً (الافتراضي للمتاجر الجديدة 6). */
 export const DEMO_MAX_CATEGORIES = 8;
 
@@ -499,7 +498,7 @@ export function buildDemoBlueprint(opts: { storeId: string; email: string; categ
       variant: "editorial",
       eyebrow: "مجموعة الموسم",
       headline: "أناقة هادئة لكل يوم",
-      subheadline: "فساتين وعبايات وأطقم بخامات مريحة وقصّات تناسب مختلف المقاسات، مع أداة تقترح مقاسكم من الطول والوزن.",
+      subheadline: "بلوزات وبلوفرات وجواكت وأطقم بخامات مريحة وقصّات تناسب مختلف المقاسات، مع أداة تقترح مقاسكم من الطول والوزن.",
       images: [img(DEMO_EDITORIAL.heroMain.url, DEMO_EDITORIAL.heroMain.alt, 0.35), img(DEMO_EDITORIAL.heroSecond.url, DEMO_EDITORIAL.heroSecond.alt, 0.4)],
       videoUrl: undefined,
       highlights: [],
@@ -526,7 +525,7 @@ export function buildDemoBlueprint(opts: { storeId: string; email: string; categ
     {
       id: "sale-banner", type: "promo_banner", enabled: true, spacing: "normal", reveal: "fade", background: "default", variant: "wide",
       items: [{
-        eyebrow: "تخفيضات", title: "قطع مختارة بأسعار مخفّضة", text: `أسعار أقل على قطع من الفساتين والعبايات والأحذية، وكود ${DEMO_COUPON.code} يخفّض ${DEMO_COUPON.percent}% عند إتمام الطلب.`,
+        eyebrow: "تخفيضات", title: "قطع مختارة بأسعار مخفّضة", text: `أسعار أقل على قطع من البلوفرات والجواكت والإكسسوارات، وكود ${DEMO_COUPON.code} يخفّض ${DEMO_COUPON.percent}% عند إتمام الطلب.`,
         image: img(DEMO_EDITORIAL.railBoutique, "شماعة متجر بفساتين وبلوزات بدرجات البيج والخوخ والصدأ بجوار نافذة", 0.5),
         cta: cta("تسوقوا التخفيضات", { type: "section", sectionId: "sale" }), couponCode: DEMO_COUPON.code,
       }],
@@ -540,7 +539,7 @@ export function buildDemoBlueprint(opts: { storeId: string; email: string; categ
         { image: DEMO_EDITORIAL.utility, alt: "طقم قميص وبنطلون بلون الخاكي", title: "طقم يوم طويل", slug: "khaki-utility-set" },
       ],
     }),
-    block("fit", "fit-finder", "اعرفوا مقاسكم", { category: "فساتين" }, "muted"),
+    block("fit", "fit-finder", "اعرفوا مقاسكم", { category: "بلوزات وتونيكات" }, "muted"),
     block("fabric", "fabric-guide", "الخامات في هذه المجموعة", {}),
     block("voices", "voices", "آراء من التقييمات", { limit: 6 }, "muted"),
     { ...(byId("faq") as Section), items: faqItems(facts) } as Section,

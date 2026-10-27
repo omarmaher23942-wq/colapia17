@@ -1,222 +1,222 @@
 [
- {
-  "id": 1,
-  "name": "بلوفر قصة عادية",
-  "priceEgp": 999,
-  "category": "بلوفرات وتريكو",
-  "image": "https://dfcdn.defacto.com.tr/410/I6892AX_26WN_ER100_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "striped-polo-collar-pullover"
- },
- {
-  "id": 2,
-  "name": "جيبة تريكو بقصة A",
-  "priceEgp": 999,
-  "category": "جيبات وتنانير",
-  "image": "https://dfcdn.defacto.com.tr/410/J0479AX_26WN_BN130_01_03.jpg",
-  "decision": "added",
-  "demoSlug": "pointed-hem-knit-skirt"
- },
- {
-  "id": 3,
-  "name": "Oversize Mock Neck Printed T-Shirt",
-  "priceEgp": 999,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/I9592AX_26AU_BK81_01_01.jpg",
-  "decision": "rejected",
-  "reason": "رُفض: قميص بطبعة رقم كبيرة (98) وتصميم رياضي قصير فوق كم أحمر، لا يناسب هوية متجر محتشم أنيق."
- },
- {
-  "id": 4,
-  "name": "بنطلون قصة مستقيمة واسعة",
-  "priceEgp": 999,
-  "category": "بناطيل واسعة",
-  "image": "https://dfcdn.defacto.com.tr/410/H7807AX_26AU_AR69_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "wide-straight-fleece-trousers"
- },
- {
-  "id": 5,
-  "name": "سويت شيرت قماش سميك قصة عادية",
-  "priceEgp": 999,
-  "category": "سويت شيرت",
-  "image": "https://dfcdn.defacto.com.tr/410/I0971AX_26AU_BG759_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "thick-high-collar-sweatshirt"
- },
- {
-  "id": 6,
-  "name": "Oversize Fit Long Sleeve T-Shirt",
-  "priceEgp": 899,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/I9565AX_26AU_BK81_01_02.jpg",
-  "decision": "rejected",
-  "reason": "رُفض: بلوزة دانتيل شفافة بأكمام قصيرة، لا تحقق التغطية المطلوبة للمحجبات ولا تعطي صورة أنيقة محتشمة."
- },
- {
-  "id": 7,
-  "name": "Fitted Patterned Mock Neck T-Shirt",
-  "priceEgp": 799,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/D9758AX_26WN_BN267_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "mock-neck-short-sleeve-knit-top"
- },
- {
-  "id": 8,
-  "name": "Slim Fit Basic T-Shirt",
-  "priceEgp": 699,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/I9583AX_26AU_BE89_01_02.jpg",
-  "decision": "rejected",
-  "reason": "رُفض: تيشيرت بعبارة إنجليزية كبيرة بنبرة ساخرة على الصدر، لا يناسب نبرة المتجر ولا يخدم العرض."
- },
- {
-  "id": 9,
-  "name": "تونيك محتشم كم طويل",
-  "priceEgp": 699,
-  "category": "تونيكات ومحتشم",
-  "image": "https://dfcdn.defacto.com.tr/410/J1594AX_26AU_BK81_01_01.jpg",
-  "decision": "merged",
-  "demoSlug": "flared-sleeve-modest-tunic",
-  "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
- },
- {
-  "id": 10,
-  "name": "تونيك كم طويل قطن",
-  "priceEgp": 699,
-  "category": "تونيكات ومحتشم",
-  "image": "https://dfcdn.defacto.com.tr/410/J1594AX_26AU_ER37_01_01.jpg",
-  "decision": "merged",
-  "demoSlug": "flared-sleeve-modest-tunic",
-  "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
- },
- {
-  "id": 11,
-  "name": "سكارف حريمي بيزك دافئ",
-  "priceEgp": 599,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/F3423AX_26WN_ER2_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "soft-fringe-scarf-beige"
- },
- {
-  "id": 12,
-  "name": "كاب حريمي قطن شتوي",
-  "priceEgp": 599,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/U9363AZ_26WN_GR2_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "winter-baseball-cap-grey"
- },
- {
-  "id": 13,
-  "name": "Slim Fit Long Sleeve T-Shirt",
-  "priceEgp": 499,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/I4450AX_26AU_ER105_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "white-slim-long-sleeve-top"
- },
- {
-  "id": 14,
-  "name": "ايس كاب حريمي تريكو",
-  "priceEgp": 249,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/R7545AZ_26WN_BK27_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "black-cuffed-knit-beanie"
- },
- {
-  "id": 15,
-  "name": "جاكيت فرو صناعي قصة عادية",
-  "priceEgp": 2699,
-  "category": "جواكت ومعاطف",
-  "image": "https://dfcdn.defacto.com.tr/410/I2263AX_26WN_ER128_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "leopard-print-faux-fur-jacket"
- },
- {
-  "id": 16,
-  "name": "روب نوم طويل قطيفة فرو وياقة متقاطعة",
-  "priceEgp": 1299,
-  "category": "ملابس منزلية دافئة",
-  "image": "https://dfcdn.defacto.com.tr/410/A3437AX_26AU_BR86_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "plush-wrap-collar-robe"
- },
- {
-  "id": 17,
-  "name": "بلوفر قصة عادية شتوي",
-  "priceEgp": 999,
-  "category": "بلوفرات وتريكو",
-  "image": "https://dfcdn.defacto.com.tr/410/I6940AX_26WN_PR200_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "burgundy-striped-crew-pullover"
- },
- {
-  "id": 18,
-  "name": "سكارف حريمي مكشكش ناعم",
-  "priceEgp": 699,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/I2985AX_26WN_BN66_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "dark-brown-fringe-scarf"
- },
- {
-  "id": 19,
-  "name": "100% Cotton Slim Fit Basic T-Shirt",
-  "priceEgp": 999,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/J1123AX_26WN_RD44_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "red-draped-side-long-sleeve-top"
- },
- {
-  "id": 20,
-  "name": "سكارف كتف حريمي تريكو أنيق",
-  "priceEgp": 599,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/I4750AX_26WN_RD2_01_01.jpg",
-  "decision": "merged",
-  "demoSlug": "knit-shoulder-wrap-tie",
-  "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
- },
- {
-  "id": 21,
-  "name": "جاكيت بالون فيت بياقة متقاطعة وجيب",
-  "priceEgp": 3299,
-  "category": "جواكت ومعاطف",
-  "image": "https://dfcdn.defacto.com.tr/410/J0172AX_26WN_RD1_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "red-crossover-collar-jacket"
- },
- {
-  "id": 22,
-  "name": "طقم مخطط قصة عادية كم طويل - قطعتين",
-  "priceEgp": 1499,
-  "category": "أطقم كاجوال",
-  "image": "https://dfcdn.defacto.com.tr/410/G2395AX_26AU_PR461_01_01.jpg",
-  "decision": "added",
-  "demoSlug": "striped-two-piece-pyjama-set"
- },
- {
-  "id": 23,
-  "name": "Slim Fit Mock Neck Lace Top",
-  "priceEgp": 1299,
-  "category": "تيشيرتات وشيميزات",
-  "image": "https://dfcdn.defacto.com.tr/410/I9650AX_26WN_ER138_01_02.jpg",
-  "decision": "added",
-  "demoSlug": "lace-high-neck-puff-sleeve-top"
- },
- {
-  "id": 24,
-  "name": "سكارف حريمي تريكو برباط",
-  "priceEgp": 599,
-  "category": "إكسسوارات وسكارفات",
-  "image": "https://dfcdn.defacto.com.tr/410/I4750AX_26WN_BN66_01_01.jpg",
-  "decision": "merged",
-  "demoSlug": "knit-shoulder-wrap-tie",
-  "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
- }
+  {
+    "id": 1,
+    "name": "بلوفر قصة عادية",
+    "priceEgp": 999,
+    "category": "بلوفرات وتريكو",
+    "image": "https://dfcdn.defacto.com.tr/410/I6892AX_26WN_ER100_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "striped-polo-collar-pullover"
+  },
+  {
+    "id": 2,
+    "name": "جيبة تريكو بقصة A",
+    "priceEgp": 999,
+    "category": "جيبات وتنانير",
+    "image": "https://dfcdn.defacto.com.tr/410/J0479AX_26WN_BN130_01_03.jpg",
+    "decision": "added",
+    "demoSlug": "pointed-hem-knit-skirt"
+  },
+  {
+    "id": 3,
+    "name": "Oversize Mock Neck Printed T-Shirt",
+    "priceEgp": 999,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/I9592AX_26AU_BK81_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "black-98-print-tee"
+  },
+  {
+    "id": 4,
+    "name": "بنطلون قصة مستقيمة واسعة",
+    "priceEgp": 999,
+    "category": "بناطيل واسعة",
+    "image": "https://dfcdn.defacto.com.tr/410/H7807AX_26AU_AR69_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "wide-straight-fleece-trousers"
+  },
+  {
+    "id": 5,
+    "name": "سويت شيرت قماش سميك قصة عادية",
+    "priceEgp": 999,
+    "category": "سويت شيرت",
+    "image": "https://dfcdn.defacto.com.tr/410/I0971AX_26AU_BG759_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "thick-high-collar-sweatshirt"
+  },
+  {
+    "id": 6,
+    "name": "Oversize Fit Long Sleeve T-Shirt",
+    "priceEgp": 899,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/I9565AX_26AU_BK81_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "black-lace-mandarin-top"
+  },
+  {
+    "id": 7,
+    "name": "Fitted Patterned Mock Neck T-Shirt",
+    "priceEgp": 799,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/D9758AX_26WN_BN267_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "mock-neck-short-sleeve-knit-top"
+  },
+  {
+    "id": 8,
+    "name": "Slim Fit Basic T-Shirt",
+    "priceEgp": 699,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/I9583AX_26AU_BE89_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "blue-slogan-long-sleeve-tee"
+  },
+  {
+    "id": 9,
+    "name": "تونيك محتشم كم طويل",
+    "priceEgp": 699,
+    "category": "تونيكات ومحتشم",
+    "image": "https://dfcdn.defacto.com.tr/410/J1594AX_26AU_BK81_01_01.jpg",
+    "decision": "merged",
+    "demoSlug": "flared-sleeve-modest-tunic",
+    "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
+  },
+  {
+    "id": 10,
+    "name": "تونيك كم طويل قطن",
+    "priceEgp": 699,
+    "category": "تونيكات ومحتشم",
+    "image": "https://dfcdn.defacto.com.tr/410/J1594AX_26AU_ER37_01_01.jpg",
+    "decision": "merged",
+    "demoSlug": "flared-sleeve-modest-tunic",
+    "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
+  },
+  {
+    "id": 11,
+    "name": "سكارف حريمي بيزك دافئ",
+    "priceEgp": 599,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/F3423AX_26WN_ER2_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "soft-fringe-scarf-beige"
+  },
+  {
+    "id": 12,
+    "name": "كاب حريمي قطن شتوي",
+    "priceEgp": 599,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/U9363AZ_26WN_GR2_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "winter-baseball-cap-grey"
+  },
+  {
+    "id": 13,
+    "name": "Slim Fit Long Sleeve T-Shirt",
+    "priceEgp": 499,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/I4450AX_26AU_ER105_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "white-slim-long-sleeve-top"
+  },
+  {
+    "id": 14,
+    "name": "ايس كاب حريمي تريكو",
+    "priceEgp": 249,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/R7545AZ_26WN_BK27_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "black-cuffed-knit-beanie"
+  },
+  {
+    "id": 15,
+    "name": "جاكيت فرو صناعي قصة عادية",
+    "priceEgp": 2699,
+    "category": "جواكت ومعاطف",
+    "image": "https://dfcdn.defacto.com.tr/410/I2263AX_26WN_ER128_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "leopard-print-faux-fur-jacket"
+  },
+  {
+    "id": 16,
+    "name": "روب نوم طويل قطيفة فرو وياقة متقاطعة",
+    "priceEgp": 1299,
+    "category": "ملابس منزلية دافئة",
+    "image": "https://dfcdn.defacto.com.tr/410/A3437AX_26AU_BR86_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "plush-wrap-collar-robe"
+  },
+  {
+    "id": 17,
+    "name": "بلوفر قصة عادية شتوي",
+    "priceEgp": 999,
+    "category": "بلوفرات وتريكو",
+    "image": "https://dfcdn.defacto.com.tr/410/I6940AX_26WN_PR200_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "burgundy-striped-crew-pullover"
+  },
+  {
+    "id": 18,
+    "name": "سكارف حريمي مكشكش ناعم",
+    "priceEgp": 699,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/I2985AX_26WN_BN66_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "dark-brown-fringe-scarf"
+  },
+  {
+    "id": 19,
+    "name": "100% Cotton Slim Fit Basic T-Shirt",
+    "priceEgp": 999,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/J1123AX_26WN_RD44_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "red-draped-side-long-sleeve-top"
+  },
+  {
+    "id": 20,
+    "name": "سكارف كتف حريمي تريكو أنيق",
+    "priceEgp": 599,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/I4750AX_26WN_RD2_01_01.jpg",
+    "decision": "merged",
+    "demoSlug": "knit-shoulder-wrap-tie",
+    "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
+  },
+  {
+    "id": 21,
+    "name": "جاكيت بالون فيت بياقة متقاطعة وجيب",
+    "priceEgp": 3299,
+    "category": "جواكت ومعاطف",
+    "image": "https://dfcdn.defacto.com.tr/410/J0172AX_26WN_RD1_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "red-crossover-collar-jacket"
+  },
+  {
+    "id": 22,
+    "name": "طقم مخطط قصة عادية كم طويل - قطعتين",
+    "priceEgp": 1499,
+    "category": "أطقم كاجوال",
+    "image": "https://dfcdn.defacto.com.tr/410/G2395AX_26AU_PR461_01_01.jpg",
+    "decision": "added",
+    "demoSlug": "striped-two-piece-pyjama-set"
+  },
+  {
+    "id": 23,
+    "name": "Slim Fit Mock Neck Lace Top",
+    "priceEgp": 1299,
+    "category": "تيشيرتات وشيميزات",
+    "image": "https://dfcdn.defacto.com.tr/410/I9650AX_26WN_ER138_01_02.jpg",
+    "decision": "added",
+    "demoSlug": "lace-high-neck-puff-sleeve-top"
+  },
+  {
+    "id": 24,
+    "name": "سكارف حريمي تريكو برباط",
+    "priceEgp": 599,
+    "category": "إكسسوارات وسكارفات",
+    "image": "https://dfcdn.defacto.com.tr/410/I4750AX_26WN_BN66_01_01.jpg",
+    "decision": "merged",
+    "demoSlug": "knit-shoulder-wrap-tie",
+    "note": "دُمج مع لون آخر من النمط نفسه في منتج واحد بتركيبات ألوان."
+  }
 ]

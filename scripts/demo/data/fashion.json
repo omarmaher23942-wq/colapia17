@@ -1,2151 +1,1341 @@
 [
- {
-  "slug": "satin-midi-dress",
-  "name": "فستان ساتان ميدي بياقة V",
-  "category": "فساتين",
-  "price": 1450,
-  "compareAt": 1850,
-  "shortDescription": "ساتان ناعم بانسدال هادئ وحزام للخصر، يصلح للمناسبات والسهرات.",
-  "description": "فستان ميدي من الساتان بياقة V وأكمام قصيرة وحزام قابل للربط عند الخصر.\nالقماش ينسدل بنعومة ولا يلتصق بالجسم، والطول يغطي الركبة.\nيُنسَّق مع حذاء كعب أو صندل مسطح حسب المناسبة.",
-  "material": "ساتان بوليستر ناعم",
-  "fit": "عادية",
-  "care": "غسيل لطيف بالماء البارد، وكي على حرارة منخفضة.",
-  "tags": [
-   "مناسبات",
-   "ساتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "belted-trench-coat",
+    "name": "ترنش كوت بيج بحزام",
+    "category": "جواكت ومعاطف",
+    "price": 2250,
+    "compareAt": null,
+    "shortDescription": "جابردين مقاوم لرذاذ المطر بصفين أزرار وحزام للخصر.",
+    "description": "ترنش كلاسيكي من الجابردين بصفين من الأزرار وحزام عند الخصر وياقة عريضة.\nمقاوم لرذاذ المطر الخفيف وبطانة داخلية ناعمة.\nيُلبس مفتوحاً فوق الطقم أو مغلقاً بالحزام.",
+    "material": "جابردين قطني بطانة ناعمة",
+    "fit": "عادية",
+    "care": "تنظيف جاف.",
+    "tags": [
+      "معاطف",
+      "خريف"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "بيج",
+          "كحلي"
+        ]
+      }
+    ],
+    "stock": 12,
+    "featured": true,
+    "isNew": true,
+    "images": [
+      "/demo/editorial/lookbook-2.webp"
+    ],
+    "alt": [
+      "ترنش كوت بيج مفتوح فوق توب أبيض وبنطلون بيج"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "زيتي",
-     "أسود",
-     "عنابي"
-    ]
-   }
-  ],
-  "stock": 36,
-  "featured": true,
-  "isNew": true,
-  "art": {
-   "shape": "dress",
-   "tone": "#5b6b2f"
   },
-  "images": [
-   "/demo/fashion/satin-midi-dress-1.webp"
-  ],
-  "alt": [
-   "فستان ساتان ميدي بياقة V (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "velvet-evening-dress",
-  "name": "فستان سهرة مخمل بأكمام طويلة",
-  "category": "فساتين",
-  "price": 2350,
-  "compareAt": null,
-  "shortDescription": "مخمل مرن بقصّة قريبة من الجسم وفتحة جانبية بسيطة.",
-  "description": "فستان سهرة من المخمل المرن بأكمام طويلة وياقة مستديرة وفتحة جانبية تسهّل الحركة.\nالمخمل يعطي لمعة هادئة تحت الإضاءة الدافئة.\nالطول ماكسي يلامس الكاحل مع كعب متوسط.",
-  "material": "مخمل مرن",
-  "fit": "ضيقة",
-  "care": "تنظيف جاف، ولا يُعصر ولا يُكوى مباشرة.",
-  "tags": [
-   "سهرة",
-   "مخمل"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "longline-camel-wool-coat",
+    "name": "معطف صوف طويل",
+    "category": "جواكت ومعاطف",
+    "price": 2850,
+    "compareAt": null,
+    "shortDescription": "صوف سميك بقصّة طويلة وأكتاف مريحة وجيوب عميقة.",
+    "description": "معطف طويل من الصوف السميك بياقة عريضة وجيبين عميقين وإغلاق بأزرار مخفية.\nالأكتاف مريحة ليُلبس فوق الكنزات.\nيصل إلى أسفل الركبة.",
+    "material": "صوف مخلوط",
+    "fit": "واسعة",
+    "care": "تنظيف جاف.",
+    "tags": [
+      "معاطف",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "جمل",
+          "رمادي"
+        ]
+      }
+    ],
+    "stock": 8,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/editorial/lookbook-3.webp"
+    ],
+    "alt": [
+      "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "عنابي",
-     "أسود",
-     "كحلي"
-    ]
-   }
-  ],
-  "stock": 14,
-  "featured": true,
-  "isNew": false,
-  "art": {
-   "shape": "maxi",
-   "tone": "#7a1f3d"
   },
-  "images": [
-   "/demo/fashion/velvet-evening-dress-1.webp"
-  ],
-  "alt": [
-   "فستان سهرة مخمل بأكمام طويلة (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "linen-belted-dress",
-  "name": "فستان كتان بحزام",
-  "category": "فساتين",
-  "price": 1150,
-  "compareAt": null,
-  "shortDescription": "كتان خفيف بجيبين جانبيين وحزام، للصيف واليوم الطويل.",
-  "description": "فستان من الكتان الخفيف بأكمام قصيرة وجيبين جانبيين وحزام من القماش نفسه.\nالكتان يتنفس مع الحرارة، وتجعيده الخفيف جزء من شكله.\nالطول تحت الركبة بقليل.",
-  "material": "كتان مخلوط بالقطن",
-  "fit": "عادية",
-  "care": "غسيل بالماء البارد، ويُكوى وهو رطب قليلاً.",
-  "tags": [
-   "صيف",
-   "كتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "camel-blazer-trouser-set",
+    "name": "طقم بليزر وبنطلون",
+    "category": "أطقم وملابس منزلية",
+    "price": 2150,
+    "compareAt": null,
+    "shortDescription": "بليزر بقصّة مستقيمة وبنطلون مطابق، يُلبسان معاً أو منفصلين.",
+    "description": "طقم من قطعتين: بليزر بصف أزرار واحد وجيوب أمامية، وبنطلون مطابق بخصر عالٍ.\nكل قطعة تُلبس منفردة مع بقية الخزانة.\nالأسعار المعروضة للطقم كاملاً.",
+    "material": "قماش منسدل مخلوط",
+    "fit": "عادية",
+    "care": "تنظيف جاف.",
+    "tags": [
+      "أطقم",
+      "عمل"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "جمل",
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 16,
+    "featured": true,
+    "isNew": true,
+    "images": [
+      "/demo/editorial/hero-side.webp"
+    ],
+    "alt": [
+      "بليزر بلون الجمل فوق توب أبيض وجينز فاتح، جلسة على كرسي خشبي"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج",
-     "أبيض",
-     "زيتي"
-    ]
-   }
-  ],
-  "stock": 30,
-  "featured": false,
-  "isNew": true,
-  "art": {
-   "shape": "dress",
-   "tone": "#d6c7a1"
   },
-  "images": [
-   "/demo/fashion/linen-belted-dress-1.webp"
-  ],
-  "alt": [
-   "فستان كتان بحزام (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "chiffon-floral-maxi",
-  "name": "فستان ماكسي شيفون بطبعة زهور",
-  "category": "فساتين",
-  "price": 1650,
-  "compareAt": 1990,
-  "shortDescription": "شيفون بطبقتين وكشكشة عند الذيل وأكمام واسعة بأستك.",
-  "description": "فستان ماكسي من الشيفون بطبقة داخلية، بطبعة زهور صغيرة وأكمام واسعة بأستك عند المعصم.\nالكشكشة عند الذيل تعطي حركة عند المشي.\nالخصر مرن لراحة أكبر.",
-  "material": "شيفون بطبقة بطانة",
-  "fit": "واسعة",
-  "care": "غسيل يدوي لطيف، ويُجفَّف في الظل.",
-  "tags": [
-   "ماكسي",
-   "شيفون"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "khaki-utility-set",
+    "name": "طقم كاجوال بقميص وبنطلون",
+    "category": "أطقم وملابس منزلية",
+    "price": 1350,
+    "compareAt": null,
+    "shortDescription": "قميص بأكمام قصيرة وجيوب أمامية وبنطلون مطابق بخصر مرن.",
+    "description": "طقم قطعتين بأسلوب «يوتيليتي»: قميص بجيوب صدر وأزرار كاملة، وبنطلون مطابق بخصر مرن.\nالقطن المتين يحافظ على شكله.\nمناسب لليوم الطويل والسفر.",
+    "material": "قطن متين",
+    "fit": "عادية",
+    "care": "غسيل عادي حتى 40 درجة.",
+    "tags": [
+      "أطقم",
+      "كاجوال"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "خاكي",
+          "بيج"
+        ]
+      }
+    ],
+    "stock": 20,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/editorial/lookbook-1.webp"
+    ],
+    "alt": [
+      "طقم قميص وبنطلون بلون الخاكي، جلسة على الأرض أمام جدار رملي"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "وردي بودرة",
-     "كحلي"
-    ]
-   }
-  ],
-  "stock": 18,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "maxi",
-   "tone": "#e8c4c4"
   },
-  "images": [
-   "/demo/fashion/chiffon-floral-maxi-1.webp"
-  ],
-  "alt": [
-   "فستان ماكسي شيفون بطبعة زهور (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "belted-shirt-dress",
-  "name": "فستان قميص بخصر مرن",
-  "category": "فساتين",
-  "price": 1250,
-  "compareAt": null,
-  "shortDescription": "قصّة قميص بأزرار كاملة وياقة كلاسيكية، يُلبس مفتوحاً أو مغلقاً.",
-  "description": "فستان بقصّة قميص وأزرار على الطول كله وياقة كلاسيكية وحزام عند الخصر.\nيمكن فتح الأزرار السفلية لإطلالة أخف.\nالقماش سميك نسبياً ولا يشف.",
-  "material": "قطن بوبلين",
-  "fit": "عادية",
-  "care": "غسيل عادي حتى 30 درجة، وكي متوسط.",
-  "tags": [
-   "كاجوال",
-   "قميص"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "green-leather-tote",
+    "name": "حقيبة يد جلد بمقبضين",
+    "category": "إكسسوارات وأحذية",
+    "price": 1450,
+    "compareAt": 1750,
+    "shortDescription": "حقيبة بتصميم مهيكل ومقبضين وحزام كتف قابل للفك.",
+    "description": "حقيبة يد مهيكلة بمقبضين وحزام كتف قابل للفك وبطانة داخلية بجيب بسحّاب.\nتتسع للهاتف والمحفظة وأغراض اليوم.\nإكسسوارات معدنية بلون ذهبي.",
+    "material": "جلد صناعي مصقول",
+    "care": "تُمسح بقطعة قماش مبللة قليلاً.",
+    "tags": [
+      "حقائب"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "أخضر",
+          "وردي بودرة"
+        ]
+      }
+    ],
+    "stock": 11,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/green-leather-tote-1.webp"
+    ],
+    "alt": [
+      "حقيبة يد خضراء فوق حقيبة وردية على خلفية بيضاء"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "جمل",
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 4,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "shirtdress",
-   "tone": "#c19a6b"
   },
-  "images": [
-   "/demo/fashion/belted-shirt-dress-1.webp"
-  ],
-  "alt": [
-   "فستان قميص بخصر مرن (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "black-crepe-abaya",
-  "name": "عباية كريب سوداء بأكمام واسعة",
-  "category": "عبايات",
-  "price": 1350,
-  "compareAt": null,
-  "shortDescription": "كريب منسدل بقصّة مستقيمة وأكمام واسعة وجيوب جانبية.",
-  "description": "عباية من الكريب بقصّة مستقيمة وأكمام واسعة وجيبين جانبيين مخفيين.\nتغطي بالكامل وتنسدل بخفة، وتصلح للدوام وللمناسبات.\nالإغلاق بأزرار مخفية أمامية.",
-  "material": "كريب منسدل",
-  "fit": "واسعة",
-  "care": "غسيل لطيف بالماء البارد، ويُكوى على الوجه الخلفي.",
-  "tags": [
-   "عبايات",
-   "يومي"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "tortoise-hoop-earrings",
+    "name": "حلق دائري بلون السلحفاة",
+    "category": "إكسسوارات وأحذية",
+    "price": 220,
+    "compareAt": null,
+    "shortDescription": "راتنج خفيف بحلقة كبيرة وإبرة مطلية بالذهب.",
+    "description": "حلق دائري من الراتنج الخفيف بلون السلحفاة، مريح للارتداء الطويل.\nإبرة بطلاء ذهبي ويُباع زوجاً.\nيُحفظ بعيداً عن الماء والعطور.",
+    "material": "راتنج وإبرة مطلية",
+    "care": "يُمسح بقطعة جافة ويُحفظ في علبة.",
+    "tags": [
+      "حلي"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "بني"
+        ]
+      }
+    ],
+    "stock": 50,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/tortoise-hoop-earrings-1.webp"
+    ],
+    "alt": [
+      "حلق دائري بلون السلحفاة بجوار نظارة شمسية على سطح أبيض"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود",
-     "كحلي"
-    ]
-   }
-  ],
-  "stock": 40,
-  "featured": true,
-  "isNew": false,
-  "art": {
-   "shape": "abaya",
-   "tone": "#1a1a1a"
   },
-  "images": [
-   "/demo/fashion/black-crepe-abaya-1.webp"
-  ],
-  "alt": [
-   "عباية كريب سوداء بأكمام واسعة (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "linen-open-abaya",
-  "name": "عباية مفتوحة كتان",
-  "category": "عبايات",
-  "price": 1550,
-  "compareAt": null,
-  "shortDescription": "كتان خفيف بقصّة مفتوحة تُلبس فوق أي إطلالة.",
-  "description": "عباية مفتوحة من الكتان الخفيف بدون إغلاق أمامي، تُلبس فوق فستان أو طقم.\nجيوب جانبية وأكمام طويلة بكُمّ مطوي.\nخفيفة على الجسم في الأجواء الدافئة.",
-  "material": "كتان مخلوط بالقطن",
-  "fit": "واسعة",
-  "care": "غسيل بالماء البارد، وكي وهي رطبة قليلاً.",
-  "tags": [
-   "عبايات",
-   "كتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "black-leather-stiletto-pumps",
+    "name": "حذاء كعب عالٍ جلد أسود",
+    "category": "إكسسوارات وأحذية",
+    "price": 1650,
+    "compareAt": null,
+    "shortDescription": "جلد أسود بمقدمة مدببة وكعب رفيع بارتفاع 9 سم.",
+    "description": "حذاء كعب رفيع من الجلد الأسود بمقدمة مدببة وبطانة جلدية.\nارتفاع الكعب 9 سم، والنعل الداخلي مبطن للراحة.\nيناسب الفساتين والبناطيل المستقيمة.",
+    "material": "جلد طبيعي",
+    "care": "يُنظَّف بقطعة ناعمة ويُحفظ في كيسه.",
+    "tags": [
+      "أحذية",
+      "كعب"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 24,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/products/black-leather-stiletto-pumps-1.webp",
+      "/demo/products/black-leather-stiletto-pumps-2.webp",
+      "/demo/products/black-leather-stiletto-pumps-3.webp"
+    ],
+    "alt": [
+      "حذاء كعب أسود من الجانب",
+      "حذاء كعب أسود من الأمام",
+      "تفصيل الكعب والنعل"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج",
-     "رمادي"
-    ]
-   }
-  ],
-  "stock": 22,
-  "featured": false,
-  "isNew": true,
-  "art": {
-   "shape": "abayaopen",
-   "tone": "#d6c7a1"
   },
-  "images": [
-   "/demo/fashion/linen-open-abaya-1.webp"
-  ],
-  "alt": [
-   "عباية مفتوحة كتان (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "embroidered-sleeve-abaya",
-  "name": "عباية بتطريز عند الأكمام",
-  "category": "عبايات",
-  "price": 2450,
-  "compareAt": 2900,
-  "shortDescription": "كريب فاخر بتطريز دقيق على الأكمام والياقة.",
-  "description": "عباية من الكريب بتطريز يدوي الشكل على الأكمام والياقة بخيوط متناسقة مع اللون.\nقصّة مستقيمة تنسدل بثقل خفيف، وإغلاق أمامي مخفي.\nمناسبة للمناسبات والزيارات الرسمية.",
-  "material": "كريب بتطريز",
-  "fit": "عادية",
-  "care": "تنظيف جاف يحافظ على التطريز.",
-  "tags": [
-   "عبايات",
-   "مناسبات"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "cognac-leather-slingback-heels",
+    "name": "حذاء سلينج باك كونياك",
+    "category": "إكسسوارات وأحذية",
+    "price": 1450,
+    "compareAt": null,
+    "shortDescription": "جلد كونياك بكعب عريض مريح وحزام خلفي.",
+    "description": "حذاء سلينج باك من الجلد بلون الكونياك بكعب عريض بارتفاع 6 سم وحزام خلفي بإبزيم.\nالكعب العريض أثبت في المشي الطويل.\nيُنسَّق مع الأطقم والفساتين.",
+    "material": "جلد طبيعي",
+    "care": "يُمسح بقطعة ناعمة ويُحفظ بعيداً عن الرطوبة.",
+    "tags": [
+      "أحذية",
+      "كعب"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "كونياك"
+        ]
+      }
+    ],
+    "stock": 5,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/products/cognac-leather-slingback-heels-1.webp",
+      "/demo/products/cognac-leather-slingback-heels-3.webp"
+    ],
+    "alt": [
+      "حذاء سلينج باك كونياك من الجانب",
+      "تفصيل الكعب والحزام الخلفي"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود",
-     "عنابي"
-    ]
-   }
-  ],
-  "stock": 9,
-  "featured": true,
-  "isNew": false,
-  "art": {
-   "shape": "abaya",
-   "tone": "#3b1220"
   },
-  "images": [
-   "/demo/fashion/embroidered-sleeve-abaya-1.webp"
-  ],
-  "alt": [
-   "عباية بتطريز عند الأكمام (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "cotton-prayer-set",
-  "name": "إسدال صلاة قطن بقطعتين",
-  "category": "عبايات",
-  "price": 650,
-  "compareAt": null,
-  "shortDescription": "قطن ناعم بقطعتين: غطاء رأس وتنورة بأستك واسع.",
-  "description": "إسدال من القطن الناعم بقطعتين: غطاء رأس طويل وتنورة بخصر مرن.\nالقماش لا يشف ويتحمل الغسيل المتكرر.\nيأتي في كيس قماش للحفظ.",
-  "material": "قطن ناعم",
-  "fit": "واسعة",
-  "care": "غسيل عادي حتى 40 درجة.",
-  "tags": [
-   "إسدال",
-   "قطن"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "black-leather-strap-sandals",
+    "name": "صندل جلد بحزام كاحل",
+    "category": "إكسسوارات وأحذية",
+    "price": 1150,
+    "compareAt": 1390,
+    "shortDescription": "حزامان رفيعان وحزام كاحل بإبزيم ونعل مبطن.",
+    "description": "صندل من الجلد الأسود بحزامين رفيعين وحزام كاحل بإبزيم ونعل داخلي مبطن.\nكعب منخفض مناسب للمشي اليومي.\nيناسب الفساتين الصيفية والبناطيل القصيرة.",
+    "material": "جلد طبيعي",
+    "care": "يُمسح بقطعة جافة ويُحفظ في مكان جاف.",
+    "tags": [
+      "أحذية",
+      "صيف"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "36",
+          "37",
+          "38",
+          "39",
+          "40",
+          "41"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 27,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/products/black-leather-strap-sandals-1.webp",
+      "/demo/products/black-leather-strap-sandals-2.webp"
+    ],
+    "alt": [
+      "صندل جلد أسود بحزام كاحل من الجانب",
+      "صندل جلد أسود من الأمام"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أبيض",
-     "وردي بودرة",
-     "رمادي"
-    ]
-   }
-  ],
-  "stock": 0,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "abaya",
-   "tone": "#f3eee2"
   },
-  "images": [
-   "/demo/fashion/cotton-prayer-set-1.webp"
-  ],
-  "alt": [
-   "إسدال صلاة قطن بقطعتين (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "puff-sleeve-satin-blouse",
-  "name": "بلوزة ساتان بأكمام منفوخة",
-  "category": "بلوزات وتونيكات",
-  "price": 590,
-  "compareAt": null,
-  "shortDescription": "ساتان لامع بأكمام منفوخة وأزرار صغيرة عند الكُمّ.",
-  "description": "بلوزة من الساتان بياقة عالية وأكمام منفوخة تنتهي بكُمّ ضيق بأزرار.\nتُنسَّق مع بنطلون واسع أو تنورة بليسيه.\nالطول يغطي الخصر.",
-  "material": "ساتان بوليستر",
-  "fit": "عادية",
-  "care": "غسيل لطيف بالماء البارد.",
-  "tags": [
-   "بلوزات",
-   "ساتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "striped-polo-collar-pullover",
+    "name": "بلوفر مقلّم بياقة بولو",
+    "category": "بلوفرات وتريكو",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "تريكو بخطوط عريضة كحلية على أبيض، وياقة بولو وحواف مضلّعة.",
+    "description": "بلوفر تريكو بخطوط أفقية عريضة كحلية على أرضية بيضاء، بياقة بولو مفتوحة وأكمام طويلة وحواف مضلّعة عند الذيل.\nقصّته عادية تسمح بالتنسيق فوق قميص أو توب بأكمام طويلة.\nيُنسَّق مع بنطلون واسع داكن أو تنورة ميدي.",
+    "material": "تريكو ناعم",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "بلوفر",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "كحلي مقلّم"
+        ]
+      }
+    ],
+    "stock": 34,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/striped-polo-collar-pullover-1.webp",
+      "/demo/fashion/striped-polo-collar-pullover-2.webp",
+      "/demo/fashion/striped-polo-collar-pullover-3.webp",
+      "/demo/fashion/striped-polo-collar-pullover-4.webp"
+    ],
+    "alt": [
+      "بلوفر مقلّم بياقة بولو (على عارضة)",
+      "بلوفر مقلّم بياقة بولو (على عارضة)",
+      "بلوفر مقلّم بياقة بولو (القطعة مفرودة)",
+      "بلوفر مقلّم بياقة بولو (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "كريمي",
-     "وردي بودرة",
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 48,
-  "featured": true,
-  "isNew": false,
-  "art": {
-   "shape": "blouse",
-   "tone": "#f3eee2"
   },
-  "images": [
-   "/demo/fashion/puff-sleeve-satin-blouse-1.webp"
-  ],
-  "alt": [
-   "بلوزة ساتان بأكمام منفوخة (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "oversize-linen-shirt",
-  "name": "قميص كتان أوفر سايز",
-  "category": "بلوزات وتونيكات",
-  "price": 650,
-  "compareAt": null,
-  "shortDescription": "كتان خفيف بقصّة واسعة وجيب صدر، يُلبس مدسوساً أو سائباً.",
-  "description": "قميص بقصّة أوفر سايز وجيب أمامي وأكمام قابلة للطي.\nالكتان يتنفس ويخفّ مع كل غسلة.\nيُلبس فوق بنطلون أو كطبقة خفيفة.",
-  "material": "كتان",
-  "fit": "أوفر سايز",
-  "care": "غسيل بالماء البارد وكي خفيف.",
-  "tags": [
-   "قمصان",
-   "كتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "burgundy-striped-crew-pullover",
+    "name": "بلوفر مقلّم بلون عنابي",
+    "category": "بلوفرات وتريكو",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "تريكو عنابي بخطوط رفيعة بيج وياقة مستديرة مضلّعة.",
+    "description": "بلوفر تريكو بلون عنابي داكن وخطوط أفقية رفيعة بلون البيج، بياقة مستديرة وأكمام طويلة وحواف مضلّعة.\nالقماش دافئ وقصّته عادية مريحة.\nيناسب النهار مع بنطلون بيج واسع أو جينز.",
+    "material": "تريكو",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "بلوفر",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "عنابي مقلّم"
+        ]
+      }
+    ],
+    "stock": 28,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/burgundy-striped-crew-pullover-1.webp",
+      "/demo/fashion/burgundy-striped-crew-pullover-2.webp",
+      "/demo/fashion/burgundy-striped-crew-pullover-3.webp",
+      "/demo/fashion/burgundy-striped-crew-pullover-4.webp"
+    ],
+    "alt": [
+      "بلوفر مقلّم بلون عنابي (على عارضة)",
+      "بلوفر مقلّم بلون عنابي (على عارضة)",
+      "بلوفر مقلّم بلون عنابي (القطعة مفرودة)",
+      "بلوفر مقلّم بلون عنابي (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أبيض",
-     "بيج",
-     "سماوي"
-    ]
-   }
-  ],
-  "stock": 40,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "shirt",
-   "tone": "#ffffff"
   },
-  "images": [
-   "/demo/fashion/oversize-linen-shirt-1.webp"
-  ],
-  "alt": [
-   "قميص كتان أوفر سايز (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "ribbed-knit-top",
-  "name": "توب محبوك بقصّة ضيقة",
-  "category": "بلوزات وتونيكات",
-  "price": 390,
-  "compareAt": null,
-  "shortDescription": "حياكة مضلّعة مرنة بياقة مستديرة، أساس لأي إطلالة.",
-  "description": "توب من الحياكة المضلعة المرنة بأكمام طويلة وياقة مستديرة.\nيتمدد ويعود لشكله بعد الغسيل.\nيُلبس منفرداً أو تحت كارديجان وبليزر.",
-  "material": "قطن مخلوط بالإيلاستين",
-  "fit": "ضيقة",
-  "care": "غسيل عادي، ولا يُجفَّف بالحرارة العالية.",
-  "tags": [
-   "أساسيات",
-   "محبوك"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "thick-high-collar-sweatshirt",
+    "name": "سويت شيرت سميك بياقة عالية",
+    "category": "بلوفرات وتريكو",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "قماش سميك بلون بيج فاتح وياقة عالية وطباعة صغيرة على الصدر.",
+    "description": "سويت شيرت بقماش سميك دافئ بلون بيج فاتح، بياقة عالية وأكمام طويلة وحواف مضلّعة وطباعة صغيرة على الصدر.\nالقصّة عادية وبطول يصل إلى الورك.\nيُنسَّق مع بنطلون واسع من اللون نفسه أو من لون مختلف.",
+    "material": "قطن سميك",
+    "fit": "عادية",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "كاجوال",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "بيج فاتح"
+        ]
+      }
+    ],
+    "stock": 40,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/thick-high-collar-sweatshirt-1.webp",
+      "/demo/fashion/thick-high-collar-sweatshirt-2.webp",
+      "/demo/fashion/thick-high-collar-sweatshirt-3.webp",
+      "/demo/fashion/thick-high-collar-sweatshirt-4.webp"
+    ],
+    "alt": [
+      "سويت شيرت سميك بياقة عالية (على عارضة)",
+      "سويت شيرت سميك بياقة عالية (على عارضة)",
+      "سويت شيرت سميك بياقة عالية (القطعة مفرودة)",
+      "سويت شيرت سميك بياقة عالية (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود",
-     "أبيض",
-     "جمل"
-    ]
-   }
-  ],
-  "stock": 60,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "knit",
-   "tone": "#111111"
   },
-  "images": [
-   "/demo/fashion/ribbed-knit-top-1.webp"
-  ],
-  "alt": [
-   "توب محبوك بقصّة ضيقة (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "button-wool-cardigan",
-  "name": "كارديجان صوف بأزرار",
-  "category": "بلوفرات وتريكو",
-  "price": 980,
-  "compareAt": 1200,
-  "shortDescription": "صوف مخلوط بسماكة معتدلة وجيبين أماميين وأزرار كاملة.",
-  "description": "كارديجان من الصوف المخلوط بسماكة معتدلة، بياقة V وأزرار كاملة وجيبين أماميين.\nيدفئ دون ثقل، ويُلبس مفتوحاً أو مغلقاً.\nالطول عند الورك.",
-  "material": "صوف مخلوط بالأكريليك",
-  "fit": "عادية",
-  "care": "غسيل يدوي بماء بارد، ويُجفَّف مفروداً.",
-  "tags": [
-   "شتاء",
-   "محبوك"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "pointed-hem-knit-skirt",
+    "name": "تنورة تريكو واسعة بحواف مدببة",
+    "category": "بناطيل وتنانير",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "تنورة ميدي من التريكو بقصّة واسعة وحافة مدببة تتحرك مع الخطوة.",
+    "description": "تنورة ميدي من التريكو بلون بني داكن، بخصر مرن وقصّة واسعة تنتهي بحواف مدببة غير متساوية.\nتنسدل بحركة جميلة وتغطي الساق حتى أسفل الركبة.\nتُنسَّق مع بلوفر ناعم وجزمة بكعب أو حذاء مسطح.",
+    "material": "تريكو",
+    "fit": "واسعة",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "تنورة",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "بني داكن"
+        ]
+      }
+    ],
+    "stock": 22,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/pointed-hem-knit-skirt-1.webp",
+      "/demo/fashion/pointed-hem-knit-skirt-2.webp",
+      "/demo/fashion/pointed-hem-knit-skirt-3.webp",
+      "/demo/fashion/pointed-hem-knit-skirt-4.webp",
+      "/demo/fashion/pointed-hem-knit-skirt-5.webp",
+      "/demo/fashion/pointed-hem-knit-skirt-6.webp"
+    ],
+    "alt": [
+      "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
+      "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
+      "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
+      "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
+      "تنورة تريكو واسعة بحواف مدببة (القطعة مفرودة)",
+      "تنورة تريكو واسعة بحواف مدببة (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "رمادي",
-     "جمل",
-     "عنابي"
-    ]
-   }
-  ],
-  "stock": 25,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "cardigan",
-   "tone": "#9ca3af"
   },
-  "images": [
-   "/demo/fashion/button-wool-cardigan-1.webp"
-  ],
-  "alt": [
-   "كارديجان صوف بأزرار (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "belted-trench-coat",
-  "name": "ترنش كوت بيج بحزام",
-  "category": "جواكت ومعاطف",
-  "price": 2250,
-  "compareAt": null,
-  "shortDescription": "جابردين مقاوم لرذاذ المطر بصفين أزرار وحزام للخصر.",
-  "description": "ترنش كلاسيكي من الجابردين بصفين من الأزرار وحزام عند الخصر وياقة عريضة.\nمقاوم لرذاذ المطر الخفيف وبطانة داخلية ناعمة.\nيُلبس مفتوحاً فوق الطقم أو مغلقاً بالحزام.",
-  "material": "جابردين قطني بطانة ناعمة",
-  "fit": "عادية",
-  "care": "تنظيف جاف.",
-  "tags": [
-   "معاطف",
-   "خريف"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "wide-straight-fleece-trousers",
+    "name": "بنطلون واسع بقصة مستقيمة",
+    "category": "بناطيل وتنانير",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "قماش ناعم بلون فحمي وخصر مرتفع وساق مستقيمة واسعة.",
+    "description": "بنطلون بخصر مرتفع وساق مستقيمة واسعة بلون فحمي، من قماش ناعم يحتفظ بشكله.\nالطول يصل إلى الكاحل ويغطي القدم مع الحذاء المسطح.\nيُنسَّق مع توب بأكمام طويلة أو بلوفر.",
+    "material": "قماش ناعم",
+    "fit": "واسعة",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "بنطلون",
+      "محتشم"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "فحمي"
+        ]
+      }
+    ],
+    "stock": 46,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/wide-straight-fleece-trousers-1.webp",
+      "/demo/fashion/wide-straight-fleece-trousers-2.webp",
+      "/demo/fashion/wide-straight-fleece-trousers-3.webp",
+      "/demo/fashion/wide-straight-fleece-trousers-4.webp"
+    ],
+    "alt": [
+      "بنطلون واسع بقصة مستقيمة (على عارضة)",
+      "بنطلون واسع بقصة مستقيمة (على عارضة)",
+      "بنطلون واسع بقصة مستقيمة (القطعة مفرودة)",
+      "بنطلون واسع بقصة مستقيمة (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج",
-     "كحلي"
-    ]
-   }
-  ],
-  "stock": 12,
-  "featured": true,
-  "isNew": true,
-  "images": [
-   "/demo/editorial/lookbook-2.webp"
-  ],
-  "alt": [
-   "ترنش كوت بيج مفتوح فوق توب أبيض وبنطلون بيج"
-  ]
- },
- {
-  "slug": "longline-camel-wool-coat",
-  "name": "معطف صوف طويل",
-  "category": "جواكت ومعاطف",
-  "price": 2850,
-  "compareAt": null,
-  "shortDescription": "صوف سميك بقصّة طويلة وأكتاف مريحة وجيوب عميقة.",
-  "description": "معطف طويل من الصوف السميك بياقة عريضة وجيبين عميقين وإغلاق بأزرار مخفية.\nالأكتاف مريحة ليُلبس فوق الكنزات.\nيصل إلى أسفل الركبة.",
-  "material": "صوف مخلوط",
-  "fit": "واسعة",
-  "care": "تنظيف جاف.",
-  "tags": [
-   "معاطف",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "جمل",
-     "رمادي"
-    ]
-   }
-  ],
-  "stock": 8,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/editorial/lookbook-3.webp"
-  ],
-  "alt": [
-   "معطف صوف طويل بلون الجمل مع قبعة عريضة الحافة"
-  ]
- },
- {
-  "slug": "wide-leg-trousers",
-  "name": "بنطلون قماش واسع بخصر عالٍ",
-  "category": "بناطيل وتنانير",
-  "price": 790,
-  "compareAt": null,
-  "shortDescription": "قماش منسدل بقصّة واسعة وطيّة أمامية وجيوب جانبية.",
-  "description": "بنطلون واسع الساق بخصر عالٍ وطيّة أمامية وجيبين جانبيين وسحّاب مخفي.\nالقماش ينسدل ويخفي تفاصيل الجسم.\nطوله يلامس الحذاء.",
-  "material": "قماش منسدل بوليستر مخلوط",
-  "fit": "واسعة",
-  "care": "غسيل عادي، وكي متوسط.",
-  "tags": [
-   "بناطيل",
-   "عمل"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود",
-     "بيج",
-     "كحلي"
-    ]
-   }
-  ],
-  "stock": 54,
-  "featured": true,
-  "isNew": false,
-  "art": {
-   "shape": "trousers",
-   "tone": "#1e293b"
   },
-  "images": [
-   "/demo/fashion/wide-leg-trousers-1.webp"
-  ],
-  "alt": [
-   "بنطلون قماش واسع بخصر عالٍ (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "high-waist-straight-jeans",
-  "name": "جينز مستقيم بخصر عالٍ",
-  "category": "بناطيل وتنانير",
-  "price": 850,
-  "compareAt": null,
-  "shortDescription": "دنيم قطني بقصّة مستقيمة وخصر عالٍ وغسلة متوسطة.",
-  "description": "جينز بقصّة مستقيمة وخصر عالٍ وخمسة جيوب وسحّاب وزرّ معدني.\nالدنيم القطني مع نسبة مرونة بسيطة للراحة.\nطول كامل يصل إلى الكاحل.",
-  "material": "دنيم قطني مرن",
-  "fit": "عادية",
-  "care": "غسيل مقلوب بالماء البارد.",
-  "tags": [
-   "جينز",
-   "يومي"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "mock-neck-short-sleeve-knit-top",
+    "name": "توب محبوك بياقة عالية وأكمام قصيرة",
+    "category": "بلوزات وتونيكات",
+    "price": 799,
+    "compareAt": null,
+    "shortDescription": "توب بني داكن بياقة عالية وقماش بنقشة محبوكة، يُلبس منفرداً أو فوق قميص.",
+    "description": "توب بلون بني داكن بياقة عالية وأكمام قصيرة وقماش بنقشة محبوكة ناعمة، بقصّة قريبة من الجسم وبطول يصل إلى الخصر.\nيمكن لبسه فوق بلوزة بأكمام طويلة لإطلالة محتشمة.\nيناسب التنسيق مع بنطلون واسع من اللون نفسه.",
+    "material": "قماش محبوك",
+    "fit": "قريبة من الجسم",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "توب",
+      "طبقات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "بني داكن"
+        ]
+      }
+    ],
+    "stock": 30,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/mock-neck-short-sleeve-knit-top-1.webp",
+      "/demo/fashion/mock-neck-short-sleeve-knit-top-2.webp",
+      "/demo/fashion/mock-neck-short-sleeve-knit-top-3.webp",
+      "/demo/fashion/mock-neck-short-sleeve-knit-top-4.webp"
+    ],
+    "alt": [
+      "توب محبوك بياقة عالية وأكمام قصيرة (على عارضة)",
+      "توب محبوك بياقة عالية وأكمام قصيرة (على عارضة)",
+      "توب محبوك بياقة عالية وأكمام قصيرة (القطعة مفرودة)",
+      "توب محبوك بياقة عالية وأكمام قصيرة (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أزرق جينز",
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 45,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "trousers",
-   "tone": "#4a6fa5"
   },
-  "images": [
-   "/demo/fashion/high-waist-straight-jeans-1.webp"
-  ],
-  "alt": [
-   "جينز مستقيم بخصر عالٍ (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "pleated-midi-skirt",
-  "name": "تنورة بليسيه ميدي",
-  "category": "بناطيل وتنانير",
-  "price": 720,
-  "compareAt": null,
-  "shortDescription": "ثنيات دقيقة ثابتة بخصر مرن، حركة خفيفة مع كل خطوة.",
-  "description": "تنورة ميدي بثنيات دقيقة ثابتة لا تزول بالغسيل، وخصر مرن مريح.\nالطول بين الركبة والكاحل.\nتناسب بلوزة ساتان أو توب محبوك.",
-  "material": "بوليستر بليسيه",
-  "fit": "عادية",
-  "care": "غسيل لطيف، ولا تُكوى.",
-  "tags": [
-   "تنانير",
-   "بليسيه"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "flared-sleeve-modest-tunic",
+    "name": "تونيك واسع بأكمام جرسية",
+    "category": "بلوزات وتونيكات",
+    "price": 699,
+    "compareAt": null,
+    "shortDescription": "تونيك بقصّة واسعة وأكمام طويلة جرسية، بلونين، يمنح تغطية مريحة.",
+    "description": "تونيك بياقة مستديرة وأكمام طويلة تتسع عند الرسغ، بقصّة واسعة لا تلتصق بالجسم وبطول يغطي الورك.\nمتوفر باللون الأسود والبيج الفاتح.\nيُنسَّق مع جينز واسع أو تنورة ميدي، ويناسب الإطلالة المحتشمة اليومية.",
+    "material": "قطن",
+    "fit": "واسعة",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "تونيك",
+      "محتشم"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أسود",
+          "بيج فاتح"
+        ]
+      }
+    ],
+    "stock": 52,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/flared-sleeve-modest-tunic-1.webp",
+      "/demo/fashion/flared-sleeve-modest-tunic-2.webp",
+      "/demo/fashion/flared-sleeve-modest-tunic-3.webp",
+      "/demo/fashion/flared-sleeve-modest-tunic-4.webp"
+    ],
+    "alt": [
+      "تونيك واسع بأكمام جرسية بلون أسود (على عارضة)",
+      "تونيك واسع بأكمام جرسية بلون بيج فاتح (على عارضة)",
+      "تونيك واسع بأكمام جرسية بلون أسود (على عارضة)",
+      "تونيك واسع بأكمام جرسية بلون بيج فاتح (على عارضة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "زيتي",
-     "وردي بودرة",
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 33,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "skirt",
-   "tone": "#5b6b2f"
   },
-  "images": [
-   "/demo/fashion/pleated-midi-skirt-1.webp"
-  ],
-  "alt": [
-   "تنورة بليسيه ميدي (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "linen-drawstring-trousers",
-  "name": "بنطلون كتان بخصر مرن",
-  "category": "بناطيل وتنانير",
-  "price": 690,
-  "compareAt": 890,
-  "shortDescription": "كتان خفيف بخيط ربط وجيبين، مريح للصيف.",
-  "description": "بنطلون من الكتان الخفيف بخصر مرن وخيط ربط وجيبين جانبيين.\nالساق واسعة نسبياً لتهوية أفضل.\nالطول عند الكاحل.",
-  "material": "كتان مخلوط",
-  "fit": "واسعة",
-  "care": "غسيل بالماء البارد، وكي وهو رطب قليلاً.",
-  "tags": [
-   "صيف",
-   "كتان"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "white-slim-long-sleeve-top",
+    "name": "توب أبيض بأكمام طويلة وقصّة ضيقة",
+    "category": "بلوزات وتونيكات",
+    "price": 499,
+    "compareAt": null,
+    "shortDescription": "توب بيزك أبيض بأكمام طويلة وياقة مستديرة، أساس للتنسيق تحت الجاكيت والبلوفر.",
+    "description": "توب أبيض بأكمام طويلة وياقة مستديرة وقصّة ضيقة، قماش ناعم مضلّع الملمس.\nقطعة أساسية تُلبس وحدها أو تحت بلوزة أو جاكيت.\nتنسّق مع جينز واسع أو بنطلون قماش.",
+    "material": "قطن مرن",
+    "fit": "ضيقة",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "توب",
+      "أساسيات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أبيض"
+        ]
+      }
+    ],
+    "stock": 64,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/white-slim-long-sleeve-top-1.webp",
+      "/demo/fashion/white-slim-long-sleeve-top-2.webp"
+    ],
+    "alt": [
+      "توب أبيض بأكمام طويلة وقصّة ضيقة (على عارضة)",
+      "توب أبيض بأكمام طويلة وقصّة ضيقة (على عارضة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج",
-     "أبيض"
-    ]
-   }
-  ],
-  "stock": 3,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "trousers",
-   "tone": "#d6c7a1"
   },
-  "images": [
-   "/demo/fashion/linen-drawstring-trousers-1.webp"
-  ],
-  "alt": [
-   "بنطلون كتان بخصر مرن (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "camel-blazer-trouser-set",
-  "name": "طقم بليزر وبنطلون",
-  "category": "أطقم وملابس منزلية",
-  "price": 2150,
-  "compareAt": null,
-  "shortDescription": "بليزر بقصّة مستقيمة وبنطلون مطابق، يُلبسان معاً أو منفصلين.",
-  "description": "طقم من قطعتين: بليزر بصف أزرار واحد وجيوب أمامية، وبنطلون مطابق بخصر عالٍ.\nكل قطعة تُلبس منفردة مع بقية الخزانة.\nالأسعار المعروضة للطقم كاملاً.",
-  "material": "قماش منسدل مخلوط",
-  "fit": "عادية",
-  "care": "تنظيف جاف.",
-  "tags": [
-   "أطقم",
-   "عمل"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "red-draped-side-long-sleeve-top",
+    "name": "بلوزة بأكمام طويلة بتجميعة جانبية",
+    "category": "بلوزات وتونيكات",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "بلوزة حمراء بتجميعة عند الخصر وحافة سفلية غير متساوية.",
+    "description": "بلوزة بأكمام طويلة بلون أحمر مشرق، بتجميعة جانبية عند الخصر وحافة سفلية غير متساوية.\nالياقة مستديرة والقماش ناعم يلائم الجسم.\nتُنسَّق مع جينز مستقيم أو بنطلون أسود.",
+    "material": "قطن",
+    "fit": "قريبة من الجسم",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "بلوزة",
+      "مناسبات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أحمر"
+        ]
+      }
+    ],
+    "stock": 18,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/red-draped-side-long-sleeve-top-1.webp",
+      "/demo/fashion/red-draped-side-long-sleeve-top-2.webp",
+      "/demo/fashion/red-draped-side-long-sleeve-top-3.webp",
+      "/demo/fashion/red-draped-side-long-sleeve-top-4.webp"
+    ],
+    "alt": [
+      "بلوزة بأكمام طويلة بتجميعة جانبية (على عارضة)",
+      "بلوزة بأكمام طويلة بتجميعة جانبية (على عارضة)",
+      "بلوزة بأكمام طويلة بتجميعة جانبية (القطعة مفرودة)",
+      "بلوزة بأكمام طويلة بتجميعة جانبية (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "جمل",
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 16,
-  "featured": true,
-  "isNew": true,
-  "images": [
-   "/demo/editorial/hero-side.webp"
-  ],
-  "alt": [
-   "بليزر بلون الجمل فوق توب أبيض وجينز فاتح، جلسة على كرسي خشبي"
-  ]
- },
- {
-  "slug": "khaki-utility-set",
-  "name": "طقم كاجوال بقميص وبنطلون",
-  "category": "أطقم وملابس منزلية",
-  "price": 1350,
-  "compareAt": null,
-  "shortDescription": "قميص بأكمام قصيرة وجيوب أمامية وبنطلون مطابق بخصر مرن.",
-  "description": "طقم قطعتين بأسلوب «يوتيليتي»: قميص بجيوب صدر وأزرار كاملة، وبنطلون مطابق بخصر مرن.\nالقطن المتين يحافظ على شكله.\nمناسب لليوم الطويل والسفر.",
-  "material": "قطن متين",
-  "fit": "عادية",
-  "care": "غسيل عادي حتى 40 درجة.",
-  "tags": [
-   "أطقم",
-   "كاجوال"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "خاكي",
-     "بيج"
-    ]
-   }
-  ],
-  "stock": 20,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/editorial/lookbook-1.webp"
-  ],
-  "alt": [
-   "طقم قميص وبنطلون بلون الخاكي، جلسة على الأرض أمام جدار رملي"
-  ]
- },
- {
-  "slug": "knit-cardigan-skirt-set",
-  "name": "طقم محبوك: كارديجان وتنورة",
-  "category": "أطقم وملابس منزلية",
-  "price": 1450,
-  "compareAt": null,
-  "shortDescription": "حياكة ناعمة: كارديجان قصير وتنورة ميدي بخصر مرن.",
-  "description": "طقم محبوك من قطعتين: كارديجان بأزرار وتنورة ميدي مضلعة بخصر مرن.\nالحياكة تتمدد براحة ولا تحتاج كيّاً.\nتُلبس القطعتان معاً أو كل واحدة مع قطعة أخرى.",
-  "material": "حياكة مخلوطة بالأكريليك",
-  "fit": "عادية",
-  "care": "غسيل يدوي بماء بارد، ويُجفَّف مفروداً.",
-  "tags": [
-   "أطقم",
-   "محبوك"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "رمادي",
-     "عنابي"
-    ]
-   }
-  ],
-  "stock": 14,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "set",
-   "tone": "#9ca3af"
   },
-  "images": [
-   "/demo/fashion/knit-cardigan-skirt-set-1.webp"
-  ],
-  "alt": [
-   "طقم محبوك: كارديجان وتنورة (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "soft-cotton-lounge-set",
-  "name": "طقم منزلي قطن ناعم",
-  "category": "أطقم وملابس منزلية",
-  "price": 1100,
-  "compareAt": null,
-  "shortDescription": "قطن مبطّن خفيف: توب بأكمام طويلة وبنطلون بخصر مرن.",
-  "description": "طقم منزلي من قطن ناعم بملمس مريح: توب بأكمام طويلة وبنطلون بخصر مرن وكُمّ أستك.\nمناسب للراحة في البيت ولأيام السفر.\nيحتفظ بنعومته بعد الغسيل.",
-  "material": "قطن ناعم",
-  "fit": "واسعة",
-  "care": "غسيل عادي حتى 40 درجة.",
-  "tags": [
-   "منزلي",
-   "قطن"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  {
+    "slug": "lace-high-neck-puff-sleeve-top",
+    "name": "بلوزة دانتيل بياقة عالية وأكمام منفوخة",
+    "category": "بلوزات وتونيكات",
+    "price": 1299,
+    "compareAt": null,
+    "shortDescription": "دانتيل كريمي بياقة عالية وأكمام طويلة منفوخة عند الكتف.",
+    "description": "بلوزة من الدانتيل بلون كريمي، بياقة عالية وأكمام طويلة منفوخة عند الكتف، وتُلبس فوق توب داخلي.\nالتغطية كاملة للرقبة والذراعين، والقصّة قريبة من الجسم.\nتناسب المناسبات مع بنطلون واسع أسود أو جينز داكن.",
+    "material": "دانتيل",
+    "fit": "قريبة من الجسم",
+    "care": "غسيل يدوي لطيف بالماء البارد، وتجفيف مفروداً.",
+    "tags": [
+      "بلوزة",
+      "مناسبات",
+      "محتشم"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "كريمي"
+        ]
+      }
+    ],
+    "stock": 14,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/lace-high-neck-puff-sleeve-top-1.webp",
+      "/demo/fashion/lace-high-neck-puff-sleeve-top-2.webp",
+      "/demo/fashion/lace-high-neck-puff-sleeve-top-3.webp",
+      "/demo/fashion/lace-high-neck-puff-sleeve-top-4.webp"
+    ],
+    "alt": [
+      "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
+      "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
+      "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
+      "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "وردي بودرة",
-     "رمادي"
-    ]
-   }
-  ],
-  "stock": 26,
-  "featured": false,
-  "isNew": true,
-  "art": {
-   "shape": "set",
-   "tone": "#e8c4c4"
   },
-  "images": [
-   "/demo/fashion/soft-cotton-lounge-set-1.webp"
-  ],
-  "alt": [
-   "طقم منزلي قطن ناعم (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "geometric-silk-scarf",
-  "name": "وشاح حرير بطبعة هندسية",
-  "category": "إكسسوارات وأحذية",
-  "price": 320,
-  "compareAt": null,
-  "shortDescription": "وشاح مربع 90×90 سم بحواف مخيطة يدوياً الشكل.",
-  "description": "وشاح مربع بمقاس 90×90 سم بطبعة هندسية وحواف مخيطة.\nيُلبس على الرأس أو الرقبة أو مربوطاً على الحقيبة.\nالقماش خفيف ينسدل بنعومة.",
-  "material": "حرير صناعي",
-  "care": "غسيل يدوي لطيف، ويُكوى على حرارة منخفضة.",
-  "tags": [
-   "أوشحة"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "عنابي",
-     "جمل",
-     "كحلي"
+  {
+    "slug": "leopard-print-faux-fur-jacket",
+    "name": "جاكيت فرو صناعي بطبعة منقّطة",
+    "category": "جواكت ومعاطف",
+    "price": 2699,
+    "compareAt": null,
+    "shortDescription": "فرو صناعي ناعم ببقع داكنة على أرضية بيج، وياقة عريضة.",
+    "description": "جاكيت قصير من الفرو الصناعي بطبعة بقع داكنة على أرضية بيج، بياقة عريضة وأكمام طويلة وقصّة عادية.\nدافئ وخفيف ويضيف طابعاً مميزاً لأي إطلالة.\nيُنسَّق مع جينز واسع أو بنطلون قماش.",
+    "material": "فرو صناعي",
+    "fit": "عادية",
+    "care": "تنظيف جاف، ويُحفظ معلّقاً.",
+    "tags": [
+      "جاكيت",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "بيج منقّط"
+        ]
+      }
+    ],
+    "stock": 9,
+    "featured": true,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/leopard-print-faux-fur-jacket-1.webp",
+      "/demo/fashion/leopard-print-faux-fur-jacket-2.webp",
+      "/demo/fashion/leopard-print-faux-fur-jacket-3.webp",
+      "/demo/fashion/leopard-print-faux-fur-jacket-4.webp"
+    ],
+    "alt": [
+      "جاكيت فرو صناعي بطبعة منقّطة (على عارضة)",
+      "جاكيت فرو صناعي بطبعة منقّطة (على عارضة)",
+      "جاكيت فرو صناعي بطبعة منقّطة (القطعة مفرودة)",
+      "جاكيت فرو صناعي بطبعة منقّطة (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 70,
-  "featured": false,
-  "isNew": false,
-  "art": {
-   "shape": "scarf",
-   "tone": "#7a1f3d"
   },
-  "images": [
-   "/demo/fashion/geometric-silk-scarf-1.webp"
-  ],
-  "alt": [
-   "وشاح حرير بطبعة هندسية (صورة توضيحية)"
-  ]
- },
- {
-  "slug": "green-leather-tote",
-  "name": "حقيبة يد جلد بمقبضين",
-  "category": "إكسسوارات وأحذية",
-  "price": 1450,
-  "compareAt": 1750,
-  "shortDescription": "حقيبة بتصميم مهيكل ومقبضين وحزام كتف قابل للفك.",
-  "description": "حقيبة يد مهيكلة بمقبضين وحزام كتف قابل للفك وبطانة داخلية بجيب بسحّاب.\nتتسع للهاتف والمحفظة وأغراض اليوم.\nإكسسوارات معدنية بلون ذهبي.",
-  "material": "جلد صناعي مصقول",
-  "care": "تُمسح بقطعة قماش مبللة قليلاً.",
-  "tags": [
-   "حقائب"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "أخضر",
-     "وردي بودرة"
+  {
+    "slug": "red-crossover-collar-jacket",
+    "name": "جاكيت أحمر بياقة متقاطعة",
+    "category": "جواكت ومعاطف",
+    "price": 3299,
+    "compareAt": null,
+    "shortDescription": "جاكيت بقصّة بالون وياقة متقاطعة بلون أحمر قاني.",
+    "description": "جاكيت بلون أحمر قاني، بياقة متقاطعة وأكمام طويلة وقصّة بالون تتجمع عند الذيل.\nالقماش ناعم الملمس ويعطي حجماً أنيقاً من دون ثقل.\nيناسب التنسيق مع بنطلون أسود أو جينز داكن.",
+    "material": "قماش ناعم",
+    "fit": "بالون",
+    "care": "تنظيف جاف.",
+    "tags": [
+      "جاكيت",
+      "مناسبات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أحمر قاني"
+        ]
+      }
+    ],
+    "stock": 7,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/red-crossover-collar-jacket-1.webp",
+      "/demo/fashion/red-crossover-collar-jacket-2.webp"
+    ],
+    "alt": [
+      "جاكيت أحمر بياقة متقاطعة (القطعة مفرودة)",
+      "جاكيت أحمر بياقة متقاطعة (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 11,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/green-leather-tote-1.webp"
-  ],
-  "alt": [
-   "حقيبة يد خضراء فوق حقيبة وردية على خلفية بيضاء"
-  ]
- },
- {
-  "slug": "tortoise-hoop-earrings",
-  "name": "حلق دائري بلون السلحفاة",
-  "category": "إكسسوارات وأحذية",
-  "price": 220,
-  "compareAt": null,
-  "shortDescription": "راتنج خفيف بحلقة كبيرة وإبرة مطلية بالذهب.",
-  "description": "حلق دائري من الراتنج الخفيف بلون السلحفاة، مريح للارتداء الطويل.\nإبرة بطلاء ذهبي ويُباع زوجاً.\nيُحفظ بعيداً عن الماء والعطور.",
-  "material": "راتنج وإبرة مطلية",
-  "care": "يُمسح بقطعة جافة ويُحفظ في علبة.",
-  "tags": [
-   "حلي"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "بني"
+  },
+  {
+    "slug": "striped-two-piece-pyjama-set",
+    "name": "طقم بيجامة مقلّم قطعتين",
+    "category": "أطقم وملابس منزلية",
+    "price": 1499,
+    "compareAt": null,
+    "shortDescription": "قميص بياقة مفتوحة وبنطلون بحزام ربط، بخطوط وردية على أبيض.",
+    "description": "طقم من قطعتين: قميص بأكمام طويلة وياقة مفتوحة وأزرار، وبنطلون واسع بحزام ربط عند الخصر، بخطوط رفيعة وردية على أرضية بيضاء.\nمريح للنوم والجلوس في المنزل.\nالقصّة عادية بتغطية كاملة للذراعين والساقين.",
+    "material": "قطن",
+    "fit": "عادية",
+    "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
+    "tags": [
+      "منزلي",
+      "طقم"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "وردي مقلّم"
+        ]
+      }
+    ],
+    "stock": 26,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/striped-two-piece-pyjama-set-1.webp",
+      "/demo/fashion/striped-two-piece-pyjama-set-2.webp"
+    ],
+    "alt": [
+      "طقم بيجامة مقلّم قطعتين (القطعة مفرودة)",
+      "طقم بيجامة مقلّم قطعتين (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 50,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/tortoise-hoop-earrings-1.webp"
-  ],
-  "alt": [
-   "حلق دائري بلون السلحفاة بجوار نظارة شمسية على سطح أبيض"
-  ]
- },
- {
-  "slug": "black-leather-stiletto-pumps",
-  "name": "حذاء كعب عالٍ جلد أسود",
-  "category": "إكسسوارات وأحذية",
-  "price": 1650,
-  "compareAt": null,
-  "shortDescription": "جلد أسود بمقدمة مدببة وكعب رفيع بارتفاع 9 سم.",
-  "description": "حذاء كعب رفيع من الجلد الأسود بمقدمة مدببة وبطانة جلدية.\nارتفاع الكعب 9 سم، والنعل الداخلي مبطن للراحة.\nيناسب الفساتين والبناطيل المستقيمة.",
-  "material": "جلد طبيعي",
-  "care": "يُنظَّف بقطعة ناعمة ويُحفظ في كيسه.",
-  "tags": [
-   "أحذية",
-   "كعب"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "36",
-     "37",
-     "38",
-     "39",
-     "40",
-     "41"
+  },
+  {
+    "slug": "plush-wrap-collar-robe",
+    "name": "روب منزلي قطيفة بياقة شال وحزام",
+    "category": "أطقم وملابس منزلية",
+    "price": 1299,
+    "compareAt": null,
+    "shortDescription": "قطيفة ناعمة بلون وردي ترابي، بياقة شال وحزام ربط.",
+    "description": "روب منزلي من القطيفة الناعمة بلون وردي ترابي، بياقة شال متقاطعة وحزام ربط عند الخصر وأكمام طويلة.\nدافئ وخفيف في الشتاء، ويصلح للصباح أو بعد الاستحمام.",
+    "material": "قطيفة",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد، وتجفيف بحرارة منخفضة.",
+    "tags": [
+      "منزلي",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "وردي ترابي"
+        ]
+      }
+    ],
+    "stock": 20,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/plush-wrap-collar-robe-1.webp",
+      "/demo/fashion/plush-wrap-collar-robe-2.webp"
+    ],
+    "alt": [
+      "روب منزلي قطيفة بياقة شال وحزام (القطعة مفرودة)",
+      "روب منزلي قطيفة بياقة شال وحزام (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود"
+  },
+  {
+    "slug": "knit-shoulder-wrap-tie",
+    "name": "وشاح كتف تريكو بعقدة أمامية",
+    "category": "إكسسوارات وأحذية",
+    "price": 599,
+    "compareAt": null,
+    "shortDescription": "قطعة تريكو تُلبس على الكتفين وتُعقد من الأمام، بلونين.",
+    "description": "وشاح كتف من التريكو بقصّة مربعة بفتحة للرقبة، يُعقد من الأمام أو يُترك مفتوحاً على الكتفين.\nيضيف دفئاً وطبقة أنيقة فوق أي بلوزة أو فستان.\nمتوفر بالأحمر الداكن والبني الداكن.",
+    "material": "تريكو",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "أوشحة",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "أحمر داكن",
+          "بني داكن"
+        ]
+      }
+    ],
+    "stock": 44,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/knit-shoulder-wrap-tie-1.webp",
+      "/demo/fashion/knit-shoulder-wrap-tie-2.webp",
+      "/demo/fashion/knit-shoulder-wrap-tie-3.webp",
+      "/demo/fashion/knit-shoulder-wrap-tie-4.webp"
+    ],
+    "alt": [
+      "وشاح كتف تريكو بعقدة أمامية بلون أحمر داكن (القطعة مفرودة)",
+      "وشاح كتف تريكو بعقدة أمامية بلون بني داكن (القطعة مفرودة)",
+      "وشاح كتف تريكو بعقدة أمامية بلون أحمر داكن (القطعة مفرودة)",
+      "وشاح كتف تريكو بعقدة أمامية بلون بني داكن (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 24,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/products/black-leather-stiletto-pumps-1.webp",
-   "/demo/products/black-leather-stiletto-pumps-2.webp",
-   "/demo/products/black-leather-stiletto-pumps-3.webp"
-  ],
-  "alt": [
-   "حذاء كعب أسود من الجانب",
-   "حذاء كعب أسود من الأمام",
-   "تفصيل الكعب والنعل"
-  ]
- },
- {
-  "slug": "cognac-leather-slingback-heels",
-  "name": "حذاء سلينج باك كونياك",
-  "category": "إكسسوارات وأحذية",
-  "price": 1450,
-  "compareAt": null,
-  "shortDescription": "جلد كونياك بكعب عريض مريح وحزام خلفي.",
-  "description": "حذاء سلينج باك من الجلد بلون الكونياك بكعب عريض بارتفاع 6 سم وحزام خلفي بإبزيم.\nالكعب العريض أثبت في المشي الطويل.\nيُنسَّق مع الأطقم والفساتين.",
-  "material": "جلد طبيعي",
-  "care": "يُمسح بقطعة ناعمة ويُحفظ بعيداً عن الرطوبة.",
-  "tags": [
-   "أحذية",
-   "كعب"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "36",
-     "37",
-     "38",
-     "39",
-     "40",
-     "41"
+  },
+  {
+    "slug": "soft-fringe-scarf-beige",
+    "name": "وشاح ناعم بأهداب بلون بيج فاتح",
+    "category": "إكسسوارات وأحذية",
+    "price": 599,
+    "compareAt": null,
+    "shortDescription": "وشاح طويل بملمس ناعم دافئ وأهداب عند الطرفين.",
+    "description": "وشاح طويل بلون بيج فاتح وملمس ناعم دافئ، بأهداب عند الطرفين.\nيُلف حول الرقبة أو يُترك مسدلاً على الكتفين.\nيُنسَّق مع المعاطف والجواكت بألوان محايدة.",
+    "material": "خامة ناعمة دافئة",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "أوشحة",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "بيج فاتح"
+        ]
+      }
+    ],
+    "stock": 48,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/soft-fringe-scarf-beige-1.webp",
+      "/demo/fashion/soft-fringe-scarf-beige-2.webp"
+    ],
+    "alt": [
+      "وشاح ناعم بأهداب بلون بيج فاتح (القطعة مفرودة)",
+      "وشاح ناعم بأهداب بلون بيج فاتح (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "كونياك"
+  },
+  {
+    "slug": "dark-brown-fringe-scarf",
+    "name": "وشاح بني داكن بأهداب طويلة",
+    "category": "إكسسوارات وأحذية",
+    "price": 699,
+    "compareAt": null,
+    "shortDescription": "وشاح طويل بلون بني داكن وأهداب عند الأطراف.",
+    "description": "وشاح طويل بلون بني داكن، بخامة ناعمة وأهداب طويلة عند الطرفين.\nيُلف مرتين حول الرقبة أو يُترك مفتوحاً.\nيناسب تنسيقات الشتاء مع المعاطف الفاتحة والداكنة.",
+    "material": "خامة ناعمة",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "أوشحة",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "بني داكن"
+        ]
+      }
+    ],
+    "stock": 36,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/dark-brown-fringe-scarf-1.webp",
+      "/demo/fashion/dark-brown-fringe-scarf-2.webp"
+    ],
+    "alt": [
+      "وشاح بني داكن بأهداب طويلة (القطعة مفرودة)",
+      "وشاح بني داكن بأهداب طويلة (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 5,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/products/cognac-leather-slingback-heels-1.webp",
-   "/demo/products/cognac-leather-slingback-heels-3.webp"
-  ],
-  "alt": [
-   "حذاء سلينج باك كونياك من الجانب",
-   "تفصيل الكعب والحزام الخلفي"
-  ]
- },
- {
-  "slug": "black-leather-strap-sandals",
-  "name": "صندل جلد بحزام كاحل",
-  "category": "إكسسوارات وأحذية",
-  "price": 1150,
-  "compareAt": 1390,
-  "shortDescription": "حزامان رفيعان وحزام كاحل بإبزيم ونعل مبطن.",
-  "description": "صندل من الجلد الأسود بحزامين رفيعين وحزام كاحل بإبزيم ونعل داخلي مبطن.\nكعب منخفض مناسب للمشي اليومي.\nيناسب الفساتين الصيفية والبناطيل القصيرة.",
-  "material": "جلد طبيعي",
-  "care": "يُمسح بقطعة جافة ويُحفظ في مكان جاف.",
-  "tags": [
-   "أحذية",
-   "صيف"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "36",
-     "37",
-     "38",
-     "39",
-     "40",
-     "41"
+  },
+  {
+    "slug": "winter-baseball-cap-grey",
+    "name": "كاب شتوي رمادي بحافة سوداء",
+    "category": "إكسسوارات وأحذية",
+    "price": 599,
+    "compareAt": null,
+    "shortDescription": "كاب بقماش صوفي ناعم بلون رمادي وحافة سوداء وتطريز بخط يدوي.",
+    "description": "كاب بقماش صوفي ناعم بلون رمادي وحافة سوداء، بتطريز كتابي على الجانب.\nمقاسه قابل للتعديل من الخلف.\nيناسب الإطلالات الكاجوال في الشتاء.",
+    "material": "قماش صوفي",
+    "care": "غسيل يدوي لطيف، ويُجفَّف في الهواء.",
+    "tags": [
+      "قبعات",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "رمادي دافئ"
+        ]
+      }
+    ],
+    "stock": 33,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/winter-baseball-cap-grey-1.webp",
+      "/demo/fashion/winter-baseball-cap-grey-2.webp"
+    ],
+    "alt": [
+      "كاب شتوي رمادي بحافة سوداء (القطعة مفرودة)",
+      "كاب شتوي رمادي بحافة سوداء (القطعة مفرودة)"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود"
+  },
+  {
+    "slug": "black-cuffed-knit-beanie",
+    "name": "قبعة تريكو سوداء بحافة مطوية",
+    "category": "إكسسوارات وأحذية",
+    "price": 249,
+    "compareAt": null,
+    "shortDescription": "قبعة تريكو سادة بحافة مطوية، تمنح الرأس دفئاً.",
+    "description": "قبعة من التريكو بلون أسود سادة وحافة مطوية.\nتناسب الأيام الباردة وتُنسَّق مع أي إطلالة كاجوال.",
+    "material": "تريكو",
+    "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
+    "tags": [
+      "قبعات",
+      "شتاء"
+    ],
+    "options": [
+      {
+        "name": "اللون",
+        "values": [
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 60,
+    "featured": false,
+    "isNew": false,
+    "images": [
+      "/demo/fashion/black-cuffed-knit-beanie-1.webp",
+      "/demo/fashion/black-cuffed-knit-beanie-2.webp"
+    ],
+    "alt": [
+      "قبعة تريكو سوداء بحافة مطوية (القطعة مفرودة)",
+      "قبعة تريكو سوداء بحافة مطوية (القطعة مفرودة)"
     ]
-   }
-  ],
-  "stock": 27,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/products/black-leather-strap-sandals-1.webp",
-   "/demo/products/black-leather-strap-sandals-2.webp"
-  ],
-  "alt": [
-   "صندل جلد أسود بحزام كاحل من الجانب",
-   "صندل جلد أسود من الأمام"
-  ]
- },
- {
-  "slug": "striped-polo-collar-pullover",
-  "name": "بلوفر مقلّم بياقة بولو",
-  "category": "بلوفرات وتريكو",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "تريكو بخطوط عريضة كحلية على أبيض، وياقة بولو وحواف مضلّعة.",
-  "description": "بلوفر تريكو بخطوط أفقية عريضة كحلية على أرضية بيضاء، بياقة بولو مفتوحة وأكمام طويلة وحواف مضلّعة عند الذيل.\nقصّته عادية تسمح بالتنسيق فوق قميص أو توب بأكمام طويلة.\nيُنسَّق مع بنطلون واسع داكن أو تنورة ميدي.",
-  "material": "تريكو ناعم",
-  "fit": "عادية",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "بلوفر",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  },
+  {
+    "slug": "black-98-print-tee",
+    "name": "تيشيرت أسود بطبعة رقم 98",
+    "category": "بلوزات وتونيكات",
+    "price": 999,
+    "compareAt": null,
+    "shortDescription": "تيشيرت أسود بياقة مزخرفة وطبعة رقم كبيرة على الصدر.",
+    "description": "تيشيرت أسود بقصّة قصيرة نسبياً وياقة بتفاصيل مزخرفة وطبعة رقم 98 على الصدر.\nيُلبس فوق توب بكم طويل.",
+    "material": "قطن مخلوط",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد.",
+    "tags": [
+      "تيشيرتات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 0,
+    "featured": false,
+    "isNew": true,
+    "images": [
+      "/demo/fashion/black-98-print-tee-1.webp",
+      "/demo/fashion/black-98-print-tee-2.webp"
+    ],
+    "alt": [
+      "تيشيرت أسود بطبعة رقم 98 يُلبس فوق توب أحمر",
+      "تيشيرت أسود بطبعة رقم 98 مع بنطلون أسود"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "كحلي مقلّم"
+  },
+  {
+    "slug": "black-lace-mandarin-top",
+    "name": "توب دانتيل أسود بياقة عالية",
+    "category": "بلوزات وتونيكات",
+    "price": 899,
+    "compareAt": null,
+    "shortDescription": "توب دانتيل أسود شفاف بياقة عالية وأكمام قصيرة.",
+    "description": "توب من الدانتيل الأسود بياقة عالية بإغلاق مزخرف وأكمام قصيرة.\nالقماش شفاف، ويُلبس فوق توب داخلي.",
+    "material": "قطن مخلوط",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد.",
+    "tags": [
+      "دانتيل"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أسود"
+        ]
+      }
+    ],
+    "stock": 12,
+    "featured": false,
+    "isNew": true,
+    "images": [
+      "/demo/fashion/black-lace-mandarin-top-1.webp",
+      "/demo/fashion/black-lace-mandarin-top-2.webp",
+      "/demo/fashion/black-lace-mandarin-top-3.webp"
+    ],
+    "alt": [
+      "توب دانتيل أسود (القطعة مفرودة)",
+      "توب دانتيل أسود مع بنطلون أسود واسع",
+      "توب دانتيل أسود من الأمام"
     ]
-   }
-  ],
-  "stock": 34,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/striped-polo-collar-pullover-1.webp",
-   "/demo/fashion/striped-polo-collar-pullover-2.webp",
-   "/demo/fashion/striped-polo-collar-pullover-3.webp",
-   "/demo/fashion/striped-polo-collar-pullover-4.webp"
-  ],
-  "alt": [
-   "بلوفر مقلّم بياقة بولو (على عارضة)",
-   "بلوفر مقلّم بياقة بولو (على عارضة)",
-   "بلوفر مقلّم بياقة بولو (القطعة مفرودة)",
-   "بلوفر مقلّم بياقة بولو (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "burgundy-striped-crew-pullover",
-  "name": "بلوفر مقلّم بلون عنابي",
-  "category": "بلوفرات وتريكو",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "تريكو عنابي بخطوط رفيعة بيج وياقة مستديرة مضلّعة.",
-  "description": "بلوفر تريكو بلون عنابي داكن وخطوط أفقية رفيعة بلون البيج، بياقة مستديرة وأكمام طويلة وحواف مضلّعة.\nالقماش دافئ وقصّته عادية مريحة.\nيناسب النهار مع بنطلون بيج واسع أو جينز.",
-  "material": "تريكو",
-  "fit": "عادية",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "بلوفر",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
+  },
+  {
+    "slug": "blue-slogan-long-sleeve-tee",
+    "name": "تيشيرت أزرق بعبارة مطبوعة",
+    "category": "بلوزات وتونيكات",
+    "price": 699,
+    "compareAt": null,
+    "shortDescription": "تيشيرت أزرق بكم طويل وعبارة إنجليزية مطبوعة على الصدر.",
+    "description": "تيشيرت أزرق بكم طويل وقصّة واسعة وعبارة مطبوعة على الصدر.\nيناسب الإطلالات اليومية مع الجينز.",
+    "material": "قطن مخلوط",
+    "fit": "عادية",
+    "care": "غسيل لطيف بالماء البارد.",
+    "tags": [
+      "تيشيرتات"
+    ],
+    "options": [
+      {
+        "name": "المقاس",
+        "values": [
+          "S",
+          "M",
+          "L"
+        ]
+      },
+      {
+        "name": "اللون",
+        "values": [
+          "أزرق"
+        ]
+      }
+    ],
+    "stock": 12,
+    "featured": false,
+    "isNew": true,
+    "images": [
+      "/demo/fashion/blue-slogan-long-sleeve-tee-1.webp",
+      "/demo/fashion/blue-slogan-long-sleeve-tee-2.webp",
+      "/demo/fashion/blue-slogan-long-sleeve-tee-3.webp"
+    ],
+    "alt": [
+      "تيشيرت أزرق بعبارة مطبوعة (القطعة مفرودة)",
+      "تيشيرت أزرق بعبارة مطبوعة من الأمام",
+      "تيشيرت أزرق مع جينز واسع"
     ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "عنابي مقلّم"
-    ]
-   }
-  ],
-  "stock": 28,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/burgundy-striped-crew-pullover-1.webp",
-   "/demo/fashion/burgundy-striped-crew-pullover-2.webp",
-   "/demo/fashion/burgundy-striped-crew-pullover-3.webp",
-   "/demo/fashion/burgundy-striped-crew-pullover-4.webp"
-  ],
-  "alt": [
-   "بلوفر مقلّم بلون عنابي (على عارضة)",
-   "بلوفر مقلّم بلون عنابي (على عارضة)",
-   "بلوفر مقلّم بلون عنابي (القطعة مفرودة)",
-   "بلوفر مقلّم بلون عنابي (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "thick-high-collar-sweatshirt",
-  "name": "سويت شيرت سميك بياقة عالية",
-  "category": "بلوفرات وتريكو",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "قماش سميك بلون بيج فاتح وياقة عالية وطباعة صغيرة على الصدر.",
-  "description": "سويت شيرت بقماش سميك دافئ بلون بيج فاتح، بياقة عالية وأكمام طويلة وحواف مضلّعة وطباعة صغيرة على الصدر.\nالقصّة عادية وبطول يصل إلى الورك.\nيُنسَّق مع بنطلون واسع من اللون نفسه أو من لون مختلف.",
-  "material": "قطن سميك",
-  "fit": "عادية",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "كاجوال",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج فاتح"
-    ]
-   }
-  ],
-  "stock": 40,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/thick-high-collar-sweatshirt-1.webp",
-   "/demo/fashion/thick-high-collar-sweatshirt-2.webp",
-   "/demo/fashion/thick-high-collar-sweatshirt-3.webp",
-   "/demo/fashion/thick-high-collar-sweatshirt-4.webp"
-  ],
-  "alt": [
-   "سويت شيرت سميك بياقة عالية (على عارضة)",
-   "سويت شيرت سميك بياقة عالية (على عارضة)",
-   "سويت شيرت سميك بياقة عالية (القطعة مفرودة)",
-   "سويت شيرت سميك بياقة عالية (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "pointed-hem-knit-skirt",
-  "name": "تنورة تريكو واسعة بحواف مدببة",
-  "category": "بناطيل وتنانير",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "تنورة ميدي من التريكو بقصّة واسعة وحافة مدببة تتحرك مع الخطوة.",
-  "description": "تنورة ميدي من التريكو بلون بني داكن، بخصر مرن وقصّة واسعة تنتهي بحواف مدببة غير متساوية.\nتنسدل بحركة جميلة وتغطي الساق حتى أسفل الركبة.\nتُنسَّق مع بلوفر ناعم وجزمة بكعب أو حذاء مسطح.",
-  "material": "تريكو",
-  "fit": "واسعة",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "تنورة",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بني داكن"
-    ]
-   }
-  ],
-  "stock": 22,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/pointed-hem-knit-skirt-1.webp",
-   "/demo/fashion/pointed-hem-knit-skirt-2.webp",
-   "/demo/fashion/pointed-hem-knit-skirt-3.webp",
-   "/demo/fashion/pointed-hem-knit-skirt-4.webp",
-   "/demo/fashion/pointed-hem-knit-skirt-5.webp",
-   "/demo/fashion/pointed-hem-knit-skirt-6.webp"
-  ],
-  "alt": [
-   "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
-   "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
-   "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
-   "تنورة تريكو واسعة بحواف مدببة (على عارضة)",
-   "تنورة تريكو واسعة بحواف مدببة (القطعة مفرودة)",
-   "تنورة تريكو واسعة بحواف مدببة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "wide-straight-fleece-trousers",
-  "name": "بنطلون واسع بقصة مستقيمة",
-  "category": "بناطيل وتنانير",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "قماش ناعم بلون فحمي وخصر مرتفع وساق مستقيمة واسعة.",
-  "description": "بنطلون بخصر مرتفع وساق مستقيمة واسعة بلون فحمي، من قماش ناعم يحتفظ بشكله.\nالطول يصل إلى الكاحل ويغطي القدم مع الحذاء المسطح.\nيُنسَّق مع توب بأكمام طويلة أو بلوفر.",
-  "material": "قماش ناعم",
-  "fit": "واسعة",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "بنطلون",
-   "محتشم"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "فحمي"
-    ]
-   }
-  ],
-  "stock": 46,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/wide-straight-fleece-trousers-1.webp",
-   "/demo/fashion/wide-straight-fleece-trousers-2.webp",
-   "/demo/fashion/wide-straight-fleece-trousers-3.webp",
-   "/demo/fashion/wide-straight-fleece-trousers-4.webp"
-  ],
-  "alt": [
-   "بنطلون واسع بقصة مستقيمة (على عارضة)",
-   "بنطلون واسع بقصة مستقيمة (على عارضة)",
-   "بنطلون واسع بقصة مستقيمة (القطعة مفرودة)",
-   "بنطلون واسع بقصة مستقيمة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "mock-neck-short-sleeve-knit-top",
-  "name": "توب محبوك بياقة عالية وأكمام قصيرة",
-  "category": "بلوزات وتونيكات",
-  "price": 799,
-  "compareAt": null,
-  "shortDescription": "توب بني داكن بياقة عالية وقماش بنقشة محبوكة، يُلبس منفرداً أو فوق قميص.",
-  "description": "توب بلون بني داكن بياقة عالية وأكمام قصيرة وقماش بنقشة محبوكة ناعمة، بقصّة قريبة من الجسم وبطول يصل إلى الخصر.\nيمكن لبسه فوق بلوزة بأكمام طويلة لإطلالة محتشمة.\nيناسب التنسيق مع بنطلون واسع من اللون نفسه.",
-  "material": "قماش محبوك",
-  "fit": "قريبة من الجسم",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "توب",
-   "طبقات"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بني داكن"
-    ]
-   }
-  ],
-  "stock": 30,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/mock-neck-short-sleeve-knit-top-1.webp",
-   "/demo/fashion/mock-neck-short-sleeve-knit-top-2.webp",
-   "/demo/fashion/mock-neck-short-sleeve-knit-top-3.webp",
-   "/demo/fashion/mock-neck-short-sleeve-knit-top-4.webp"
-  ],
-  "alt": [
-   "توب محبوك بياقة عالية وأكمام قصيرة (على عارضة)",
-   "توب محبوك بياقة عالية وأكمام قصيرة (على عارضة)",
-   "توب محبوك بياقة عالية وأكمام قصيرة (القطعة مفرودة)",
-   "توب محبوك بياقة عالية وأكمام قصيرة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "flared-sleeve-modest-tunic",
-  "name": "تونيك واسع بأكمام جرسية",
-  "category": "بلوزات وتونيكات",
-  "price": 699,
-  "compareAt": null,
-  "shortDescription": "تونيك بقصّة واسعة وأكمام طويلة جرسية، بلونين، يمنح تغطية مريحة.",
-  "description": "تونيك بياقة مستديرة وأكمام طويلة تتسع عند الرسغ، بقصّة واسعة لا تلتصق بالجسم وبطول يغطي الورك.\nمتوفر باللون الأسود والبيج الفاتح.\nيُنسَّق مع جينز واسع أو تنورة ميدي، ويناسب الإطلالة المحتشمة اليومية.",
-  "material": "قطن",
-  "fit": "واسعة",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "تونيك",
-   "محتشم"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أسود",
-     "بيج فاتح"
-    ]
-   }
-  ],
-  "stock": 52,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/flared-sleeve-modest-tunic-1.webp",
-   "/demo/fashion/flared-sleeve-modest-tunic-2.webp",
-   "/demo/fashion/flared-sleeve-modest-tunic-3.webp",
-   "/demo/fashion/flared-sleeve-modest-tunic-4.webp"
-  ],
-  "alt": [
-   "تونيك واسع بأكمام جرسية بلون أسود (على عارضة)",
-   "تونيك واسع بأكمام جرسية بلون بيج فاتح (على عارضة)",
-   "تونيك واسع بأكمام جرسية بلون أسود (على عارضة)",
-   "تونيك واسع بأكمام جرسية بلون بيج فاتح (على عارضة)"
-  ]
- },
- {
-  "slug": "white-slim-long-sleeve-top",
-  "name": "توب أبيض بأكمام طويلة وقصّة ضيقة",
-  "category": "بلوزات وتونيكات",
-  "price": 499,
-  "compareAt": null,
-  "shortDescription": "توب بيزك أبيض بأكمام طويلة وياقة مستديرة، أساس للتنسيق تحت الجاكيت والبلوفر.",
-  "description": "توب أبيض بأكمام طويلة وياقة مستديرة وقصّة ضيقة، قماش ناعم مضلّع الملمس.\nقطعة أساسية تُلبس وحدها أو تحت بلوزة أو جاكيت.\nتنسّق مع جينز واسع أو بنطلون قماش.",
-  "material": "قطن مرن",
-  "fit": "ضيقة",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "توب",
-   "أساسيات"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أبيض"
-    ]
-   }
-  ],
-  "stock": 64,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/white-slim-long-sleeve-top-1.webp",
-   "/demo/fashion/white-slim-long-sleeve-top-2.webp"
-  ],
-  "alt": [
-   "توب أبيض بأكمام طويلة وقصّة ضيقة (على عارضة)",
-   "توب أبيض بأكمام طويلة وقصّة ضيقة (على عارضة)"
-  ]
- },
- {
-  "slug": "red-draped-side-long-sleeve-top",
-  "name": "بلوزة بأكمام طويلة بتجميعة جانبية",
-  "category": "بلوزات وتونيكات",
-  "price": 999,
-  "compareAt": null,
-  "shortDescription": "بلوزة حمراء بتجميعة عند الخصر وحافة سفلية غير متساوية.",
-  "description": "بلوزة بأكمام طويلة بلون أحمر مشرق، بتجميعة جانبية عند الخصر وحافة سفلية غير متساوية.\nالياقة مستديرة والقماش ناعم يلائم الجسم.\nتُنسَّق مع جينز مستقيم أو بنطلون أسود.",
-  "material": "قطن",
-  "fit": "قريبة من الجسم",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "بلوزة",
-   "مناسبات"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أحمر"
-    ]
-   }
-  ],
-  "stock": 18,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/red-draped-side-long-sleeve-top-1.webp",
-   "/demo/fashion/red-draped-side-long-sleeve-top-2.webp",
-   "/demo/fashion/red-draped-side-long-sleeve-top-3.webp",
-   "/demo/fashion/red-draped-side-long-sleeve-top-4.webp"
-  ],
-  "alt": [
-   "بلوزة بأكمام طويلة بتجميعة جانبية (على عارضة)",
-   "بلوزة بأكمام طويلة بتجميعة جانبية (على عارضة)",
-   "بلوزة بأكمام طويلة بتجميعة جانبية (القطعة مفرودة)",
-   "بلوزة بأكمام طويلة بتجميعة جانبية (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "lace-high-neck-puff-sleeve-top",
-  "name": "بلوزة دانتيل بياقة عالية وأكمام منفوخة",
-  "category": "بلوزات وتونيكات",
-  "price": 1299,
-  "compareAt": null,
-  "shortDescription": "دانتيل كريمي بياقة عالية وأكمام طويلة منفوخة عند الكتف.",
-  "description": "بلوزة من الدانتيل بلون كريمي، بياقة عالية وأكمام طويلة منفوخة عند الكتف، وتُلبس فوق توب داخلي.\nالتغطية كاملة للرقبة والذراعين، والقصّة قريبة من الجسم.\nتناسب المناسبات مع بنطلون واسع أسود أو جينز داكن.",
-  "material": "دانتيل",
-  "fit": "قريبة من الجسم",
-  "care": "غسيل يدوي لطيف بالماء البارد، وتجفيف مفروداً.",
-  "tags": [
-   "بلوزة",
-   "مناسبات",
-   "محتشم"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "كريمي"
-    ]
-   }
-  ],
-  "stock": 14,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/lace-high-neck-puff-sleeve-top-1.webp",
-   "/demo/fashion/lace-high-neck-puff-sleeve-top-2.webp",
-   "/demo/fashion/lace-high-neck-puff-sleeve-top-3.webp",
-   "/demo/fashion/lace-high-neck-puff-sleeve-top-4.webp"
-  ],
-  "alt": [
-   "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
-   "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
-   "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)",
-   "بلوزة دانتيل بياقة عالية وأكمام منفوخة (على عارضة)"
-  ]
- },
- {
-  "slug": "leopard-print-faux-fur-jacket",
-  "name": "جاكيت فرو صناعي بطبعة منقّطة",
-  "category": "جواكت ومعاطف",
-  "price": 2699,
-  "compareAt": null,
-  "shortDescription": "فرو صناعي ناعم ببقع داكنة على أرضية بيج، وياقة عريضة.",
-  "description": "جاكيت قصير من الفرو الصناعي بطبعة بقع داكنة على أرضية بيج، بياقة عريضة وأكمام طويلة وقصّة عادية.\nدافئ وخفيف ويضيف طابعاً مميزاً لأي إطلالة.\nيُنسَّق مع جينز واسع أو بنطلون قماش.",
-  "material": "فرو صناعي",
-  "fit": "عادية",
-  "care": "تنظيف جاف، ويُحفظ معلّقاً.",
-  "tags": [
-   "جاكيت",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "بيج منقّط"
-    ]
-   }
-  ],
-  "stock": 9,
-  "featured": true,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/leopard-print-faux-fur-jacket-1.webp",
-   "/demo/fashion/leopard-print-faux-fur-jacket-2.webp",
-   "/demo/fashion/leopard-print-faux-fur-jacket-3.webp",
-   "/demo/fashion/leopard-print-faux-fur-jacket-4.webp"
-  ],
-  "alt": [
-   "جاكيت فرو صناعي بطبعة منقّطة (على عارضة)",
-   "جاكيت فرو صناعي بطبعة منقّطة (على عارضة)",
-   "جاكيت فرو صناعي بطبعة منقّطة (القطعة مفرودة)",
-   "جاكيت فرو صناعي بطبعة منقّطة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "red-crossover-collar-jacket",
-  "name": "جاكيت أحمر بياقة متقاطعة",
-  "category": "جواكت ومعاطف",
-  "price": 3299,
-  "compareAt": null,
-  "shortDescription": "جاكيت بقصّة بالون وياقة متقاطعة بلون أحمر قاني.",
-  "description": "جاكيت بلون أحمر قاني، بياقة متقاطعة وأكمام طويلة وقصّة بالون تتجمع عند الذيل.\nالقماش ناعم الملمس ويعطي حجماً أنيقاً من دون ثقل.\nيناسب التنسيق مع بنطلون أسود أو جينز داكن.",
-  "material": "قماش ناعم",
-  "fit": "بالون",
-  "care": "تنظيف جاف.",
-  "tags": [
-   "جاكيت",
-   "مناسبات"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "أحمر قاني"
-    ]
-   }
-  ],
-  "stock": 7,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/red-crossover-collar-jacket-1.webp",
-   "/demo/fashion/red-crossover-collar-jacket-2.webp"
-  ],
-  "alt": [
-   "جاكيت أحمر بياقة متقاطعة (القطعة مفرودة)",
-   "جاكيت أحمر بياقة متقاطعة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "striped-two-piece-pyjama-set",
-  "name": "طقم بيجامة مقلّم قطعتين",
-  "category": "أطقم وملابس منزلية",
-  "price": 1499,
-  "compareAt": null,
-  "shortDescription": "قميص بياقة مفتوحة وبنطلون بحزام ربط، بخطوط وردية على أبيض.",
-  "description": "طقم من قطعتين: قميص بأكمام طويلة وياقة مفتوحة وأزرار، وبنطلون واسع بحزام ربط عند الخصر، بخطوط رفيعة وردية على أرضية بيضاء.\nمريح للنوم والجلوس في المنزل.\nالقصّة عادية بتغطية كاملة للذراعين والساقين.",
-  "material": "قطن",
-  "fit": "عادية",
-  "care": "غسيل بالماء البارد، وكي على حرارة متوسطة.",
-  "tags": [
-   "منزلي",
-   "طقم"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "وردي مقلّم"
-    ]
-   }
-  ],
-  "stock": 26,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/striped-two-piece-pyjama-set-1.webp",
-   "/demo/fashion/striped-two-piece-pyjama-set-2.webp"
-  ],
-  "alt": [
-   "طقم بيجامة مقلّم قطعتين (القطعة مفرودة)",
-   "طقم بيجامة مقلّم قطعتين (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "plush-wrap-collar-robe",
-  "name": "روب منزلي قطيفة بياقة شال وحزام",
-  "category": "أطقم وملابس منزلية",
-  "price": 1299,
-  "compareAt": null,
-  "shortDescription": "قطيفة ناعمة بلون وردي ترابي، بياقة شال وحزام ربط.",
-  "description": "روب منزلي من القطيفة الناعمة بلون وردي ترابي، بياقة شال متقاطعة وحزام ربط عند الخصر وأكمام طويلة.\nدافئ وخفيف في الشتاء، ويصلح للصباح أو بعد الاستحمام.",
-  "material": "قطيفة",
-  "fit": "عادية",
-  "care": "غسيل لطيف بالماء البارد، وتجفيف بحرارة منخفضة.",
-  "tags": [
-   "منزلي",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "المقاس",
-    "values": [
-     "S",
-     "M",
-     "L",
-     "XL"
-    ]
-   },
-   {
-    "name": "اللون",
-    "values": [
-     "وردي ترابي"
-    ]
-   }
-  ],
-  "stock": 20,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/plush-wrap-collar-robe-1.webp",
-   "/demo/fashion/plush-wrap-collar-robe-2.webp"
-  ],
-  "alt": [
-   "روب منزلي قطيفة بياقة شال وحزام (القطعة مفرودة)",
-   "روب منزلي قطيفة بياقة شال وحزام (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "knit-shoulder-wrap-tie",
-  "name": "وشاح كتف تريكو بعقدة أمامية",
-  "category": "إكسسوارات وأحذية",
-  "price": 599,
-  "compareAt": null,
-  "shortDescription": "قطعة تريكو تُلبس على الكتفين وتُعقد من الأمام، بلونين.",
-  "description": "وشاح كتف من التريكو بقصّة مربعة بفتحة للرقبة، يُعقد من الأمام أو يُترك مفتوحاً على الكتفين.\nيضيف دفئاً وطبقة أنيقة فوق أي بلوزة أو فستان.\nمتوفر بالأحمر الداكن والبني الداكن.",
-  "material": "تريكو",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "أوشحة",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "أحمر داكن",
-     "بني داكن"
-    ]
-   }
-  ],
-  "stock": 44,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/knit-shoulder-wrap-tie-1.webp",
-   "/demo/fashion/knit-shoulder-wrap-tie-2.webp",
-   "/demo/fashion/knit-shoulder-wrap-tie-3.webp",
-   "/demo/fashion/knit-shoulder-wrap-tie-4.webp"
-  ],
-  "alt": [
-   "وشاح كتف تريكو بعقدة أمامية بلون أحمر داكن (القطعة مفرودة)",
-   "وشاح كتف تريكو بعقدة أمامية بلون بني داكن (القطعة مفرودة)",
-   "وشاح كتف تريكو بعقدة أمامية بلون أحمر داكن (القطعة مفرودة)",
-   "وشاح كتف تريكو بعقدة أمامية بلون بني داكن (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "soft-fringe-scarf-beige",
-  "name": "وشاح ناعم بأهداب بلون بيج فاتح",
-  "category": "إكسسوارات وأحذية",
-  "price": 599,
-  "compareAt": null,
-  "shortDescription": "وشاح طويل بملمس ناعم دافئ وأهداب عند الطرفين.",
-  "description": "وشاح طويل بلون بيج فاتح وملمس ناعم دافئ، بأهداب عند الطرفين.\nيُلف حول الرقبة أو يُترك مسدلاً على الكتفين.\nيُنسَّق مع المعاطف والجواكت بألوان محايدة.",
-  "material": "خامة ناعمة دافئة",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "أوشحة",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "بيج فاتح"
-    ]
-   }
-  ],
-  "stock": 48,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/soft-fringe-scarf-beige-1.webp",
-   "/demo/fashion/soft-fringe-scarf-beige-2.webp"
-  ],
-  "alt": [
-   "وشاح ناعم بأهداب بلون بيج فاتح (القطعة مفرودة)",
-   "وشاح ناعم بأهداب بلون بيج فاتح (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "dark-brown-fringe-scarf",
-  "name": "وشاح بني داكن بأهداب طويلة",
-  "category": "إكسسوارات وأحذية",
-  "price": 699,
-  "compareAt": null,
-  "shortDescription": "وشاح طويل بلون بني داكن وأهداب عند الأطراف.",
-  "description": "وشاح طويل بلون بني داكن، بخامة ناعمة وأهداب طويلة عند الطرفين.\nيُلف مرتين حول الرقبة أو يُترك مفتوحاً.\nيناسب تنسيقات الشتاء مع المعاطف الفاتحة والداكنة.",
-  "material": "خامة ناعمة",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "أوشحة",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "بني داكن"
-    ]
-   }
-  ],
-  "stock": 36,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/dark-brown-fringe-scarf-1.webp",
-   "/demo/fashion/dark-brown-fringe-scarf-2.webp"
-  ],
-  "alt": [
-   "وشاح بني داكن بأهداب طويلة (القطعة مفرودة)",
-   "وشاح بني داكن بأهداب طويلة (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "winter-baseball-cap-grey",
-  "name": "كاب شتوي رمادي بحافة سوداء",
-  "category": "إكسسوارات وأحذية",
-  "price": 599,
-  "compareAt": null,
-  "shortDescription": "كاب بقماش صوفي ناعم بلون رمادي وحافة سوداء وتطريز بخط يدوي.",
-  "description": "كاب بقماش صوفي ناعم بلون رمادي وحافة سوداء، بتطريز كتابي على الجانب.\nمقاسه قابل للتعديل من الخلف.\nيناسب الإطلالات الكاجوال في الشتاء.",
-  "material": "قماش صوفي",
-  "care": "غسيل يدوي لطيف، ويُجفَّف في الهواء.",
-  "tags": [
-   "قبعات",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "رمادي دافئ"
-    ]
-   }
-  ],
-  "stock": 33,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/winter-baseball-cap-grey-1.webp",
-   "/demo/fashion/winter-baseball-cap-grey-2.webp"
-  ],
-  "alt": [
-   "كاب شتوي رمادي بحافة سوداء (القطعة مفرودة)",
-   "كاب شتوي رمادي بحافة سوداء (القطعة مفرودة)"
-  ]
- },
- {
-  "slug": "black-cuffed-knit-beanie",
-  "name": "قبعة تريكو سوداء بحافة مطوية",
-  "category": "إكسسوارات وأحذية",
-  "price": 249,
-  "compareAt": null,
-  "shortDescription": "قبعة تريكو سادة بحافة مطوية، تمنح الرأس دفئاً.",
-  "description": "قبعة من التريكو بلون أسود سادة وحافة مطوية.\nتناسب الأيام الباردة وتُنسَّق مع أي إطلالة كاجوال.",
-  "material": "تريكو",
-  "care": "غسيل لطيف بالماء البارد، والتجفيف مفروداً بعيداً عن الشمس.",
-  "tags": [
-   "قبعات",
-   "شتاء"
-  ],
-  "options": [
-   {
-    "name": "اللون",
-    "values": [
-     "أسود"
-    ]
-   }
-  ],
-  "stock": 60,
-  "featured": false,
-  "isNew": false,
-  "images": [
-   "/demo/fashion/black-cuffed-knit-beanie-1.webp",
-   "/demo/fashion/black-cuffed-knit-beanie-2.webp"
-  ],
-  "alt": [
-   "قبعة تريكو سوداء بحافة مطوية (القطعة مفرودة)",
-   "قبعة تريكو سوداء بحافة مطوية (القطعة مفرودة)"
-  ]
- }
+  }
 ]
