@@ -41,15 +41,8 @@ const SW = 1.75;
 
 const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
-  ["/admin/requests", "المشاريع", Inbox],
-  ["/admin/edits", "طلبات التعديل", MessageSquarePlus],
   ["/admin/conversations", "المحادثات", MessagesSquare],
-  ["/admin/conversations/delivery", "بانتظار التسليم", PackageCheck],
-  ["/admin/payments", "التحويلات", Wallet],
-  ["/admin/reviews", "المراجعات", Star],
   ["/admin/leads", "الليدز", UserPlus],
-  ["/admin/audience", "الجمهور والبريد", Mail],
-  ["/admin/stores", "المتاجر", Store],
   ["/admin/costs", "التكاليف", Activity],
   ["/admin/pricing", "الأسعار", BadgeDollarSign],
   ["/admin/flags", "الإعدادات", SlidersHorizontal],

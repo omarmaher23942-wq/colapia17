@@ -105,7 +105,6 @@ const ALL: NavSection[] = [
       { label: "شكل المتجر", href: "/dashboard/design", icon: Wand2, hint: "الألوان والخطوط والحركة وتعديل الشكل بالوصف", keywords: ["design", "ثيم", "الوان", "شكل"] },
       { label: "المحتوى والصفحات", href: "/dashboard/content", icon: Palette, hint: "نصوص وصور وأقسام الصفحة الرئيسية", keywords: ["content", "محتوى", "الصفحه الرئيسيه"] },
       { label: "السياسات والضمان", href: "/dashboard/policies", icon: ShieldCheck, hint: "الاستبدال والاسترجاع والمعاينة", keywords: ["policies", "ضمان", "سياسات"] },
-      { label: "النطاق الخاص", href: "/dashboard/domain", icon: Globe, hint: "ربط نطاق مثل mystore.com", keywords: ["domain", "دومين", "نطاق"] },
     ],
   },
   {
@@ -114,11 +113,7 @@ const ALL: NavSection[] = [
       { label: "إعدادات المتجر", href: "/dashboard/settings", icon: Settings, hint: "بيانات المتجر ووسائل الدفع والتواصل", keywords: ["settings", "اعدادات", "دفع", "واتساب"] },
       { label: "النسخ الاحتياطي والتصدير", href: "/dashboard/settings/data", icon: Archive, hint: "نسخة كاملة من بيانات المتجر وتصدير Excel", keywords: ["backup", "نسخة", "احتياطي", "تصدير", "export", "بيانات"] },
       { label: "أسعار الشحن", href: "/dashboard/shipping", icon: Rocket, hint: "أسعار الشحن لكل محافظة", keywords: ["shipping", "توصيل", "محافظات"] },
-      { label: "نقل البيانات", href: "/dashboard/transfer", icon: DatabaseZap, hint: "نقل بيانات المتجر إلى قاعدة Neon الخاصة بكم", keywords: ["transfer", "نقل", "قاعدة", "بيانات", "neon"] },
       { label: "فريق المتجر", href: "/dashboard/team", icon: UserCog, hint: "دعوة موظفين بصلاحيات محددة", keywords: ["team", "موظفين", "صلاحيات"] },
-      { label: "تفعيل الموقع", href: "/dashboard/activate", icon: Rocket, hint: "الدفع وربط حساباتكم وحجز الميتنج", keywords: ["activate", "تفعيل", "ربط", "قاعدة", "ميتنج"] },
-      { label: "الاشتراك والاستخدام", href: "/dashboard/billing", icon: CreditCard, hint: "الباقة والتجديد والمدفوعات وحدود الاستخدام الشهرية", keywords: ["billing", "فوترة", "اشتراك", "دفع", "تجديد", "usage", "حدود", "استخدام", "حصة"] },
-      { label: "طلب تعديل من الفريق", href: "/dashboard/requests", icon: MessageSquarePlus, hint: "اطلبوا من فريقنا تعديلاً في التصميم أو المحتوى", keywords: ["requests", "تعديل", "طلب"] },
     ],
   },
 ];
@@ -128,7 +123,7 @@ export const NAV_SECTIONS: NavSection[] = ALL;
 export const NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 
 /** الصفحات المفتوحة أثناء قفل اللوحة (مجمّد/متوقف): الاشتراك وحده (وملحقه الاستخدام). */
-export const LOCKED_OPEN_HREFS = ["/dashboard/billing", "/dashboard/activate"] as const;
+export const LOCKED_OPEN_HREFS = [] as const;
 
 /**
  * القائمة لعضو فريق: ما يملك عرضه فقط (الخادم يحرس كل صفحة بنفسه؛ هذا إخفاء فقط). بلا perms = صاحب المتجر.

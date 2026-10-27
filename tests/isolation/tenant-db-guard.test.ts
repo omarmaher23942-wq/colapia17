@@ -17,18 +17,14 @@ const TENANT_QUERY = new RegExp(
 );
 
 const REVIEWED_MIXED = new Set([
-  "src/agency/provision.ts", // تجهيز متجر من طلب: صف المتجر في قاعدة المنصة ثم الكتالوج عبر getTenantDb (مراجَع)
   // التسويق: الـ Blueprint من قاعدة المنصة، والتحقق من وجهة الحملة وكودها من بيانات المتجر.
   "src/server/actions/marketing.ts",
   "src/server/actions/size-guide.ts", // الـ Blueprint (تحكم) + التحقق من أقسام المتجر (بيانات)
   // التقرير الشهري: قائمة المتاجر وبريد أصحابها من قاعدة المنصة، والأرقام من بيانات كل متجر.
-  "src/app/(platform)/(dash)/admin/page.tsx",
-  "src/app/(platform)/(dash)/admin/stores/[id]/page.tsx",
   "src/app/(platform)/dashboard/content/page.tsx",
   "src/server/actions/checkout.ts",
   "src/server/actions/inventory.ts",
   "src/server/actions/motion.ts",
-  "src/server/actions/platform-stores-governance.ts",
   "src/server/actions/shipping.ts",
   // قراءات الإعداد: الـ Blueprint (تحكم) + أعداد المنتجات والأقسام والشحن من بيانات المتجر بـ tdb.
   "src/server/setup-data.ts",

@@ -15,13 +15,6 @@ describe("المتجر المدفوع لا يُحذف أبداً", () => {
 });
 
 describe("سلامة نقاط الدخول العامة (فحص مصدر)", () => {
-  it("إجراء الدفع لصاحب المتجر وحده، والإيصال الواحد قيد المراجعة للمتجر مفروض بفهرس فريد", () => {
-    const pay = readFileSync("src/server/actions/activation.ts", "utf8");
-    expect(pay).toMatch(/ownerStore\(\{ allowLocked: true \}\)/);
-    expect(pay).toMatch(/isTrustedUploadUrl\(input\.screenshotUrl\)/);
-    const schema = readFileSync("src/db/schema/commerce.ts", "utf8");
-    expect(schema).toMatch(/platform_payments_store_under_review_uq/);
-  });
   it("حد استعمال كود الخصم ذري في القاعدة (قيد CHECK) فلا يتجاوزه طلبان متزامنان", () => {
     expect(readFileSync("src/db/schema/commerce.ts", "utf8")).toMatch(/used_count\} <= \$\{t\.maxUses\}|usedCount\} <= \$\{t\.maxUses\}/);
   });

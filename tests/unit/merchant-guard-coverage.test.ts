@@ -20,9 +20,6 @@ describe("فرض صلاحيات فريق التاجر", () => {
     const missing = pages.filter((f) => !/requireStoreArea\(/.test(readFileSync(f, "utf8")));
     expect(missing).toEqual([]);
   });
-  it("صفحات بوابة العميل تستدعي requireClientPortal", () => {
-    for (const f of ["edit", "history"]) expect(readFileSync(`src/app/(platform)/dashboard/${f}/page.tsx`, "utf8")).toMatch(/requireClientPortal\(/);
-  });
   it("إجراءات التاجر لا تستخدم جلسة المتجر الخام بلا صلاحية", () => {
     const actions = walk("src/server/actions").filter((f) => f.endsWith(".ts"));
     const raw = actions.filter((f) => /getMerchantStoreOrNull\(\)|requireMerchantStore\(\)/.test(readFileSync(f, "utf8")));

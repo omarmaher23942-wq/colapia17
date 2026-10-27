@@ -57,17 +57,16 @@ describe("قفل اللوحة لا يُتجاوز", () => {
   });
   it("ownerStore يقفل صاحب المتجر إلا الاشتراك والحساب (allowLocked)", () => {
     expect(read("src/server/merchant-guard.ts")).toMatch(/!opts\.allowLocked && \(await storeLock/);
-    for (const f of ["src/server/actions/activation.ts", "src/server/actions/account.ts", "src/server/upload-policies.ts"]) {
+    for (const f of ["src/server/actions/account.ts", "src/server/upload-policies.ts"]) {
       expect(read(f)).toMatch(/ownerStore\(\{ allowLocked: true \}\)/);
     }
     // أي استدعاء آخر لا يمر بالقفل (النطاق، الرابط، الإعداد).
-    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|activation\.ts$|connections\.ts$|account\.ts$|upload-policies/.test(f));
+    const others = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !/merchant-guard|connections\.ts$|account\.ts$|upload-policies/.test(f));
     for (const f of others) expect(read(f)).not.toMatch(/ownerStore\(\{ allowLocked/);
   });
   it("واجهات اللوحة تتحقق من القفل", () => {
     expect(read("src/app/api/dashboard/attention/route.ts")).toMatch(/storeLock/);
     expect(read("src/app/api/dashboard/search/route.ts")).toMatch(/storeLock/);
-    expect(read("src/app/api/setup/import/route.ts")).toMatch(/storeFor\("products"\)/);
   });
 });
 

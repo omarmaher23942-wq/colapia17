@@ -1,10 +1,16 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/db/client"; import { conversations, stores } from "@/db/schema"; import { platformUser } from "@/server/platform-guard";
+import { desc, sql } from "drizzle-orm";
+import { db } from "@/db/client";
+import { conversations } from "@/db/schema";
+import { platformUser } from "@/server/platform-guard";
+import { LEAD_STATUS_LABEL, leadRecordOf } from "@/agent/lead-capture";
+import { csvResponse, toCsv } from "@/server/csv";
+
 export async function GET() {
   if (!(await platformUser({ cap: "leads" }))) return new Response("غير مصرح", { status: 401 });
-  const rows = await db.select({ c: conversations, s: stores.subdomain }).from(conversations).leftJoin(stores, eq(stores.id, conversations.storeId)).orderBy(desc(conversations.createdAt)).limit(5000);
-  const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const head = ["name", "channel", "stage", "lead_score", "industry", "pain_points", "store", "created_at", "last_user_message_at", "lost_reason"];
-  const body = rows.map(({ c, s }) => { const m = c.memory as any; return [c.profileName, c.channel, c.stage, c.leadScore, m?.industry, (m?.painPoints ?? []).join(" | "), s, c.createdAt.toISOString(), c.lastUserMessageAt?.toISOString(), c.lostReason].map(esc).join(","); });
-  return new Response("\uFEFF" + [head.join(","), ...body].join("\n"), { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="leads-${new Date().toISOString().slice(0, 10)}.csv"` } });
+  const rows = await db.select({ m: conversations.memory }).from(conversations).where(sql`${conversations.memory} ? 'v6Lead'`).orderBy(desc(conversations.updatedAt)).limit(5000);
+  const body = rows.flatMap(({ m }) => {
+    const r = leadRecordOf(m);
+    return r ? [[r.name, r.whatsapp, r.email ?? "", r.igUsername ?? "", r.service, LEAD_STATUS_LABEL[r.status], r.note ?? "", r.at]] : [];
+  });
+  return csvResponse("leads", toCsv(["name", "whatsapp", "email", "instagram", "service", "status", "note", "created_at"], body));
 }
