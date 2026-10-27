@@ -11,7 +11,7 @@ import { OTHER_SERVICE_NO_NOTE, otherServicesNoteFrom } from "@/agent/other-serv
 import { allowedPriceNumbers, type ReplyCtx } from "./guard";
 
 export type AgentFacts = {
-  vars: { pricingFacts: string; demoUrl: string; qimaUrl: string; otherNote: string };
+  vars: { pricingFacts: string; demoUrl: string; qimaUrl: string; siteUrl: string; otherNote: string };
   offer: Offer;
   replyCtx: ReplyCtx;
 };
@@ -30,7 +30,7 @@ export async function agentFacts(): Promise<AgentFacts> {
   const facts = agentFactsText(offer);
   const note = otherServicesNoteFrom(pricingFlag?.config);
   return {
-    vars: { pricingFacts: facts, demoUrl: demo, qimaUrl: QIMA_URL, otherNote: note || OTHER_SERVICE_NO_NOTE },
+    vars: { pricingFacts: facts, demoUrl: demo, qimaUrl: QIMA_URL, siteUrl: `https://${env.ROOT_DOMAIN}`, otherNote: note || OTHER_SERVICE_NO_NOTE },
     offer,
     replyCtx: {
       // ما يُسمح للرد بذكره: نطاقاتنا والأدلة (المتجر التجريبي وQima) فقط، وأسعار الحقائق وفروقها الطبيعية فقط.

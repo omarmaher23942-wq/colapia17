@@ -6,8 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { redis } from "@/lib/redis";
 import { runtimeTag } from "@/lib/meta-trace";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
-import { buildRequestMail, handoffMail, otherServiceMail, type OwnerMail } from "@/agent/owner-mail";
-import type { Lead } from "@/agent/lead";
+import { handoffMail, leadMail, type OwnerMail } from "@/agent/owner-mail";
 
 // أصل المنصة من النطاق الرئيسي المضبوط (لا NEXT_PUBLIC_APP_URL الذي قد يشير لنشر قديم).
 const origin = () => (env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`);
@@ -30,19 +29,14 @@ async function notifyOwner(mail: OwnerMail, conversationId: string, opts: { mail
   }).catch(() => {});
 }
 
-/** طلب «خدمة أخرى»: بريد إلى عناوين التنبيه (الافتراضي بريد المالك) وإشعار لوحة، مرة لكل محادثة كل 6 ساعات. */
-export async function alertOtherService(i: { conversationId: string; name?: string | null; channel: string; igUsername?: string | null; brief: string; lead?: Lead }): Promise<void> {
-  await notifyOwner(otherServiceMail(i), i.conversationId, { mailKey: `agent:other-mail:${i.conversationId}`, mailTtlS: 6 * 3600 });
-}
-
 /** العميل طلب موظفاً أو رأى الوكيل أن الموقف يحتاج إنساناً: مرة لكل محادثة كل 30 دقيقة. */
 export async function alertHandoff(i: { conversationId: string; name?: string | null; channel: string; reason: string; pauseHours: number }): Promise<void> {
   await notifyOwner(handoffMail(i), i.conversationId, { mailKey: `agent:handoff-mail:${i.conversationId}` });
 }
 
-/** طلب بناء جديد: بريد فوري للمالك + إشعار لوحة (شارة «طلب بناء جديد» في المحادثات). */
-export async function alertBuildRequest(i: { conversationId: string; name?: string | null; channel: string; lead: Lead; code: string; golden: boolean; windowHours: number }): Promise<void> {
-  await notifyOwner(buildRequestMail(i), i.conversationId, { mailKey: `agent:build-mail:${i.code}`, mailTtlS: 24 * 3600 });
+/** عميل محتمل جديد: بريد فوري للمالك + إشعار لوحة، مرة لكل محادثة. */
+export async function alertLead(i: { conversationId: string; name: string; whatsapp: string; email?: string; service: string; summary: string; channel: string; igUsername?: string | null }): Promise<void> {
+  await notifyOwner(leadMail(i), i.conversationId, { mailKey: `agent:lead-mail:${i.conversationId}`, mailTtlS: 24 * 3600, extraButtons: [{ title: "الليدز", url: `${origin()}/admin/leads` }] });
 }
 
 /**

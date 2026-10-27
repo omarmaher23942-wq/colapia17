@@ -75,15 +75,12 @@ describe("إغلاق الوكيل بعد الموافقة", () => {
   it("«استئناف الكل» لا يوقظ محادثات agent_done", () => {
     expect(read("src/server/actions/launch.ts")).toMatch(/closedBy.*<> 'agent_done'/);
   });
-  it("الإغلاق لا يتوقف على نجاح إرسال رسالة الإغلاق", () => {
+  it("الليد يُحفظ ويُغلق الوكيل قبل إرسال رسالة الإغلاق (فشل Meta لا يضيّع العميل)", () => {
     const r = read("src/ai/agents/closer/runtime.ts");
-    expect(r).not.toMatch(/if \(await sendIfStillActive\([^\n]*buildRequestMessage[^\n]*\)\) \{\s*await closeAfterRequest/);
-    expect(r).toMatch(/await closeAfterRequest\(channel, conv, lead, created/);
-  });
-  it("مسار الخدمة الأخرى لا ينشئ طلب بناء ولا يطلب دفعاً: الفعل يوقف الوكيل ويعلّم المحادثة", () => {
-    const r = read("src/ai/agents/closer/runtime.ts");
-    expect(r).toMatch(/flag: OTHER_SERVICE_FLAG/);
-    expect(read("src/agent/build-request.ts")).toMatch(/c\.otherService\) return \{ ok: false/);
+    const fn = r.slice(r.indexOf("async function captureLead"));
+    expect(fn.indexOf("patchMemory(conv.id, { v6Lead")).toBeGreaterThan(0);
+    expect(fn.indexOf("patchMemory(conv.id, { v6Lead")).toBeLessThan(fn.indexOf("metaApi.text"));
+    expect(fn).toMatch(/closedBy: "agent_done"/);
   });
   it("تغيير المرحلة اليدوي لا يوقظ وكيلاً مغلقاً", () => {
     const c = read("src/server/actions/platform-conv.ts");

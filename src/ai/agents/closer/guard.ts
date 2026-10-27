@@ -11,7 +11,7 @@ export const MAX_HISTORY_CHARS = 7000;
 /** رسالة أقدم من هذا لا يردّ عليها الوكيل (نافذة الرد 24 ساعة، والمعالجة المتأخرة تفشل أو تربك). */
 export const STALE_INBOUND_MS = 20 * 3600_000;
 
-const toLatinDigits = (s: string) =>
+export const toLatinDigits = (s: string) =>
   s.replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d))).replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
 
 export const capText = (s: string, max: number) => (s.length > max ? `${s.slice(0, max)}…` : s);
@@ -200,7 +200,7 @@ export function foreignHosts(reply: string, allowedHosts: string[]): string[] {
   return [...hosts].filter((h) => !ok.some((a) => h === a || h.endsWith(`.${a}`)));
 }
 
-const LEAK_MARKERS = ["closer.v5", "حالة هذه المحادثة", "حقائق Colapia", "أنت مستشار مبيعات في Colapia", "system prompt", "build_request", "other_service", "requestHuman", "declined"];
+const LEAK_MARKERS = ["closer.v6", "حالة هذه المحادثة", "حقائق Colapia", "أنت مستشار مبيعات في Colapia", "system prompt", "build_request", "other_service", "action = lead", "action: lead", "requestHuman", "declined"];
 
 /** الرد يكشف تعليمات النظام أو أسماء حقول الأداة. */
 export function leaksInstructions(reply: string): boolean {

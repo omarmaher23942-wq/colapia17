@@ -1,8 +1,7 @@
 // turn.ts — دور الوكيل (خالص ومختبَر): {reply, memory, speaker, requestHuman, lead, action, brief, declined}.
 // التحليل **صارم**: لا رد صالح = يُرفض الناتج ويُجرَّب النموذج التالي. لا يُرسل أبداً نص خام فيه أقواس أو أسماء حقول.
 // الأدوات (V4) أفعال يطلبها النموذج في `action` ويقرر الكود تنفيذها بعد التحقق من شروطها الرقمية والبيانية:
-//  build_request = إنشاء طلب بناء متجر (بلا دفع) بعد تغطية الأسئلة الخمسة أو رفض بعضها، ثم رسالة الإغلاق الثابتة وإغلاق الوكيل
-//  other_service = تصنيف الطلب «خدمة أخرى»: إشعار المالك وإيقاف الوكيل بانتظار رده
+//  lead = تسجيل عميل محتمل (الاسم + واتساب + بريد اختياري) في لوحة المالك ثم إغلاق الوكيل في المحادثة
 //  ignore       = رسالة آلية أو غير مقصودة لا تستحق رداً
 import { z } from "zod";
 import { stripEmoji } from "@/lib/emoji";
@@ -20,7 +19,7 @@ const optText = (max: number) => z.string().nullish().transform((s) => clean(s, 
 
 export type Speaker = "owner" | "moderator" | "unknown";
 
-export const TURN_ACTIONS = ["none", "build_request", "other_service", "ignore"] as const;
+export const TURN_ACTIONS = ["none", "lead", "ignore"] as const;
 export type TurnAction = (typeof TURN_ACTIONS)[number];
 
 export const closerTurnSchema = z.object({
@@ -40,6 +39,11 @@ export const closerTurnSchema = z.object({
     })
     .nullish()
     .transform((l) => l ?? {}),
+  /** بيانات التواصل التي كتبها العميل صراحة (الاسم، واتساب، بريد اختياري، والخدمة المطلوبة). */
+  contact: z
+    .object({ name: optText(80), whatsapp: optText(40), email: optText(160), service: optText(300) })
+    .nullish()
+    .transform((c) => c ?? {}),
   /** الفعل المطلوب. قيمة غير معروفة = none (لا يُرفض الدور بسببها). */
   action: z.unknown().transform((v): TurnAction => (typeof v === "string" && (TURN_ACTIONS as readonly string[]).includes(v) ? (v as TurnAction) : "none")),
   /** مجالات رفض العميل الإجابة عنها صراحة هذا الدور (products | look | selling | contact). */

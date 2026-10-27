@@ -9,11 +9,11 @@
 //  6) composer.pages يفرض +600 كلمة لكل صفحة.
 //  7) qa.system يفحص +40 معياراً.
 //  8) composer.blueprint_check جديد — يُدعى قبل الحفظ النهائي.
-import { CLOSER_V5_PROMPT } from "./agents/closer/prompt";
+import { CLOSER_V6_PROMPT } from "./agents/closer/prompt";
 
 export const DEFAULT_PROMPTS = {
-  // وكيل الرسائل على إنستجرام وفيسبوك (V5): النص في agents/closer/prompt.ts. المفتاح «closer.v5» جديد عمداً، ولتعديله من اللوحة عدّل «closer.v5».
-  "closer.v5": CLOSER_V5_PROMPT,
+  // وكيل الرسائل على إنستجرام وفيسبوك (V6): النص في agents/closer/prompt.ts. المفتاح «closer.v5» جديد عمداً، ولتعديله من اللوحة عدّل «closer.v5».
+  "closer.v6": CLOSER_V6_PROMPT,
 
   "architect.system": `أنت مدير إبداعي واستراتيجي تجارة إلكترونية خبير في السوق المصري. مهمتك: تحليل بيانات التاجر وإخراج Build Plan فريد لا يشبه أي متجر آخر.
 

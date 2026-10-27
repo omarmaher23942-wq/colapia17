@@ -12,9 +12,9 @@ describe("تحليل دور الوكيل الصارم", () => {
   });
 
   it("يتجاوز أسوار Markdown ونصاً حول الكائن", () => {
-    const t = parseCloserTurn('هذا ردي:\n```json\n{"reply":"تمام","action":"build_request",}\n```');
+    const t = parseCloserTurn('هذا ردي:\n```json\n{"reply":"تمام","action":"lead",}\n```');
     expect(t?.reply).toBe("تمام");
-    expect(t?.action).toBe("build_request");
+    expect(t?.action).toBe("lead");
   });
 
   it("يرفض JSON مكسوراً أو بلا reply أو reply فارغاً", () => {
@@ -28,7 +28,7 @@ describe("تحليل دور الوكيل الصارم", () => {
 
   it("لا يرسل أبداً رداً يسرّب بنية الحقول", () => {
     expect(parseCloserTurn(JSON.stringify({ reply: '{"reply":"x","memory":"y"}' }))).toBeNull();
-    expect(parseCloserTurn(JSON.stringify({ reply: 'جاهز "action": "build_request"' }))).toBeNull();
+    expect(parseCloserTurn(JSON.stringify({ reply: 'جاهز "action": "lead"' }))).toBeNull();
     expect(looksLikeLeak("أهلاً بكم")).toBe(false);
   });
 
@@ -40,13 +40,12 @@ describe("تحليل دور الوكيل الصارم", () => {
     expect(parseCloserTurn(JSON.stringify({ reply: "", action: "none" }))).toBeNull();
   });
 
-  it("ملخص الخدمة الأخرى وميول التصميم تُقرأ ومحدودة الطول", () => {
-    const t = parseCloserTurn(JSON.stringify({ reply: "تمام", action: "other_service", brief: "ب".repeat(900), lead: { styleNotes: "هادئ" } }));
-    expect(t?.action).toBe("other_service");
-    expect(t?.brief.length).toBe(500);
-    expect(t?.lead.styleNotes).toBe("هادئ");
+  it("بيانات التواصل تُقرأ ومحدودة الطول", () => {
+    const t = parseCloserTurn(JSON.stringify({ reply: "تمام", action: "lead", contact: { name: "ب".repeat(300), whatsapp: "01012345678", service: "س".repeat(900) } }));
+    expect(t?.action).toBe("lead");
+    expect(t?.contact.name?.length).toBe(80);
+    expect(t?.contact.service?.length).toBe(300);
   });
-
   it("يزيل الإيموجي من الرد", () => {
     const t = parseCloserTurn(JSON.stringify({ reply: "أهلاً بكم 😀" }));
     expect(t?.reply).toBe("أهلاً بكم");

@@ -85,7 +85,7 @@ describe("الوكيل V4", () => {
     expect(parseCloserTurn(JSON.stringify({ reply: "أهلاً", speaker: 7 }))?.speaker).toBe("unknown");
   });
   it("حالة المحادثة تذكر المشرف حين يكتب مشرف فقط", () => {
-    const base = { replies: 2, channel: "instagram" as const, lead: {}, invalid: {}, summary: "", offer: { golden: true, seatsLeft: 9, seatsTotal: 10 }, declined: [], requested: false, otherService: false, idleHours: null };
+    const base = { replies: 2, channel: "instagram" as const, summary: "", offer: { golden: true, seatsLeft: 9, seatsTotal: 10 }, captured: false, idleHours: null };
     expect(stateBlock({ ...base, speaker: "moderator" })).toContain("صاحب القرار");
     expect(stateBlock({ ...base, speaker: "unknown" })).not.toContain("مشرفاً");
   });
