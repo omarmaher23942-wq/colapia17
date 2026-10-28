@@ -34,7 +34,7 @@ export async function agentFacts(): Promise<AgentFacts> {
     offer,
     replyCtx: {
       // ما يُسمح للرد بذكره: نطاقاتنا والأدلة (المتجر التجريبي وQima) فقط، وأسعار الحقائق وفروقها الطبيعية فقط.
-      allowedHosts: [hostOf(demo), hostOf(QIMA_URL), env.ROOT_DOMAIN, "colapia.com", "ig.me"],
+      allowedHosts: [hostOf(demo), hostOf(QIMA_URL), env.ROOT_DOMAIN, "colapia.com", "instagram.com"],
       allowedPrices: allowedPriceNumbers(facts, note),
       facts: `${facts}\n${note}`,
       seatsLeft: offer.seatsLeft,

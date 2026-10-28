@@ -35,3 +35,9 @@
 - **التحقق المتاح حالياً:** فحص TypeScript عبر Compiler API مرّ لـ911 ملفاً باستثناء `.next`، لكن فحص `npm run typecheck` العادي ما زال يتأثر بمراجع مسارات محذوفة في `.next/types`. التشغيل الكامل للاختبارات: 785/787؛ الفشلان في `merchant-guard-coverage.test.ts` و`stores-isolation.test.ts`، ولم يثبت ارتباطهما بتغيير الهبوط. ESLint متوقف عند خطأ حل الاستيراد `eslint-config-next/core-web-vitals`. لم تُجرَ معاينة الهاتف/اللوحي/سطح المكتب بعد.
 - **المعاينة/الاستئناف:** لا توجد مهارة تشغيل للمشروع في `.claude/skills/` ولا `.claude/launch.json`. `scripts/dev/preview.sh` موثّق لبيئة Linux ويتطلب PostgreSQL؛ الجلسة الحالية Windows وتفتقد `pg_config` و`psql` و`initdb`، لذلك لم تُلتقط لقطات بصرية. لا تشغّل Next مباشرة ولا تتجاوز عزل الأسرار. عند توفر بيئة Linux الموثقة، افحص RTL والتجاوب والثيمين والتركيز والتمرير الأفقي، ثم حدّث هذا السجل و`CLAUDE.md` بالنتيجة.
 - **Git والنشر:** الدفع المباشر إلى `main` اكتمل، وتأكدت مزامنة رأس GitHub لفرع المهمة و`origin/main` بعده؛ راجع `git log -1` لمعرفة SHA الحالي. يذكر `docs/deploy-cloudflare.md` أن تحديث `main` يعيد النشر تلقائياً، لكن لم نتحقق من حالة نشر Cloudflare بعد الدفع. `.github/workflows/ci.yml` يشغّل CI على `main` ولا يحتوي خطوة Cloudflare. لم تدخل تغييرات المالك السابقة في `package.json` و`src/stores/registry.generated.ts` و`clothes.json` و`index.html` الالتزام.
+
+## تحديث 2026-10-28 (مساءً)
+- الوكيل موقوف (`AGENT_ENABLED` غير مضبوط)؛ التواصل برسالة واحدة يدوية (`docs/OWNER-DM-MESSAGES.md`).
+- «عرض الإطلاق»: 999 ج لأول 5 عملاء لكل الخدمات؛ اسم «الدائرة الذهبية» أُلغي.
+- رابط إنستجرام الوحيد: `https://www.instagram.com/colapia/` (لا `ig.me`).
+- المنشورات الجاهزة وجدول نشرها: `marketing/instagram-posts/` (`SCHEDULE.md` + مجلد لكل منشور فيه الصور والكابشن).

@@ -30,7 +30,7 @@ describe("صفحات المنصة العامة", () => {
 
   it("زر البدء إلى محادثة إنستجرام، ولوحة التحكم تتبع الجلسة", async () => {
     const p = await pages();
-    expect(p.home).toContain('href="https://ig.me/m/colapia"');
+    expect(p.home).toContain('href="https://www.instagram.com/colapia/"');
     expect(p.home).toContain("تسجيل الدخول");
     expect(p.home).toContain("/login?redirect=/dashboard");
     expect(p.homeClient).toContain('href="/dashboard"');

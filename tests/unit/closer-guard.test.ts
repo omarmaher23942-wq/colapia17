@@ -29,7 +29,7 @@ const facts = [
 ].join("\n");
 const note = "المشاريع الأخرى حسب النطاق وتبدأ من 12,000 ج";
 const ctx = {
-  allowedHosts: ["demo.colapia.com", "colapia.com", "qima-ten.vercel.app", "ig.me"],
+  allowedHosts: ["demo.colapia.com", "colapia.com", "qima-ten.vercel.app", "instagram.com"],
   allowedPrices: allowedPriceNumbers(facts, note),
   facts: `${facts}\n${note}`,
   seatsLeft: 9,
@@ -66,7 +66,7 @@ describe("حراسة مخرجات وكيل المبيعات", () => {
     expect(replyProblem("اكتبوا لنا على shop-help.com", ctx)).toMatch(/رابطاً/);
     expect(replyProblem("شاهدوا المتجر التجريبي demo.colapia.com وموقعنا colapia.com", ctx)).toBeNull();
     expect(replyProblem("هذا عمل حقيقي لنا: https://qima-ten.vercel.app", ctx)).toBeNull();
-    expect(replyProblem("تواصلوا عبر https://ig.me/colapia", ctx)).toBeNull();
+    expect(replyProblem("تواصلوا عبر https://www.instagram.com/colapia/", ctx)).toBeNull();
     expect(replyProblem("سنراسلكم على sara@gmail.com وحسابكم @nour.shop", ctx)).toBeNull();
     expect(foreignHosts("https://colapia.com.evil.com/x", ["colapia.com"])).toEqual(["colapia.com.evil.com"]);
     expect(foreignHosts("https://evil.vercel.app", ["qima-ten.vercel.app"])).toEqual(["evil.vercel.app"]);
