@@ -1,6 +1,6 @@
 "use client";
 
-// PricingEditor.tsx — صفحة أسعار المالك (/admin/pricing) بنموذج V4: سعر المشروع العادي، والدائرة الذهبية (السعر والمقاعد
+// PricingEditor.tsx — صفحة أسعار المالك (/admin/pricing) بنموذج V4: سعر المشروع العادي، وعرض الإطلاق (السعر والمقاعد
 // والمشغول سلفاً بمفتاح تشغيل)، وشروط التعديل بعد التسليم (الرسوم ونافذة المجاني)، ونص المشاريع الأخرى الذي يقوله الوكيل.
 // معاينة حية بالأرقام المكتوبة الآن. حفظ واحد للنموذج كله؛ الخادم يفرض صلاحية المالك ويتحقق من كل رقم.
 import { useMemo, useState, useTransition } from "react";
@@ -68,14 +68,14 @@ export function PricingConsole({ initial, usage }: { initial: PricingModel; usag
       <section className={card}>
         <h2 className="mb-3 text-sm font-black">مشروع المتجر</h2>
         <div className="max-w-xs">
-          <Num id="regular" text="السعر العادي (جنيه)" value={form.regularPrice} onChange={(v) => set("regularPrice", v)} hint="يُدفع كاملاً قبل التسليم، وهو سعر الحجز حين تكتمل مقاعد الدائرة الذهبية." />
+          <Num id="regular" text="السعر العادي (جنيه)" value={form.regularPrice} onChange={(v) => set("regularPrice", v)} hint="يُدفع كاملاً قبل التسليم، وهو سعر الحجز حين تكتمل مقاعد عرض الإطلاق." />
         </div>
       </section>
 
       <section className={card}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="flex items-center gap-2 text-sm font-black">
-            <Crown className="size-4 text-amber-300" aria-hidden="true" /> الدائرة الذهبية
+            <Crown className="size-4 text-amber-300" aria-hidden="true" /> عرض الإطلاق
           </h2>
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-[13px] font-bold">
             <input type="checkbox" checked={form.enabled} onChange={(e) => set("enabled", e.target.checked)} className="size-4 accent-[#6f86ff]" />

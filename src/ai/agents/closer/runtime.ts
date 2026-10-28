@@ -1,6 +1,6 @@
 import "server-only";
 // runtime.ts — وكيل الرسائل V6 على إنستجرام وفيسبوك: مستشار مبيعات بالذكاء الاصطناعي وحده يقنع ويشرح خدمات Colapia ويحجز مقاعد
-// الدائرة الذهبية. هدفه: عميل محتمل بالاسم وواتساب (والبريد اختياري) يُسجَّل فوراً في /admin/leads ثم يُغلق الوكيل.
+// عرض الإطلاق. هدفه: عميل محتمل بالاسم وواتساب (والبريد اختياري) يُسجَّل فوراً في /admin/leads ثم يُغلق الوكيل.
 // لا قواعد لغوية في الكود: النموذج يقرر ماذا يقول ومتى يطلب فعلاً (lead، ignore، أو requestHuman)، والكود يتحقق من أن البيانات
 // كتبها العميل فعلاً وصالحة (review.ts) ثم ينفذ. لا ردود جاهزة عند تعذر الذكاء الاصطناعي: صمت + تنبيه للمالك.
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -154,6 +154,11 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     await trace("resume", "انتهى الإيقاف المؤقت فعاد الوكيل");
   }
 
+  if (process.env.AGENT_ENABLED !== "1") {
+    // V6: الوكيل موقوف افتراضياً (قرار المالك 2026-10-28): الرسائل تُحفظ وتبقى غير مقروءة للفريق بلا رد آلي ولا تنبيه. فعّله بـ AGENT_ENABLED=1.
+    await trace("skip", "agent-paused: الوكيل موقوف (AGENT_ENABLED≠1)، الرسالة محفوظة للفريق");
+    return;
+  }
   if (!botOn) {
     await silent("disabled", "الوكيل مطفأ من /admin/flags (المفتاح bot.enabled أو bot.instagram). فعّله ليعود الرد.");
     return;

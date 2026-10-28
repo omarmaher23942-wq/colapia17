@@ -15,7 +15,7 @@ export type StateInput = {
   summary: string;
   /** تقدير سابق لمن يكتب (صاحب القرار أو مشرف الصفحة). */
   speaker?: "owner" | "moderator" | "unknown";
-  /** الدائرة الذهبية: متاحة الآن؟ والمقاعد الحقيقية الباقية من الإجمالي. */
+  /** عرض الإطلاق: متاحة الآن؟ والمقاعد الحقيقية الباقية من الإجمالي. */
   offer: { golden: boolean; seatsLeft: number; seatsTotal: number };
   /** سُجّل عميل محتمل لهذه المحادثة. */
   captured: boolean;
@@ -48,9 +48,9 @@ export function stateBlock(i: StateInput): string {
   if (i.captured) {
     lines.push("- سُجّلت بيانات هذا العميل وأُبلغ الفريق. لا تسجّل ليداً آخر؛ جاوب باختصار عن أي سؤال وذكّره بأن الفريق سيتواصل معه، وإن طلب موظفاً فاستخدم requestHuman.");
   } else if (i.offer.golden) {
-    lines.push(`- الدائرة الذهبية للمتاجر متاحة، والباقي فعلاً ${seatsPhrase(i.offer.seatsLeft)} من ${i.offer.seatsTotal} (العدد حقيقي من النظام، لا تذكر غيره ولا تضخمه).`);
+    lines.push(`- عرض الإطلاق متاحة، والباقي فعلاً ${seatsPhrase(i.offer.seatsLeft)} من ${i.offer.seatsTotal} (العدد حقيقي من النظام، لا تذكر غيره ولا تضخمه).`);
   } else {
-    lines.push("- مقاعد الدائرة الذهبية انتهت: لا تذكرها ولا تذكر عدّاداً أو ندرة.");
+    lines.push("- مقاعد عرض الإطلاق انتهت: لا تذكرها ولا تذكر عدّاداً أو ندرة.");
   }
 
   if (i.speaker === "moderator") lines.push("- من يكتب يبدو مشرفاً على الصفحة لا صاحب القرار.");

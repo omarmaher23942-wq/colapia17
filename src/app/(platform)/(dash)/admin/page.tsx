@@ -34,7 +34,7 @@ export default async function AdminCommandCenter() {
       <AutoRefresh everyMs={15_000} />
       <header className="border-b border-white/10 pb-6">
         <h1 className="text-2xl font-black text-white sm:text-3xl">مركز القيادة</h1>
-        <p className="mt-1 text-xs text-[#8d97c4]">المحادثات والعملاء المحتملون ومقاعد الدائرة الذهبية.</p>
+        <p className="mt-1 text-xs text-[#8d97c4]">المحادثات والعملاء المحتملون ومقاعد عرض الإطلاق.</p>
       </header>
 
       {c && c.newLeads > 0 ? (
@@ -47,7 +47,7 @@ export default async function AdminCommandCenter() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi href="/admin/leads" label="عملاء محتملون" value={c?.leads ?? 0} note={`${c?.newLeads ?? 0} جديد`} Icon={UserPlus} />
         <Kpi href="/admin/conversations" label="المحادثات" value={c?.total ?? 0} note={`${c?.week ?? 0} هذا الأسبوع · ${c?.unread ?? 0} غير مقروءة`} Icon={MessagesSquare} />
-        <Kpi href="/admin/pricing" label="مقاعد الدائرة الذهبية" value={golden ? `${golden.seatsUsed}/${golden.seats}` : "—"} note={golden ? `باقٍ ${seatsLeft}` : "راجع الأسعار"} Icon={Crown} />
+        <Kpi href="/admin/pricing" label="مقاعد عرض الإطلاق" value={golden ? `${golden.seatsUsed}/${golden.seats}` : "—"} note={golden ? `باقٍ ${seatsLeft}` : "راجع الأسعار"} Icon={Crown} />
         <Kpi href="/admin/conversations" label="محادثات ساخنة" value="" note="الأعلى اهتماماً في الأسفل" Icon={Flame} />
       </div>
 

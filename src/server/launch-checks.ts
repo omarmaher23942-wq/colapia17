@@ -316,9 +316,9 @@ const checkDemo = () =>
     return r?.ok ? { status: "ok", detail: `يفتح على ${url}` } : { status: "warn", detail: `لم يفتح الرابط ${url}${r ? ` (${r.status})` : ""}`, fix: "تأكد من النطاق الفرعي demo ومن ربط النطاقات النجمية" };
   });
 
-/** الدائرة الذهبية: تشغيلها ومقاعدها المستخدمة وسلامة الكود. */
+/** عرض الإطلاق: تشغيلها ومقاعدها المستخدمة وسلامة الكود. */
 const checkGolden = () =>
-  run("golden", "الدائرة الذهبية", async () => {
+  run("golden", "عرض الإطلاق", async () => {
     const { goldenStatus } = await import("@/server/pricing");
     const g = await goldenStatus();
     const used = g.seatsUsed;

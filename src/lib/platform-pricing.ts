@@ -1,20 +1,20 @@
 // platform-pricing.ts — أسعار Colapia في نموذج V4 (قرار المالك 2026-10-24، docs/V4-PLAN.md القسم 5). منطق خالص مختبَر.
 //
 //  - مشروع متجر عادي: سعر واحد يُدفع كاملاً قبل التسليم (افتراضي 4,999 ج).
-//  - «الدائرة الذهبية»: سعر مخفّض (افتراضي 999 ج) لأول عدد محدود من المتاجر (افتراضي 10). أول مقعد يشغله عميل سابق (Qima)،
+//  - عرض الإطلاق: سعر مخفّض (افتراضي 999 ج) لأول عدد محدود من المتاجر (افتراضي 10). أول مقعد يشغله عميل سابق (Qima)،
 //    فالعدّاد يبدأ «باقٍ 9». المتبقي = المقاعد − المشغول سلفاً − الحجوزات الذهبية التي أكّدها المالك.
 //  - تعديل بعد التسليم: تعديل مجاني واحد خلال نافذة (افتراضي 7 أيام من التسليم)، وما عداه برسوم (افتراضي 999 ج).
 //  - المشاريع الأخرى (غير المتاجر): نص قابل للضبط يقوله الوكيل، ولا يطلب دفعاً أبداً.
 // لا استضافة ولا اشتراك شهري ولا تجربة مجانية ولا باقات: حُذفت كلها في V4.
 // الإعداد في feature_flags («pricing») ويُعدَّل من /admin/pricing فقط. الأشكال القديمة (V3 بالباقات والمدد) تُقرأ بأمان:
-// لا تطابق النموذج الجديد فتُستبدل بالافتراضي مع الإبقاء على حالة تشغيل الدائرة الذهبية وعدد مقاعدها.
+// لا تطابق النموذج الجديد فتُستبدل بالافتراضي مع الإبقاء على حالة تشغيل عرض الإطلاق وعدد مقاعدها.
 
 export type PaymentKind = "project" | "edit";
 export type PaymentPlan = "standard" | "golden";
 
 export type GoldenOffer = {
   enabled: boolean;
-  /** سعر الدائرة الذهبية بالجنيه. */
+  /** سعر عرض الإطلاق بالجنيه. */
   price: number;
   /** إجمالي المقاعد. */
   seats: number;
@@ -32,7 +32,7 @@ export type PricingModel = {
 };
 
 export const DEFAULT_REGULAR_PRICE = 4999;
-export const DEFAULT_GOLDEN: GoldenOffer = { enabled: true, price: 999, seats: 10, base: 1 };
+export const DEFAULT_GOLDEN: GoldenOffer = { enabled: true, price: 999, seats: 5, base: 1 };
 export const DEFAULT_EDIT: EditTerms = { fee: 999, freeDays: 7 };
 export const DEFAULT_OTHER_SERVICES = "المشاريع غير المتاجر (مواقع، أنظمة، تطبيقات) تُسعَّر بحسب نطاقها بعد أن يفهم الفريق المطلوب، ويرد عليكم الفريق بالسعر نفسه.";
 export const DEFAULT_PRICING: PricingModel = {
@@ -59,7 +59,7 @@ const cleanNote = (v: unknown, fallback: string) => {
 
 /**
  * يقرأ إعداد الأسعار بأمان: v5 حقلاً حقلاً (ما نقص أو فسد يأخذ الافتراضي)، والأشكال القديمة تُستبدل بالافتراضي مع نقل
- * حالة تشغيل الدائرة الذهبية وعدد مقاعدها فقط (باقاتها وأكوادها كانت لنموذج آخر).
+ * حالة تشغيل عرض الإطلاق وعدد مقاعدها فقط (باقاتها وأكوادها كانت لنموذج آخر).
  */
 export function pricingFrom(raw: unknown): PricingModel {
   const c = obj(raw);
@@ -107,7 +107,7 @@ export type ProjectQuote = {
   seats: number;
 };
 
-/** سعر حجز جديد الآن: الدائرة الذهبية متى كان فيها مقعد، وإلا السعر العادي. confirmedGolden = الحجوزات الذهبية المؤكَّدة. */
+/** سعر حجز جديد الآن: عرض الإطلاق متى كان فيها مقعد، وإلا السعر العادي. confirmedGolden = الحجوزات الذهبية المؤكَّدة. */
 export function projectQuote(model: PricingModel, confirmedGolden: number): ProjectQuote {
   const a = goldenAvailability(model.golden, confirmedGolden);
   return { offer: a.available ? "golden" : "standard", price: a.available ? model.golden.price : model.regularPrice, regularPrice: model.regularPrice, seatsLeft: a.seatsLeft, seats: model.golden.seats };
@@ -137,7 +137,7 @@ const seatsWord = (n: number) => (n === 1 ? "مقعد واحد" : n === 2 ? "م�
 
 /**
  * حقائق الأسعار لبرومبت وكيل المبيعات بالأرقام الحالية (عربي). confirmedGolden = الحجوزات الذهبية المؤكَّدة.
- * سطر الدائرة الذهبية لا يظهر إلا وهي مفعّلة وفيها مقاعد، وللمتاجر فقط. المشاريع الأخرى لا يُطلب فيها دفع أبداً.
+ * سطر عرض الإطلاق لا يظهر إلا وهي مفعّلة وفيها مقاعد، وللمتاجر فقط. المشاريع الأخرى لا يُطلب فيها دفع أبداً.
  */
 export function agentPricingFacts(model: PricingModel, confirmedGolden: number): string {
   const g = goldenAvailability(model.golden, confirmedGolden);
@@ -146,7 +146,7 @@ export function agentPricingFacts(model: PricingModel, confirmedGolden: number):
   ];
   if (g.available) {
     lines.push(
-      `- عرض «الدائرة الذهبية» للمتاجر فقط، متاح الآن: ${fmtEgp(model.golden.price)} ج بدلاً من ${fmtEgp(model.regularPrice)} ج لأول ${model.golden.seats} متاجر، والمتبقي ${seatsWord(g.seatsLeft)}. مقابل تعاون (Collab أو شهادة) بموافقة العميل على النسخة النهائية. يُذكر بهدوء كعرض خاص لا كضغط، ولا تخترع مدة أو شروطاً غير ما هنا.`
+      `- عرض الإطلاق، متاح الآن: ${fmtEgp(model.golden.price)} ج بدلاً من ${fmtEgp(model.regularPrice)} ج لأول ${model.golden.seats} متاجر، والمتبقي ${seatsWord(g.seatsLeft)}. مقابل تعاون (Collab أو شهادة) بموافقة العميل على النسخة النهائية. يُذكر بهدوء كعرض خاص لا كضغط، ولا تخترع مدة أو شروطاً غير ما هنا.`
     );
   }
   lines.push(
@@ -161,7 +161,7 @@ export function previewLines(model: PricingModel, confirmedGolden: number): { bo
   const g = goldenAvailability(model.golden, confirmedGolden);
   const q = projectQuote(model, confirmedGolden);
   const booking = [
-    g.available ? `صفحة الحجز تعرض الدائرة الذهبية: ${fmtEgp(model.golden.price)} ج بدلاً من ${fmtEgp(model.regularPrice)} ج، وعدّاد «باقٍ ${g.seatsLeft} من ${model.golden.seats}».` : `صفحة الحجز تعرض السعر العادي ${fmtEgp(model.regularPrice)} ج${model.golden.enabled ? " (اكتملت مقاعد الدائرة الذهبية)" : " (الدائرة الذهبية متوقفة)"}.`,
+    g.available ? `صفحة الحجز تعرض عرض الإطلاق: ${fmtEgp(model.golden.price)} ج بدلاً من ${fmtEgp(model.regularPrice)} ج، وعدّاد «باقٍ ${g.seatsLeft} من ${model.golden.seats}».` : `صفحة الحجز تعرض السعر العادي ${fmtEgp(model.regularPrice)} ج${model.golden.enabled ? " (اكتملت مقاعد عرض الإطلاق)" : " (عرض الإطلاق متوقفة)"}.`,
     `سعر الحجز الذي سيُطلب من العميل الآن: ${fmtEgp(q.price)} ج.`,
   ];
   const edits = [`تعديل مجاني واحد خلال ${model.edit.freeDays} أيام من التسليم، وما عداه ${fmtEgp(model.edit.fee)} ج.`];
@@ -183,10 +183,10 @@ export function validatePricing(input: unknown): { ok: true; model: PricingModel
 
   const g = obj(c.golden);
   const price = int(g.price, 0, MAX_PRICE_EGP);
-  if (price === null) return { ok: false, error: "اكتبوا سعر الدائرة الذهبية (صفر أو أكثر)." };
-  if (price > regularPrice) return { ok: false, error: "سعر الدائرة الذهبية يجب ألا يزيد على السعر العادي." };
+  if (price === null) return { ok: false, error: "اكتبوا سعر عرض الإطلاق (صفر أو أكثر)." };
+  if (price > regularPrice) return { ok: false, error: "سعر عرض الإطلاق يجب ألا يزيد على السعر العادي." };
   const seats = int(g.seats, 0, 1000);
-  if (seats === null) return { ok: false, error: "عدد مقاعد الدائرة الذهبية من 0 إلى 1000." };
+  if (seats === null) return { ok: false, error: "عدد مقاعد عرض الإطلاق من 0 إلى 1000." };
   const base = int(g.base, 0, 1000);
   if (base === null) return { ok: false, error: "المقاعد المشغولة سلفاً من 0 إلى 1000." };
   if (base > seats) return { ok: false, error: "المقاعد المشغولة سلفاً لا تزيد على إجمالي المقاعد." };
