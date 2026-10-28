@@ -1,7 +1,6 @@
 // غلاف صفحات المنصة العامة (الرئيسية، من نحن، أعمالنا): الخلفية والهيدر والفوتر ومبدّل الوضع الفاتح/الداكن.
 // يُرسم على الخادم بالكامل (سرعة وظهور في البحث)، والتفاعل في جزر صغيرة (Header وThemeToggle).
 import type { ReactNode } from "react";
-import { InstallPrompt } from "@/components/InstallPrompt";
 import { CosmicBackdrop } from "./CosmicBackdrop";
 import { Footer } from "./Footer";
 import { Header } from "./Header";
@@ -23,7 +22,6 @@ export function LandingShell({ session, children }: { session: SessionState; chi
       <Header session={session} />
       <main id="main-content">{children}</main>
       <Footer />
-      <InstallPrompt variant="platform" />
     </div>
   );
 }

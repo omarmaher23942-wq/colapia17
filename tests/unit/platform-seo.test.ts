@@ -139,8 +139,8 @@ describe("robots وsitemap وllms", () => {
 describe("صدق النصوص وقواعد المالك للهبوط", () => {
   const copy = allCopy().join("\n");
 
-  it("12 سؤالاً بإجابات مباشرة قصيرة تبدأ بالجواب", () => {
-    expect(FAQ).toHaveLength(12);
+  it("أسئلة بإجابات مباشرة قصيرة وواضحة", () => {
+    expect(FAQ).toHaveLength(8);
     for (const f of FAQ) {
       expect(f.q.endsWith("؟")).toBe(true);
       expect(f.a.length).toBeGreaterThan(40);
@@ -148,18 +148,25 @@ describe("صدق النصوص وقواعد المالك للهبوط", () => {
     }
   });
 
-  it("بلا أسعار ولا عروض ولا استضافة ولا اشتراكات ولا تجربة ولا خطط مستقبلية", () => {
-    const banned = [
-      "ج.م", "جنيه", "الدائرة الذهبية", "استضافة", "اشتراك", "شهري", "تجربة مجانية", "الباقة", "باقات", "عمولة",
-      "مساعد صوتي", "الخليج", "أمريكا", "أوروبا", "قريباً", "مستقبلاً",
-    ];
-    for (const w of banned) expect(copy, w).not.toContain(w);
+  it("يصف نموذج العمل الحالي ولا يعيد وعود المعاينة والبوابة المحذوفة", () => {
+    for (const claim of [
+      "تعاينون مشروعكم مجاناً",
+      "نموذجاً تعاينونه مجاناً قبل أي دفع",
+      "تطلبون التعديلات من لوحة العميل",
+      "تتابعوا حالة المشروع",
+      "colapia.com/dashboard",
+      "مستقبلاً",
+    ]) expect(copy, claim).not.toContain(claim);
+    expect(copy).toContain("لا اشتراك شهري إلزامي");
+    expect(copy).toContain("لا نفرض اشتراكاً شهرياً إلزامياً أو استضافة من Colapia");
+    expect(copy).toContain("نحدّد نطاق المشروع والتكلفة والموعد المناسب");
     expect(copy).not.toMatch(/\d{3,}\s*(ج|جنيه|EGP)/);
   });
 
-  it("لا يُنسب البناء للذكاء الاصطناعي ولا أسماء تقنيات ولا تحديد صريح لمتاجر إنستجرام", () => {
-    const banned = ["الذكاء الاصطناعي", "Claude", "Groq", "Neon", "Cloudflare", "Vercel", "ImageKit", "GitHub", "Next.js", "متاجر إنستجرام", "براندات إنستجرام", "للبراندات"];
+  it("لا يُنسب البناء للذكاء الاصطناعي ولا تظهر أسماء تقنيات أو شرائح محظورة", () => {
+    const banned = ["يبنيه الذكاء الاصطناعي", "Claude", "Groq", "Neon", "Cloudflare", "Vercel", "ImageKit", "GitHub", "Next.js", "متاجر إنستجرام", "براندات إنستجرام", "للبراندات"];
     for (const w of banned) expect(copy, w).not.toContain(w);
+    expect(copy).toContain("وكلاء ذكاء اصطناعي");
   });
 
   it("رابط البدء هو محادثة إنستجرام الفعلية، وصورة Qima موجودة فعلاً في public", () => {

@@ -37,10 +37,10 @@ describe("صفحات المنصة العامة", () => {
     expect(p.homeClient).toContain("لوحة التحكم");
   });
 
-  it("أقسام الرئيسية: خدمات وكيف نعمل وأعمال ولماذا وأسئلة، و12 سؤالاً", async () => {
+  it("أقسام الرئيسية: خدمات وكيف نعمل وأعمال ولماذا وأسئلة، و8 أسئلة", async () => {
     const { home } = await pages();
     for (const id of ["services", "process", "work", "why", "faq"]) expect(home).toContain(`id="${id}"`);
-    expect((home.match(/<details/g) ?? []).length).toBe(12);
+    expect((home.match(/<details/g) ?? []).length).toBe(8);
   });
 
   it("الأعمال: لقطة Qima بأبعاد ثابتة ورابطها، وبطاقة متجر العرض برابط النطاق الفرعي", async () => {
@@ -51,12 +51,16 @@ describe("صفحات المنصة العامة", () => {
     expect(work).toContain('href="https://demo.colapia.com"');
   });
 
-  it("لا أسعار ولا استضافة ولا اشتراكات ولا تجربة ولا عرض ذهبي ظاهر في أي صفحة", async () => {
+  it("لا تظهر وعود المعاينة والبوابة القديمة، ويظل الديمو مميزاً عن عمل العميل", async () => {
     const p = await pages();
     for (const html of Object.values(p)) {
       const text = html.replace(/<[^>]+>/g, " ");
-      for (const w of ["ج.م", "جنيه", "استضافة", "اشتراك", "تجربة مجانية", "الدائرة الذهبية", "الباقات"]) expect(text, w).not.toContain(w);
+      for (const claim of ["تعاينون مشروعكم مجاناً", "لوحة العميل", "تتابعوا حالة المشروع", "طلبات التعديل من لوحة العميل", "ج.م", "جنيه"]) {
+        expect(text, claim).not.toContain(claim);
+      }
     }
+    expect(p.home).toContain("ديمو توضيحي · ليس مشروع عميل");
+    expect(p.home).toContain("لا اشتراك شهري إلزامي ولا استضافة مفروضة من Colapia");
   });
 
   it("لا مخاطبة بصيغة جنس واحد ولا عامية في الصفحات المرسومة", async () => {

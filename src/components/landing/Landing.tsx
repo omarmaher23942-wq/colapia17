@@ -18,14 +18,13 @@ import {
   ShieldCheck,
   Store,
   Globe,
-  Timer,
   type LucideIcon,
 } from "lucide-react";
-import { DEFINITION, DELIVERABLES, SERVICES, STEPS, WHY, type ServiceId, type WhyId } from "@/lib/landing-content";
+import { DEFINITION, SERVICES, STEPS, WHY, WORKING_PRINCIPLES, WORKS, type ServiceId, type WhyId } from "@/lib/landing-content";
 import { Ctas } from "./Ctas";
 import { Faq } from "./Faq";
 import { LandingShell } from "./LandingShell";
-import { WorkGrid } from "./WorkCards";
+import { WorkCard } from "./WorkCards";
 import { CTA_GHOST, Eyebrow, Heading } from "./shared";
 import type { SessionState } from "./types";
 
@@ -40,7 +39,7 @@ const SERVICE_ICON: Record<ServiceId, LucideIcon> = {
   custom: Wrench,
 };
 
-const WHY_ICON: Record<WhyId, LucideIcon> = { ownership: KeyRound, speed: Timer, quality: ShieldCheck, support: LifeBuoy };
+const WHY_ICON: Record<WhyId, LucideIcon> = { ownership: KeyRound, clarity: Check, fit: Wrench, support: LifeBuoy };
 const STEP_ICON: LucideIcon[] = [MessageCircle, Code2, KeyRound];
 
 export function Landing({ session, origin }: { session: SessionState; origin: string }) {
@@ -58,7 +57,7 @@ export function Landing({ session, origin }: { session: SessionState; origin: st
           <p className="max-w-xl text-base leading-8 text-[#c3cdf0]/85 sm:text-lg">{DEFINITION}</p>
           <Ctas session={session} />
           <ul className="flex flex-wrap gap-x-5 gap-y-2 text-[13px] font-bold text-[#c3cdf0]/80" aria-label="ما يميزنا">
-            {["الكود ملككم بالكامل", "دعم حتى يعمل على حساباتكم", "بلا التزامات دورية علينا", "أعمال حقيقية: Qima"].map((t) => (
+            {WORKING_PRINCIPLES.map((t) => (
               <li key={t} className="flex items-center gap-1.5">
                 <Check className="size-4 text-emerald-400" aria-hidden="true" />
                 {t}
@@ -67,19 +66,10 @@ export function Landing({ session, origin }: { session: SessionState; origin: st
           </ul>
         </div>
 
-        <aside aria-label="ما تستلمونه" className="land-card rounded-[2rem] p-6 sm:p-8">
-          <p className="text-sm font-black text-[#8fa8ff]">ما تستلمونه عند التسليم</p>
-          <ul className="mt-5 space-y-4">
-            {DELIVERABLES.map((d) => (
-              <li key={d} className="flex items-start gap-3 text-[15px] leading-7">
-                <span className="mt-1 grid size-5 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-400">
-                  <Check className="size-3.5" aria-hidden="true" />
-                </span>
-                {d}
-              </li>
-            ))}
-          </ul>
-        </aside>
+        <div className="land-rise min-w-0">
+          <p className="mb-3 text-center text-xs font-bold text-[#8fa8ff] sm:text-sm">مثال حقيقي من أعمالنا</p>
+          <WorkCard work={WORKS[0]!} origin={origin} priority />
+        </div>
       </section>
 
       {/* ─── ما نبنيه ─── */}
@@ -133,11 +123,13 @@ export function Landing({ session, origin }: { session: SessionState; origin: st
 
       {/* ─── أعمالنا ─── */}
       <section id="work" className="container-x scroll-mt-24 py-20 sm:py-28">
-        <Heading eyebrow="أعمالنا" title="مشاريع حقيقية يمكنكم زيارتها" subtitle="موقع وكالة إنتاج محتوى، ومتجر إلكتروني تجريبي كامل تتصفحونه بأنفسكم." />
-        <WorkGrid origin={origin} />
+        <Heading eyebrow="متجر توضيحي" title="استكشفوا تجربة متجر إلكتروني" subtitle="هذا الديمو مستقل للتوضيح، وليس مشروع عميل أو معاينة لطلب خاص. شاهدوا التفاصيل في صفحة أعمالنا." />
+        <div className="mx-auto mt-12 max-w-2xl">
+          <WorkCard work={WORKS[1]!} origin={origin} />
+        </div>
         <div className="mt-8 flex justify-center">
           <Link href="/work" className={CTA_GHOST}>
-            تفاصيل أعمالنا <ArrowLeft className="size-4" aria-hidden="true" />
+            جميع الأعمال والتفاصيل <ArrowLeft className="size-4" aria-hidden="true" />
           </Link>
         </div>
       </section>
