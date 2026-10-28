@@ -116,7 +116,7 @@ b, strong { font-weight: 800; color: var(--ink); }
 .browser .bar { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 22px; background: #0f1530; border-bottom: 1.5px solid var(--line); direction: ltr; }
 .browser .dot { width: 14px; height: 14px; border-radius: 50%; background: #2a3358; }
 .browser .url { margin-inline-start: 18px; flex: 1; height: 34px; border-radius: 17px; background: #070b1d; color: var(--mute); font-size: 24px; font-weight: 600; line-height: 34px; padding: 0 18px; text-align: left; }
-.browser img { display: block; width: 100%; }
+.browser img { display: block; width: 100%; max-height: 700px; object-fit: cover; object-position: top; }
 .phone { width: 420px; border-radius: 64px; border: 6px solid #2a3358; background: #05070f; overflow: hidden; box-shadow: 0 50px 100px -30px rgb(0 0 0 / 0.9); position: relative; }
 .phone::after { content: ""; position: absolute; top: 14px; left: 50%; width: 120px; height: 30px; margin-left: -60px; border-radius: 16px; background: #05070f; }
 .phone img { display: block; width: 100%; }
