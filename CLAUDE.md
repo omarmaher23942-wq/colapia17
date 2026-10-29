@@ -11,6 +11,7 @@
 - **العرض:** اسم «الدائرة الذهبية» أُلغي. «عرض الإطلاق»: **999 جنيه لأول 5 عملاء، لكل الخدمات** (أنظمة ومواقع ومتاجر)، لا للمتاجر فقط. يُضبط من `/admin/pricing` (المقاعد 5، الأساس 1).
 - **حساب إنستجرام:** `colapia`، والرابط الوحيد المعتمد في كل مكان `https://www.instagram.com/colapia/` (حُذفت روابط `ig.me` وروابط الشات؛ `BRAND.igDm` يشير للحساب).
 - **منشورات إنستجرام (منجزة):** `marketing/instagram-posts/` — 6 منشورات كاروسيل، كل منشور في مجلده (`S_1.png`… بالترتيب + `caption.txt`) و`SCHEDULE.md` فيه المواعيد وطريقة النشر. لقطات الديمو التُقطت من `https://demo.colapia.com` الحي (بعد إعادة الزرع). المولّد: `marketing/posts-v6/build.mjs` ثم `node marketing/render.mjs marketing/posts-v6/pN --raw`، ولقطات الديمو `node marketing/posts-v6/capture-demo.mjs --url=https://demo.colapia.com`.
+- **الصورة الشخصية والبايو:** `public/instagram/colapia-profile-4096.png` (4096×4096، خلفية كحلية، الشعار من `public/logo.png` مقصوص على حدوده؛ نسخة `-tight` أكبر) و`public/instagram/BIO.md`.
 - **على المالك:** `npm run db:migrate` إن لم يُنفَّذ، ومفاتيح Groq/Gemini جديدة إن أُعيد تفعيل الوكيل.
 
 ## 🚨 حالة الاستئناف الحالية (2026-10-28) — الأحدث والأعلى أولوية
