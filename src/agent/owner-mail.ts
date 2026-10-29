@@ -33,3 +33,20 @@ export function leadMail(i: { name: string; whatsapp: string; email?: string; se
     adminNote: `عميل محتمل جديد: ${person} · ${i.whatsapp}${i.service ? ` · ${oneLine(i.service, 100)}` : ""}`,
   };
 }
+
+const RULE_NAME = { store: "متجر", project: "مشروع", offer: "تفاصيل" } as const;
+
+/** شخص أرسل كلمة الدعوة من أحد المنشورات فأُرسل له الرد الآلي بالتفاصيل، والكرة الآن في ملعب الفريق. */
+export function keywordMail(i: { rule: keyof typeof RULE_NAME; text: string; channel: string; name?: string | null; igUsername?: string | null }): OwnerMail {
+  const person = who(i.name, i.igUsername);
+  const word = RULE_NAME[i.rule];
+  return {
+    subject: `رسالة جديدة بكلمة «${word}» على ${channelName(i.channel)}`,
+    headline: `${person} أرسل «${word}»`,
+    paragraphs: [
+      `${person} كتب على ${channelName(i.channel)}: «${oneLine(i.text, 120)}»`,
+      `أُرسل له رد آلي فوري بتفاصيل «${word}» وطُلب منه اسمه ورقم واتساب. افتحوا المحادثة وتابعوا معه بأنفسكم، فقد وُعد بأن الفريق سيرد في أقرب وقت.`,
+    ],
+    adminNote: `رسالة بكلمة «${word}» من ${person} (${channelName(i.channel)}): أُرسل الرد الآلي، بانتظار ردكم`,
+  };
+}

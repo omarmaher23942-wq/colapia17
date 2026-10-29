@@ -6,7 +6,7 @@ import { sendEmail } from "@/lib/email";
 import { redis } from "@/lib/redis";
 import { runtimeTag } from "@/lib/meta-trace";
 import { notifyAdmin } from "@/ai/lifecycle/notify";
-import { handoffMail, leadMail, type OwnerMail } from "@/agent/owner-mail";
+import { handoffMail, keywordMail, leadMail, type OwnerMail } from "@/agent/owner-mail";
 
 // أصل المنصة من النطاق الرئيسي المضبوط (لا NEXT_PUBLIC_APP_URL الذي قد يشير لنشر قديم).
 const origin = () => (env.ROOT_DOMAIN.startsWith("localhost") ? "http://localhost:3100" : `https://${env.ROOT_DOMAIN}`);
@@ -37,6 +37,11 @@ export async function alertHandoff(i: { conversationId: string; name?: string | 
 /** عميل محتمل جديد: بريد فوري للمالك + إشعار لوحة، مرة لكل محادثة. */
 export async function alertLead(i: { conversationId: string; name: string; whatsapp: string; email?: string; service: string; summary: string; channel: string; igUsername?: string | null }): Promise<void> {
   await notifyOwner(leadMail(i), i.conversationId, { mailKey: `agent:lead-mail:${i.conversationId}`, mailTtlS: 24 * 3600, extraButtons: [{ title: "الليدز", url: `${origin()}/admin/leads` }] });
+}
+
+/** وصلت كلمة دعوة من منشور (متجر/مشروع/تفاصيل) وأُرسل الرد الآلي: إشعار لوحة دائماً، وبريد مرة لكل محادثة كل 6 ساعات. */
+export async function alertKeyword(i: Parameters<typeof keywordMail>[0] & { conversationId: string }): Promise<void> {
+  await notifyOwner(keywordMail(i), i.conversationId, { mailKey: `agent:kw-mail:${i.conversationId}`, mailTtlS: 6 * 3600 });
 }
 
 /**

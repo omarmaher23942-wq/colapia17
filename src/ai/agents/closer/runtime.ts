@@ -13,7 +13,8 @@ import { aiText } from "@/ai/providers";
 import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
 import { redis } from "@/lib/redis";
-import { alertAgentDegraded, alertAgentSilent, alertHandoff, alertLead } from "./alerts";
+import { alertAgentDegraded, alertAgentSilent, alertHandoff, alertKeyword, alertLead } from "./alerts";
+import { matchKeyword, replyFor } from "@/agent/keyword-reply";
 import { agentFacts, type AgentFacts } from "./facts";
 import { parseCloserTurn, type CloserTurn, type Speaker } from "./turn";
 import { capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView } from "./guard";
@@ -54,6 +55,7 @@ const MIN_RETRY_MS = 7_000;
 const MAX_RETRIES = 2;
 
 const memOf = (c: Conv): Mem => ((c.memory as Mem | null) ?? {}) as Mem;
+const mem0Username = (c: Conv) => (typeof memOf(c).igUsername === "string" ? (memOf(c).igUsername as string) : undefined);
 
 type Row = { role: string; text: string | null; at: Date };
 
@@ -152,6 +154,35 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
     await db.update(conversations).set({ botPaused: false, botPausedUntil: null, stage: conv.stage === "human" ? "persuasion" : conv.stage, updatedAt: new Date() }).where(eq(conversations.id, conv.id));
     conv = { ...conv, botPaused: false, botPausedUntil: null, stage: conv.stage === "human" ? "persuasion" : conv.stage };
     await trace("resume", "انتهى الإيقاف المؤقت فعاد الوكيل");
+  }
+
+
+  // رد آلي فوري على كلمات الدعوة في المنشورات («متجر»، «مشروع»، «تفاصيل») حتى والوكيل الذكي موقوف: لا يعتمد على نموذج ولا يُنشئ ليداً،
+  // ثم يرى الفريق الرسالة (إشعار لوحة + بريد) ويتابع بنفسه. مرة لكل كلمة في المحادثة كل 12 ساعة، ولا يعمل في محادثة أوقفها الفريق.
+  if (botOn) {
+    const last = [...userTexts].reverse().find(Boolean);
+    const rule = matchKeyword(last);
+    if (rule) {
+      const first = await redis.set(`kw:${conv.id}:${rule}`, 1, { nx: true, ex: 12 * 3600 }).catch(() => "OK");
+      if (!first) {
+        await trace("keyword-repeat", `${rule} …${String(senderId).slice(-4)}: كُرّرت الكلمة، لا رد آلي ثانٍ`);
+        return;
+      }
+      try {
+        const facts = await agentFacts();
+        const text = replyFor(rule, { offer: facts.offer, demoUrl: facts.vars.demoUrl, qimaUrl: facts.vars.qimaUrl });
+        await metaApi.text(channel, senderId, text);
+        await db.insert(messages).values({ conversationId: conv.id, role: "assistant", text });
+        await db.update(conversations).set({ lastBotMessageAt: new Date(), unreadForAdmin: sql`${conversations.unreadForAdmin} + 1`, updatedAt: new Date() }).where(eq(conversations.id, conv.id));
+        await patchMemory(conv.id, { keyword: { rule, text: String(last).slice(0, 120), at: new Date().toISOString() } }).catch(() => {});
+        await trace("keyword-reply", `${rule} …${String(senderId).slice(-4)}`);
+        await alertKeyword({ conversationId: conv.id, rule, text: String(last), channel, name: conv.profileName, igUsername: mem0Username(conv) }).catch(() => {});
+      } catch (e) {
+        await redis.del(`kw:${conv.id}:${rule}`).catch(() => {});
+        await silent("keyword-send", `تعذر إرسال الرد الآلي على كلمة «${rule}»: ${String((e as Error)?.message ?? e)}. الغالب رمز الصفحة أو صلاحية الرسائل.`);
+      }
+      return;
+    }
   }
 
   if (process.env.AGENT_ENABLED !== "1") {
