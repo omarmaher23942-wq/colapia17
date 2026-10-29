@@ -54,7 +54,7 @@ const FORMS: Record<KeywordRule, { exact: string[]; fuzzy: string[] }> = {
     fuzzy: ["متجر", "متاجر", "store", "matgar"],
   },
   project: {
-    exact: ["مشروع", "مشاريع", "مشروعي", "مشروعنا", "مشروعكم", "project", "projects"],
+    exact: ["مشروع", "مشاريع", "مشروعي", "مشروعنا", "مشروعكم", "project", "projects", "فكره", "فكرتي", "فكرتنا", "فكرتكم", "رساله"], // «فكرة» و«رسالة» لأن منشورين نُشرا بعبارة «احكوا لنا فكرتكم» و«ابعتوا لنا رسالة»
     fuzzy: ["مشروع", "مشاريع", "project"],
   },
   offer: {
@@ -101,6 +101,18 @@ export function matchKeyword(text: string | null | undefined): KeywordRule | nul
     if (content.some((t) => tokenMatches(rule, t))) return rule;
   }
   return null;
+}
+
+/**
+ * أول رسالة قصيرة تصل من إعلان «أرسل رسالة» (referral موجود): الإعلان يرسل نصاً جاهزاً مثل «أريد معرفة المزيد» لا يطابق كلمة دعوة،
+ * فيُرد بتفاصيل المتجر (أو ما يحدده ref=project|offer|store في رابط الإعلان). الشكاوى والرسائل الطويلة تبقى للفريق.
+ */
+export function matchAdOpening(text: string | null | undefined, ref?: string): KeywordRule | null {
+  if (!text || text.length > 160) return null;
+  const all = toks(text);
+  if (!all.length || all.some((t) => NEGATIVE.has(t) || NEGATIVE.has(stem(t)))) return null;
+  const r = normalize(ref ?? "");
+  return r === "project" || r === "offer" || r === "store" ? r : "store";
 }
 
 export type ReplyCtx = { offer: Offer; demoUrl: string; qimaUrl: string };

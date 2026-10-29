@@ -1,6 +1,6 @@
 // الرد الآلي على كلمات الدعوة في المنشورات: مطابقة متسامحة للكلمات المعتمدة، ورفض الرسائل الطويلة والشكاوى، ونصوص صادقة.
 import { describe, expect, it } from "vitest";
-import { matchKeyword, normalize, replyFor } from "@/agent/keyword-reply";
+import { matchAdOpening, matchKeyword, normalize, replyFor } from "@/agent/keyword-reply";
 import { offerFrom } from "@/agent/offer";
 
 const open = offerFrom({ available: true, seatsLeft: 4, seats: 5, buildPrice: 999, regularBuildPrice: 2499 });
@@ -49,6 +49,20 @@ describe("matchKeyword", () => {
 
   it("متجر أولى من تفاصيل عند اجتماعهما", () => {
     expect(matchKeyword("تفاصيل متجر")).toBe("store");
+  });
+});
+
+describe("منشورات نُشرت وإعلانات الرسائل", () => {
+  it("«فكرتكم» و«رسالة» (عبارتا منشورين منشورين) تُرد عليهما بتفاصيل أي مشروع", () => {
+    expect(matchKeyword("عندي فكرة")).toBe("project");
+    expect(matchKeyword("رسالة")).toBe("project");
+  });
+  it("رسالة إعلان جاهزة تُرد بتفاصيل المتجر، والشكوى والطويل لا", () => {
+    expect(matchAdOpening("أريد معرفة المزيد")).toBe("store");
+    expect(matchAdOpening("Hi! Can I get more info?", "project")).toBe("project");
+    expect(matchAdOpening("الاعلان ده نصب ولا ايه")).toBeNull();
+    expect(matchAdOpening("x".repeat(200))).toBeNull();
+    expect(matchAdOpening("")).toBeNull();
   });
 });
 

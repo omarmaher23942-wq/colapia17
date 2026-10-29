@@ -14,7 +14,7 @@ import { getPrompt } from "@/ai/prompts";
 import { isOn } from "@/lib/flags";
 import { redis } from "@/lib/redis";
 import { alertAgentDegraded, alertAgentSilent, alertHandoff, alertKeyword, alertLead } from "./alerts";
-import { matchKeyword, replyFor } from "@/agent/keyword-reply";
+import { matchAdOpening, matchKeyword, replyFor } from "@/agent/keyword-reply";
 import { agentFacts, type AgentFacts } from "./facts";
 import { parseCloserTurn, type CloserTurn, type Speaker } from "./turn";
 import { capHistory, describeInbound, isStaleBatch, MAX_STORED_TEXT, STALE_INBOUND_MS, modelView } from "./guard";
@@ -161,7 +161,7 @@ export async function handleInbound(channel: Channel, senderId: string, batch: I
   // ثم يرى الفريق الرسالة (إشعار لوحة + بريد) ويتابع بنفسه. مرة لكل كلمة في المحادثة كل 12 ساعة، ولا يعمل في محادثة أوقفها الفريق.
   if (botOn) {
     const last = [...userTexts].reverse().find(Boolean);
-    const rule = matchKeyword(last);
+    const rule = matchKeyword(last) ?? (referral ? matchAdOpening(last, referral.ref) : null);
     if (rule) {
       const first = await redis.set(`kw:${conv.id}:${rule}`, 1, { nx: true, ex: 12 * 3600 }).catch(() => "OK");
       if (!first) {
