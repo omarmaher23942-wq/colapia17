@@ -141,6 +141,13 @@
       "when": 1793053813019,
       "tag": "0019_store_databases",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793456195949,
+      "tag": "0020_client_briefs",
+      "breakpoints": true
     }
   ]
 }

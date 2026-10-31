@@ -32,6 +32,8 @@ export const limits = {
   domain: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(6, "10 m"), prefix: "rl:own" }),
   /** تقارير أخطاء المتصفح وقياسات الأداء: 30 كل 10 دقائق لكل عنوان. */
   report: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30, "10 m"), prefix: "rl:report" }),
+  /** استمارات العملاء (colapia.com/realestate): 12 إرسالاً كل ساعة لكل عنوان (إعادة المحاولة بعد انقطاع لا تتجاوزها). */
+  brief: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(12, "1 h"), prefix: "rl:brief" }),
   // إعادة تصميم المتجر بالذكاء الاصطناعي: 6 مرات في اليوم لكل متجر.
   redesign: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(6, "1 d"), prefix: "rl:redesign" }),
 };

@@ -83,6 +83,7 @@ export const ADMIN_PAGES = {
   "/admin/payments": "payments.decide",
   "/admin/reviews": "stores.manage",
   "/admin/leads": "leads",
+  "/admin/briefs": "leads", // استمارات العملاء (العقارية وغيرها)
   "/admin/audience": "audience",
   "/admin/stores": "stores.manage",
   "/admin/costs": "costs",

@@ -66,6 +66,7 @@ export const CONTROL_TABLES = [
   "store_secrets",
   "store_databases",
   "store_db_transfers",
+  "client_briefs",
 ] as const;
 
 /** جداول تحكم يجوز لبيانات المتجر أن تشير إليها بمفتاح أجنبي (التاجر والمتجر وتصميمه). */
