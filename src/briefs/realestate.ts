@@ -235,12 +235,34 @@ export function recommendFeatures(input: { businessType?: string; goals?: readon
 }
 
 // ─── 6) الهوية والشكل ────────────────────────────────────────────────────
-export const BRAND_STATES = [
-  { id: "full", label: "لدينا هوية كاملة", hint: "شعار وألوان وخطوط" },
-  { id: "logo", label: "لدينا شعار فقط" },
-  { id: "none", label: "لا يوجد بعد", hint: "اقترحوا علينا اتجاهاً" },
+/** الشعار: عنده (يرفعه) أو نصمم له، أو سيرسله لاحقاً إن تعذر الرفع الآن. */
+export const LOGO_MODES = [
+  { id: "have", label: "لدينا شعار", hint: "ارفعوه هنا (PNG أو JPG أو WEBP)" },
+  { id: "design", label: "صمموا لنا شعاراً", hint: "أسئلة بسيطة ونقترح عليكم تصميماً" },
 ] as const satisfies readonly Option[];
-export type BrandState = (typeof BRAND_STATES)[number]["id"];
+export type LogoMode = (typeof LOGO_MODES)[number]["id"] | "later";
+
+export const LOGO_STYLES = [
+  { id: "symbol", label: "رمز مع الاسم", hint: "أيقونة بجانب اسم النشاط" },
+  { id: "monogram", label: "حروف مختصرة", hint: "حرف أو حرفان داخل شكل" },
+  { id: "wordmark", label: "الاسم فقط", hint: "خط مميز بلا رمز" },
+] as const satisfies readonly Option[];
+export type LogoStyle = (typeof LOGO_STYLES)[number]["id"];
+
+export const LOGO_IDEAS = [
+  { id: "building", label: "مبنى أو برج" },
+  { id: "home", label: "منزل" },
+  { id: "key", label: "مفتاح" },
+  { id: "skyline", label: "أفق مدينة" },
+  { id: "geometric", label: "أشكال هندسية" },
+  { id: "letter", label: "حرف من الاسم" },
+  { id: "suggest", label: "اقترحوا علينا" },
+] as const satisfies readonly Option[];
+export type LogoIdea = (typeof LOGO_IDEAS)[number]["id"];
+
+/** صور الشعار تُقبل من مساحة ملفاتنا فقط (يتحقق الخادم من المضيف)، وhttps دائماً. */
+const LOGO_URL_RE = /^https:\/\/[^\s]{4,480}$/i;
+export const isLogoUrl = (v: unknown): v is string => typeof v === "string" && LOGO_URL_RE.test(v.trim());
 
 export type Palette = Option & { colors?: readonly [string, string, string] };
 /** [الخلفية الغالبة، اللون الأساسي، لون التمييز]. */
@@ -331,10 +353,17 @@ export const briefDataSchema = z.object({
   channels: list(ids(CHANNELS)),
   problem: text(600),
   features: list(FEATURE_IDS),
-  brand: z.enum(ids(BRAND_STATES)),
+  logoMode: z.enum(["have", "design", "later"]),
+  logoUrl: z.string().trim().max(500).refine((v) => v === "" || LOGO_URL_RE.test(v)).default(""),
+  logoName: text(60),
+  logoStyle: z.enum(ids(LOGO_STYLES)).optional().or(z.literal("")).default(""),
+  logoIdeas: list(ids(LOGO_IDEAS)),
+  logoNotes: text(400),
   palette: z.enum(ids(PALETTES)),
   primaryColor: z.string().trim().toLowerCase().refine((v) => v === "" || HEX.test(v)).default(""),
   accentColor: z.string().trim().toLowerCase().refine((v) => v === "" || HEX.test(v)).default(""),
+  /** ألوان مكتوبة يدوياً (بالاسم أو الكود) بديلاً عن المنتقي. */
+  colorsNote: text(200),
   style: z.enum(ids(STYLES)),
   inspiration: text(400),
   domain: z.enum(ids(DOMAIN_STATES)),
@@ -397,9 +426,16 @@ export function stepErrors(step: StepId, d: BriefDraft): FieldErrors {
     case "features":
       break;
     case "look":
-      if (!has(d.brand)) e.brand = "اختاروا الأقرب لحالتكم.";
+      if (!has(d.logoMode)) e.logoMode = "اختاروا: لديكم شعار أم نصممه لكم؟";
+      else if (d.logoMode === "have" && !isLogoUrl(d.logoUrl)) e.logoUrl = "ارفعوا صورة الشعار، أو اضغطوا «سأرسله لاحقاً».";
+      else if (d.logoMode === "design") {
+        if (!has(d.logoStyle)) e.logoStyle = "اختاروا شكل الشعار الذي يعجبكم.";
+      }
       if (!has(d.palette)) e.palette = "اختاروا ألواناً أو «اقترحوا علينا».";
-      else if (d.palette === "custom" && (!HEX.test(d.primaryColor ?? "") || !HEX.test(d.accentColor ?? ""))) e.primaryColor = "اختاروا اللونين.";
+      else if (d.palette === "custom") {
+        const hexes = HEX.test(d.primaryColor ?? "") && HEX.test(d.accentColor ?? "");
+        if (!hexes && (d.colorsNote ?? "").trim().length < 2) e.primaryColor = "اختاروا اللونين، أو اكتبوهما بالاسم أو الكود.";
+      }
       if (!has(d.style)) e.style = "اختاروا الطابع.";
       break;
     case "contact":
@@ -443,7 +479,15 @@ export function parseBrief(input: unknown): ParsedBrief {
   if (data.palette !== "custom") {
     data.primaryColor = "";
     data.accentColor = "";
+    data.colorsNote = "";
   }
+  if (data.logoMode !== "have") data.logoUrl = "";
+  if (data.logoMode !== "design") {
+    data.logoName = "";
+    data.logoStyle = "";
+    data.logoIdeas = [];
+    data.logoNotes = "";
+  } else if (!data.logoName) data.logoName = data.businessName;
   const shown = new Set(featuresFor(data.businessType).map((f) => f.id));
   data.features = data.features.filter((f) => shown.has(f));
   return { ok: true, data };
@@ -456,7 +500,7 @@ export const STEP_FIELDS: Record<StepId, (keyof BriefData)[]> = {
   market: ["areas", "areasOther", "audience", "languages"],
   goals: ["goals", "channels", "problem"],
   features: ["features"],
-  look: ["brand", "palette", "primaryColor", "accentColor", "style", "inspiration"],
+  look: ["logoMode", "logoUrl", "logoName", "logoStyle", "logoIdeas", "logoNotes", "palette", "primaryColor", "accentColor", "colorsNote", "style", "inspiration"],
   contact: ["contactName", "whatsapp", "email", "domain", "domainName", "media", "timeline", "notes"],
 };
 

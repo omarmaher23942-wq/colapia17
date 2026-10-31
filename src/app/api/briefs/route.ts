@@ -8,6 +8,7 @@ import { readRequestId } from "@/lib/correlation";
 import { getPlatformSession } from "@/server/auth";
 import { saveBrief, newBriefRef } from "@/server/briefs";
 import { parseBrief } from "@/briefs/realestate";
+import { isMediaHost } from "@/lib/media";
 
 export const dynamic = "force-dynamic";
 
@@ -57,6 +58,19 @@ export async function POST(req: Request) {
   const parsed = parseBrief(body.data);
   if (!parsed.ok) {
     return Response.json({ ok: false, code: "invalid", error: "بعض الإجابات تحتاج مراجعة.", step: parsed.step, errors: parsed.errors, reqId }, { status: 422 });
+  }
+
+  // رابط الشعار يجب أن يكون من مساحة ملفاتنا (لا رابط خارجي يُعرض لاحقاً في اللوحة).
+  if (parsed.data.logoUrl) {
+    let host = "";
+    try {
+      host = new URL(parsed.data.logoUrl).hostname;
+    } catch {
+      /* يُرفض أدناه */
+    }
+    if (!host || !isMediaHost(host)) {
+      return Response.json({ ok: false, code: "invalid", error: "ارفعوا الشعار من الاستمارة نفسها.", step: 5, errors: { logoUrl: "ارفعوا الشعار من الاستمارة نفسها." }, reqId }, { status: 422 });
+    }
   }
 
   // من يرسل وهو داخل لوحة المالك = استمارة تجريبية (تظهر في اللوحة بوسم «تجريبية» ولا يصل العميل بريد تأكيد).

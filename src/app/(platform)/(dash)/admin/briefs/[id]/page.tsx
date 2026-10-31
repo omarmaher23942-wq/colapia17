@@ -32,6 +32,18 @@ export default async function BriefDetailPage({ params }: { params: Promise<{ id
         <p className="mt-1 text-xs text-[#8d97c4]">{b.ref} · {BRIEF_STATUS_LABEL[b.status]}{b.isTest ? " · تجريبية" : ""} · {new Date(b.createdAt).toLocaleString("ar-EG", { timeZone: "Africa/Cairo" })}</p>
       </header>
       <BriefActions id={b.id} status={b.status} note={b.note ?? ""} texts={texts} waUrl={wa} canDelete={can(u.role, "team.manage")} inTable={b.source === "db"} />
+      {b.data.logoUrl ? (
+        <section aria-label="شعار العميل" className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={b.data.logoUrl} alt={`شعار ${b.businessName}`} className="size-24 rounded-xl bg-white object-contain p-2" />
+          <div className="text-xs text-[#8d97c4]">
+            <p className="mb-1 text-sm font-black text-white">شعار العميل المرفوع</p>
+            <a href={b.data.logoUrl} target="_blank" rel="noopener noreferrer" className="font-bold text-[#8fa8ff]">فتح الصورة الأصلية / تنزيلها</a>
+          </div>
+        </section>
+      ) : b.data.logoMode === "design" ? (
+        <p className="rounded-2xl border border-[#c8a24a]/30 bg-[#c8a24a]/10 p-3 text-sm font-bold text-[#f1e3bd]">العميل يطلب تصميم شعار له (التفاصيل في البريف بالأسفل).</p>
+      ) : null}
       <section aria-label="إجابات العميل">
         <h2 className="mb-2 text-sm font-black text-white">إجابات العميل (البريف)</h2>
         <pre dir="rtl" className="max-h-[70vh] overflow-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-[13px] leading-7 text-[#dce3ff]">{brief}</pre>

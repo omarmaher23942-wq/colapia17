@@ -16,6 +16,7 @@ import {
   Clock,
   HardHat,
   Hotel,
+  ImagePlus,
   KeyRound,
   Landmark,
   Loader2,
@@ -23,6 +24,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  Trash2,
   UserRound,
   Wand2,
   type LucideIcon,
@@ -31,13 +33,15 @@ import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import {
   AREAS,
   AUDIENCES,
-  BRAND_STATES,
   BUSINESS_TYPES,
   CHANNELS,
   DEAL_TYPES,
   DOMAIN_STATES,
   GOALS,
   LANGUAGES,
+  LOGO_IDEAS,
+  LOGO_MODES,
+  LOGO_STYLES,
   MAX_GOALS,
   MEDIA_STATES,
   PALETTES,
@@ -60,6 +64,7 @@ import {
   type Option,
 } from "@/briefs/realestate";
 import { briefSummaryLines } from "@/briefs/render";
+import { uploadDirect } from "@/lib/media-upload";
 
 const DRAFT_KEY = "clp-brief:realestate:v1";
 /** وعد التسليم كما قرره المالك (يظهر في شاشة النجاح). */
@@ -529,7 +534,7 @@ function StepBody({ stepId, data, set, errors }: { stepId: (typeof STEPS)[number
     case "look":
       return (
         <>
-          <Single id="brand" label="هل لديكم هوية بصرية؟" hint="الشعار نفسه ترفعونه في الإعداد الأول" options={BRAND_STATES} value={data.brand} onChange={(v) => set("brand", v)} error={errors.brand} compact />
+          <LogoSection data={data} set={set} errors={errors} />
           <PalettePicker data={data} set={set} error={errors.palette ?? errors.primaryColor} />
           <Single id="style" label="ما الإحساس الذي تريدونه؟" options={STYLES} value={data.style} onChange={(v) => set("style", v)} error={errors.style} compact />
           <TextField id="inspiration" label="مواقع تعجبكم أو صفحتكم الحالية (اختياري)" placeholder="روابط مواقع أو صفحة إنستجرام" value={data.inspiration ?? ""} onChange={(v) => set("inspiration", v)} maxLength={400} dir="ltr" />
@@ -625,6 +630,102 @@ function FeaturesStep({ data, set }: { data: BriefDraft; set: SetFn }) {
   );
 }
 
+const LOGO_ACCEPT = "image/png,image/jpeg,image/webp";
+
+function LogoSection({ data, set, errors }: { data: BriefDraft; set: SetFn; errors: FieldErrors }) {
+  const mode = data.logoMode ?? "";
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const pick = async (file: File | undefined) => {
+    if (!file) return;
+    setErr(null);
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) return setErr("ارفعوا صورة بصيغة PNG أو JPG أو WEBP.");
+    if (file.size > 4 << 20) return setErr("الصورة أكبر من 4 ميجا. صغّروها ثم أعيدوا الرفع.");
+    setBusy(true);
+    try {
+      const [up] = await uploadDirect("briefLogo", [file]);
+      if (up) set("logoUrl", up.url);
+      else setErr("تعذر رفع الشعار. حاولوا مرة أخرى.");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "تعذر رفع الشعار. حاولوا مرة أخرى.");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <Single
+        id="logoMode"
+        label="هل لديكم شعار؟"
+        options={LOGO_MODES}
+        value={mode === "later" ? "have" : mode}
+        onChange={(v) => set("logoMode", v)}
+        error={errors.logoMode}
+        columns={2}
+      />
+
+      {mode === "have" || mode === "later" ? (
+        <div data-field-error={errors.logoUrl ? "" : undefined} id="f-logoUrl" className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          {data.logoUrl ? (
+            <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.logoUrl} alt="شعاركم المرفوع" className="size-24 shrink-0 rounded-xl bg-white/90 object-contain p-2" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="flex items-center gap-1.5 text-sm font-black text-emerald-300"><CheckCircle2 className="size-4" aria-hidden="true" /> تم رفع الشعار</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/5">
+                    <RotateCcw className="size-3.5" aria-hidden="true" /> استبدال
+                  </button>
+                  <button type="button" onClick={() => set("logoUrl", "")} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-400/30 px-3 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/10">
+                    <Trash2 className="size-3.5" aria-hidden="true" /> حذف
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : mode === "later" ? (
+            <div className="space-y-3 text-sm leading-7 text-[#dce3ff]">
+              <p>حسناً، نستلم شعاركم منكم لاحقاً (على واتساب أو في الإعداد الأول).</p>
+              <button type="button" onClick={() => set("logoMode", "have")} className="text-xs font-black text-[#8fa8ff] underline underline-offset-4">أريد رفعه الآن</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                disabled={busy}
+                className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#8fa8ff]/40 bg-[#6f86ff]/[0.06] px-4 py-8 text-center transition hover:bg-[#6f86ff]/[0.12] disabled:opacity-60"
+              >
+                {busy ? <Loader2 className="size-7 animate-spin text-[#8fa8ff]" aria-hidden="true" /> : <ImagePlus className="size-7 text-[#8fa8ff]" aria-hidden="true" />}
+                <span className="text-sm font-black text-white">{busy ? "جارٍ رفع الشعار…" : "اضغطوا لاختيار صورة الشعار"}</span>
+                <span className="text-xs text-[#8d97c4]">PNG أو JPG أو WEBP، حتى 4 ميجا. يُفضّل بخلفية شفافة (PNG).</span>
+              </button>
+              <button type="button" onClick={() => set("logoMode", "later")} className="text-xs font-bold text-[#8d97c4] underline underline-offset-4 hover:text-white">
+                الشعار ليس معي الآن، سأرسله لاحقاً
+              </button>
+            </div>
+          )}
+          <input ref={inputRef} type="file" accept={LOGO_ACCEPT} className="sr-only" tabIndex={-1} aria-label="اختيار صورة الشعار" onChange={(e) => void pick(e.target.files?.[0])} />
+          <FieldError text={err ?? errors.logoUrl} />
+        </div>
+      ) : null}
+
+      {mode === "design" ? (
+        <div className="space-y-5 rounded-2xl border border-[#c8a24a]/25 bg-[#c8a24a]/[0.05] p-4">
+          <p className="flex items-center gap-2 text-sm font-black text-[#f1e3bd]"><Sparkles className="size-4" aria-hidden="true" /> سنصمم لكم شعاراً يليق بنشاطكم. 3 أسئلة سريعة:</p>
+          <TextField id="logoName" label="الاسم الذي يظهر داخل الشعار" placeholder={data.businessName || "اسم النشاط"} value={data.logoName ?? ""} onChange={(v) => set("logoName", v)} maxLength={60} />
+          <Single id="logoStyle" label="أي شكل يعجبكم؟" options={LOGO_STYLES} value={data.logoStyle} onChange={(v) => set("logoStyle", v)} error={errors.logoStyle} />
+          <Multi id="logoIdeas" label="فكرة الرمز (اختياري)" hint="اختاروا ما تحبون، أو اتركوها لنا" options={LOGO_IDEAS} value={data.logoIdeas} onChange={(v) => set("logoIdeas", v)} />
+          <TextField id="logoNotes" label="أي ملاحظة على الشعار؟ (اختياري)" placeholder="مثال: أريده بسيطاً ويشبه الأبراج الحديثة" value={data.logoNotes ?? ""} onChange={(v) => set("logoNotes", v)} maxLength={400} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function PalettePicker({ data, set, error }: { data: BriefDraft; set: SetFn; error?: string }) {
   return (
     <fieldset data-field-error={error ? "" : undefined}>
@@ -666,6 +767,9 @@ function PalettePicker({ data, set, error }: { data: BriefDraft; set: SetFn; err
         <div className="mt-3 grid grid-cols-2 gap-3">
           <ColorInput label="اللون الأساسي" value={data.primaryColor || "#1c2f57"} onChange={(v) => set("primaryColor", v)} />
           <ColorInput label="لون التمييز" value={data.accentColor || "#c8a24a"} onChange={(v) => set("accentColor", v)} />
+          <div className="col-span-2">
+            <TextField id="colorsNote" label="أو اكتبوا ألوانكم بأنفسكم (اختياري)" hint="بالاسم أو الكود" placeholder="مثال: كحلي #0f1b33 مع ذهبي، أو أخضر زيتي" value={data.colorsNote ?? ""} onChange={(v) => set("colorsNote", v)} maxLength={200} />
+          </div>
         </div>
       ) : null}
       <FieldError text={error} />

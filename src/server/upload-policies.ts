@@ -91,6 +91,11 @@ const POLICIES: Record<MediaRoute, (c: Ctx) => Promise<UploadGrant>> = {
     const store = await publicStore(input);
     return { prefix: `stores/${store.id}/returns`, meta: { storeId: store.id } };
   },
+  // شعار العميل في استمارة /realestate العامة: بلا حساب، بحد 10 ملفات لكل عنوان في الساعة.
+  async briefLogo({ headers }) {
+    if (!(await hit(`brief:logo:${ipBucket(clientIp(headers))}`, 10, 3600))) throw new UploadPolicyError("رفع كثير في وقت قصير. انتظروا قليلاً ثم أعيدوا المحاولة.");
+    return { prefix: "briefs/logos", meta: {} };
+  },
   async merchantAvatar() {
     const s = await getMerchantSession();
     if (!s) throw new UploadPolicyError("غير مصرح");

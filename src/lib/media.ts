@@ -17,6 +17,8 @@ export const MEDIA_ROUTES = {
   merchantAvatar: { maxBytes: 4 << 20, maxFiles: 1 },
   // بحث العميل بالصورة في المتجر (لا يُحفظ في أي جدول، ويُحذف بعد المطابقة).
   visualSearch: { maxBytes: 4 << 20, maxFiles: 1 },
+  // شعار العميل من استمارة /realestate العامة (قبل أي حساب): صورة واحدة بحد معدل لكل عنوان.
+  briefLogo: { maxBytes: 4 << 20, maxFiles: 1 },
   // فيديو واجهة المتجر (MP4/WEBM حتى 40 ميجابايت)، يُحسب على حد الفيديو الشهري للباقة.
   brandVideo: { maxBytes: 40 << 20, maxFiles: 1 },
 } as const satisfies Record<string, { maxBytes: number; maxFiles: number }>;

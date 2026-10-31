@@ -6,7 +6,7 @@ const valid = (over: BriefDraft = {}): BriefDraft => ({
   businessName: "الريادة العقارية", businessType: "agency", teamSize: "small",
   propertyTypes: ["residential"], dealTypes: ["resale"], scale: "m",
   areas: ["new_cairo"], audience: ["local"], languages: "ar", goals: ["leads"],
-  features: ["crm"], brand: "logo", palette: "royal", style: "luxury",
+  features: ["crm"], logoMode: "design", logoStyle: "symbol", palette: "royal", style: "luxury",
   contactName: "أحمد", whatsapp: "010 1234 5678", domain: "need", media: "some", timeline: "asap", ...over,
 });
 
@@ -35,6 +35,39 @@ describe("الاستمارة العقارية", () => {
   it("ألوان مخصصة تتطلب لونين صالحين", () => {
     expect(stepErrors("look", valid({ palette: "custom" })).primaryColor).toBeTruthy();
     expect(parseBrief(valid({ palette: "custom", primaryColor: "#112233", accentColor: "#AABBCC" })).ok).toBe(true);
+  });
+  it("الشعار: المرفوع يحتاج رابطاً، والتصميم يحتاج شكلاً، و«لاحقاً» يمر", () => {
+    expect(stepErrors("look", valid({ logoMode: "have" })).logoUrl).toBeTruthy();
+    expect(stepErrors("look", valid({ logoMode: "have", logoUrl: "http://x.com/a.png" })).logoUrl).toBeTruthy();
+    expect(stepErrors("look", valid({ logoMode: "have", logoUrl: "https://media.colapia.com/briefs/logos/a.png" })).logoUrl).toBeUndefined();
+    expect(stepErrors("look", valid({ logoMode: "design", logoStyle: "" })).logoStyle).toBeTruthy();
+    expect(stepErrors("look", valid({ logoMode: "later" }))).toEqual({});
+    expect(stepErrors("look", valid({ logoMode: undefined })).logoMode).toBeTruthy();
+  });
+  it("الشعار يُنظَّف حسب الوضع ويأخذ اسم النشاط افتراضياً", () => {
+    const d = parseBrief(valid({ logoMode: "design", logoStyle: "monogram", logoIdeas: ["key"], logoUrl: "https://media.colapia.com/x.png" }));
+    expect(d.ok && d.data.logoUrl).toBe("");
+    expect(d.ok && d.data.logoName).toBe("الريادة العقارية");
+    const h = parseBrief(valid({ logoMode: "have", logoUrl: "https://media.colapia.com/briefs/logos/a.png", logoStyle: "symbol", logoNotes: "x" }));
+    expect(h.ok && h.data.logoStyle).toBe("");
+    expect(h.ok && h.data.logoNotes).toBe("");
+  });
+  it("الألوان اليدوية: تكفي الكتابة بدل المنتقي", () => {
+    expect(stepErrors("look", valid({ palette: "custom", colorsNote: "كحلي وذهبي" })).primaryColor).toBeUndefined();
+    expect(stepErrors("look", valid({ palette: "custom", primaryColor: "#112233" })).primaryColor).toBeTruthy();
+    const r = parseBrief(valid({ palette: "royal", colorsNote: "تجاهلوها" }));
+    expect(r.ok && r.data.colorsNote).toBe("");
+  });
+  it("البريف وبرومبت البناء يصفان الشعار", () => {
+    const meta = { id: "x", ref: "RE-1", createdAt: new Date() };
+    const a = parseBrief(valid({ logoMode: "have", logoUrl: "https://media.colapia.com/briefs/logos/a.png" }));
+    const b = parseBrief(valid({ logoMode: "design", logoStyle: "wordmark", logoIdeas: ["home"], palette: "custom", colorsNote: "أخضر زيتي" }));
+    if (!a.ok || !b.ok) throw new Error("invalid");
+    expect(renderBriefMarkdown(a.data, meta)).toContain("https://media.colapia.com/briefs/logos/a.png");
+    expect(renderBuildPrompt(a.data, meta)).toContain("العميل رفع شعاره");
+    expect(renderBriefMarkdown(b.data, meta)).toContain("يطلب تصميم شعار");
+    expect(renderBriefMarkdown(b.data, meta)).toContain("أخضر زيتي");
+    expect(renderBuildPrompt(b.data, meta)).toContain("SVG");
   });
   it("أرقام واتساب مصرية ودولية", () => {
     expect(normalizeContactPhone("+20 101 234 5678")).toBe("01012345678");

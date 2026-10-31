@@ -3,7 +3,6 @@
 import {
   AREAS,
   AUDIENCES,
-  BRAND_STATES,
   BUSINESS_TYPES,
   CHANNELS,
   DEAL_TYPES,
@@ -11,6 +10,8 @@ import {
   FEATURES,
   GOALS,
   LANGUAGES,
+  LOGO_IDEAS,
+  LOGO_STYLES,
   MEDIA_STATES,
   PALETTES,
   PROPERTY_TYPES,
@@ -39,11 +40,27 @@ export function areasLabel(d: Pick<BriefData, "areas" | "areasOther">): string {
   return join([...labelsOf(AREAS, d.areas), ...(d.areasOther ? [d.areasOther] : [])]);
 }
 
-export function colorsLabel(d: Pick<BriefData, "palette" | "primaryColor" | "accentColor">): string {
-  if (d.palette === "custom") return `ألوان العميل: الأساسي ${d.primaryColor} · التمييز ${d.accentColor}`;
+export function colorsLabel(d: Pick<BriefData, "palette" | "primaryColor" | "accentColor" | "colorsNote">): string {
+  if (d.palette === "custom") {
+    const hex = d.primaryColor && d.accentColor ? `الأساسي ${d.primaryColor} · التمييز ${d.accentColor}` : "";
+    return `ألوان العميل: ${[hex, d.colorsNote && `كتبها بنفسه: «${d.colorsNote}»`].filter(Boolean).join(" · ")}`;
+  }
   const p = PALETTES.find((x) => x.id === d.palette);
   if (!p) return "—";
   return "colors" in p ? `${p.label} (${p.colors.join(" / ")})` : p.label;
+}
+
+/** وصف الشعار للبريف: مرفوع (برابطه) أو مطلوب تصميمه (بإجابات العميل) أو سيُرسل لاحقاً. */
+export function logoLines(d: BriefData): string[] {
+  if (d.logoMode === "have") return [`- الشعار: **مرفوع من العميل** ${d.logoUrl}`, `  (استخدموه كما هو، واستخرجوا منه الألوان إن لم يحددها)`];
+  if (d.logoMode === "later") return [`- الشعار: لدى العميل شعار وسيرسله لاحقاً (استخدموا اسم النشاط نصاً مؤقتاً)`];
+  return [
+    `- الشعار: **العميل يطلب تصميم شعار له**`,
+    `  - الاسم داخل الشعار: ${d.logoName || d.businessName}`,
+    `  - الشكل: ${labelOf(LOGO_STYLES, d.logoStyle)}`,
+    `  - أفكار الرمز: ${join(labelsOf(LOGO_IDEAS, d.logoIdeas))}`,
+    ...(d.logoNotes ? [`  - ملاحظاته: ${d.logoNotes}`] : []),
+  ];
 }
 
 /** أسطر قصيرة للبريد وبطاقة القائمة. */
@@ -112,7 +129,7 @@ export function renderBriefMarkdown(d: BriefData, m: BriefMeta): string {
     featureLines(d),
     ``,
     `## الهوية والشكل`,
-    `- الهوية الحالية: ${labelOf(BRAND_STATES, d.brand)}`,
+    ...logoLines(d),
     `- الألوان: ${colorsLabel(d)}`,
     `- الطابع: ${labelOf(STYLES, d.style)}`,
     `- مواقع تعجبهم أو صفحاتهم: ${d.inspiration || "—"}`,
@@ -151,6 +168,13 @@ export function renderBuildPrompt(d: BriefData, m: BriefMeta): string {
     `- الذكاء الاصطناعي عبر Groq (مفتاح في متغير بيئة، مهلة وإعادة محاولة وتسجيل الاستهلاك، ولا يتوقف الموقع إن تعذر).`,
     `- الصور عبر UploadThing مع ضغط في المتصفح قبل الرفع وصيغ حديثة (AVIF/WebP) وأحجام متجاوبة.`,
     `- الفيديو: ملف MP4 مضغوط (H.264 + faststart، ونسخة أخف للهاتف) مع صورة غلاف تظهر فوراً، وتحميل متأخر بعد ظهور الصفحة، ولا يُحمَّل مع توفير البيانات أو الاتصال البطيء أو تقليل الحركة.`,
+    ``,
+    `## الشعار`,
+    d.logoMode === "have"
+      ? `- العميل رفع شعاره (الرابط في البريف). ضعه في الهيدر والفوتر وصورة المشاركة والأيقونة، واستخرج منه لوناً أساسياً ولون تمييز إن لم يحدد ألواناً، وأتح استبداله من الإعداد الأول.`
+      : d.logoMode === "design"
+        ? `- صمم شعاراً احترافياً بصيغة SVG نظيفة (نسخة فاتحة وداكنة) وفق إجابات العميل في البريف، واجعله جزءاً من الهوية في الموقع، وأتح رفع شعار بديل من الإعداد الأول. قدّم للعميل في اجتماع التسليم خيارين على الأقل.`
+        : `- لدى العميل شعار سيرسله لاحقاً: استخدم اسم النشاط نصاً مصمماً مؤقتاً، وضع خطوة «رفع الشعار» بارزة في الإعداد الأول.`,
     ``,
     `## قاعدتا البيانات (إلزامي، بلا أي خطأ عند حذف التجريبية)`,
     `- متغيران: \`DATABASE_URL\` (قاعدتنا التجريبية قبل التسليم) و\`CLIENT_DATABASE_URL\` (قاعدة العميل، يضيفها في Cloudflare أثناء اجتماع التسليم).`,
