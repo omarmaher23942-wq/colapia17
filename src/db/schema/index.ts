@@ -15,3 +15,4 @@ export * from "./outreach";
 export * from "./agency";
 export * from "./members";
 export * from "./transfer";
+export * from "./briefs";

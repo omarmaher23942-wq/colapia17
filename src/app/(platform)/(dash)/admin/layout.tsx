@@ -20,6 +20,7 @@ import {
   Inbox,
   Rocket,
   PackageCheck,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import { getPlatformSession } from "@/server/auth";
@@ -36,6 +37,7 @@ import {
 import { ColapiaLogo } from "@/components/brand/ColapiaLogo";
 import { can, canSeePage, isPlatformRole, ROLE_INFO, type AdminPage } from "@/agency/roles";
 import { cn } from "@/lib/utils";
+import { unseenBriefsCount } from "@/server/briefs";
 
 const SW = 1.75;
 
@@ -43,6 +45,7 @@ const NAV: readonly (readonly [string, string, LucideIcon])[] = [
   ["/admin", "لوحة القيادة", LayoutDashboard],
   ["/admin/conversations", "المحادثات", MessagesSquare],
   ["/admin/leads", "الليدز", UserPlus],
+  ["/admin/briefs", "الاستمارات", ClipboardList],
   ["/admin/costs", "التكاليف", Activity],
   ["/admin/pricing", "الأسعار", BadgeDollarSign],
   ["/admin/flags", "الإعدادات", SlidersHorizontal],
@@ -71,7 +74,7 @@ export default async function PlatformAdminLayout({
   const h = await headers();
   const path = (h.get("x-pathname") ?? "").toLowerCase();
 
-  const [reviewRows, payRows, unreadRows, reviewsPendingRows, openEditRows, newRequestRows] =
+  const [reviewRows, payRows, unreadRows, reviewsPendingRows, openEditRows, newRequestRows, unseenBriefs] =
     await Promise.all([
       db
         // متاجر أنشأها الوكيل ولم يُسلَّم رابط إعدادها بعد (بانتظار تسليمكم اليدوي).
@@ -106,6 +109,7 @@ export default async function PlatformAdminLayout({
         .from(storeRequests)
         .where(and(eq(storeRequests.status, "submitted"), eq(storeRequests.production, "new")))
         .catch(() => [{ c: 0 }]),
+      unseenBriefsCount().catch(() => 0),
     ]);
 
   const badge: Record<string, number> = {
@@ -115,6 +119,7 @@ export default async function PlatformAdminLayout({
     "/admin/reviews": reviewsPendingRows[0]?.c ?? 0,
     "/admin/edits": openEditRows[0]?.c ?? 0,
     "/admin/requests": newRequestRows[0]?.c ?? 0,
+    "/admin/briefs": unseenBriefs,
   };
 
   // القائمة حسب الدور (الخادم يحرس كل صفحة بنفسه؛ هذا لإخفاء ما لا يخصه فقط).
